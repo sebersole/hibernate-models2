@@ -83,7 +83,6 @@ public class SourceModelBuildingContextImpl implements SourceModelBuildingContex
 
 	private void primeRegistries(RegistryPrimer registryPrimer) {
 		BaseLineJavaTypes.forEachJavaType( this::primeClassDetails );
-		AnnotationHelper.forEachOrmAnnotation( this::primeAnnotation );
 
 		if ( registryPrimer != null ) {
 			registryPrimer.primeRegistries( new RegistryContributions(), this );

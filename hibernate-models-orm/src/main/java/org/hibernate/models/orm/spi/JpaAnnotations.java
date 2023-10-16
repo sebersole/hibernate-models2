@@ -4,12 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright: Red Hat Inc. and Hibernate Authors
  */
-package org.hibernate.models.source.spi;
+package org.hibernate.models.orm.spi;
 
 import java.lang.annotation.Annotation;
 import java.util.function.Consumer;
 
-import org.hibernate.models.source.internal.AnnotationHelper;
+import org.hibernate.models.orm.internal.OrmAnnotationHelper;
+import org.hibernate.models.source.spi.AnnotationDescriptor;
 
 import jakarta.persistence.Access;
 import jakarta.persistence.AssociationOverride;
@@ -192,6 +193,6 @@ public interface JpaAnnotations {
 	AnnotationDescriptor<Version> VERSION = createOrmDescriptor( Version.class );
 
 	static void forEachAnnotation(Consumer<AnnotationDescriptor<? extends Annotation>> consumer) {
-		AnnotationHelper.forEachOrmAnnotation( JpaAnnotations.class, consumer );
+		OrmAnnotationHelper.forEachOrmAnnotation( JpaAnnotations.class, consumer );
 	}
 }
