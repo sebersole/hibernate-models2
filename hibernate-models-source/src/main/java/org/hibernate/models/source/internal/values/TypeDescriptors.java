@@ -1,0 +1,91 @@
+/*
+ * Hibernate, Relational Persistence for Idiomatic Java
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright: Red Hat Inc. and Hibernate Authors
+ */
+package org.hibernate.models.source.internal.values;
+
+import java.lang.annotation.Annotation;
+
+import org.hibernate.models.ModelsException;
+import org.hibernate.models.source.spi.ValueTypeDescriptor;
+
+import static org.hibernate.models.source.internal.values.BooleanTypeDescriptor.BOOLEAN_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.values.ByteTypeDescriptor.BYTE_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.values.CharacterTypeDescriptor.CHARACTER_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.values.ClassTypeDescriptor.CLASS_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.values.DoubleTypeDescriptor.DOUBLE_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.values.FloatTypeDescriptor.FLOAT_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.values.IntegerTypeDescriptor.INTEGER_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.values.LongTypeDescriptor.LONG_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.values.ShortTypeDescriptor.SHORT_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.values.StringTypeDescriptor.STRING_TYPE_DESCRIPTOR;
+
+/**
+ * @author Steve Ebersole
+ */
+public class TypeDescriptors {
+
+	@SuppressWarnings("unchecked")
+	public static <T,W> ValueTypeDescriptor<W> resolveTypeDescriptor(Class<T> attributeType) {
+		assert attributeType != null;
+
+		if ( attributeType == byte.class ) {
+			return (ValueTypeDescriptor<W>) BYTE_TYPE_DESCRIPTOR;
+		}
+
+		if ( attributeType == boolean.class ) {
+			return (ValueTypeDescriptor<W>) BOOLEAN_TYPE_DESCRIPTOR;
+		}
+
+		if ( attributeType == short.class ) {
+			return (ValueTypeDescriptor<W>) SHORT_TYPE_DESCRIPTOR;
+		}
+
+		if ( attributeType == int.class ) {
+			return (ValueTypeDescriptor<W>) INTEGER_TYPE_DESCRIPTOR;
+		}
+
+		if ( attributeType == long.class ) {
+			return (ValueTypeDescriptor<W>) LONG_TYPE_DESCRIPTOR;
+		}
+
+		if ( attributeType == float.class ) {
+			return (ValueTypeDescriptor<W>) FLOAT_TYPE_DESCRIPTOR;
+		}
+
+		if ( attributeType == double.class ) {
+			return (ValueTypeDescriptor<W>) DOUBLE_TYPE_DESCRIPTOR;
+		}
+
+		if ( attributeType == char.class ) {
+			return (ValueTypeDescriptor<W>) CHARACTER_TYPE_DESCRIPTOR;
+		}
+
+		if ( attributeType == String.class ) {
+			return (ValueTypeDescriptor<W>) STRING_TYPE_DESCRIPTOR;
+		}
+
+		if ( attributeType == Class.class ) {
+			return (ValueTypeDescriptor<W>) CLASS_TYPE_DESCRIPTOR;
+		}
+
+		if ( attributeType.isArray() ) {
+			final Class<?> componentType = attributeType.getComponentType();
+			final ValueTypeDescriptor<?> elementTypeDescriptor = resolveTypeDescriptor( componentType );
+			return (ValueTypeDescriptor<W>) new ArrayTypeDescriptor<>( elementTypeDescriptor );
+		}
+
+		if ( attributeType.isEnum() ) {
+			//noinspection rawtypes
+			return new EnumTypeDescriptor<>( (Class) attributeType );
+		}
+
+		if ( Annotation.class.isAssignableFrom( attributeType ) ) {
+			return (ValueTypeDescriptor<W>) new NestedTypeDescriptor<>( (Class<? extends Annotation>) attributeType );
+		}
+
+		throw new ModelsException( "Unsupported attribute value type - " + attributeType.getName() );
+	}
+}
