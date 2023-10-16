@@ -1,0 +1,4 @@
+apply plugin: 'base'
+
+group = "org.hibernate.models2"
+version = "1.0.0-SNAPSHOT"

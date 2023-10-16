@@ -1,0 +1,4 @@
+= Open Questions and To-do items
+
+* Hierarchical packages?  E.g. should things defined on the `com.acme` package apply to things in the `com.acme.model` package?  Should `PackageDetails` have reference to its "parent" `PackageDetails`?
+* Model `AnnotationAttributeValue`?  Dropped that here from earlier iterations - its only real benefit was to help model the idea of implicit (unspecified) values.  But since the quorum is to simply follow JLS, "this is the way".  It simplifies the code quite a bit and imo only makes sense if we want to be able to model that implicitness aspect
