@@ -80,7 +80,7 @@ dependencyResolutionManagement {
 
 include "hibernate-models-common"
 include "hibernate-models-source"
-//include "hibernate-models-managed"
+include "hibernate-models-orm"
 
 rootProject.children.each { project ->
 	project.buildFileName = "${project.name}.gradle"

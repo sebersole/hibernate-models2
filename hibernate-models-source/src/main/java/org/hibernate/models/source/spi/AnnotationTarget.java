@@ -16,9 +16,6 @@ import java.util.function.Consumer;
 
 import org.hibernate.models.source.AnnotationAccessException;
 
-import jakarta.persistence.NamedQueries;
-import jakarta.persistence.NamedQuery;
-
 /**
  * Abstraction of {@linkplain java.lang.reflect.AnnotatedElement}
  *
@@ -38,12 +35,12 @@ public interface AnnotationTarget {
 	/**
 	 * Get the usage of the given annotation on this target.
 	 * <p/>
-	 * For {@linkplain Repeatable repeatable} annotation types (e.g. {@linkplain NamedQuery}), this method will either-<ul>
+	 * For {@linkplain Repeatable repeatable} annotation types (e.g. {@code @NamedQuery}), this method will either-<ul>
 	 *     <li>
 	 *         if the repeatable annotation itself is present, it is returned.
 	 *     </li>
 	 *     <li>
-	 *         if the {@linkplain Repeatable#value() "containing annotation"} is present (e.g. {@linkplain NamedQueries}), <ul>
+	 *         if the {@linkplain Repeatable#value() "containing annotation"} is present (e.g. {@code @NamedQueries}), <ul>
 	 *             <li>
 	 *                 if the container contains just a single repeatable, that one is returned
 	 *             </li>
@@ -69,12 +66,12 @@ public interface AnnotationTarget {
 	/**
 	 * Get all usages of the specified {@code annotationType} in this scope.
 	 * <p/>
-	 * For {@linkplain Repeatable repeatable} annotation types (e.g. {@linkplain NamedQuery}) -<ul>
+	 * For {@linkplain Repeatable repeatable} annotation types (e.g. {@code @NamedQuery}) -<ul>
 	 *     <li>
 	 *         if the repeatable annotation itself is present, a singleton list containing that single usage is returned
 	 *     </li>
 	 *     <li>
-	 *         if the {@linkplain Repeatable#value() "containing annotation"} (e.g. {@linkplain NamedQueries}) is present,
+	 *         if the {@linkplain Repeatable#value() "containing annotation"} (e.g. {@code @NamedQueries}) is present,
 	 *         the contained repeatable usages are extracted from the container and returned as a list
 	 *     </li>
 	 *     <li>

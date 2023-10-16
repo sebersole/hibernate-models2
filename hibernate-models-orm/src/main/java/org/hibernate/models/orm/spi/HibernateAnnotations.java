@@ -4,13 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright: Red Hat Inc. and Hibernate Authors
  */
-package org.hibernate.models.source.spi;
+package org.hibernate.models.orm.spi;
 
 import java.lang.annotation.Annotation;
 import java.util.function.Consumer;
 
 import org.hibernate.annotations.*;
-import org.hibernate.models.source.internal.AnnotationHelper;
+import org.hibernate.models.orm.internal.OrmAnnotationHelper;
+import org.hibernate.models.source.spi.AnnotationDescriptor;
 
 import static org.hibernate.models.source.internal.AnnotationHelper.createOrmDescriptor;
 
@@ -192,6 +193,6 @@ public interface HibernateAnnotations {
 
 
 	static void forEachAnnotation(Consumer<AnnotationDescriptor<? extends Annotation>> consumer) {
-		AnnotationHelper.forEachOrmAnnotation( HibernateAnnotations.class, consumer );
+		OrmAnnotationHelper.forEachOrmAnnotation( HibernateAnnotations.class, consumer );
 	}
 }

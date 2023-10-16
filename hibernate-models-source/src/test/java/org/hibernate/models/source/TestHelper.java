@@ -9,6 +9,9 @@ package org.hibernate.models.source;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 
+import org.hibernate.models.orm.internal.OrmAnnotationHelper;
+import org.hibernate.models.orm.spi.HibernateAnnotations;
+import org.hibernate.models.orm.spi.JpaAnnotations;
 import org.hibernate.models.source.internal.AnnotationDescriptorRegistryImpl;
 import org.hibernate.models.source.internal.BaseLineJavaTypes;
 import org.hibernate.models.source.internal.SourceModelBuildingContextImpl;
@@ -16,8 +19,6 @@ import org.hibernate.models.source.internal.jandex.JandexBuilders;
 import org.hibernate.models.source.internal.jandex.JandexIndexerHelper;
 import org.hibernate.models.source.internal.jdk.JdkBuilders;
 import org.hibernate.models.source.spi.ClassDetailsRegistry;
-import org.hibernate.models.source.spi.HibernateAnnotations;
-import org.hibernate.models.source.spi.JpaAnnotations;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 import org.hibernate.models.spi.ClassLoading;
 
@@ -49,7 +50,13 @@ public class TestHelper {
 			Index jandexIndex,
 			ClassLoading classLoadingAccess,
 			Class<?>... modelClasses) {
-		final SourceModelBuildingContextImpl buildingContext = new SourceModelBuildingContextImpl( classLoadingAccess, jandexIndex );
+		final SourceModelBuildingContextImpl buildingContext = new SourceModelBuildingContextImpl(
+				classLoadingAccess,
+				jandexIndex,
+				(contributions, buildingContext1) -> {
+					OrmAnnotationHelper.forEachOrmAnnotation( contributions::registerAnnotation );
+				}
+		);
 		final ClassDetailsRegistry classDetailsRegistry = buildingContext.getClassDetailsRegistry();
 		final AnnotationDescriptorRegistryImpl annotationDescriptorRegistry = (AnnotationDescriptorRegistryImpl) buildingContext.getAnnotationDescriptorRegistry();
 

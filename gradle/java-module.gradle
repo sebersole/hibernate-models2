@@ -20,11 +20,12 @@ test {
 	useJUnitPlatform()
 }
 
-tasks.named( sourceSets.main.compileJavaTaskName ) {
+tasks.withType( JavaCompile ).configureEach {
 	options.encoding = "UTF-8"
 	options.warnings false
 }
 
+// create a single "compile" task
 tasks.register( "compile" ) {compile->
 	compile.dependsOn tasks.named( sourceSets.main.compileJavaTaskName )
 	compile.dependsOn tasks.named( sourceSets.test.compileJavaTaskName )

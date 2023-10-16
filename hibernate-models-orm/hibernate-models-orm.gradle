@@ -2,20 +2,22 @@ apply from: rootProject.file( "gradle/java-module.gradle" )
 
 dependencies {
     implementation project( ":hibernate-models-common" )
+    implementation project( ":hibernate-models-source" )
 
-    implementation libs.jandex
+    implementation libs.byteBuddy
+    implementation libs.classmate
 
     implementation libs.logging
 
     compileOnly libs.loggingAnnotations
+    compileOnly libs.jpa
+    compileOnly libs.hibernateCore
 
     annotationProcessor libs.loggingProcessor
     annotationProcessor libs.logging
     annotationProcessor libs.loggingAnnotations
 
-    testImplementation project( ":hibernate-models-orm" )
     testImplementation testLibs.jpa
     testImplementation libs.hibernateCore
-
     testRuntimeOnly testLibs.log4j
 }

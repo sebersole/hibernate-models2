@@ -13,8 +13,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.hibernate.internal.util.collections.ArrayHelper;
-import org.hibernate.internal.util.collections.CollectionHelper;
+import org.hibernate.models.internal.ArrayHelper;
+import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.source.internal.ClassDetailsSupport;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.ClassDetailsRegistry;
