@@ -6,9 +6,9 @@
  */
 
 /**
- *
- * Support for dealing with annotation attributes
+ * Support for dynamic class and attribute mappings.  This includes
+ * XML mappings as well as ad-hoc class mappings (Envers, etc.).
  *
  * @author Steve Ebersole
  */
-package org.hibernate.models.source.internal.values;
+package org.hibernate.models.source.internal.dynamic;

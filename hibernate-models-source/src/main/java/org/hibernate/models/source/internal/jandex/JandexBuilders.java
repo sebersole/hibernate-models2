@@ -8,12 +8,14 @@ package org.hibernate.models.source.internal.jandex;
 
 import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.source.UnknownClassException;
-import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.ClassDetailsBuilder;
+import org.hibernate.models.source.spi.MethodDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.IndexView;
+import org.jboss.jandex.MethodInfo;
+import org.jboss.jandex.Type;
 
 /**
  * Jandex based ClassDetailsBuilder
@@ -27,15 +29,17 @@ public class JandexBuilders implements ClassDetailsBuilder {
 	}
 
 	@Override
-	public ClassDetails buildClassDetails(String name, SourceModelBuildingContext buildingContext) {
+	public JandexClassDetails buildClassDetails(String name, SourceModelBuildingContext buildingContext) {
 		return buildClassDetailsStatic( name, buildingContext.getJandexIndex(), buildingContext );
 	}
 
-	public static ClassDetails buildClassDetailsStatic(String name, SourceModelBuildingContext processingContext) {
+	public static JandexClassDetails buildClassDetailsStatic(
+			String name,
+			SourceModelBuildingContext processingContext) {
 		return buildClassDetailsStatic( name, processingContext.getJandexIndex(), processingContext );
 	}
 
-	public static ClassDetails buildClassDetailsStatic(
+	public static JandexClassDetails buildClassDetailsStatic(
 			String name,
 			IndexView jandexIndex,
 			SourceModelBuildingContext processingContext) {
@@ -77,7 +81,7 @@ public class JandexBuilders implements ClassDetailsBuilder {
 			return Long.class;
 		}
 
-		if ( "double".equals(  className ) ) {
+		if ( "double".equals( className ) ) {
 			return Double.class;
 		}
 
@@ -86,5 +90,61 @@ public class JandexBuilders implements ClassDetailsBuilder {
 		}
 
 		return null;
+	}
+
+	public static JandexMethodDetails buildMethodDetails(
+			MethodInfo method,
+			SourceModelBuildingContext buildingContext) {
+
+		if ( method.parametersCount() == 0 ) {
+			// could be a getter
+			final Type returnType = method.returnType();
+			if ( returnType.kind() != Type.Kind.VOID ) {
+				final String methodName = method.name();
+				if ( methodName.startsWith( "get" ) ) {
+					return new JandexMethodDetails(
+							method,
+							MethodDetails.MethodKind.GETTER,
+							buildingContext.getClassDetailsRegistry().resolveClassDetails( returnType.name().toString() ),
+							buildingContext
+					);
+				}
+				else if ( isBoolean( returnType ) && ( methodName.startsWith( "is" )
+						|| methodName.startsWith( "has" )
+						|| methodName.startsWith( "was" ) ) ) {
+					return new JandexMethodDetails(
+							method,
+							MethodDetails.MethodKind.GETTER,
+							buildingContext.getClassDetailsRegistry().resolveClassDetails( returnType.name().toString() ),
+							buildingContext
+					);
+				}
+			}
+		}
+
+		if ( method.parametersCount() == 1
+				&& method.returnType().kind() == Type.Kind.VOID
+				&& method.name().startsWith( "set" ) ) {
+			return new JandexMethodDetails(
+					method,
+					MethodDetails.MethodKind.GETTER,
+					buildingContext.getClassDetailsRegistry().resolveClassDetails( method.parameterType( 0 ).name().toString() ),
+					buildingContext
+			);
+		}
+
+		return new JandexMethodDetails(
+				method,
+				MethodDetails.MethodKind.OTHER,
+				null,
+				buildingContext
+		);
+	}
+
+	private static boolean isBoolean(Type type) {
+		if ( type.kind() == Type.Kind.PRIMITIVE ) {
+			return type.name().toString().equals( "boolean" );
+		}
+		return type.name().toString().equals( "java.lang.Boolean" );
 	}
 }

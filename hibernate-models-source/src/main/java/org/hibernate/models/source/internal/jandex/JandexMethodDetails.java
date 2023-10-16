@@ -20,17 +20,18 @@ import static org.hibernate.models.source.internal.ModifierUtils.isPersistableMe
  */
 public class JandexMethodDetails extends AbstractAnnotationTarget implements MethodDetails {
 	private final MethodInfo methodInfo;
+	private final MethodKind methodKind;
 	private final ClassDetails type;
 
 	public JandexMethodDetails(
 			MethodInfo methodInfo,
+			MethodKind methodKind,
+			ClassDetails type,
 			SourceModelBuildingContext buildingContext) {
 		super( buildingContext );
 		this.methodInfo = methodInfo;
-		this.type = buildingContext.getClassDetailsRegistry().resolveClassDetails(
-				methodInfo.returnType().name().toString(),
-				JandexBuilders::buildClassDetailsStatic
-		);
+		this.methodKind = methodKind;
+		this.type = type;
 	}
 
 	@Override
@@ -41,6 +42,11 @@ public class JandexMethodDetails extends AbstractAnnotationTarget implements Met
 	@Override
 	public String getName() {
 		return methodInfo.name();
+	}
+
+	@Override
+	public MethodKind getMethodKind() {
+		return methodKind;
 	}
 
 	@Override

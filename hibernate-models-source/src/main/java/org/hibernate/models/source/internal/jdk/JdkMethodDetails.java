@@ -19,20 +19,28 @@ import static org.hibernate.models.source.internal.ModifierUtils.isPersistableMe
  */
 public class JdkMethodDetails extends AbstractAnnotationTarget implements MethodDetails {
 	private final Method method;
+	private final MethodKind methodKind;
 	private final ClassDetails type;
 
-	public JdkMethodDetails(Method method, SourceModelBuildingContext buildingContext) {
+	public JdkMethodDetails(
+			Method method,
+			MethodKind methodKind,
+			ClassDetails type,
+			SourceModelBuildingContext buildingContext) {
 		super( method::getAnnotations, buildingContext );
 		this.method = method;
-		this.type = buildingContext.getClassDetailsRegistry().resolveClassDetails(
-				method.getReturnType().getName(),
-				() -> JdkBuilders.buildClassDetailsStatic( method.getReturnType(), getBuildingContext() )
-		);
+		this.methodKind = methodKind;
+		this.type = type;
 	}
 
 	@Override
 	public String getName() {
 		return method.getName();
+	}
+
+	@Override
+	public MethodKind getMethodKind() {
+		return methodKind;
 	}
 
 	@Override

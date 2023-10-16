@@ -4,23 +4,23 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright: Red Hat Inc. and Hibernate Authors
  */
-package org.hibernate.models.source.internal.values;
+package org.hibernate.models.source.internal;
 
 import java.lang.annotation.Annotation;
 
 import org.hibernate.models.ModelsException;
 import org.hibernate.models.source.spi.ValueTypeDescriptor;
 
-import static org.hibernate.models.source.internal.values.BooleanTypeDescriptor.BOOLEAN_TYPE_DESCRIPTOR;
-import static org.hibernate.models.source.internal.values.ByteTypeDescriptor.BYTE_TYPE_DESCRIPTOR;
-import static org.hibernate.models.source.internal.values.CharacterTypeDescriptor.CHARACTER_TYPE_DESCRIPTOR;
-import static org.hibernate.models.source.internal.values.ClassTypeDescriptor.CLASS_TYPE_DESCRIPTOR;
-import static org.hibernate.models.source.internal.values.DoubleTypeDescriptor.DOUBLE_TYPE_DESCRIPTOR;
-import static org.hibernate.models.source.internal.values.FloatTypeDescriptor.FLOAT_TYPE_DESCRIPTOR;
-import static org.hibernate.models.source.internal.values.IntegerTypeDescriptor.INTEGER_TYPE_DESCRIPTOR;
-import static org.hibernate.models.source.internal.values.LongTypeDescriptor.LONG_TYPE_DESCRIPTOR;
-import static org.hibernate.models.source.internal.values.ShortTypeDescriptor.SHORT_TYPE_DESCRIPTOR;
-import static org.hibernate.models.source.internal.values.StringTypeDescriptor.STRING_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.BooleanTypeDescriptor.BOOLEAN_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.ByteTypeDescriptor.BYTE_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.CharacterTypeDescriptor.CHARACTER_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.ClassTypeDescriptor.CLASS_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.DoubleTypeDescriptor.DOUBLE_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.FloatTypeDescriptor.FLOAT_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.IntegerTypeDescriptor.INTEGER_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.LongTypeDescriptor.LONG_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.ShortTypeDescriptor.SHORT_TYPE_DESCRIPTOR;
+import static org.hibernate.models.source.internal.StringTypeDescriptor.STRING_TYPE_DESCRIPTOR;
 
 /**
  * @author Steve Ebersole

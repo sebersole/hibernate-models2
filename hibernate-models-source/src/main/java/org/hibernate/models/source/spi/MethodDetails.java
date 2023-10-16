@@ -16,6 +16,14 @@ import org.hibernate.models.ModelsException;
  * @author Steve Ebersole
  */
 public interface MethodDetails extends MemberDetails {
+	enum MethodKind {
+		GETTER,
+		SETTER,
+		OTHER
+	}
+
+	MethodKind getMethodKind();
+
 	@Override
 	default Kind getKind() {
 		return Kind.METHOD;

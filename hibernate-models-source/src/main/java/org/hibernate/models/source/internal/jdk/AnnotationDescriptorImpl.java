@@ -154,4 +154,9 @@ public class AnnotationDescriptorImpl<A extends Annotation> implements Annotatio
 		// there are none
 		return null;
 	}
+
+	@Override
+	public String toString() {
+		return "AnnotationDescriptor(" + annotationType + ")";
+	}
 }
