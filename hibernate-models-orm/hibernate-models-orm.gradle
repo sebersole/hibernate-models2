@@ -4,6 +4,7 @@ dependencies {
     implementation project( ":hibernate-models-common" )
     implementation project( ":hibernate-models-source" )
 
+    implementation libs.jandex
     implementation libs.byteBuddy
     implementation libs.classmate
 
