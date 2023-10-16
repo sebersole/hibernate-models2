@@ -6,6 +6,8 @@
  */
 package org.hibernate.models.source;
 
+import java.util.List;
+
 import org.hibernate.models.source.internal.jandex.JandexClassDetails;
 import org.hibernate.models.source.spi.AnnotationDescriptor;
 import org.hibernate.models.source.spi.AnnotationUsage;
@@ -19,9 +21,11 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Inheritance;
+import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * @author Steve Ebersole
@@ -62,10 +66,32 @@ public class TestHelperSmokeTest {
 		assertThat( nameField ).isNotNull();
 		final AnnotationUsage<Column> nameColumnAnnotation = nameField.getUsage( Column.class );
 		assertThat( nameColumnAnnotation ).isNotNull();
+
+		try {
+			classDetails.getUsage( NamedQuery.class );
+			fail( "Expecting failure" );
+		}
+		catch (AnnotationAccessException expected) {
+		}
+
+		final List<AnnotationUsage<NamedQuery>> repeatedUsages = classDetails.getRepeatedUsages( NamedQuery.class );
+		assertThat( repeatedUsages ).hasSize( 2 );
+
+		final AnnotationUsage<NamedQuery> queryOne = classDetails.getNamedUsage( NamedQuery.class, "one" );
+		assertThat( queryOne ).isNotNull();
+
+		final AnnotationUsage<NamedQuery> queryTwo = classDetails.getNamedUsage( NamedQuery.class, "two", "name" );
+		assertThat( queryTwo ).isNotNull();
+
+		final Counter counter = new Counter();
+		classDetails.forEachUsage( NamedQuery.class, (usage) -> counter.incrementAndGet() );
+		assertThat( counter.get() ).isEqualTo( 2 );
 	}
 
 	@Entity(name="AnEntity")
 	@Table(name="the_table")
+	@NamedQuery(name = "one", query = "from AnEntity")
+	@NamedQuery(name = "two", query = "from AnEntity")
 	public static class AnEntity {
 		@Id
 		private Integer id;

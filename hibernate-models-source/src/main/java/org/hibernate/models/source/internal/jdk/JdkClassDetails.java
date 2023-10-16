@@ -12,23 +12,24 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Consumer;
 
 import org.hibernate.internal.util.collections.ArrayHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
-import org.hibernate.models.internal.IndexedConsumer;
+import org.hibernate.models.source.internal.ClassDetailsSupport;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.ClassDetailsRegistry;
 import org.hibernate.models.source.spi.FieldDetails;
 import org.hibernate.models.source.spi.MethodDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
+import static org.hibernate.models.source.internal.jdk.JdkBuilders.buildMethodDetails;
+
 /**
  * ClassDetails implementation based on a {@link Class} reference
  *
  * @author Steve Ebersole
  */
-public class JdkClassDetails extends AbstractAnnotationTarget implements ClassDetails {
+public class JdkClassDetails extends AbstractAnnotationTarget implements ClassDetailsSupport {
 	private final String name;
 	private final Class<?> managedClass;
 
@@ -130,7 +131,7 @@ public class JdkClassDetails extends AbstractAnnotationTarget implements ClassDe
 		if ( checkType instanceof JdkClassDetails ) {
 			return isImplementor( ( (JdkClassDetails) checkType ).managedClass );
 		}
-		return ClassDetails.super.isImplementor( checkType );
+		return ClassDetailsSupport.super.isImplementor( checkType );
 	}
 
 	@Override
@@ -148,36 +149,16 @@ public class JdkClassDetails extends AbstractAnnotationTarget implements ClassDe
 	}
 
 	@Override
-	public void forEachField(IndexedConsumer<FieldDetails> consumer) {
-		if ( fields == null ) {
-			return;
-		}
-
-		//noinspection unchecked,rawtypes
-		fields.forEach( (Consumer) consumer );
-	}
-
-	@Override
 	public List<MethodDetails> getMethods() {
 		if ( methods == null ) {
 			final Method[] reflectionMethods = managedClass.getMethods();
 			this.methods = CollectionHelper.arrayList( reflectionMethods.length );
 			for ( int i = 0; i < reflectionMethods.length; i++ ) {
-				this.methods.add( new JdkMethodDetails( reflectionMethods[i], getBuildingContext() ) );
+				this.methods.add( buildMethodDetails( reflectionMethods[i], getBuildingContext() ) );
 			}
 		}
 		//noinspection unchecked,rawtypes
 		return (List) methods;
-	}
-
-	@Override
-	public void forEachMethod(IndexedConsumer<MethodDetails> consumer) {
-		if ( methods == null ) {
-			return;
-		}
-
-		//noinspection unchecked,rawtypes
-		methods.forEach( (Consumer) consumer );
 	}
 
 	@Override

@@ -8,14 +8,10 @@ package org.hibernate.models.source.internal.jdk;
 
 import java.lang.annotation.Annotation;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import org.hibernate.models.source.internal.AnnotationUsageHelper;
-import org.hibernate.models.source.spi.AnnotationDescriptor;
-import org.hibernate.models.source.spi.AnnotationTarget;
+import org.hibernate.models.source.internal.AnnotationTargetSupport;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
@@ -25,7 +21,7 @@ import org.hibernate.models.source.spi.SourceModelBuildingContext;
  *
  * @author Steve Ebersole
  */
-public abstract class AbstractAnnotationTarget implements AnnotationTarget {
+public abstract class AbstractAnnotationTarget implements AnnotationTargetSupport {
 	private final Supplier<Annotation[]> annotationSupplier;
 	private final SourceModelBuildingContext buildingContext;
 
@@ -38,73 +34,13 @@ public abstract class AbstractAnnotationTarget implements AnnotationTarget {
 		this.buildingContext = buildingContext;
 	}
 
-	protected SourceModelBuildingContext getBuildingContext() {
+	@Override
+	public SourceModelBuildingContext getBuildingContext() {
 		return buildingContext;
 	}
 
 	@Override
-	public <A extends Annotation> AnnotationUsage<A> getUsage(AnnotationDescriptor<A> type) {
-		return AnnotationUsageHelper.getUsage( type, resolveUsagesMap() );
-	}
-
-	@Override
-	public <A extends Annotation> AnnotationUsage<A> getUsage(Class<A> type) {
-		final AnnotationDescriptor<A> descriptor = buildingContext
-				.getAnnotationDescriptorRegistry()
-				.getDescriptor( type );
-		return getUsage( descriptor );
-	}
-
-	@Override
-	public <A extends Annotation> List<AnnotationUsage<A>> getRepeatedUsages(AnnotationDescriptor<A> type) {
-		return AnnotationUsageHelper.getRepeatedUsages( type, resolveUsagesMap() );
-	}
-
-	@Override
-	public <A extends Annotation> List<AnnotationUsage<A>> getRepeatedUsages(Class<A> type) {
-		final AnnotationDescriptor<A> descriptor = buildingContext
-				.getAnnotationDescriptorRegistry()
-				.getDescriptor( type );
-		return getRepeatedUsages( descriptor );
-	}
-
-	@Override
-	public <A extends Annotation> void forEachUsage(AnnotationDescriptor<A> type, Consumer<AnnotationUsage<A>> consumer) {
-		final List<AnnotationUsage<A>> annotations = getRepeatedUsages( type );
-		if ( annotations == null ) {
-			return;
-		}
-		annotations.forEach( consumer );
-	}
-
-	@Override
-	public <A extends Annotation> void forEachUsage(Class<A> type, Consumer<AnnotationUsage<A>> consumer) {
-		final AnnotationDescriptor<A> descriptor = buildingContext
-				.getAnnotationDescriptorRegistry()
-				.getDescriptor( type );
-		forEachUsage( descriptor, consumer );
-	}
-
-	@Override
-	public <A extends Annotation> AnnotationUsage<A> getNamedUsage(
-			AnnotationDescriptor<A> type,
-			String matchValue,
-			String attributeToMatch) {
-		return AnnotationUsageHelper.getNamedAnnotation( type, matchValue, attributeToMatch, resolveUsagesMap() );
-	}
-
-	@Override
-	public <A extends Annotation> AnnotationUsage<A> getNamedUsage(
-			Class<A> type,
-			String matchName,
-			String attributeToMatch) {
-		final AnnotationDescriptor<A> descriptor = buildingContext
-				.getAnnotationDescriptorRegistry()
-				.getDescriptor( type );
-		return getNamedUsage( descriptor, matchName, attributeToMatch );
-	}
-
-	private Map<Class<? extends Annotation>, AnnotationUsage<?>> resolveUsagesMap() {
+	public Map<Class<? extends Annotation>, AnnotationUsage<? extends Annotation>> getUsageMap() {
 		if ( usagesMap == null ) {
 			usagesMap = buildUsagesMap();
 		}

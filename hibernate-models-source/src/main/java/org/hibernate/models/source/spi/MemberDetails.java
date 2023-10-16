@@ -23,7 +23,12 @@ public interface MemberDetails extends AnnotationTarget {
 	String getName();
 
 	/**
-	 * The field type or method return type
+	 * @return Returns one of:<ul>
+	 *     <li>For a field, the field type</li>
+	 *     <li>For a getter method, the return type</li>
+	 *     <li>For a setter method, the argument type</li>
+	 *     <li>{@code null}</li>
+	 * </ul>
 	 */
 	ClassDetails getType();
 

@@ -6,17 +6,13 @@
  */
 package org.hibernate.models.source.internal.jandex;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Predicate;
 
 import org.hibernate.models.internal.CollectionHelper;
-import org.hibernate.models.internal.IndexedConsumer;
-import org.hibernate.models.source.spi.AnnotationDescriptor;
-import org.hibernate.models.source.spi.AnnotationUsage;
+import org.hibernate.models.source.internal.ClassDetailsSupport;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.ClassDetailsRegistry;
 import org.hibernate.models.source.spi.FieldDetails;
@@ -32,7 +28,7 @@ import org.jboss.jandex.MethodInfo;
 /**
  * @author Steve Ebersole
  */
-public class JandexClassDetails extends AbstractAnnotationTarget implements ClassDetails {
+public class JandexClassDetails extends AbstractAnnotationTarget implements ClassDetailsSupport {
 	private final ClassInfo classInfo;
 
 	private final ClassDetails superType;
@@ -111,48 +107,6 @@ public class JandexClassDetails extends AbstractAnnotationTarget implements Clas
 	}
 
 	@Override
-	public <A extends Annotation> AnnotationUsage<A> getUsage(AnnotationDescriptor<A> type) {
-		final AnnotationUsage<A> localUsage = super.getUsage( type );
-		if ( localUsage != null ) {
-			return localUsage;
-		}
-
-		if ( type.isInherited() && superType != null ) {
-			return superType.getUsage( type );
-		}
-
-		return null;
-	}
-
-	@Override
-	public <A extends Annotation> List<AnnotationUsage<A>> getRepeatedUsages(AnnotationDescriptor<A> type) {
-		final List<AnnotationUsage<A>> localUsages = super.getRepeatedUsages( type );
-
-		if ( type.isInherited() && superType != null ) {
-			final List<AnnotationUsage<A>> inheritedUsages = superType.getRepeatedUsages( type );
-			return CollectionHelper.join( localUsages, inheritedUsages );
-		}
-
-		return localUsages;
-	}
-
-	@Override
-	public <A extends Annotation> AnnotationUsage<A> getNamedUsage(
-			AnnotationDescriptor<A> type,
-			String matchValue,
-			String attributeToMatch) {
-		final AnnotationUsage<A> localUsage = super.getNamedUsage( type, matchValue, attributeToMatch );
-		if ( localUsage != null ) {
-			return localUsage;
-		}
-
-		if ( type.isInherited() && superType != null ) {
-			return superType.getNamedUsage( type, matchValue, attributeToMatch );
-		}
-		return null;
-	}
-
-	@Override
 	public List<FieldDetails> getFields() {
 		if ( fields == null ) {
 			fields = resolveFields();
@@ -172,14 +126,6 @@ public class JandexClassDetails extends AbstractAnnotationTarget implements Clas
 	}
 
 	@Override
-	public void forEachField(IndexedConsumer<FieldDetails> consumer) {
-		final List<FieldDetails> fields = getFields();
-		for ( int i = 0; i < fields.size(); i++ ) {
-			consumer.accept( i, fields.get(i) );
-		}
-	}
-
-	@Override
 	public List<MethodDetails> getMethods() {
 		if ( methods == null ) {
 			methods = resolveMethods();
@@ -195,17 +141,9 @@ public class JandexClassDetails extends AbstractAnnotationTarget implements Clas
 			if ( methodInfo.isConstructor() || "<clinit>".equals( methodInfo.name() ) ) {
 				continue;
 			}
-			result.add( new JandexMethodDetails( methodInfo, getBuildingContext() ) );
+			result.add( JandexBuilders.buildMethodDetails( methodInfo, getBuildingContext() ) );
 		}
 		return result;
-	}
-
-	@Override
-	public void forEachMethod(IndexedConsumer<MethodDetails> consumer) {
-		final List<MethodDetails> methods = getMethods();
-		for ( int i = 0; i < methods.size(); i++ ) {
-			consumer.accept( i, methods.get( i ) );
-		}
 	}
 
 	@Override

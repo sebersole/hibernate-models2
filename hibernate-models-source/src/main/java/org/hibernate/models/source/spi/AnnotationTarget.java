@@ -98,7 +98,15 @@ public interface AnnotationTarget {
 	 * @apiNote For {@linkplain Repeatable repeatable} annotation types, the consumer will also be
 	 * called for those defined on the container.
 	 */
-	<X extends Annotation> void forEachUsage(AnnotationDescriptor<X> type, Consumer<AnnotationUsage<X>> consumer);
+	default <X extends Annotation> void forEachUsage(
+			AnnotationDescriptor<X> type,
+			Consumer<AnnotationUsage<X>> consumer) {
+		final List<AnnotationUsage<X>> annotations = getRepeatedUsages( type );
+		if ( annotations == null ) {
+			return;
+		}
+		annotations.forEach( consumer );
+	}
 
 	/**
 	 * Helper form of {@link #forEachUsage(AnnotationDescriptor, Consumer)}

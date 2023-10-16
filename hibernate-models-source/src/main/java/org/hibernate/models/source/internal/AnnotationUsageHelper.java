@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.hibernate.models.internal.CollectionHelper;
+import org.hibernate.models.source.AnnotationAccessException;
 import org.hibernate.models.source.spi.AnnotationDescriptor;
 import org.hibernate.models.source.spi.AnnotationUsage;
 
@@ -28,6 +29,12 @@ import org.hibernate.models.source.spi.AnnotationUsage;
  * @author Steve Ebersole
  */
 public class AnnotationUsageHelper {
+	public static <A extends Annotation> AnnotationUsage<A> findUsage(
+			AnnotationDescriptor<A> type,
+			Map<Class<? extends Annotation>,AnnotationUsage<? extends Annotation>> usageMap) {
+		//noinspection unchecked
+		return (AnnotationUsage<A>) usageMap.get( type.getAnnotationType() );
+	}
 
 	/**
 	 * Get the {@link AnnotationUsage} from the {@code usageMap} for the given {@code type}
@@ -35,18 +42,33 @@ public class AnnotationUsageHelper {
 	public static <A extends Annotation> AnnotationUsage<A> getUsage(
 			AnnotationDescriptor<A> type,
 			Map<Class<? extends Annotation>,AnnotationUsage<? extends Annotation>> usageMap) {
-		//noinspection unchecked
-		return (AnnotationUsage<A>) usageMap.get( type.getAnnotationType() );
+		final AnnotationUsage<A> found = findUsage( type, usageMap );
+		if ( found == null ) {
+			final AnnotationDescriptor<?> repeatableContainer = type.getRepeatableContainer();
+			if ( repeatableContainer != null ) {
+				final AnnotationUsage<? extends Annotation> containerUsage = findUsage( repeatableContainer, usageMap );
+				if ( containerUsage != null ) {
+					final List<AnnotationUsage<A>> nestedUsages = containerUsage.getAttributeValue( "value" );
+					if ( CollectionHelper.isEmpty( nestedUsages ) ) {
+						return null;
+					}
+					if ( nestedUsages.size() > 1 ) {
+						throw new AnnotationAccessException( "Found more than one usage of " + type.getAnnotationType().getName() );
+					}
+				}
+			}
+		}
+		return found;
 	}
 
 	public static <A extends Annotation> List<AnnotationUsage<A>> getRepeatedUsages(
 			AnnotationDescriptor<A> type,
 			Map<Class<? extends Annotation>, AnnotationUsage<?>> usageMap) {
 		// e.g. `@NamedQuery`
-		final AnnotationUsage<A> usage = getUsage( type, usageMap );
+		final AnnotationUsage<A> usage = findUsage( type, usageMap );
 		// e.g. `@NamedQueries`
 		final AnnotationUsage<?> containerUsage = type.getRepeatableContainer() != null
-				? getUsage( type.getRepeatableContainer(), usageMap )
+				? findUsage( type.getRepeatableContainer(), usageMap )
 				: null;
 
 		if ( containerUsage != null ) {
@@ -69,7 +91,7 @@ public class AnnotationUsageHelper {
 		return Collections.emptyList();
 	}
 
-	public static <A extends Annotation> AnnotationUsage<A> getNamedAnnotation(
+	public static <A extends Annotation> AnnotationUsage<A> getNamedUsage(
 			AnnotationDescriptor<A> type,
 			String matchValue,
 			String attributeToMatch,
