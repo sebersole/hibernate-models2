@@ -26,6 +26,8 @@ public interface ClassLoading {
 	 */
 	<T> Class<T> classForName(String name);
 
+	Package packageForName(String name);
+
 	/**
 	 * Locate a resource by name
 	 *

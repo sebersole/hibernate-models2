@@ -31,7 +31,7 @@ import static org.hibernate.models.internal.SimpleClassLoading.SIMPLE_CLASS_LOAD
 /**
  * @author Steve Ebersole
  */
-public class TestHelper {
+public class SourceModelTestHelper {
 
 	public static SourceModelBuildingContext createBuildingContext(Class<?>... modelClasses) {
 		return createBuildingContext( SIMPLE_CLASS_LOADING, modelClasses );

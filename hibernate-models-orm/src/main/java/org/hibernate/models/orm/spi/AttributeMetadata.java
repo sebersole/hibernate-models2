@@ -10,13 +10,24 @@ package org.hibernate.models.orm.spi;
 import org.hibernate.models.source.spi.MemberDetails;
 
 /**
+ * Metadata about a persistent attribute
+ *
  * @author Steve Ebersole
  */
 public interface AttributeMetadata {
+	/**
+	 * The attribute name
+	 */
 	String getName();
 
+	/**
+	 * The persistent nature of the attribute
+	 */
 	AttributeNature getNature();
 
+	/**
+	 * The backing member
+	 */
 	MemberDetails getMember();
 
 	/**

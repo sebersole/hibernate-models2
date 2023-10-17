@@ -1,0 +1,16 @@
+
+<!--
+  ~ Hibernate, Relational Persistence for Idiomatic Java
+  ~
+  ~ SPDX-License-Identifier: Apache-2.0
+  ~ Copyright: Red Hat Inc. and Hibernate Authors
+  -->
+<entity-mappings xmlns="http://www.hibernate.org/xsd/orm/mapping"
+                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                 version="3.1">
+    <java-type class="java.lang.String" descriptor="org.hibernate.models.source.internal.StringTypeDescriptor"/>
+    <jdbc-type code="-1" descriptor="org.hibernate.type.descriptor.jdbc.ClobJdbcType"/>
+    <user-type class="java.util.UUID" descriptor="org.hibernate.models.orm.xml.MyUserType"/>
+
+    <conversion converter="org.hibernate.type.YesNoConverter" class="boolean" auto-apply="true"/>
+</entity-mappings>

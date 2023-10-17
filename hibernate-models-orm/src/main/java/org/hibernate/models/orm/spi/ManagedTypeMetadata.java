@@ -6,18 +6,15 @@
  */
 package org.hibernate.models.orm.spi;
 
-import java.lang.annotation.Annotation;
 import java.util.Collection;
 
 import org.hibernate.models.internal.IndexedConsumer;
-import org.hibernate.models.source.spi.AnnotationDescriptor;
-import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
 
 import jakarta.persistence.AccessType;
 
 /**
- * Intermediate representation of a {@linkplain jakarta.persistence.metamodel.ManagedType managed type}
+ * Metadata about a {@linkplain jakarta.persistence.metamodel.ManagedType managed type}
  *
  * @author Steve Ebersole
  */

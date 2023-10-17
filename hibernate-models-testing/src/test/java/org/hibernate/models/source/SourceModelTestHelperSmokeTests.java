@@ -8,6 +8,7 @@ package org.hibernate.models.source;
 
 import java.util.List;
 
+import org.hibernate.internal.util.MutableInteger;
 import org.hibernate.models.source.internal.jandex.JandexClassDetails;
 import org.hibernate.models.source.spi.AnnotationDescriptor;
 import org.hibernate.models.source.spi.AnnotationUsage;
@@ -23,6 +24,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
+import org.assertj.core.api.Assertions;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -30,10 +32,10 @@ import static org.junit.jupiter.api.Assertions.fail;
 /**
  * @author Steve Ebersole
  */
-public class TestHelperSmokeTest {
+public class SourceModelTestHelperSmokeTests {
 	@Test
 	void testIt() {
-		final SourceModelBuildingContext buildingContext = TestHelper.createBuildingContext( AnEntity.class );
+		final SourceModelBuildingContext buildingContext = SourceModelTestHelper.createBuildingContext( AnEntity.class );
 
 		final AnnotationDescriptor<Entity> entityAnnDescriptor = buildingContext
 				.getAnnotationDescriptorRegistry()
@@ -83,9 +85,9 @@ public class TestHelperSmokeTest {
 		final AnnotationUsage<NamedQuery> queryTwo = classDetails.getNamedUsage( NamedQuery.class, "two", "name" );
 		assertThat( queryTwo ).isNotNull();
 
-		final Counter counter = new Counter();
+		final MutableInteger counter = new MutableInteger();
 		classDetails.forEachUsage( NamedQuery.class, (usage) -> counter.incrementAndGet() );
-		assertThat( counter.get() ).isEqualTo( 2 );
+		Assertions.assertThat( counter.get() ).isEqualTo( 2 );
 	}
 
 	@Entity(name="AnEntity")

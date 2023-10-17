@@ -29,6 +29,11 @@ public class SimpleClassLoading implements ClassLoading {
 	}
 
 	@Override
+	public Package packageForName(String name) {
+		return getClass().getClassLoader().getDefinedPackage( name );
+	}
+
+	@Override
 	public URL locateResource(String resourceName) {
 		return getClass().getClassLoader().getResource( resourceName );
 	}

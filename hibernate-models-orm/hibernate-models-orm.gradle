@@ -18,6 +18,7 @@ dependencies {
     annotationProcessor libs.logging
     annotationProcessor libs.loggingAnnotations
 
+    testImplementation project( ":hibernate-models-testing" )
     testImplementation testLibs.jpa
     testImplementation libs.hibernateCore
     testRuntimeOnly testLibs.log4j

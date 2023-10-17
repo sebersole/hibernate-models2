@@ -163,10 +163,6 @@ public class JdkClassDetails extends AbstractAnnotationTarget implements ClassDe
 
 	@Override
 	public String toString() {
-		return "ClassDetails(reflection) {" +
-				"    name='" + name + "'," +
-				"    managedClass='" + managedClass.getName() + "'," +
-				"	 sys-hash-code=" + System.identityHashCode( this ) +
-				"}";
+		return "JdkClassDetails(" + name + ")";
 	}
 }

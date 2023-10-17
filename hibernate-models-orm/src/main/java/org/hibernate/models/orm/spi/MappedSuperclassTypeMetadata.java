@@ -7,7 +7,7 @@
 package org.hibernate.models.orm.spi;
 
 /**
- * Intermediate representation of a {@linkplain jakarta.persistence.metamodel.MappedSuperclassType mapped-superclass}
+ * Metadata about a {@linkplain jakarta.persistence.metamodel.MappedSuperclassType mapped-superclass}
  *
  * @author Steve Ebersole
  */
