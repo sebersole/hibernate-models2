@@ -8,10 +8,8 @@ package org.hibernate.models.orm.spi;
 
 import java.util.function.Consumer;
 
-import org.hibernate.models.source.spi.ClassDetails;
-
 /**
- * Intermediate representation of an {@linkplain jakarta.persistence.metamodel.IdentifiableType identifiable type}
+ * Metadata about an {@linkplain jakarta.persistence.metamodel.IdentifiableType identifiable type}
  *
  * @author Steve Ebersole
  */
@@ -33,6 +31,26 @@ public interface IdentifiableTypeMetadata extends ManagedTypeMetadata {
 	default boolean isAbstract() {
 		return getClassDetails().isAbstract();
 	}
+
+	/**
+	 * Whether this type has subtypes
+	 */
+	boolean hasSubTypes();
+
+	/**
+	 * Get the number of direct subtypes
+	 */
+	int getNumberOfSubTypes();
+
+	/**
+	 * Get the direct subtypes
+	 */
+	Iterable<IdentifiableTypeMetadata> getSubTypes();
+
+	/**
+	 * Visit each direct subtype
+	 */
+	void forEachSubType(Consumer<IdentifiableTypeMetadata> consumer);
 
 
 //	List<CallbacksMetadata> getJpaCallbacks();

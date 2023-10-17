@@ -70,7 +70,8 @@ public class ClassDetailsRegistryImpl implements ClassDetailsRegistry {
 		return subTypeClassDetailsMap.get( superTypeName );
 	}
 
-	@Override public void forEachDirectSubType(String superTypeName, ClassDetailsConsumer consumer) {
+	@Override
+	public void forEachDirectSubType(String superTypeName, ClassDetailsConsumer consumer) {
 		final List<ClassDetails> directSubTypes = getDirectSubTypes( superTypeName );
 		if ( directSubTypes == null ) {
 			return;
@@ -106,6 +107,10 @@ public class ClassDetailsRegistryImpl implements ClassDetailsRegistry {
 	public ClassDetails resolveClassDetails(
 			String name,
 			ClassDetailsBuilder creator) {
+		if ( "void".equals( name ) ) {
+			return null;
+		}
+
 		final ClassDetails existing = classDetailsMap.get( name );
 		if ( existing != null ) {
 			return existing;

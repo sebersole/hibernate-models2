@@ -13,6 +13,7 @@ dependencies {
     annotationProcessor libs.logging
     annotationProcessor libs.loggingAnnotations
 
+    testImplementation project( ":hibernate-models-testing" )
     testImplementation project( ":hibernate-models-orm" )
     testImplementation testLibs.jpa
     testImplementation libs.hibernateCore

@@ -1,0 +1,12 @@
+apply from: rootProject.file( "gradle/java-module.gradle" )
+
+dependencies {
+    implementation project( ":hibernate-models-common" )
+    implementation project( ":hibernate-models-source" )
+    implementation project( ":hibernate-models-orm" )
+    implementation libs.jandex
+
+    testImplementation testLibs.jpa
+    testImplementation libs.hibernateCore
+    testRuntimeOnly testLibs.log4j
+}

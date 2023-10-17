@@ -135,6 +135,26 @@ public class JdkBuilders implements ClassDetailsBuilder {
 
 	public static <A extends Annotation> AnnotationDescriptorImpl<A> buildAnnotationDescriptor(
 			Class<A> annotationType,
+			SourceModelBuildingContext buildingContext) {
+		final Repeatable repeatable = annotationType.getDeclaredAnnotation( Repeatable.class );
+		final AnnotationDescriptor<?> repeatableContainer;
+		if ( repeatable != null ) {
+			final Class<? extends Annotation> containerClass = repeatable.value();
+			//noinspection unchecked,rawtypes
+			repeatableContainer = buildingContext.getAnnotationDescriptorRegistry().resolveDescriptor(
+					containerClass,
+					(at) -> (AnnotationDescriptor) buildAnnotationDescriptor( containerClass, (AnnotationDescriptor) null )
+			);
+		}
+		else {
+			repeatableContainer = null;
+		}
+
+		return buildAnnotationDescriptor( annotationType, repeatableContainer );
+	}
+
+	public static <A extends Annotation> AnnotationDescriptorImpl<A> buildAnnotationDescriptor(
+			Class<A> annotationType,
 			AnnotationDescriptor<?> repeatableContainer) {
 		return new AnnotationDescriptorImpl<>( annotationType, repeatableContainer );
 	}

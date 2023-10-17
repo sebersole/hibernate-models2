@@ -7,7 +7,7 @@
 package org.hibernate.models.orm.spi;
 
 /**
- * Intermediate representation of an {@linkplain jakarta.persistence.metamodel.EntityType entity type}
+ * Metadata about an {@linkplain jakarta.persistence.metamodel.EntityType entity type}
  *
  * @author Steve Ebersole
  */

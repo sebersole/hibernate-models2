@@ -153,6 +153,6 @@ public class JandexClassDetails extends AbstractAnnotationTarget implements Clas
 
 	@Override
 	public String toString() {
-		return "ClassDetails(" + classInfo.name().toString() + ")";
+		return "JandexClassDetails(" + classInfo.name().toString() + ")";
 	}
 }

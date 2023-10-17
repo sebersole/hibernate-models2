@@ -29,8 +29,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class MixedSourcesTests {
 	@Test
 	void testEntityNotInJandex() {
-		final Index index = TestHelper.buildJandexIndex( Embeddable2.class );
-		final SourceModelBuildingContextImpl buildingContext = TestHelper.createBuildingContext(
+		final Index index = SourceModelTestHelper.buildJandexIndex( Embeddable2.class );
+		final SourceModelBuildingContextImpl buildingContext = SourceModelTestHelper.createBuildingContext(
 				index,
 				Entity2.class,
 				Embeddable2.class
@@ -51,8 +51,8 @@ public class MixedSourcesTests {
 
 	@Test
 	void testEmbeddableNotInJandex() {
-		final Index index = TestHelper.buildJandexIndex( Entity1.class );
-		final SourceModelBuildingContextImpl buildingContext = TestHelper.createBuildingContext(
+		final Index index = SourceModelTestHelper.buildJandexIndex( Entity1.class );
+		final SourceModelBuildingContextImpl buildingContext = SourceModelTestHelper.createBuildingContext(
 				index,
 				Entity1.class,
 				Embeddable1.class

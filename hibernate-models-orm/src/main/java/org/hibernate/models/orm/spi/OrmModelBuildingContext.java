@@ -14,7 +14,7 @@ import org.hibernate.models.spi.ClassLoading;
 import org.jboss.jandex.IndexView;
 
 /**
- * Contextual information for building {@linkplain ManagedTypeMetadata} and friends.
+ * Contextual information used while building {@linkplain ManagedTypeMetadata} and friends.
  *
  * @author Steve Ebersole
  */
