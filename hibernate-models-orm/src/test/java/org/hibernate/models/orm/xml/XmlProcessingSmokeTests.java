@@ -9,6 +9,7 @@ package org.hibernate.models.orm.xml;
 import java.util.List;
 
 import org.hibernate.boot.jaxb.mapping.JaxbEntityMappings;
+import org.hibernate.models.orm.internal.GlobalRegistrations;
 import org.hibernate.models.orm.internal.ProcessResultCollector;
 import org.hibernate.models.orm.xml.internal.XmlDocumentImpl;
 import org.hibernate.models.orm.xml.spi.XmlResources;
@@ -114,31 +115,24 @@ public class XmlProcessingSmokeTests {
 		final JaxbEntityMappings xmlMapping = loadMapping( "mappings/globals.xml", SIMPLE_CLASS_LOADING );
 		collectedXmlResources.addDocument( xmlMapping );
 
-		final ProcessResultCollector processResultCollector = new ProcessResultCollector( buildingContext.getClassDetailsRegistry() );
-		collectedXmlResources.getDocuments().forEach( (jaxbRoot) -> {
-			processResultCollector.collectJavaTypeRegistrations( jaxbRoot.getJavaTypeRegistrations() );
-			processResultCollector.collectJdbcTypeRegistrations( jaxbRoot.getJdbcTypeRegistrations() );
-			processResultCollector.collectConverterRegistrations( jaxbRoot.getConverterRegistrations() );
-			processResultCollector.collectUserTypeRegistrations( jaxbRoot.getUserTypeRegistrations() );
-			processResultCollector.collectCompositeUserTypeRegistrations( jaxbRoot.getCompositeUserTypeRegistrations() );
-			processResultCollector.collectCollectionTypeRegistrations( jaxbRoot.getCollectionUserTypeRegistrations() );
-			processResultCollector.collectEmbeddableInstantiatorRegistrations( jaxbRoot.getEmbeddableInstantiatorRegistrations() );
-		} );
+		final ProcessResultCollector processResultCollector = new ProcessResultCollector( false, buildingContext );
+		collectedXmlResources.getDocuments().forEach( processResultCollector::apply );
 
-		assertThat( processResultCollector.getJavaTypeRegistrations() ).hasSize( 1 );
-		assertThat( processResultCollector.getJavaTypeRegistrations().get(0).getDescriptor().getClassName() )
+		final GlobalRegistrations globalRegistrations = processResultCollector.getGlobalRegistrations();
+		assertThat( globalRegistrations.getJavaTypeRegistrations() ).hasSize( 1 );
+		assertThat( globalRegistrations.getJavaTypeRegistrations().get(0).getDescriptor().getClassName() )
 				.isEqualTo( StringTypeDescriptor.class.getName() );
 
-		assertThat( processResultCollector.getJdbcTypeRegistrations() ).hasSize( 1 );
-		assertThat( processResultCollector.getJdbcTypeRegistrations().get(0).getDescriptor().getClassName() )
+		assertThat( globalRegistrations.getJdbcTypeRegistrations() ).hasSize( 1 );
+		assertThat( globalRegistrations.getJdbcTypeRegistrations().get(0).getDescriptor().getClassName() )
 				.isEqualTo( ClobJdbcType.class.getName() );
 
-		assertThat( processResultCollector.getUserTypeRegistrations() ).hasSize( 1 );
-		assertThat( processResultCollector.getUserTypeRegistrations().get(0).getUserTypeClass().getClassName() )
+		assertThat( globalRegistrations.getUserTypeRegistrations() ).hasSize( 1 );
+		assertThat( globalRegistrations.getUserTypeRegistrations().get(0).getUserTypeClass().getClassName() )
 				.isEqualTo( MyUserType.class.getName() );
 
-		assertThat( processResultCollector.getConverterRegistrations() ).hasSize( 1 );
-		assertThat( processResultCollector.getConverterRegistrations().get(0).getConverterType().getClassName() )
+		assertThat( globalRegistrations.getConverterRegistrations() ).hasSize( 1 );
+		assertThat( globalRegistrations.getConverterRegistrations().get(0).getConverterType().getClassName() )
 				.isEqualTo( org.hibernate.type.YesNoConverter.class.getName() );
 	}
 }

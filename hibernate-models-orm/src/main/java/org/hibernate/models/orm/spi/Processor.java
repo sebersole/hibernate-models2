@@ -90,7 +90,7 @@ public class Processor {
 			SourceModelBuildingContext sourceModelBuildingContext,
 			OrmModelBuildingContext mappingBuildingContext) {
 		final XmlResources collectedXmlResources = collectXmlResources( managedResources, mappingBuildingContext );
-		final ProcessResultCollector processResultCollector = new ProcessResultCollector( sourceModelBuildingContext.getClassDetailsRegistry() );
+		final ProcessResultCollector processResultCollector = new ProcessResultCollector( options.areGeneratorsGlobal(), sourceModelBuildingContext );
 
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// process XML
@@ -107,14 +107,7 @@ public class Processor {
 		final boolean xmlMappingsGloballyComplete = collectedXmlResources.getPersistenceUnitMetadata().areXmlMappingsComplete();
 
 		collectedXmlResources.getDocuments().forEach( (jaxbRoot) -> {
-			processResultCollector.collectJavaTypeRegistrations( jaxbRoot.getJavaTypeRegistrations() );
-			processResultCollector.collectJdbcTypeRegistrations( jaxbRoot.getJdbcTypeRegistrations() );
-			processResultCollector.collectConverterRegistrations( jaxbRoot.getConverterRegistrations() );
-			processResultCollector.collectUserTypeRegistrations( jaxbRoot.getUserTypeRegistrations() );
-			processResultCollector.collectCompositeUserTypeRegistrations( jaxbRoot.getCompositeUserTypeRegistrations() );
-			processResultCollector.collectCollectionTypeRegistrations( jaxbRoot.getCollectionUserTypeRegistrations() );
-			processResultCollector.collectEmbeddableInstantiatorRegistrations( jaxbRoot.getEmbeddableInstantiatorRegistrations() );
-			processResultCollector.collectEntityListenerRegistrations( jaxbRoot.getPersistenceUnitMetadata().getPersistenceUnitDefaults().getEntityListeners().getEntityListener() );
+			processResultCollector.apply( jaxbRoot );
 
 			jaxbRoot.getEmbeddables().forEach( (embeddable) -> {
 				if ( xmlMappingsGloballyComplete || embeddable.isMetadataComplete() ) {
@@ -144,18 +137,16 @@ public class Processor {
 			} );
 		} );
 
-		final ClassInclusions classInclusions;
-		final PackageInclusions packageInclusions;
+		final ActiveClassInclusions classInclusions;
+		final ActivePackageInclusions packageInclusions;
 		if ( options.shouldIgnoreUnlistedClasses() ) {
-			final List<ClassDetails> listedClasses = new ArrayList<>();
-			final List<PackageDetails> listedPackages = new ArrayList<>();
-			classInclusions = listedClasses::contains;
-			packageInclusions = listedPackages::contains;
+			classInclusions = new ActiveClassInclusions();
+			packageInclusions = new ActivePackageInclusions();
 			if ( CollectionHelper.isEmpty( explicitlyListedClasses ) ) {
 				OrmModelLogging.ORM_MODEL_LOGGER.debugf( "Ignore unlisted classes was requested, but no classes were listed" );
 			}
 			else {
-				collectListedResources( explicitlyListedClasses, listedClasses, listedPackages, sourceModelBuildingContext );
+				collectListedResources( explicitlyListedClasses, classInclusions, packageInclusions, sourceModelBuildingContext );
 			}
 		}
 		else {
@@ -180,7 +171,6 @@ public class Processor {
 				allEntities,
 				mappedSuperClasses,
 				embeddables,
-				options,
 				mappingBuildingContext
 		);
 
@@ -249,8 +239,8 @@ public class Processor {
 
 	private static void collectListedResources(
 			List<String> explicitlyListedClasses,
-			List<ClassDetails> listedClasses,
-			List<PackageDetails> listedPackages,
+			ActiveClassInclusions classInclusions,
+			ActivePackageInclusions packageInclusions,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		final ClassDetailsRegistry classDetailsRegistry = sourceModelBuildingContext.getClassDetailsRegistry();
 		final ClassLoading classLoading = sourceModelBuildingContext.getClassLoadingAccess();
@@ -261,7 +251,7 @@ public class Processor {
 				final String packageName = StringHelper.qualifier( listed );
 				final Package packageForName = classLoading.packageForName( packageName );
 				assert packageForName != null;
-				listedPackages.add( classDetailsRegistry.resolvePackageDetails(
+				packageInclusions.addInclusion( classDetailsRegistry.resolvePackageDetails(
 						packageName,
 						() -> new JdkPackageDetailsImpl( packageForName, sourceModelBuildingContext )
 				) );
@@ -271,7 +261,7 @@ public class Processor {
 				try {
 					final ClassDetails classDetails = classDetailsRegistry.resolveClassDetails( listed );
 					if ( classDetails != null ) {
-						listedClasses.add( classDetails );
+						classInclusions.addInclusion( classDetails );
 					}
 				}
 				catch (UnknownClassException e) {
@@ -281,7 +271,7 @@ public class Processor {
 						// todo : what to do here?
 					}
 					else {
-						listedPackages.add( classDetailsRegistry.resolvePackageDetails(
+						packageInclusions.addInclusion( classDetailsRegistry.resolvePackageDetails(
 								listed,
 								() -> new JdkPackageDetailsImpl( packageForName, sourceModelBuildingContext )
 						) );
@@ -364,7 +354,6 @@ public class Processor {
 			Map<String,ClassDetails> allEntities,
 			Map<String,ClassDetails> mappedSuperClasses,
 			Map<String,ClassDetails> embeddables,
-			Options options,
 			OrmModelBuildingContext mappingBuildingContext) {
 		final ClassDetailsRegistry classDetailsRegistry = mappingBuildingContext.getClassDetailsRegistry();
 		classDetailsRegistry.forEachClassDetails( (classDetails) -> {
@@ -373,13 +362,7 @@ public class Processor {
 				return;
 			}
 
-			processResultCollector.collectJavaTypeRegistrations( classDetails );
-			processResultCollector.collectJdbcTypeRegistrations( classDetails );
-			processResultCollector.collectConverterRegistrations( classDetails );
-			processResultCollector.collectUserTypeRegistrations( classDetails );
-			processResultCollector.collectCompositeUserTypeRegistrations( classDetails );
-			processResultCollector.collectCollectionTypeRegistrations( classDetails );
-			processResultCollector.collectEmbeddableInstantiatorRegistrations( classDetails );
+			processResultCollector.apply( classDetails );
 
 			if ( classDetails.getUsage( JpaAnnotations.MAPPED_SUPERCLASS ) != null ) {
 				if ( classDetails.getClassName() != null ) {
@@ -413,13 +396,7 @@ public class Processor {
 				return;
 			}
 
-			processResultCollector.collectJavaTypeRegistrations( packageDetails );
-			processResultCollector.collectJdbcTypeRegistrations( packageDetails );
-			processResultCollector.collectConverterRegistrations( packageDetails );
-			processResultCollector.collectUserTypeRegistrations( packageDetails );
-			processResultCollector.collectCompositeUserTypeRegistrations( packageDetails );
-			processResultCollector.collectCollectionTypeRegistrations( packageDetails );
-			processResultCollector.collectEmbeddableInstantiatorRegistrations( packageDetails );
+			processResultCollector.apply( packageDetails );
 		} );
 	}
 
@@ -428,9 +405,35 @@ public class Processor {
 		boolean shouldInclude(ClassDetails classDetails);
 	}
 
+	private static class ActiveClassInclusions implements ClassInclusions {
+		private final Set<ClassDetails> inclusionList = new HashSet<>();
+
+		private void addInclusion(ClassDetails classDetails) {
+			inclusionList.add( classDetails );
+		}
+
+		@Override
+		public boolean shouldInclude(ClassDetails classDetails) {
+			return inclusionList.contains( classDetails );
+		}
+	}
+
 	@FunctionalInterface
 	private interface PackageInclusions {
 		boolean shouldInclude(PackageDetails packageDetails);
+	}
+
+	private static class ActivePackageInclusions implements PackageInclusions {
+		private final Set<PackageDetails> inclusionList = new HashSet<>();
+
+		private void addInclusion(PackageDetails packageDetails) {
+			inclusionList.add( packageDetails );
+		}
+
+		@Override
+		public boolean shouldInclude(PackageDetails packageDetails) {
+			return inclusionList.contains( packageDetails );
+		}
 	}
 
 	private static void processIdentifiableType(

@@ -14,7 +14,6 @@ import org.hibernate.models.orm.internal.CollectionTypeRegistration;
 import org.hibernate.models.orm.internal.CompositeUserTypeRegistration;
 import org.hibernate.models.orm.internal.ConversionRegistration;
 import org.hibernate.models.orm.internal.EmbeddableInstantiatorRegistration;
-import org.hibernate.models.orm.internal.IdGeneratorRegistration;
 import org.hibernate.models.orm.internal.JavaTypeRegistration;
 import org.hibernate.models.orm.internal.JdbcTypeRegistration;
 import org.hibernate.models.orm.internal.NamedQueryRegistration;
@@ -44,8 +43,6 @@ public interface ProcessResult {
 	List<CollectionTypeRegistration> getCollectionTypeRegistrations();
 
 	List<EmbeddableInstantiatorRegistration> getEmbeddableInstantiatorRegistrations();
-
-	Map<String, IdGeneratorRegistration> getGlobalIdGeneratorRegistrations();
 
 	Map<String, NamedQueryRegistration> getJpaNamedQueries();
 
