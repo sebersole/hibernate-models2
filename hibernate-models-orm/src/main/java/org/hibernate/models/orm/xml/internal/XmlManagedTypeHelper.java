@@ -23,6 +23,7 @@ import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.orm.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.models.source.internal.MutableClassDetails;
 import org.hibernate.models.source.internal.MutableMemberDetails;
+import org.hibernate.models.source.internal.SourceModelLogging;
 import org.hibernate.models.source.internal.dynamic.DynamicAnnotationUsage;
 import org.hibernate.models.source.internal.dynamic.DynamicClassDetails;
 import org.hibernate.models.source.spi.ClassDetails;
@@ -31,6 +32,7 @@ import org.hibernate.models.source.spi.SourceModelBuildingContext;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Inheritance;
 
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
 
@@ -109,6 +111,8 @@ public class XmlManagedTypeHelper {
 		entityAnn.setAttributeValue( "name", jaxbEntity.getName() );
 		classDetails.addAnnotationUsage( entityAnn );
 
+		applyInheritance( jaxbEntity, classDetails, sourceModelBuildingContext );
+
 		if ( jaxbEntity.getTable() != null ) {
 			XmlAnnotationHelper.applyTable( jaxbEntity.getTable(), classDetails, persistenceUnitMetadata );
 		}
@@ -132,14 +136,33 @@ public class XmlManagedTypeHelper {
 		// todo : secondary-tables
 	}
 
+	private static void applyInheritance(
+			JaxbEntity jaxbEntity,
+			MutableClassDetails classDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( jaxbEntity.getInheritance() == null ) {
+			return;
+		}
+
+		final DynamicAnnotationUsage<Inheritance> annotationUsage = new DynamicAnnotationUsage<>(
+				Inheritance.class,
+				classDetails
+		);
+		classDetails.addAnnotationUsage( annotationUsage );
+		annotationUsage.setAttributeValue( "strategy", jaxbEntity.getInheritance().getStrategy() );
+	}
+
 	private static void handleIdMappings(
 			JaxbAttributes attributes,
 			AccessType classAccessType,
 			MutableClassDetails classDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
-		if ( CollectionHelper.isNotEmpty( attributes.getId() ) ) {
-			for ( int i = 0; i < attributes.getId().size(); i++ ) {
-				final JaxbId jaxbId = attributes.getId().get( i );
+		final List<JaxbId> jaxbIds = attributes.getId();
+		final JaxbEmbeddedId jaxbEmbeddedId = attributes.getEmbeddedId();
+
+		if ( CollectionHelper.isNotEmpty( jaxbIds ) ) {
+			for ( int i = 0; i < jaxbIds.size(); i++ ) {
+				final JaxbId jaxbId = jaxbIds.get( i );
 				final AccessType accessType = coalesce( jaxbId.getAccess(), classAccessType );
 				final MutableMemberDetails memberDetails = XmlAttributeHelper.findAttributeMember(
 						jaxbId.getName(),
@@ -148,6 +171,8 @@ public class XmlManagedTypeHelper {
 						sourceModelBuildingContext
 				);
 
+				XmlAnnotationHelper.applyId( jaxbId, memberDetails, sourceModelBuildingContext );
+				XmlAnnotationHelper.applyBasic( jaxbId, memberDetails, sourceModelBuildingContext );
 				XmlAttributeHelper.applyCommonAttributeAnnotations(
 						jaxbId,
 						memberDetails,
@@ -201,9 +226,7 @@ public class XmlManagedTypeHelper {
 				// todo : unsaved-value?
 			}
 		}
-		else {
-			final JaxbEmbeddedId jaxbEmbeddedId = attributes.getEmbeddedId();
-			assert jaxbEmbeddedId != null;
+		else if ( jaxbEmbeddedId != null ) {
 			final AccessType accessType = coalesce( jaxbEmbeddedId.getAccess(), classAccessType );
 			final MutableMemberDetails memberDetails = XmlAttributeHelper.findAttributeMember(
 					jaxbEmbeddedId.getName(),
@@ -212,6 +235,7 @@ public class XmlManagedTypeHelper {
 					sourceModelBuildingContext
 			);
 
+			XmlAnnotationHelper.applyEmbeddedId( jaxbEmbeddedId, memberDetails, sourceModelBuildingContext );
 			XmlAttributeHelper.applyCommonAttributeAnnotations(
 					jaxbEmbeddedId,
 					memberDetails,
@@ -223,6 +247,12 @@ public class XmlManagedTypeHelper {
 					jaxbEmbeddedId.getAttributeOverride(),
 					memberDetails,
 					sourceModelBuildingContext
+			);
+		}
+		else {
+			SourceModelLogging.SOURCE_MODEL_LOGGER.debugf(
+					"Identifiable type [%s] contained no <id/> nor <embedded-id/>",
+					classDetails.getName()
 			);
 		}
 	}

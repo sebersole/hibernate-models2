@@ -22,6 +22,9 @@ import org.junit.jupiter.api.Test;
 import org.jboss.jandex.Index;
 
 import jakarta.persistence.AccessType;
+import jakarta.persistence.Basic;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Id;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.models.internal.SimpleClassLoading.SIMPLE_CLASS_LOADING;
@@ -75,8 +78,11 @@ public class CompleteXmlWithEmbeddableTests {
 
 		final AttributeMetadata idAttribute = personMetadata.findAttribute( "id" );
 		assertThat( idAttribute.getNature() ).isEqualTo( BASIC );
+		assertThat( idAttribute.getMember().getAnnotationUsage( Basic.class ) ).isNotNull();
+		assertThat( idAttribute.getMember().getAnnotationUsage( Id.class ) ).isNotNull();
 
 		final AttributeMetadata nameAttribute = personMetadata.findAttribute( "name" );
 		assertThat( nameAttribute.getNature() ).isEqualTo( EMBEDDED );
+		assertThat( nameAttribute.getMember().getAnnotationUsage( Embedded.class ) ).isNotNull();
 	}
 }
