@@ -27,7 +27,9 @@ import org.hibernate.boot.jaxb.mapping.JaxbColumn;
 import org.hibernate.boot.jaxb.mapping.JaxbColumnType;
 import org.hibernate.boot.jaxb.mapping.JaxbConfigurationParameter;
 import org.hibernate.boot.jaxb.mapping.JaxbConvert;
+import org.hibernate.boot.jaxb.mapping.JaxbEmbeddedId;
 import org.hibernate.boot.jaxb.mapping.JaxbGeneratedValue;
+import org.hibernate.boot.jaxb.mapping.JaxbId;
 import org.hibernate.boot.jaxb.mapping.JaxbLob;
 import org.hibernate.boot.jaxb.mapping.JaxbNationalized;
 import org.hibernate.boot.jaxb.mapping.JaxbNaturalId;
@@ -55,9 +57,11 @@ import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Basic;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
+import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
@@ -65,6 +69,7 @@ import jakarta.persistence.TableGenerator;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 
+import static jakarta.persistence.FetchType.EAGER;
 import static java.util.Collections.emptyList;
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
 import static org.hibernate.models.internal.StringHelper.nullIfEmpty;
@@ -84,6 +89,16 @@ public class XmlAnnotationHelper {
 		memberDetails.addAnnotationUsage( annotationUsage );
 		annotationUsage.setAttributeValue( "fetch", jaxbBasic.getFetch() );
 		annotationUsage.setAttributeValue( "optional", jaxbBasic.isOptional() );
+	}
+
+	public static void applyBasic(
+			JaxbId jaxbId,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		final DynamicAnnotationUsage<Basic> annotationUsage = new DynamicAnnotationUsage<>( Basic.class, memberDetails );
+		memberDetails.addAnnotationUsage( annotationUsage );
+		annotationUsage.setAttributeValue( "fetch", EAGER );
+		annotationUsage.setAttributeValue( "optional", false );
 	}
 
 	public static void applyAccess(
@@ -495,5 +510,33 @@ public class XmlAnnotationHelper {
 
 		final JaxbCaching jaxbCaching = jaxbNaturalId.getCache();
 		annotationUsage.setAttributeValue( "region", jaxbCaching.getRegion() );
+	}
+
+	public static void applyId(
+			JaxbId jaxbId,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( jaxbId == null ) {
+			return;
+		}
+		final DynamicAnnotationUsage<Id> annotationUsage = new DynamicAnnotationUsage<>(
+				Id.class,
+				memberDetails
+		);
+		memberDetails.addAnnotationUsage( annotationUsage );
+	}
+
+	public static void applyEmbeddedId(
+			JaxbEmbeddedId jaxbEmbeddedId,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( jaxbEmbeddedId == null ) {
+			return;
+		}
+		final DynamicAnnotationUsage<EmbeddedId> annotationUsage = new DynamicAnnotationUsage<>(
+				EmbeddedId.class,
+				memberDetails
+		);
+		memberDetails.addAnnotationUsage( annotationUsage );
 	}
 }

@@ -13,36 +13,34 @@ import org.hibernate.models.orm.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.spi.ManagedResources;
 import org.hibernate.models.orm.spi.ProcessResult;
 import org.hibernate.models.orm.spi.Processor;
-import org.hibernate.models.orm.xml.SimpleEntity;
 import org.hibernate.models.source.SourceModelTestHelper;
 import org.hibernate.models.source.internal.SourceModelBuildingContextImpl;
-import org.hibernate.models.source.spi.AnnotationUsage;
 
 import org.junit.jupiter.api.Test;
 
 import org.jboss.jandex.Index;
 
-import jakarta.persistence.Basic;
-import jakarta.persistence.Column;
 import jakarta.persistence.Id;
 
+import static jakarta.persistence.InheritanceType.JOINED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.models.internal.SimpleClassLoading.SIMPLE_CLASS_LOADING;
 
 /**
  * @author Steve Ebersole
  */
-public class SimpleCompleteXmlTests {
+public class CompleteXmlInheritanceTests {
 	@Test
-	void testSimpleCompleteEntity() {
+	void testIt() {
 
 		final ManagedResourcesImpl.Builder managedResourcesBuilder = new ManagedResourcesImpl.Builder();
-		managedResourcesBuilder.addXmlMappings( "mappings/complete/simple-complete.xml" );
+		managedResourcesBuilder.addXmlMappings( "mappings/complete/simple-inherited.xml" );
 		final ManagedResources managedResources = managedResourcesBuilder.build();
 
 		final Index jandexIndex = SourceModelTestHelper.buildJandexIndex(
 				SIMPLE_CLASS_LOADING,
-				SimpleEntity.class
+				Root.class,
+				Sub.class
 		);
 		final SourceModelBuildingContextImpl buildingContext = SourceModelTestHelper.createBuildingContext(
 				jandexIndex,
@@ -67,25 +65,12 @@ public class SimpleCompleteXmlTests {
 		);
 
 		assertThat( processResult.getEntityHierarchies() ).hasSize( 1 );
-
 		final EntityHierarchy hierarchy = processResult.getEntityHierarchies().iterator().next();
-		final EntityTypeMetadata root = hierarchy.getRoot();
-		assertThat( root.getClassDetails().getClassName() ).isEqualTo( SimpleEntity.class.getName() );
-		assertThat( root.getNumberOfAttributes() ).isEqualTo( 2 );
+		assertThat( hierarchy.getInheritanceType() ).isEqualTo( JOINED );
 
-		final AttributeMetadata idAttribute = root.findAttribute( "id" );
-		assertThat( idAttribute.getNature() ).isEqualTo( AttributeMetadata.AttributeNature.BASIC );
-		assertThat( idAttribute.getMember().getAnnotationUsage( Basic.class ) ).isNotNull();
-		assertThat( idAttribute.getMember().getAnnotationUsage( Id.class ) ).isNotNull();
-		final AnnotationUsage<Column> idColumnAnn = idAttribute.getMember().getAnnotationUsage( Column.class );
-		assertThat( idColumnAnn ).isNotNull();
-		assertThat( idColumnAnn.<String>getAttributeValue( "name" ) ).isEqualTo( "pk" );
-
-		final AttributeMetadata nameAttribute = root.findAttribute( "name" );
-		assertThat( nameAttribute.getNature() ).isEqualTo( AttributeMetadata.AttributeNature.BASIC );
-		assertThat( nameAttribute.getMember().getAnnotationUsage( Basic.class ) ).isNotNull();
-		final AnnotationUsage<Column> nameColumnAnn = nameAttribute.getMember().getAnnotationUsage( Column.class );
-		assertThat( nameColumnAnn ).isNotNull();
-		assertThat( nameColumnAnn.<String>getAttributeValue( "name" ) ).isEqualTo( "description" );
+		final EntityTypeMetadata rootMetadata = hierarchy.getRoot();
+		assertThat( rootMetadata.getClassDetails().getClassName() ).isEqualTo( Root.class.getName() );
+		final AttributeMetadata idAttr = rootMetadata.findAttribute( "id" );
+		assertThat( idAttr.getMember().getAnnotationUsage( Id.class ) ).isNotNull();
 	}
 }
