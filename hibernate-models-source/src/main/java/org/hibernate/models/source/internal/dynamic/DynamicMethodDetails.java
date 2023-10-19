@@ -6,6 +6,7 @@
  */
 package org.hibernate.models.source.internal.dynamic;
 
+import org.hibernate.models.source.internal.MutableMemberDetails;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.MethodDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
@@ -13,7 +14,7 @@ import org.hibernate.models.source.spi.SourceModelBuildingContext;
 /**
  * @author Steve Ebersole
  */
-public class DynamicMethodDetails extends AbstractAnnotationTarget implements MethodDetails {
+public class DynamicMethodDetails extends AbstractAnnotationTarget implements MethodDetails, MutableMemberDetails {
 	private final String name;
 	private final ClassDetails type;
 	private final MethodKind methodKind;

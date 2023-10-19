@@ -39,6 +39,8 @@ public interface ManagedTypeMetadata {
 	 */
 	Collection<AttributeMetadata> getAttributes();
 
+	AttributeMetadata findAttribute(String name);
+
 	/**
 	 * Visit each declared attributes
 	 */

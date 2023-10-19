@@ -8,6 +8,7 @@ package org.hibernate.models.source.internal.jdk;
 
 import java.lang.reflect.Field;
 
+import org.hibernate.models.source.internal.MutableMemberDetails;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.FieldDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
@@ -18,7 +19,7 @@ import static org.hibernate.models.source.internal.ModifierUtils.isPersistableFi
 /**
  * @author Steve Ebersole
  */
-public class JdkFieldDetails extends AbstractAnnotationTarget implements FieldDetails {
+public class JdkFieldDetails extends AbstractAnnotationTarget implements FieldDetails, MutableMemberDetails {
 	private final Field field;
 	private final ClassDetails type;
 

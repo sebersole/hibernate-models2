@@ -25,8 +25,8 @@ public class DynamicClassDetails extends AbstractAnnotationTarget implements Cla
 	private final boolean isAbstract;
 	private final ClassDetails superType;
 
-	private List<DynamicFieldDetails> fields;
-	private List<DynamicMethodDetails> methods;
+	private List<FieldDetails> fields;
+	private List<MethodDetails> methods;
 
 	private Class<?> javaType;
 
@@ -75,11 +75,11 @@ public class DynamicClassDetails extends AbstractAnnotationTarget implements Cla
 			return Collections.emptyList();
 		}
 
-		//noinspection unchecked,rawtypes
-		return (List) fields;
+		return fields;
 	}
 
-	public void addField(DynamicFieldDetails fieldDetails) {
+	@Override
+	public void addField(FieldDetails fieldDetails) {
 		if ( fields == null ) {
 			this.fields = new ArrayList<>();
 		}
@@ -92,11 +92,10 @@ public class DynamicClassDetails extends AbstractAnnotationTarget implements Cla
 			return Collections.emptyList();
 		}
 
-		//noinspection unchecked,rawtypes
-		return (List) methods;
+		return methods;
 	}
 
-	public void addMethod(DynamicMethodDetails methodDetails) {
+	public void addMethod(MethodDetails methodDetails) {
 		if ( methods == null ) {
 			this.methods = new ArrayList<>();
 		}

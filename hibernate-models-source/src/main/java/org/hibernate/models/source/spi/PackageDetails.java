@@ -25,5 +25,5 @@ public interface PackageDetails extends AnnotationTarget, SharedNamedAnnotationS
 	String getName();
 
 	@Override
-	<X extends Annotation> void forEachUsage(AnnotationDescriptor<X> type, Consumer<AnnotationUsage<X>> consumer);
+	<X extends Annotation> void forEachAnnotationUsage(AnnotationDescriptor<X> type, Consumer<AnnotationUsage<X>> consumer);
 }

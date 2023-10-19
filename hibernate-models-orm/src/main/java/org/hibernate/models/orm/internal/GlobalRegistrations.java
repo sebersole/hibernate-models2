@@ -126,7 +126,7 @@ public class GlobalRegistrations {
 	// JavaTypeRegistration
 
 	public void collectJavaTypeRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachUsage( JAVA_TYPE_REG, (usage) -> collectJavaTypeRegistration(
+		annotationTarget.forEachAnnotationUsage( JAVA_TYPE_REG, (usage) -> collectJavaTypeRegistration(
 				usage.getAttributeValue( "javaType" ),
 				usage.getAttributeValue( "descriptorClass" )
 		) );
@@ -155,7 +155,7 @@ public class GlobalRegistrations {
 	// JdbcTypeRegistration
 
 	public void collectJdbcTypeRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachUsage( JDBC_TYPE_REG, (usage) -> collectJdbcTypeRegistration(
+		annotationTarget.forEachAnnotationUsage( JDBC_TYPE_REG, (usage) -> collectJdbcTypeRegistration(
 				usage.getAttributeValue( "registrationCode" ),
 				usage.getAttributeValue( "value" )
 		) );
@@ -184,7 +184,7 @@ public class GlobalRegistrations {
 	// ConversionRegistration
 
 	public void collectConverterRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachUsage( CONVERTER_REG, (usage) -> {
+		annotationTarget.forEachAnnotationUsage( CONVERTER_REG, (usage) -> {
 			final ClassDetails domainType = usage.getAttributeValue( "domainType" );
 			final ClassDetails converterType = usage.getAttributeValue( "converter" );
 			final boolean autoApply = usage.getAttributeValue( "autoApply" );
@@ -224,7 +224,7 @@ public class GlobalRegistrations {
 	// UserTypeRegistration
 
 	public void collectUserTypeRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachUsage( TYPE_REG, (usage) -> collectUserTypeRegistration(
+		annotationTarget.forEachAnnotationUsage( TYPE_REG, (usage) -> collectUserTypeRegistration(
 				usage.getAttributeValue( "basicClass" ),
 				usage.getAttributeValue( "userType" )
 		) );
@@ -254,7 +254,7 @@ public class GlobalRegistrations {
 	// CompositeUserTypeRegistration
 
 	public void collectCompositeUserTypeRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachUsage( COMPOSITE_TYPE_REG, (usage) -> collectCompositeUserTypeRegistration(
+		annotationTarget.forEachAnnotationUsage( COMPOSITE_TYPE_REG, (usage) -> collectCompositeUserTypeRegistration(
 				usage.getAttributeValue( "embeddableClass" ),
 				usage.getAttributeValue( "userType" )
 		) );
@@ -283,7 +283,7 @@ public class GlobalRegistrations {
 	// CollectionTypeRegistration
 
 	public void collectCollectionTypeRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachUsage( COLLECTION_TYPE_REG, (usage) -> collectCollectionTypeRegistration(
+		annotationTarget.forEachAnnotationUsage( COLLECTION_TYPE_REG, (usage) -> collectCollectionTypeRegistration(
 				usage.getAttributeValue( "classification" ),
 				usage.getAttributeValue( "type" ),
 				extractParameterMap( usage )
@@ -340,7 +340,7 @@ public class GlobalRegistrations {
 	// EmbeddableInstantiatorRegistration
 
 	public void collectEmbeddableInstantiatorRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachUsage( EMBEDDABLE_INSTANTIATOR_REG, (usage) -> collectEmbeddableInstantiatorRegistration(
+		annotationTarget.forEachAnnotationUsage( EMBEDDABLE_INSTANTIATOR_REG, (usage) -> collectEmbeddableInstantiatorRegistration(
 				usage.getAttributeValue( "embeddableClass" ),
 				usage.getAttributeValue( "instantiator" )
 		) );
@@ -396,9 +396,9 @@ public class GlobalRegistrations {
 	}
 
 	public void collectIdGenerators(ClassDetails classDetails) {
-		classDetails.forEachUsage( SequenceGenerator.class, this::collectSequenceGenerator );
-		classDetails.forEachUsage( TableGenerator.class, this::collectTableGenerator );
-		classDetails.forEachUsage( GenericGenerator.class, this::collectGenericGenerator );
+		classDetails.forEachAnnotationUsage( SequenceGenerator.class, this::collectSequenceGenerator );
+		classDetails.forEachAnnotationUsage( TableGenerator.class, this::collectTableGenerator );
+		classDetails.forEachAnnotationUsage( GenericGenerator.class, this::collectGenericGenerator );
 	}
 
 

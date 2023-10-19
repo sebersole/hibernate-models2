@@ -10,7 +10,6 @@ import java.lang.annotation.Annotation;
 import java.util.List;
 import java.util.function.Consumer;
 
-import org.hibernate.models.source.internal.AnnotationTargetSupport;
 import org.hibernate.models.source.spi.AnnotationDescriptor;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.PackageDetails;
@@ -22,7 +21,7 @@ import org.jboss.jandex.ClassInfo;
 /**
  * @author Steve Ebersole
  */
-public class JandexPackageDetails extends AbstractAnnotationTarget implements PackageDetails, AnnotationTargetSupport {
+public class JandexPackageDetails extends AbstractAnnotationTarget implements PackageDetails {
 	private final ClassInfo packageInfoClassInfo;
 
 	public JandexPackageDetails(ClassInfo packageInfoClassInfo, SourceModelBuildingContext buildingContext) {
@@ -46,19 +45,19 @@ public class JandexPackageDetails extends AbstractAnnotationTarget implements Pa
 	}
 
 	@Override
-	public <A extends Annotation> List<AnnotationUsage<A>> getAllUsages(Class<A> annotationType) {
-		return getAllUsages( getBuildingContext().getAnnotationDescriptorRegistry().getDescriptor( annotationType ) );
+	public <A extends Annotation> List<AnnotationUsage<A>> getAllAnnotationUsages(Class<A> annotationType) {
+		return getAllAnnotationUsages( getBuildingContext().getAnnotationDescriptorRegistry().getDescriptor( annotationType ) );
 	}
 
 	@Override
-	public <X extends Annotation> void forEachUsage(Class<X> type, Consumer<AnnotationUsage<X>> consumer) {
-		super.forEachUsage( type, consumer );
+	public <X extends Annotation> void forEachAnnotationUsage(Class<X> type, Consumer<AnnotationUsage<X>> consumer) {
+		super.forEachAnnotationUsage( type, consumer );
 	}
 
 	@Override
-	public <X extends Annotation> void forEachUsage(
+	public <X extends Annotation> void forEachAnnotationUsage(
 			AnnotationDescriptor<X> type,
 			Consumer<AnnotationUsage<X>> consumer) {
-		super.forEachUsage( type, consumer );
+		super.forEachAnnotationUsage( type, consumer );
 	}
 }

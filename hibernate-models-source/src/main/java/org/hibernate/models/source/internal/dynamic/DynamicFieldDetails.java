@@ -6,6 +6,7 @@
  */
 package org.hibernate.models.source.internal.dynamic;
 
+import org.hibernate.models.source.internal.MutableMemberDetails;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.FieldDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
@@ -13,7 +14,7 @@ import org.hibernate.models.source.spi.SourceModelBuildingContext;
 /**
  * @author Steve Ebersole
  */
-public class DynamicFieldDetails extends AbstractAnnotationTarget implements FieldDetails {
+public class DynamicFieldDetails extends AbstractAnnotationTarget implements FieldDetails, MutableMemberDetails {
 	private final String name;
 	private final ClassDetails type;
 	private final boolean isPersistable;

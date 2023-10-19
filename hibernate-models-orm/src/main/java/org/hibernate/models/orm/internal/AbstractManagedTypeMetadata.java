@@ -129,6 +129,18 @@ public abstract class AbstractManagedTypeMetadata implements ManagedTypeMetadata
 	}
 
 	@Override
+	public AttributeMetadata findAttribute(String name) {
+		final List<AttributeMetadata> attributeList = attributeList();
+		for ( int i = 0; i < attributeList.size(); i++ ) {
+			final AttributeMetadata attribute = attributeList.get( i );
+			if ( attribute.getName().equals( name ) ) {
+				return attribute;
+			}
+		}
+		return null;
+	}
+
+	@Override
 	public void forEachAttribute(IndexedConsumer<AttributeMetadata> consumer) {
 		for ( int i = 0; i < attributeList().size(); i++ ) {
 			consumer.accept( i, attributeList().get( i ) );
@@ -167,16 +179,16 @@ public abstract class AbstractManagedTypeMetadata implements ManagedTypeMetadata
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// first, look for explicit nature annotations
 
-		final AnnotationUsage<Any> any = backingMember.getUsage( HibernateAnnotations.ANY );
-		final AnnotationUsage<Basic> basic = backingMember.getUsage( JpaAnnotations.BASIC );
-		final AnnotationUsage<ElementCollection> elementCollection = backingMember.getUsage( JpaAnnotations.ELEMENT_COLLECTION );
-		final AnnotationUsage<Embedded> embedded = backingMember.getUsage( JpaAnnotations.EMBEDDED );
-		final AnnotationUsage<EmbeddedId> embeddedId = backingMember.getUsage( JpaAnnotations.EMBEDDED_ID );
-		final AnnotationUsage<ManyToAny> manyToAny = backingMember.getUsage( HibernateAnnotations.MANY_TO_ANY );
-		final AnnotationUsage<ManyToMany> manyToMany = backingMember.getUsage( JpaAnnotations.MANY_TO_MANY );
-		final AnnotationUsage<ManyToOne> manyToOne = backingMember.getUsage( JpaAnnotations.MANY_TO_ONE );
-		final AnnotationUsage<OneToMany> oneToMany = backingMember.getUsage( JpaAnnotations.ONE_TO_MANY );
-		final AnnotationUsage<OneToOne> oneToOne = backingMember.getUsage( JpaAnnotations.ONE_TO_ONE );
+		final AnnotationUsage<Any> any = backingMember.getAnnotationUsage( HibernateAnnotations.ANY );
+		final AnnotationUsage<Basic> basic = backingMember.getAnnotationUsage( JpaAnnotations.BASIC );
+		final AnnotationUsage<ElementCollection> elementCollection = backingMember.getAnnotationUsage( JpaAnnotations.ELEMENT_COLLECTION );
+		final AnnotationUsage<Embedded> embedded = backingMember.getAnnotationUsage( JpaAnnotations.EMBEDDED );
+		final AnnotationUsage<EmbeddedId> embeddedId = backingMember.getAnnotationUsage( JpaAnnotations.EMBEDDED_ID );
+		final AnnotationUsage<ManyToAny> manyToAny = backingMember.getAnnotationUsage( HibernateAnnotations.MANY_TO_ANY );
+		final AnnotationUsage<ManyToMany> manyToMany = backingMember.getAnnotationUsage( JpaAnnotations.MANY_TO_MANY );
+		final AnnotationUsage<ManyToOne> manyToOne = backingMember.getAnnotationUsage( JpaAnnotations.MANY_TO_ONE );
+		final AnnotationUsage<OneToMany> oneToMany = backingMember.getAnnotationUsage( JpaAnnotations.ONE_TO_MANY );
+		final AnnotationUsage<OneToOne> oneToOne = backingMember.getAnnotationUsage( JpaAnnotations.ONE_TO_ONE );
 
 		if ( basic != null ) {
 			natures.add( AttributeMetadata.AttributeNature.BASIC );
@@ -184,7 +196,7 @@ public abstract class AbstractManagedTypeMetadata implements ManagedTypeMetadata
 
 		if ( embedded != null
 				|| embeddedId != null
-				|| ( backingMember.getType() != null && backingMember.getType().getUsage( JpaAnnotations.EMBEDDABLE ) != null ) ) {
+				|| ( backingMember.getType() != null && backingMember.getType().getAnnotationUsage( JpaAnnotations.EMBEDDABLE ) != null ) ) {
 			natures.add( AttributeMetadata.AttributeNature.EMBEDDED );
 		}
 
@@ -211,37 +223,37 @@ public abstract class AbstractManagedTypeMetadata implements ManagedTypeMetadata
 
 		if ( !plural ) {
 			// first implicit basic nature
-			if ( backingMember.getUsage( JpaAnnotations.TEMPORAL ) != null
-					|| backingMember.getUsage( JpaAnnotations.LOB ) != null
-					|| backingMember.getUsage( JpaAnnotations.ENUMERATED ) != null
-					|| backingMember.getUsage( JpaAnnotations.CONVERT ) != null
-					|| backingMember.getUsage( JpaAnnotations.VERSION ) != null
-					|| backingMember.getUsage( HibernateAnnotations.GENERATED ) != null
-					|| backingMember.getUsage( HibernateAnnotations.NATIONALIZED ) != null
-					|| backingMember.getUsage( HibernateAnnotations.TZ_COLUMN ) != null
-					|| backingMember.getUsage( HibernateAnnotations.TZ_STORAGE ) != null
-					|| backingMember.getUsage( HibernateAnnotations.TYPE ) != null
-					|| backingMember.getUsage( HibernateAnnotations.TENANT_ID ) != null
-					|| backingMember.getUsage( HibernateAnnotations.JAVA_TYPE ) != null
-					|| backingMember.getUsage( HibernateAnnotations.JDBC_TYPE_CODE ) != null
-					|| backingMember.getUsage( HibernateAnnotations.JDBC_TYPE ) != null ) {
+			if ( backingMember.getAnnotationUsage( JpaAnnotations.TEMPORAL ) != null
+					|| backingMember.getAnnotationUsage( JpaAnnotations.LOB ) != null
+					|| backingMember.getAnnotationUsage( JpaAnnotations.ENUMERATED ) != null
+					|| backingMember.getAnnotationUsage( JpaAnnotations.CONVERT ) != null
+					|| backingMember.getAnnotationUsage( JpaAnnotations.VERSION ) != null
+					|| backingMember.getAnnotationUsage( HibernateAnnotations.GENERATED ) != null
+					|| backingMember.getAnnotationUsage( HibernateAnnotations.NATIONALIZED ) != null
+					|| backingMember.getAnnotationUsage( HibernateAnnotations.TZ_COLUMN ) != null
+					|| backingMember.getAnnotationUsage( HibernateAnnotations.TZ_STORAGE ) != null
+					|| backingMember.getAnnotationUsage( HibernateAnnotations.TYPE ) != null
+					|| backingMember.getAnnotationUsage( HibernateAnnotations.TENANT_ID ) != null
+					|| backingMember.getAnnotationUsage( HibernateAnnotations.JAVA_TYPE ) != null
+					|| backingMember.getAnnotationUsage( HibernateAnnotations.JDBC_TYPE_CODE ) != null
+					|| backingMember.getAnnotationUsage( HibernateAnnotations.JDBC_TYPE ) != null ) {
 				natures.add( AttributeMetadata.AttributeNature.BASIC );
 			}
 
 			// then embedded
-			if ( backingMember.getUsage( HibernateAnnotations.EMBEDDABLE_INSTANTIATOR ) != null
-					|| backingMember.getUsage( HibernateAnnotations.COMPOSITE_TYPE ) != null ) {
+			if ( backingMember.getAnnotationUsage( HibernateAnnotations.EMBEDDABLE_INSTANTIATOR ) != null
+					|| backingMember.getAnnotationUsage( HibernateAnnotations.COMPOSITE_TYPE ) != null ) {
 				natures.add( AttributeMetadata.AttributeNature.EMBEDDED );
 			}
 
 			// and any
-			if ( backingMember.getUsage( HibernateAnnotations.ANY_DISCRIMINATOR ) != null
-					|| backingMember.getUsage( HibernateAnnotations.ANY_DISCRIMINATOR_VALUE ) != null
-					|| backingMember.getUsage( HibernateAnnotations.ANY_DISCRIMINATOR_VALUES ) != null
-					|| backingMember.getUsage( HibernateAnnotations.ANY_KEY_JAVA_TYPE ) != null
-					|| backingMember.getUsage( HibernateAnnotations.ANY_KEY_JAVA_CLASS ) != null
-					|| backingMember.getUsage( HibernateAnnotations.ANY_KEY_JDBC_TYPE ) != null
-					|| backingMember.getUsage( HibernateAnnotations.ANY_KEY_JDBC_TYPE_CODE ) != null ) {
+			if ( backingMember.getAnnotationUsage( HibernateAnnotations.ANY_DISCRIMINATOR ) != null
+					|| backingMember.getAnnotationUsage( HibernateAnnotations.ANY_DISCRIMINATOR_VALUE ) != null
+					|| backingMember.getAnnotationUsage( HibernateAnnotations.ANY_DISCRIMINATOR_VALUES ) != null
+					|| backingMember.getAnnotationUsage( HibernateAnnotations.ANY_KEY_JAVA_TYPE ) != null
+					|| backingMember.getAnnotationUsage( HibernateAnnotations.ANY_KEY_JAVA_CLASS ) != null
+					|| backingMember.getAnnotationUsage( HibernateAnnotations.ANY_KEY_JDBC_TYPE ) != null
+					|| backingMember.getAnnotationUsage( HibernateAnnotations.ANY_KEY_JDBC_TYPE_CODE ) != null ) {
 				natures.add( AttributeMetadata.AttributeNature.ANY );
 			}
 		}

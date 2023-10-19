@@ -48,45 +48,45 @@ public class SourceModelTestHelperSmokeTests {
 		assertThat( classDetails ).isNotNull();
 		assertThat( classDetails ).isInstanceOf( JandexClassDetails.class );
 
-		final AnnotationUsage<Entity> entityAnnotation = classDetails.getUsage( Entity.class );
+		final AnnotationUsage<Entity> entityAnnotation = classDetails.getAnnotationUsage( Entity.class );
 		assertThat( entityAnnotation ).isNotNull();
 		assertThat( entityAnnotation.<String>getAttributeValue( "name" ) ).isEqualTo( "AnEntity" );
 
-		final AnnotationUsage<Table> tableAnnotation = classDetails.getUsage( Table.class );
+		final AnnotationUsage<Table> tableAnnotation = classDetails.getAnnotationUsage( Table.class );
 		assertThat( tableAnnotation ).isNotNull();
 		assertThat( tableAnnotation.<String>getAttributeValue( "name" ) ).isEqualTo( "the_table" );
 
-		final AnnotationUsage<Inheritance> inheritanceAnnotation = classDetails.getUsage( Inheritance.class );
+		final AnnotationUsage<Inheritance> inheritanceAnnotation = classDetails.getAnnotationUsage( Inheritance.class );
 		assertThat( inheritanceAnnotation ).isNull();
 
 		final FieldDetails idField = classDetails.findFieldByName( "id" );
 		assertThat( idField ).isNotNull();
-		final AnnotationUsage<Id> idAnnotation = idField.getUsage( Id.class );
+		final AnnotationUsage<Id> idAnnotation = idField.getAnnotationUsage( Id.class );
 		assertThat( idAnnotation ).isNotNull();
 
 		final FieldDetails nameField = classDetails.findFieldByName( "name" );
 		assertThat( nameField ).isNotNull();
-		final AnnotationUsage<Column> nameColumnAnnotation = nameField.getUsage( Column.class );
+		final AnnotationUsage<Column> nameColumnAnnotation = nameField.getAnnotationUsage( Column.class );
 		assertThat( nameColumnAnnotation ).isNotNull();
 
 		try {
-			classDetails.getUsage( NamedQuery.class );
+			classDetails.getAnnotationUsage( NamedQuery.class );
 			fail( "Expecting failure" );
 		}
 		catch (AnnotationAccessException expected) {
 		}
 
-		final List<AnnotationUsage<NamedQuery>> repeatedUsages = classDetails.getRepeatedUsages( NamedQuery.class );
+		final List<AnnotationUsage<NamedQuery>> repeatedUsages = classDetails.getRepeatedAnnotationUsages( NamedQuery.class );
 		assertThat( repeatedUsages ).hasSize( 2 );
 
-		final AnnotationUsage<NamedQuery> queryOne = classDetails.getNamedUsage( NamedQuery.class, "one" );
+		final AnnotationUsage<NamedQuery> queryOne = classDetails.getNamedAnnotationUsage( NamedQuery.class, "one" );
 		assertThat( queryOne ).isNotNull();
 
-		final AnnotationUsage<NamedQuery> queryTwo = classDetails.getNamedUsage( NamedQuery.class, "two", "name" );
+		final AnnotationUsage<NamedQuery> queryTwo = classDetails.getNamedAnnotationUsage( NamedQuery.class, "two", "name" );
 		assertThat( queryTwo ).isNotNull();
 
 		final MutableInteger counter = new MutableInteger();
-		classDetails.forEachUsage( NamedQuery.class, (usage) -> counter.incrementAndGet() );
+		classDetails.forEachAnnotationUsage( NamedQuery.class, (usage) -> counter.incrementAndGet() );
 		Assertions.assertThat( counter.get() ).isEqualTo( 2 );
 	}
 

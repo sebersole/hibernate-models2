@@ -9,9 +9,9 @@ package org.hibernate.models.source.internal.jandex;
 import java.lang.annotation.Annotation;
 import java.util.Map;
 
+import org.hibernate.models.source.internal.MutableAnnotationUsage;
 import org.hibernate.models.source.spi.AnnotationDescriptor;
 import org.hibernate.models.source.spi.AnnotationTarget;
-import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
 import org.jboss.jandex.AnnotationInstance;
@@ -21,7 +21,7 @@ import org.jboss.jandex.AnnotationInstance;
  *
  * @author Steve Ebersole
  */
-public class JandexAnnotationUsage<A extends Annotation> implements AnnotationUsage<A> {
+public class JandexAnnotationUsage<A extends Annotation> implements MutableAnnotationUsage<A> {
 	private final Class<A> annotationType;
 	private final AnnotationTarget annotationTarget;
 
@@ -60,5 +60,11 @@ public class JandexAnnotationUsage<A extends Annotation> implements AnnotationUs
 	public <W> W getAttributeValue(String name) {
 		//noinspection unchecked
 		return (W) attributeValueMap.get( name );
+	}
+
+	@Override
+	public <V> V setAttributeValue(String name, V value) {
+		//noinspection unchecked
+		return (V) ( (Map<String,Object>) attributeValueMap ).put( name, value );
 	}
 }

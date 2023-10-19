@@ -8,6 +8,7 @@ package org.hibernate.models.source.internal.jdk;
 
 import java.lang.reflect.Method;
 
+import org.hibernate.models.source.internal.MutableMemberDetails;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.MethodDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
@@ -17,7 +18,7 @@ import static org.hibernate.models.source.internal.ModifierUtils.isPersistableMe
 /**
  * @author Steve Ebersole
  */
-public class JdkMethodDetails extends AbstractAnnotationTarget implements MethodDetails {
+public class JdkMethodDetails extends AbstractAnnotationTarget implements MethodDetails, MutableMemberDetails {
 	private final Method method;
 	private final MethodKind methodKind;
 	private final ClassDetails type;

@@ -34,8 +34,8 @@ public class JandexClassDetails extends AbstractAnnotationTarget implements Clas
 	private final ClassDetails superType;
 	private final List<ClassDetails> implementedInterfaces;
 
-	private List<JandexFieldDetails> fields;
-	private List<JandexMethodDetails> methods;
+	private List<FieldDetails> fields;
+	private List<MethodDetails> methods;
 
 	public JandexClassDetails(ClassInfo classInfo, SourceModelBuildingContext buildingContext) {
 		super( buildingContext );
@@ -111,14 +111,12 @@ public class JandexClassDetails extends AbstractAnnotationTarget implements Clas
 		if ( fields == null ) {
 			fields = resolveFields();
 		}
-
-		//noinspection unchecked,rawtypes
-		return (List) fields;
+		return fields;
 	}
 
-	private List<JandexFieldDetails> resolveFields() {
+	private List<FieldDetails> resolveFields() {
 		final List<FieldInfo> fieldsInfoList = classInfo.fields();
-		final List<JandexFieldDetails> result = new ArrayList<>( fieldsInfoList.size() );
+		final List<FieldDetails> result = new ArrayList<>( fieldsInfoList.size() );
 		for ( FieldInfo fieldInfo : fieldsInfoList ) {
 			result.add( new JandexFieldDetails( fieldInfo, getBuildingContext() ) );
 		}
@@ -126,17 +124,21 @@ public class JandexClassDetails extends AbstractAnnotationTarget implements Clas
 	}
 
 	@Override
+	public void addField(FieldDetails fieldDetails) {
+		getFields().add( fieldDetails );
+	}
+
+	@Override
 	public List<MethodDetails> getMethods() {
 		if ( methods == null ) {
 			methods = resolveMethods();
 		}
-		//noinspection unchecked,rawtypes
-		return (List) methods;
+		return methods;
 	}
 
-	private List<JandexMethodDetails> resolveMethods() {
+	private List<MethodDetails> resolveMethods() {
 		final List<MethodInfo> methodInfoList = classInfo.methods();
-		final List<JandexMethodDetails> result = new ArrayList<>( methodInfoList.size() );
+		final List<MethodDetails> result = new ArrayList<>( methodInfoList.size() );
 		for ( MethodInfo methodInfo : methodInfoList ) {
 			if ( methodInfo.isConstructor() || "<clinit>".equals( methodInfo.name() ) ) {
 				continue;
@@ -144,6 +146,11 @@ public class JandexClassDetails extends AbstractAnnotationTarget implements Clas
 			result.add( JandexBuilders.buildMethodDetails( methodInfo, getBuildingContext() ) );
 		}
 		return result;
+	}
+
+	@Override
+	public void addMethod(MethodDetails methodDetails) {
+		getMethods().add( methodDetails );
 	}
 
 	@Override

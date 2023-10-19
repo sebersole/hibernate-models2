@@ -34,4 +34,26 @@ public class StringHelper {
 	public static String classNameToResourceName(String className) {
 		return className.replace( '.', '/' ) + ".class";
 	}
+
+	public static boolean isQualified(String name) {
+		int loc = name.lastIndexOf( '.' );
+		return loc > 0;
+	}
+
+	public static String qualify(String name, String qualifier) {
+		assert isNotEmpty( name );
+		return isEmpty( qualifier )
+				? name
+				: qualifier + "." + name;
+	}
+
+	public static String unqualify(String qualifiedName) {
+		int loc = qualifiedName.lastIndexOf( '.' );
+		return ( loc < 0 ) ? qualifiedName : qualifiedName.substring( loc + 1 );
+	}
+
+	public static String qualifier(String qualifiedName) {
+		int loc = qualifiedName.lastIndexOf( '.' );
+		return ( loc < 0 ) ? "" : qualifiedName.substring( 0, loc );
+	}
 }

@@ -93,7 +93,7 @@ public class StandardPersistentAttributeMemberResolver extends AbstractPersisten
 			Function<M,Boolean> transiencyChecker,
 			ClassDetails classDetails,
 			OrmModelBuildingContext processingContext) {
-		final AnnotationUsage<Access> access = memberDetails.getUsage( JpaAnnotations.ACCESS );
+		final AnnotationUsage<Access> access = memberDetails.getAnnotationUsage( JpaAnnotations.ACCESS );
 		if ( access == null  ) {
 			return;
 		}

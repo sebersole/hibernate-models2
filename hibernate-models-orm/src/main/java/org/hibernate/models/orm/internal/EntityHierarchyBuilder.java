@@ -27,8 +27,6 @@ import org.hibernate.models.source.spi.MethodDetails;
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
 
-import static org.hibernate.models.source.internal.SourceModelLogging.SOURCE_MODEL_LOGGER;
-
 /**
  * Builds {@link EntityHierarchy} references from
  * {@linkplain ClassDetailsRegistry#forEachClassDetails managed classes}.
@@ -102,7 +100,7 @@ public class EntityHierarchyBuilder {
 		ClassDetails current = rootEntityType;
 		while ( current != null ) {
 			// look for `@Access` on the class
-			final AnnotationUsage<Access> accessAnnotation = current.getUsage( JpaAnnotations.ACCESS );
+			final AnnotationUsage<Access> accessAnnotation = current.getAnnotationUsage( JpaAnnotations.ACCESS );
 			if ( accessAnnotation != null ) {
 				return accessAnnotation.getAttributeValue( "value" );
 			}
@@ -137,8 +135,8 @@ public class EntityHierarchyBuilder {
 		final List<MethodDetails> methods = current.getMethods();
 		for ( int i = 0; i < methods.size(); i++ ) {
 			final MethodDetails methodDetails = methods.get( i );
-			if ( methodDetails.getUsage( JpaAnnotations.ID ) != null
-					|| methodDetails.getUsage( JpaAnnotations.EMBEDDED_ID ) != null ) {
+			if ( methodDetails.getAnnotationUsage( JpaAnnotations.ID ) != null
+					|| methodDetails.getAnnotationUsage( JpaAnnotations.EMBEDDED_ID ) != null ) {
 				return methodDetails;
 			}
 		}
@@ -146,8 +144,8 @@ public class EntityHierarchyBuilder {
 		final List<FieldDetails> fields = current.getFields();
 		for ( int i = 0; i < fields.size(); i++ ) {
 			final FieldDetails fieldDetails = fields.get( i );
-			if ( fieldDetails.getUsage( JpaAnnotations.ID ) != null
-					|| fieldDetails.getUsage( JpaAnnotations.EMBEDDED_ID ) != null ) {
+			if ( fieldDetails.getAnnotationUsage( JpaAnnotations.ID ) != null
+					|| fieldDetails.getAnnotationUsage( JpaAnnotations.EMBEDDED_ID ) != null ) {
 				return fieldDetails;
 			}
 		}
@@ -163,7 +161,7 @@ public class EntityHierarchyBuilder {
 		final Set<ClassDetails> collectedTypes = new HashSet<>();
 
 		classDetailsRegistry.forEachClassDetails( (managedType) -> {
-			if ( managedType.getUsage( JpaAnnotations.ENTITY ) != null
+			if ( managedType.getAnnotationUsage( JpaAnnotations.ENTITY ) != null
 					&& isRoot( managedType ) ) {
 				collectedTypes.add( managedType );
 			}
@@ -185,7 +183,7 @@ public class EntityHierarchyBuilder {
 
 		ClassDetails current = classInfo.getSuperType();
 		while (  current != null ) {
-			if ( current.getUsage( JpaAnnotations.ENTITY ) != null ) {
+			if ( current.getAnnotationUsage( JpaAnnotations.ENTITY ) != null ) {
 				// a super type has `@Entity`, cannot be root
 				return false;
 			}

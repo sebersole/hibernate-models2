@@ -9,15 +9,15 @@ package org.hibernate.models.source.internal.jdk;
 import java.lang.annotation.Annotation;
 import java.util.Map;
 
+import org.hibernate.models.source.internal.MutableAnnotationUsage;
 import org.hibernate.models.source.spi.AnnotationDescriptor;
 import org.hibernate.models.source.spi.AnnotationTarget;
-import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
 /**
  * @author Steve Ebersole
  */
-public class JdkAnnotationUsage<A extends Annotation> implements AnnotationUsage<A> {
+public class JdkAnnotationUsage<A extends Annotation> implements MutableAnnotationUsage<A> {
 	private final Class<A> annotationType;
 	private final AnnotationTarget location;
 
@@ -48,5 +48,11 @@ public class JdkAnnotationUsage<A extends Annotation> implements AnnotationUsage
 	public <W> W getAttributeValue(String name) {
 		//noinspection unchecked
 		return (W) valueMap.get( name );
+	}
+
+	@Override
+	public <V> V setAttributeValue(String name, V value) {
+		//noinspection unchecked
+		return (V) ( (Map<String,Object>) valueMap ).put( name, value );
 	}
 }

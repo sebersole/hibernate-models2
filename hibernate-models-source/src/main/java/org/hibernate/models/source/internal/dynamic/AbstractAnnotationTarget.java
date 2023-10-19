@@ -36,8 +36,9 @@ public abstract class AbstractAnnotationTarget implements AnnotationTargetSuppor
 		return usageMap;
 	}
 
-	public <X extends Annotation> void apply(List<AnnotationUsage<X>> annotationUsages) {
-		annotationUsages.forEach( this::apply );
+	@Override
+	public void clearAnnotationUsages() {
+		usageMap.clear();
 	}
 
 	/**
@@ -45,7 +46,7 @@ public abstract class AbstractAnnotationTarget implements AnnotationTargetSuppor
 	 *
 	 * @todo It is undefined currently what happens if the annotation type is already applied on this target.
 	 */
-	public <X extends Annotation> void apply(AnnotationUsage<X> annotationUsage) {
+	public <X extends Annotation> void addAnnotationUsage(AnnotationUsage<X> annotationUsage) {
 		final AnnotationUsage<?> previous = usageMap.put( annotationUsage.getAnnotationType(), annotationUsage );
 
 		if ( previous != null ) {

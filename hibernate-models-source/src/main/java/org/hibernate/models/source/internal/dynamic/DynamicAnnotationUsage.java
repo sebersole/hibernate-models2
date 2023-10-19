@@ -10,13 +10,13 @@ import java.lang.annotation.Annotation;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.hibernate.models.source.internal.MutableAnnotationUsage;
 import org.hibernate.models.source.spi.AnnotationTarget;
-import org.hibernate.models.source.spi.AnnotationUsage;
 
 /**
  * @author Steve Ebersole
  */
-public class DynamicAnnotationUsage<A extends Annotation> implements AnnotationUsage<A> {
+public class DynamicAnnotationUsage<A extends Annotation> implements MutableAnnotationUsage<A> {
 	private final Class<A> annotationType;
 	private final AnnotationTarget target;
 
@@ -47,6 +47,7 @@ public class DynamicAnnotationUsage<A extends Annotation> implements AnnotationU
 		return values == null ? null : (V) values.get( name );
 	}
 
+	@Override
 	public <V> V setAttributeValue(String name, V value) {
 		if ( values == null ) {
 			values = new HashMap<>();

@@ -44,7 +44,7 @@ public interface SharedNamedAnnotationScope extends SharedAnnotationScope {
 			AnnotationDescriptor<A> annotationDescriptor,
 			String matchName,
 			String attributeToMatch) {
-		final List<AnnotationUsage<A>> allUsages = getAllUsages( annotationDescriptor );
+		final List<AnnotationUsage<A>> allUsages = getAllAnnotationUsages( annotationDescriptor );
 		for ( int i = 0; i < allUsages.size(); i++ ) {
 			final AnnotationUsage<A> annotationUsage = allUsages.get( i );
 			final Object usageName = annotationUsage.getAttributeValue( attributeToMatch );
