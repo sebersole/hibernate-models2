@@ -8,6 +8,7 @@ package org.hibernate.models.orm.xml.internal;
 
 import java.beans.Introspector;
 
+import org.hibernate.annotations.NaturalId;
 import org.hibernate.boot.jaxb.mapping.AttributesContainer;
 import org.hibernate.boot.jaxb.mapping.JaxbBasic;
 import org.hibernate.boot.jaxb.mapping.JaxbElementCollection;
@@ -15,16 +16,21 @@ import org.hibernate.boot.jaxb.mapping.JaxbEmbedded;
 import org.hibernate.boot.jaxb.mapping.JaxbHbmAnyMapping;
 import org.hibernate.boot.jaxb.mapping.JaxbHbmManyToAny;
 import org.hibernate.boot.jaxb.mapping.JaxbManyToMany;
+import org.hibernate.boot.jaxb.mapping.JaxbManyToOne;
+import org.hibernate.boot.jaxb.mapping.JaxbNaturalId;
 import org.hibernate.boot.jaxb.mapping.JaxbOneToMany;
 import org.hibernate.boot.jaxb.mapping.JaxbOneToOne;
 import org.hibernate.boot.jaxb.mapping.PersistentAttribute;
+import org.hibernate.models.orm.MemberResolutionException;
 import org.hibernate.models.source.internal.MutableClassDetails;
 import org.hibernate.models.source.internal.MutableMemberDetails;
+import org.hibernate.models.source.internal.dynamic.DynamicAnnotationUsage;
 import org.hibernate.models.source.spi.FieldDetails;
 import org.hibernate.models.source.spi.MethodDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
 import jakarta.persistence.AccessType;
+import jakarta.persistence.Embedded;
 
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
 
@@ -32,6 +38,32 @@ import static org.hibernate.internal.util.NullnessHelper.coalesce;
  * @author Steve Ebersole
  */
 public class XmlAttributeHelper {
+	/**
+	 * Find the member backing the named attribute
+	 */
+	public static MutableMemberDetails getAttributeMember(
+			String attributeName,
+			AccessType accessType,
+			MutableClassDetails classDetails,
+			SourceModelBuildingContext buildingContext) {
+		final MutableMemberDetails result = findAttributeMember(
+				attributeName,
+				accessType,
+				classDetails,
+				buildingContext
+		);
+		if ( result == null ) {
+			throw new MemberResolutionException(
+					String.format(
+							"Could not locate attribute member - %s (%s)",
+							attributeName,
+							classDetails.getName()
+					)
+			);
+		}
+		return result;
+	}
+
 	/**
 	 * Find the member backing the named attribute
 	 */
@@ -74,6 +106,57 @@ public class XmlAttributeHelper {
 		return null;
 	}
 
+	public static void handleNaturalId(
+			JaxbNaturalId jaxbNaturalId,
+			MutableClassDetails mutableClassDetails,
+			AccessType classAccessType,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( jaxbNaturalId == null ) {
+			return;
+		}
+
+		XmlAnnotationHelper.applyNaturalIdCache( jaxbNaturalId, mutableClassDetails, sourceModelBuildingContext );
+
+		jaxbNaturalId.getBasic().forEach( (jaxbBasic) -> {
+			final MutableMemberDetails backingMember = handleBasicAttribute(
+					jaxbBasic,
+					mutableClassDetails,
+					classAccessType,
+					sourceModelBuildingContext
+			);
+			XmlAnnotationHelper.applyNaturalId( jaxbNaturalId, backingMember, sourceModelBuildingContext );
+		} );
+		jaxbNaturalId.getEmbedded().forEach( (jaxbEmbedded) -> {
+			final MutableMemberDetails backingMember = handleEmbeddedAttribute(
+					jaxbEmbedded,
+					mutableClassDetails,
+					classAccessType,
+					sourceModelBuildingContext
+			);
+			XmlAnnotationHelper.applyNaturalId( jaxbNaturalId, backingMember, sourceModelBuildingContext );
+		} );
+		jaxbNaturalId.getManyToOne().forEach( (jaxbManyToOne) -> {
+			final MutableMemberDetails backingMember = handleManyToOneAttribute(
+					jaxbManyToOne,
+					mutableClassDetails,
+					classAccessType,
+					sourceModelBuildingContext
+			);
+			XmlAnnotationHelper.applyNaturalId( jaxbNaturalId, backingMember, sourceModelBuildingContext );
+		} );
+		jaxbNaturalId.getAny().forEach( (jaxbAny) -> {
+			final MutableMemberDetails backingMember = handleDiscriminatedAssociationAttribute(
+					jaxbAny,
+					mutableClassDetails,
+					classAccessType,
+					sourceModelBuildingContext
+			);
+			XmlAnnotationHelper.applyNaturalId( jaxbNaturalId, backingMember, sourceModelBuildingContext );
+		} );
+	}
+
+
+
 	public static void handleAttributes(
 			AttributesContainer attributesContainer,
 			MutableClassDetails mutableClassDetails,
@@ -108,7 +191,7 @@ public class XmlAttributeHelper {
 
 		for ( int i = 0; i < attributesContainer.getManyToOneAttributes().size(); i++ ) {
 			handleManyToOneAttribute(
-					attributesContainer.getOneToOneAttributes().get( i ),
+					attributesContainer.getManyToOneAttributes().get( i ),
 					mutableClassDetails,
 					classAccessType,
 					sourceModelBuildingContext
@@ -175,16 +258,16 @@ public class XmlAttributeHelper {
 		);
 	}
 
-	public static void handleBasicAttribute(
+	public static MutableMemberDetails handleBasicAttribute(
 			JaxbBasic jaxbBasic,
-			MutableClassDetails mutableClassDetails,
+			MutableClassDetails declarer,
 			AccessType classAccessType,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		final AccessType accessType = coalesce( jaxbBasic.getAccess(), classAccessType );
-		final MutableMemberDetails memberDetails = XmlAttributeHelper.findAttributeMember(
+		final MutableMemberDetails memberDetails = XmlAttributeHelper.getAttributeMember(
 				jaxbBasic.getName(),
 				accessType,
-				mutableClassDetails,
+				declarer,
 				sourceModelBuildingContext
 		);
 
@@ -207,17 +290,37 @@ public class XmlAttributeHelper {
 		XmlAnnotationHelper.applyEnumerated( jaxbBasic.getEnumerated(), memberDetails, sourceModelBuildingContext );
 		XmlAnnotationHelper.applyNationalized( jaxbBasic.getNationalized(), memberDetails, sourceModelBuildingContext );
 		XmlAnnotationHelper.applyJdbcTypeCode( jaxbBasic.getJdbcTypeCode(), memberDetails, sourceModelBuildingContext );
+
+		return memberDetails;
 	}
 
-	public static void handleEmbeddedAttribute(
+	public static MutableMemberDetails handleEmbeddedAttribute(
 			JaxbEmbedded jaxbEmbedded,
-			MutableClassDetails mutableClassDetails,
+			MutableClassDetails declarer,
 			AccessType classAccessType,
 			SourceModelBuildingContext sourceModelBuildingContext) {
-		throw new UnsupportedOperationException( "Support for embedded attributes not yet implemented" );
+		final AccessType accessType = coalesce( jaxbEmbedded.getAccess(), classAccessType );
+		final MutableMemberDetails memberDetails = XmlAttributeHelper.getAttributeMember(
+				jaxbEmbedded.getName(),
+				accessType,
+				declarer,
+				sourceModelBuildingContext
+		);
+
+		final DynamicAnnotationUsage<Embedded> annotationUsage = new DynamicAnnotationUsage<>(
+				Embedded.class,
+				memberDetails
+		);
+		memberDetails.addAnnotationUsage( annotationUsage );
+
+		XmlAttributeHelper.applyCommonAttributeAnnotations( jaxbEmbedded, memberDetails, accessType, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyAttributeOverrides( jaxbEmbedded.getAttributeOverride(), memberDetails, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyAssociationOverrides( jaxbEmbedded.getAssociationOverride(), memberDetails, sourceModelBuildingContext );
+
+		return memberDetails;
 	}
 
-	public static void handleOneToOneAttribute(
+	public static MutableMemberDetails handleOneToOneAttribute(
 			JaxbOneToOne jaxbOneToOne,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
@@ -225,15 +328,15 @@ public class XmlAttributeHelper {
 		throw new UnsupportedOperationException( "Support for one-to-one attributes not yet implemented" );
 	}
 
-	public static void handleManyToOneAttribute(
-			JaxbOneToOne jaxbOneToOne,
+	public static MutableMemberDetails handleManyToOneAttribute(
+			JaxbManyToOne jaxbOneToOne,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		throw new UnsupportedOperationException( "Support for many-to-one attributes not yet implemented" );
 	}
 
-	public static void handleDiscriminatedAssociationAttribute(
+	public static MutableMemberDetails handleDiscriminatedAssociationAttribute(
 			JaxbHbmAnyMapping jaxbHbmAnyMapping,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
@@ -241,7 +344,7 @@ public class XmlAttributeHelper {
 		throw new UnsupportedOperationException( "Support for any attributes not yet implemented" );
 	}
 
-	public static void handleElementCollectionAttribute(
+	public static MutableMemberDetails handleElementCollectionAttribute(
 			JaxbElementCollection jaxbElementCollection,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
@@ -249,7 +352,7 @@ public class XmlAttributeHelper {
 		throw new UnsupportedOperationException( "Support for element-collection attributes not yet implemented" );
 	}
 
-	public static void handleOneToManyAttribute(
+	public static MutableMemberDetails handleOneToManyAttribute(
 			JaxbOneToMany jaxbOneToMany,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
@@ -257,7 +360,7 @@ public class XmlAttributeHelper {
 		throw new UnsupportedOperationException( "Support for one-to-many attributes not yet implemented" );
 	}
 
-	public static void handleManyToManyAttribute(
+	public static MutableMemberDetails handleManyToManyAttribute(
 			JaxbManyToMany jaxbManyToMany,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
@@ -265,7 +368,7 @@ public class XmlAttributeHelper {
 		throw new UnsupportedOperationException( "Support for many-to-many attributes not yet implemented" );
 	}
 
-	public static void handlePluralDiscriminatedAssociationAttribute(
+	public static MutableMemberDetails handlePluralDiscriminatedAssociationAttribute(
 			JaxbHbmManyToAny jaxbHbmManyToAny,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,

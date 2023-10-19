@@ -6,15 +6,21 @@
  */
 package org.hibernate.models.orm.xml.internal;
 
+import java.util.List;
+import java.util.Map;
+
 import org.hibernate.boot.jaxb.mapping.JaxbAttributes;
+import org.hibernate.boot.jaxb.mapping.JaxbEmbeddable;
+import org.hibernate.boot.jaxb.mapping.JaxbEmbeddableAttributes;
 import org.hibernate.boot.jaxb.mapping.JaxbEmbeddedId;
 import org.hibernate.boot.jaxb.mapping.JaxbEntity;
 import org.hibernate.boot.jaxb.mapping.JaxbEntityMappings;
 import org.hibernate.boot.jaxb.mapping.JaxbId;
+import org.hibernate.boot.jaxb.mapping.JaxbMappedSuperclass;
+import org.hibernate.boot.jaxb.mapping.ManagedType;
 import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.orm.xml.spi.PersistenceUnitMetadata;
-import org.hibernate.models.source.internal.MutableAnnotationTarget;
 import org.hibernate.models.source.internal.MutableClassDetails;
 import org.hibernate.models.source.internal.MutableMemberDetails;
 import org.hibernate.models.source.internal.dynamic.DynamicAnnotationUsage;
@@ -23,6 +29,7 @@ import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
 import jakarta.persistence.AccessType;
+import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
@@ -32,12 +39,41 @@ import static org.hibernate.internal.util.NullnessHelper.coalesce;
  */
 public class XmlManagedTypeHelper {
 
-	private static String determineClassName(JaxbEntityMappings jaxbRoot, JaxbEntity jaxbEntity) {
-		if ( StringHelper.isQualified( jaxbEntity.getClazz() ) ) {
-			return jaxbEntity.getClazz();
+	private static String determineClassName(JaxbEntityMappings jaxbRoot, ManagedType jaxbManagedType) {
+		if ( StringHelper.isQualified( jaxbManagedType.getClazz() ) ) {
+			return jaxbManagedType.getClazz();
 		}
 
-		return StringHelper.qualify( jaxbEntity.getClazz(), jaxbRoot.getPackage() );
+		return StringHelper.qualify( jaxbManagedType.getClazz(), jaxbRoot.getPackage() );
+	}
+
+	public static void makeCompleteMappedSuperclassMapping(
+			JaxbEntityMappings jaxbRoot,
+			JaxbMappedSuperclass jaxbMappedSuperclass,
+			PersistenceUnitMetadata persistenceUnitMetadata,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		// todo : should we allow mapped-superclass in dynamic models?
+		//		that would need a change in XSD
+
+		final String className = determineClassName( jaxbRoot, jaxbMappedSuperclass );
+		final MutableClassDetails classDetails = (MutableClassDetails) sourceModelBuildingContext
+				.getClassDetailsRegistry()
+				.resolveClassDetails( className );
+
+		final AccessType classAccessType = coalesce(
+				jaxbMappedSuperclass.getAccess(),
+				persistenceUnitMetadata.getAccessType()
+		);
+
+		final JaxbAttributes attributes = jaxbMappedSuperclass.getAttributes();
+		handleIdMappings( attributes, classAccessType, classDetails, sourceModelBuildingContext );
+
+		XmlAttributeHelper.handleNaturalId( attributes.getNaturalId(), classDetails, classAccessType, sourceModelBuildingContext );
+		XmlAttributeHelper.handleAttributes( attributes, classDetails, classAccessType, sourceModelBuildingContext );
+
+		// todo : id-class
+		// todo : entity-listeners
+		// todo : callbacks
 	}
 
 	public static void makeCompleteEntityMapping(
@@ -45,12 +81,12 @@ public class XmlManagedTypeHelper {
 			JaxbEntity jaxbEntity,
 			PersistenceUnitMetadata persistenceUnitMetadata,
 			SourceModelBuildingContext sourceModelBuildingContext) {
-		final ClassDetails classDetails;
+		final MutableClassDetails classDetails;
 
 		if ( StringHelper.isEmpty( jaxbEntity.getClazz() ) ) {
 			// should indicate a dynamic entity
 			assert StringHelper.isNotEmpty( jaxbEntity.getName() );
-			classDetails = sourceModelBuildingContext.getClassDetailsRegistry().resolveClassDetails(
+			classDetails = (MutableClassDetails) sourceModelBuildingContext.getClassDetailsRegistry().resolveClassDetails(
 					jaxbEntity.getName(),
 					() -> new DynamicClassDetails(
 								jaxbEntity.getName(),
@@ -63,21 +99,18 @@ public class XmlManagedTypeHelper {
 		}
 		else {
 			final String className = determineClassName( jaxbRoot, jaxbEntity );
-			classDetails = sourceModelBuildingContext.getClassDetailsRegistry().resolveClassDetails( className );
+			classDetails = (MutableClassDetails) sourceModelBuildingContext.getClassDetailsRegistry().resolveClassDetails( className );
 		}
 
-		final MutableClassDetails mutableClassDetails = (MutableClassDetails) classDetails;
-		mutableClassDetails.clearMemberAnnotationUsages();
-
-		final MutableAnnotationTarget annotationTarget = (MutableAnnotationTarget) classDetails;
-		annotationTarget.clearAnnotationUsages();
+		classDetails.clearMemberAnnotationUsages();
+		classDetails.clearAnnotationUsages();
 
 		final DynamicAnnotationUsage<Entity> entityAnn = new DynamicAnnotationUsage<>( Entity.class, classDetails );
 		entityAnn.setAttributeValue( "name", jaxbEntity.getName() );
-		annotationTarget.addAnnotationUsage( entityAnn );
+		classDetails.addAnnotationUsage( entityAnn );
 
 		if ( jaxbEntity.getTable() != null ) {
-			XmlAnnotationHelper.applyTable( jaxbEntity.getTable(), (MutableAnnotationTarget) classDetails, persistenceUnitMetadata );
+			XmlAnnotationHelper.applyTable( jaxbEntity.getTable(), classDetails, persistenceUnitMetadata );
 		}
 
 		final AccessType classAccessType = coalesce(
@@ -85,9 +118,25 @@ public class XmlManagedTypeHelper {
 				persistenceUnitMetadata.getAccessType()
 		);
 
-		annotationTarget.addAnnotationUsage( XmlAnnotationHelper.createAccessAnnotation( classAccessType, annotationTarget ) );
+		classDetails.addAnnotationUsage( XmlAnnotationHelper.createAccessAnnotation( classAccessType, classDetails ) );
 
 		final JaxbAttributes attributes = jaxbEntity.getAttributes();
+		handleIdMappings( attributes, classAccessType, classDetails, sourceModelBuildingContext );
+
+		XmlAttributeHelper.handleNaturalId( attributes.getNaturalId(), classDetails, classAccessType, sourceModelBuildingContext );
+		XmlAttributeHelper.handleAttributes( jaxbEntity.getAttributes(), classDetails, classAccessType, sourceModelBuildingContext );
+
+		// todo : id-class
+		// todo : entity-listeners
+		// todo : callbacks
+		// todo : secondary-tables
+	}
+
+	private static void handleIdMappings(
+			JaxbAttributes attributes,
+			AccessType classAccessType,
+			MutableClassDetails classDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
 		if ( CollectionHelper.isNotEmpty( attributes.getId() ) ) {
 			for ( int i = 0; i < attributes.getId().size(); i++ ) {
 				final JaxbId jaxbId = attributes.getId().get( i );
@@ -95,22 +144,59 @@ public class XmlManagedTypeHelper {
 				final MutableMemberDetails memberDetails = XmlAttributeHelper.findAttributeMember(
 						jaxbId.getName(),
 						accessType,
-						mutableClassDetails,
+						classDetails,
 						sourceModelBuildingContext
 				);
 
-				XmlAttributeHelper.applyCommonAttributeAnnotations( jaxbId, memberDetails, accessType, sourceModelBuildingContext );
+				XmlAttributeHelper.applyCommonAttributeAnnotations(
+						jaxbId,
+						memberDetails,
+						accessType,
+						sourceModelBuildingContext
+				);
 
-				XmlAnnotationHelper.applyColumn( jaxbId.getColumn(), memberDetails, sourceModelBuildingContext );
+				XmlAnnotationHelper.applyColumn(
+						jaxbId.getColumn(),
+						memberDetails,
+						sourceModelBuildingContext
+				);
 
-				XmlAnnotationHelper.applyUserType( jaxbId.getType(), memberDetails, sourceModelBuildingContext );
-				XmlAnnotationHelper.applyJdbcTypeCode( jaxbId.getJdbcTypeCode(), memberDetails, sourceModelBuildingContext );
-				XmlAnnotationHelper.applyTemporal( jaxbId.getTemporal(), memberDetails, sourceModelBuildingContext );
+				XmlAnnotationHelper.applyUserType(
+						jaxbId.getType(),
+						memberDetails,
+						sourceModelBuildingContext
+				);
+				XmlAnnotationHelper.applyJdbcTypeCode(
+						jaxbId.getJdbcTypeCode(),
+						memberDetails,
+						sourceModelBuildingContext
+				);
+				XmlAnnotationHelper.applyTemporal(
+						jaxbId.getTemporal(),
+						memberDetails,
+						sourceModelBuildingContext
+				);
 
-				XmlAnnotationHelper.applyGeneratedValue( jaxbId.getGeneratedValue(), memberDetails, sourceModelBuildingContext );
-				XmlAnnotationHelper.applySequenceGenerator( jaxbId.getSequenceGenerator(), memberDetails, sourceModelBuildingContext );
-				XmlAnnotationHelper.applyTableGenerator( jaxbId.getTableGenerator(), memberDetails, sourceModelBuildingContext );
-				XmlAnnotationHelper.applyUuidGenerator( jaxbId.getUuidGenerator(), memberDetails, sourceModelBuildingContext );
+				XmlAnnotationHelper.applyGeneratedValue(
+						jaxbId.getGeneratedValue(),
+						memberDetails,
+						sourceModelBuildingContext
+				);
+				XmlAnnotationHelper.applySequenceGenerator(
+						jaxbId.getSequenceGenerator(),
+						memberDetails,
+						sourceModelBuildingContext
+				);
+				XmlAnnotationHelper.applyTableGenerator(
+						jaxbId.getTableGenerator(),
+						memberDetails,
+						sourceModelBuildingContext
+				);
+				XmlAnnotationHelper.applyUuidGenerator(
+						jaxbId.getUuidGenerator(),
+						memberDetails,
+						sourceModelBuildingContext
+				);
 
 				// todo : unsaved-value?
 			}
@@ -119,24 +205,72 @@ public class XmlManagedTypeHelper {
 			final JaxbEmbeddedId jaxbEmbeddedId = attributes.getEmbeddedId();
 			assert jaxbEmbeddedId != null;
 			final AccessType accessType = coalesce( jaxbEmbeddedId.getAccess(), classAccessType );
-
 			final MutableMemberDetails memberDetails = XmlAttributeHelper.findAttributeMember(
 					jaxbEmbeddedId.getName(),
 					accessType,
-					mutableClassDetails,
+					classDetails,
 					sourceModelBuildingContext
 			);
 
-			XmlAnnotationHelper.applyAccess( accessType, memberDetails, sourceModelBuildingContext );
-			XmlAnnotationHelper.applyAttributeAccessor( jaxbEmbeddedId.getAttributeAccessor(), memberDetails, sourceModelBuildingContext );
+			XmlAttributeHelper.applyCommonAttributeAnnotations(
+					jaxbEmbeddedId,
+					memberDetails,
+					accessType,
+					sourceModelBuildingContext
+			);
 
-			XmlAnnotationHelper.applyAttributeOverrides( jaxbEmbeddedId.getAttributeOverride(), memberDetails, sourceModelBuildingContext );
+			XmlAnnotationHelper.applyAttributeOverrides(
+					jaxbEmbeddedId.getAttributeOverride(),
+					memberDetails,
+					sourceModelBuildingContext
+			);
 		}
+	}
 
-		if ( attributes.getNaturalId() != null ) {
-			throw new UnsupportedOperationException( "Support for natural-id not yet implemented" );
-		}
+	public static void makeCompleteEmbeddableMapping(
+			JaxbEntityMappings jaxbRoot,
+			JaxbEmbeddable jaxbEmbeddable,
+			PersistenceUnitMetadata persistenceUnitMetadata,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		// todo : add support for dynamic embeddables in XSD
+		final String className = determineClassName( jaxbRoot, jaxbEmbeddable );
+		final MutableClassDetails classDetails = (MutableClassDetails) sourceModelBuildingContext
+				.getClassDetailsRegistry()
+				.resolveClassDetails( className );
 
-		XmlAttributeHelper.handleAttributes( jaxbEntity.getAttributes(), mutableClassDetails, classAccessType, sourceModelBuildingContext );
+		classDetails.clearMemberAnnotationUsages();
+		classDetails.clearAnnotationUsages();
+
+		final DynamicAnnotationUsage<Embeddable> embeddableAnn = new DynamicAnnotationUsage<>( Embeddable.class, classDetails );
+		classDetails.addAnnotationUsage( embeddableAnn );
+
+		final AccessType classAccessType = coalesce(
+				jaxbEmbeddable.getAccess(),
+				persistenceUnitMetadata.getAccessType()
+		);
+
+		classDetails.addAnnotationUsage( XmlAnnotationHelper.createAccessAnnotation( classAccessType, classDetails ) );
+
+		final JaxbEmbeddableAttributes attributes = jaxbEmbeddable.getAttributes();
+		XmlAttributeHelper.handleAttributes( attributes, classDetails, classAccessType, sourceModelBuildingContext );
+
+	}
+
+	public static void applyMappedSuperclassOverrides(
+			Map<String, ClassDetails> mappedSuperClasses,
+			List<JaxbMappedSuperclass> mappedSuperclassesOverrides) {
+
+	}
+
+	public static void applyEntityOverrides(
+			Map<String, ClassDetails> allEntities,
+			List<JaxbEntity> entityOverrides) {
+
+	}
+
+	public static void applyEmbeddableOverrides(
+			Map<String, ClassDetails> embeddables,
+			List<JaxbEmbeddable> embeddableOverrides) {
+
 	}
 }

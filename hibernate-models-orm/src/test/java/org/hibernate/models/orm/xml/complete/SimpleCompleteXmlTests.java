@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright: Red Hat Inc. and Hibernate Authors
  */
-package org.hibernate.models.orm.xml;
+package org.hibernate.models.orm.xml.complete;
 
 import org.hibernate.models.orm.internal.ManagedResourcesImpl;
 import org.hibernate.models.orm.spi.AttributeMetadata;
@@ -13,6 +13,7 @@ import org.hibernate.models.orm.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.spi.ManagedResources;
 import org.hibernate.models.orm.spi.ProcessResult;
 import org.hibernate.models.orm.spi.Processor;
+import org.hibernate.models.orm.xml.SimpleEntity;
 import org.hibernate.models.source.SourceModelTestHelper;
 import org.hibernate.models.source.internal.SourceModelBuildingContextImpl;
 import org.hibernate.models.source.spi.AnnotationUsage;
@@ -34,7 +35,7 @@ public class SimpleCompleteXmlTests {
 	void testSimpleCompleteEntity() {
 
 		final ManagedResourcesImpl.Builder managedResourcesBuilder = new ManagedResourcesImpl.Builder();
-		managedResourcesBuilder.addXmlMappings( "mappings/simple-complete.xml" );
+		managedResourcesBuilder.addXmlMappings( "mappings/complete/simple-complete.xml" );
 		final ManagedResources managedResources = managedResourcesBuilder.build();
 
 		final Index jandexIndex = SourceModelTestHelper.buildJandexIndex(
@@ -71,11 +72,13 @@ public class SimpleCompleteXmlTests {
 		assertThat( root.getNumberOfAttributes() ).isEqualTo( 2 );
 
 		final AttributeMetadata idAttribute = root.findAttribute( "id" );
+		assertThat( idAttribute.getNature() ).isEqualTo( AttributeMetadata.AttributeNature.BASIC );
 		final AnnotationUsage<Column> idColumnAnn = idAttribute.getMember().getAnnotationUsage( Column.class );
 		assertThat( idColumnAnn ).isNotNull();
 		assertThat( idColumnAnn.<String>getAttributeValue( "name" ) ).isEqualTo( "pk" );
 
 		final AttributeMetadata nameAttribute = root.findAttribute( "name" );
+		assertThat( nameAttribute.getNature() ).isEqualTo( AttributeMetadata.AttributeNature.BASIC );
 		final AnnotationUsage<Column> nameColumnAnn = nameAttribute.getMember().getAnnotationUsage( Column.class );
 		assertThat( nameColumnAnn ).isNotNull();
 		assertThat( nameColumnAnn.<String>getAttributeValue( "name" ) ).isEqualTo( "description" );

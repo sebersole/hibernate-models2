@@ -13,12 +13,16 @@ import org.hibernate.annotations.AttributeAccessor;
 import org.hibernate.annotations.Formula;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Nationalized;
+import org.hibernate.annotations.NaturalId;
+import org.hibernate.annotations.NaturalIdCache;
 import org.hibernate.annotations.OptimisticLock;
 import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.boot.jaxb.mapping.JaxbAssociationOverride;
 import org.hibernate.boot.jaxb.mapping.JaxbAttributeOverride;
 import org.hibernate.boot.jaxb.mapping.JaxbBasic;
+import org.hibernate.boot.jaxb.mapping.JaxbCaching;
 import org.hibernate.boot.jaxb.mapping.JaxbColumn;
 import org.hibernate.boot.jaxb.mapping.JaxbColumnType;
 import org.hibernate.boot.jaxb.mapping.JaxbConfigurationParameter;
@@ -26,6 +30,7 @@ import org.hibernate.boot.jaxb.mapping.JaxbConvert;
 import org.hibernate.boot.jaxb.mapping.JaxbGeneratedValue;
 import org.hibernate.boot.jaxb.mapping.JaxbLob;
 import org.hibernate.boot.jaxb.mapping.JaxbNationalized;
+import org.hibernate.boot.jaxb.mapping.JaxbNaturalId;
 import org.hibernate.boot.jaxb.mapping.JaxbSequenceGenerator;
 import org.hibernate.boot.jaxb.mapping.JaxbTable;
 import org.hibernate.boot.jaxb.mapping.JaxbTableGenerator;
@@ -34,6 +39,7 @@ import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.orm.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.models.source.internal.MutableAnnotationTarget;
+import org.hibernate.models.source.internal.MutableClassDetails;
 import org.hibernate.models.source.internal.MutableMemberDetails;
 import org.hibernate.models.source.internal.dynamic.DynamicAnnotationUsage;
 import org.hibernate.models.source.spi.AnnotationTarget;
@@ -44,6 +50,7 @@ import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
+import jakarta.persistence.AssociationOverride;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Basic;
 import jakarta.persistence.Column;
@@ -373,10 +380,34 @@ public class XmlAnnotationHelper {
 		}
 
 		jaxbOverrides.forEach( (jaxbOverride) -> {
-			final DynamicAnnotationUsage<AttributeOverride> annotationUsage = new DynamicAnnotationUsage<>( AttributeOverride.class, memberDetails );
+			final DynamicAnnotationUsage<AttributeOverride> annotationUsage = new DynamicAnnotationUsage<>(
+					AttributeOverride.class,
+					memberDetails
+			);
 			memberDetails.addAnnotationUsage( annotationUsage );
 			annotationUsage.setAttributeValue( "name", jaxbOverride.getName() );
 			annotationUsage.setAttributeValue( "column", createColumnAnnotation( jaxbOverride.getColumn(), memberDetails ) );
+		} );
+	}
+
+	public static void applyAssociationOverrides(
+			List<JaxbAssociationOverride> jaxbOverrides,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( CollectionHelper.isEmpty( jaxbOverrides ) ) {
+			return;
+		}
+
+		jaxbOverrides.forEach( (jaxbOverride) -> {
+			final DynamicAnnotationUsage<AssociationOverride> annotationUsage = new DynamicAnnotationUsage<>(
+					AssociationOverride.class,
+					memberDetails
+			);
+			memberDetails.addAnnotationUsage( annotationUsage );
+			annotationUsage.setAttributeValue( "name", jaxbOverride.getName() );
+			// todo : join columns
+			// todo : join table
+			// todo : foreign key
 		} );
 	}
 
@@ -431,5 +462,38 @@ public class XmlAnnotationHelper {
 		// todo : indexes
 		target.addAnnotationUsage( tableAnn );
 
+	}
+
+	public static void applyNaturalId(
+			JaxbNaturalId jaxbNaturalId,
+			MutableMemberDetails backingMember,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( jaxbNaturalId == null ) {
+			return;
+		}
+		final DynamicAnnotationUsage<NaturalId> annotationUsage = new DynamicAnnotationUsage<>(
+				NaturalId.class,
+				backingMember
+		);
+		backingMember.addAnnotationUsage( annotationUsage );
+		annotationUsage.setAttributeValue( "mutable", jaxbNaturalId.isMutable() );
+	}
+
+	public static void applyNaturalIdCache(
+			JaxbNaturalId jaxbNaturalId,
+			MutableClassDetails classDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( jaxbNaturalId == null || jaxbNaturalId.getCache() == null ) {
+			return;
+		}
+
+		final DynamicAnnotationUsage<NaturalIdCache> annotationUsage = new DynamicAnnotationUsage<>(
+				NaturalIdCache.class,
+				classDetails
+		);
+		classDetails.addAnnotationUsage( annotationUsage );
+
+		final JaxbCaching jaxbCaching = jaxbNaturalId.getCache();
+		annotationUsage.setAttributeValue( "region", jaxbCaching.getRegion() );
 	}
 }
