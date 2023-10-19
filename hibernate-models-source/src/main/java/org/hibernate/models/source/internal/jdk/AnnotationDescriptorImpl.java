@@ -102,43 +102,43 @@ public class AnnotationDescriptorImpl<A extends Annotation> implements Annotatio
 	}
 
 	@Override
-	public <X extends Annotation> AnnotationUsage<X> getUsage(AnnotationDescriptor<X> descriptor) {
+	public <X extends Annotation> AnnotationUsage<X> getAnnotationUsage(AnnotationDescriptor<X> descriptor) {
 		// there are none
 		return null;
 	}
 
 	@Override
-	public <X extends Annotation> AnnotationUsage<X> getUsage(Class<X> type) {
+	public <X extends Annotation> AnnotationUsage<X> getAnnotationUsage(Class<X> type) {
 		// there are none
 		return null;
 	}
 
 	@Override
-	public <X extends Annotation> List<AnnotationUsage<X>> getRepeatedUsages(AnnotationDescriptor<X> type) {
+	public <X extends Annotation> List<AnnotationUsage<X>> getRepeatedAnnotationUsages(AnnotationDescriptor<X> type) {
 		// there are none
 		return null;
 	}
 
 	@Override
-	public <X extends Annotation> List<AnnotationUsage<X>> getRepeatedUsages(Class<X> type) {
+	public <X extends Annotation> List<AnnotationUsage<X>> getRepeatedAnnotationUsages(Class<X> type) {
 		// there are none
 		return null;
 	}
 
 	@Override
-	public <X extends Annotation> void forEachUsage(
+	public <X extends Annotation> void forEachAnnotationUsage(
 			AnnotationDescriptor<X> type,
 			Consumer<AnnotationUsage<X>> consumer) {
 		// there are none
 	}
 
 	@Override
-	public <X extends Annotation> void forEachUsage(Class<X> type, Consumer<AnnotationUsage<X>> consumer) {
+	public <X extends Annotation> void forEachAnnotationUsage(Class<X> type, Consumer<AnnotationUsage<X>> consumer) {
 		// there are none
 	}
 
 	@Override
-	public <X extends Annotation> AnnotationUsage<X> getNamedUsage(
+	public <X extends Annotation> AnnotationUsage<X> getNamedAnnotationUsage(
 			AnnotationDescriptor<X> type,
 			String matchName,
 			String attributeToMatch) {
@@ -147,7 +147,7 @@ public class AnnotationDescriptorImpl<A extends Annotation> implements Annotatio
 	}
 
 	@Override
-	public <X extends Annotation> AnnotationUsage<X> getNamedUsage(
+	public <X extends Annotation> AnnotationUsage<X> getNamedAnnotationUsage(
 			Class<X> type,
 			String matchName,
 			String attributeToMatch) {

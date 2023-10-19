@@ -78,7 +78,7 @@ public abstract class AbstractIdentifiableTypeMetadata
 	}
 
 	private AccessType determineAccessType(AccessType defaultAccessType) {
-		final AnnotationUsage<Access> annotation = getClassDetails().getUsage( JpaAnnotations.ACCESS );
+		final AnnotationUsage<Access> annotation = getClassDetails().getAnnotationUsage( JpaAnnotations.ACCESS );
 		if ( annotation != null ) {
 			return annotation.getAttributeValue( "value" );
 		}
@@ -162,11 +162,11 @@ public abstract class AbstractIdentifiableTypeMetadata
 	}
 
 	protected boolean isMappedSuperclass(ClassDetails classDetails) {
-		return classDetails.getUsage( JpaAnnotations.MAPPED_SUPERCLASS ) != null;
+		return classDetails.getAnnotationUsage( JpaAnnotations.MAPPED_SUPERCLASS ) != null;
 	}
 
 	protected boolean isEntity(ClassDetails classDetails) {
-		return classDetails.getUsage( JpaAnnotations.ENTITY ) != null;
+		return classDetails.getAnnotationUsage( JpaAnnotations.ENTITY ) != null;
 	}
 
 	private void walkSubclasses(

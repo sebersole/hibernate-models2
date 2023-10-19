@@ -57,4 +57,14 @@ public abstract class AbstractAnnotationTarget implements AnnotationTargetSuppor
 		);
 		return result;
 	}
+
+	@Override
+	public void clearAnnotationUsages() {
+		getUsageMap().clear();
+	}
+
+	@Override
+	public <X extends Annotation> void addAnnotationUsage(AnnotationUsage<X> annotationUsage) {
+		getUsageMap().put( annotationUsage.getAnnotationType(), annotationUsage );
+	}
 }

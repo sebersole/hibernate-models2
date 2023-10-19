@@ -70,7 +70,7 @@ public class EntityTypeMetadataImpl
 		// all of which `ClassDetails#getName` already handles for us
 		this.entityName = getClassDetails().getName();
 
-		final AnnotationUsage<Entity> entityAnnotation = classDetails.getUsage( JpaAnnotations.ENTITY );
+		final AnnotationUsage<Entity> entityAnnotation = classDetails.getAnnotationUsage( JpaAnnotations.ENTITY );
 		this.jpaEntityName = determineJpaEntityName( entityAnnotation, entityName );
 
 //		this.synchronizedTableNames = determineSynchronizedTableNames();
@@ -144,7 +144,7 @@ public class EntityTypeMetadataImpl
 		// all of which `ClassDetails#getName` already handles for us
 		this.entityName = getClassDetails().getName();
 
-		final AnnotationUsage<Entity> entityAnnotation = classDetails.getUsage( JpaAnnotations.ENTITY );
+		final AnnotationUsage<Entity> entityAnnotation = classDetails.getAnnotationUsage( JpaAnnotations.ENTITY );
 		this.jpaEntityName = determineJpaEntityName( entityAnnotation, entityName );
 
 		this.attributeList = resolveAttributes();

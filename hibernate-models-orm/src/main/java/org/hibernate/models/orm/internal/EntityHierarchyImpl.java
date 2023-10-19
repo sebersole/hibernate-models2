@@ -74,7 +74,7 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 	 * @apiNote Used when building the {@link EntityHierarchy}
 	 */
 	private static InheritanceType getLocallyDefinedInheritanceType(ClassDetails managedClass) {
-		final AnnotationUsage<Inheritance> localAnnotation = managedClass.getUsage( JpaAnnotations.INHERITANCE );
+		final AnnotationUsage<Inheritance> localAnnotation = managedClass.getAnnotationUsage( JpaAnnotations.INHERITANCE );
 		if ( localAnnotation == null ) {
 			return null;
 		}

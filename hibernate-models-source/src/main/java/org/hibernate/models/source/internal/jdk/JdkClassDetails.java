@@ -36,8 +36,8 @@ public class JdkClassDetails extends AbstractAnnotationTarget implements ClassDe
 	private final ClassDetails superType;
 	private List<ClassDetails> interfaces;
 
-	private List<JdkFieldDetails> fields;
-	private List<JdkMethodDetails> methods;
+	private List<FieldDetails> fields;
+	private List<MethodDetails> methods;
 
 	public JdkClassDetails(
 			Class<?> managedClass,
@@ -144,8 +144,12 @@ public class JdkClassDetails extends AbstractAnnotationTarget implements ClassDe
 				fields.add( new JdkFieldDetails( reflectionField, getBuildingContext() ) );
 			}
 		}
-		//noinspection unchecked,rawtypes
-		return (List) fields;
+		return fields;
+	}
+
+	@Override
+	public void addField(FieldDetails fieldDetails) {
+		getFields().add( fieldDetails );
 	}
 
 	@Override
@@ -157,8 +161,12 @@ public class JdkClassDetails extends AbstractAnnotationTarget implements ClassDe
 				this.methods.add( buildMethodDetails( reflectionMethods[i], getBuildingContext() ) );
 			}
 		}
-		//noinspection unchecked,rawtypes
-		return (List) methods;
+		return methods;
+	}
+
+	@Override
+	public void addMethod(MethodDetails methodDetails) {
+		getMethods().add( methodDetails );
 	}
 
 	@Override

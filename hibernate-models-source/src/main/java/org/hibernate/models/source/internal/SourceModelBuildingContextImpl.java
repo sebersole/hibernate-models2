@@ -70,12 +70,12 @@ public class SourceModelBuildingContextImpl implements SourceModelBuildingContex
 	}
 
 	@Override
-	public <A extends Annotation> List<AnnotationUsage<A>> getAllUsages(Class<A> annotationType) {
+	public <A extends Annotation> List<AnnotationUsage<A>> getAllAnnotationUsages(Class<A> annotationType) {
 		throw new UnsupportedOperationException( "Not yet implemented" );
 	}
 
 	@Override
-	public <A extends Annotation> void forEachUsage(Class<A> annotationType, Consumer<AnnotationUsage<A>> consumer) {
+	public <A extends Annotation> void forEachAnnotationUsage(Class<A> annotationType, Consumer<AnnotationUsage<A>> consumer) {
 		throw new UnsupportedOperationException( "Not yet implemented" );
 	}
 

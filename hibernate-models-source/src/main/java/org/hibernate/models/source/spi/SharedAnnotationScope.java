@@ -7,7 +7,6 @@
 package org.hibernate.models.source.spi;
 
 import java.lang.annotation.Annotation;
-import java.lang.annotation.Repeatable;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -20,17 +19,17 @@ import java.util.function.Consumer;
  * @author Steve Ebersole
  */
 public interface SharedAnnotationScope {
-	<A extends Annotation> List<AnnotationUsage<A>> getAllUsages(Class<A> annotationType);
+	<A extends Annotation> List<AnnotationUsage<A>> getAllAnnotationUsages(Class<A> annotationType);
 
-	default <A extends Annotation> List<AnnotationUsage<A>> getAllUsages(AnnotationDescriptor<A> annotationDescriptor) {
-		return getAllUsages( annotationDescriptor.getAnnotationType() );
+	default <A extends Annotation> List<AnnotationUsage<A>> getAllAnnotationUsages(AnnotationDescriptor<A> annotationDescriptor) {
+		return getAllAnnotationUsages( annotationDescriptor.getAnnotationType() );
 	}
 
-	<A extends Annotation> void forEachUsage(Class<A> annotationType, Consumer<AnnotationUsage<A>> consumer);
+	<A extends Annotation> void forEachAnnotationUsage(Class<A> annotationType, Consumer<AnnotationUsage<A>> consumer);
 
-	default <A extends Annotation> void forEachUsage(
+	default <A extends Annotation> void forEachAnnotationUsage(
 			AnnotationDescriptor<A> annotationDescriptor,
 			Consumer<AnnotationUsage<A>> consumer) {
-		forEachUsage( annotationDescriptor.getAnnotationType(), consumer );
+		forEachAnnotationUsage( annotationDescriptor.getAnnotationType(), consumer );
 	}
 }

@@ -56,12 +56,12 @@ public interface AnnotationTarget {
 	 *
 	 * @return The usage or {@code null}
 	 */
-	<A extends Annotation> AnnotationUsage<A> getUsage(AnnotationDescriptor<A> descriptor);
+	<A extends Annotation> AnnotationUsage<A> getAnnotationUsage(AnnotationDescriptor<A> descriptor);
 
 	/**
-	 * Helper form of {@link #getUsage(AnnotationDescriptor)}
+	 * Helper form of {@link #getAnnotationUsage(AnnotationDescriptor)}
 	 */
-	<A extends Annotation> AnnotationUsage<A> getUsage(Class<A> type);
+	<A extends Annotation> AnnotationUsage<A> getAnnotationUsage(Class<A> type);
 
 	/**
 	 * Get all usages of the specified {@code annotationType} in this scope.
@@ -81,12 +81,12 @@ public interface AnnotationTarget {
 	 *
 	 * @apiNote If the passed annotation type is not repeatable, an empty list is returned.
 	 */
-	<A extends Annotation> List<AnnotationUsage<A>> getRepeatedUsages(AnnotationDescriptor<A> type);
+	<A extends Annotation> List<AnnotationUsage<A>> getRepeatedAnnotationUsages(AnnotationDescriptor<A> type);
 
 	/**
-	 * Helper form of {@linkplain #getRepeatedUsages(AnnotationDescriptor)}
+	 * Helper form of {@linkplain #getRepeatedAnnotationUsages(AnnotationDescriptor)}
 	 */
-	<A extends Annotation> List<AnnotationUsage<A>> getRepeatedUsages(Class<A> type);
+	<A extends Annotation> List<AnnotationUsage<A>> getRepeatedAnnotationUsages(Class<A> type);
 
 	/**
 	 * Call the {@code consumer} for each {@linkplain AnnotationUsage usage} of the
@@ -95,10 +95,10 @@ public interface AnnotationTarget {
 	 * @apiNote For {@linkplain Repeatable repeatable} annotation types, the consumer will also be
 	 * called for those defined on the container.
 	 */
-	default <X extends Annotation> void forEachUsage(
+	default <X extends Annotation> void forEachAnnotationUsage(
 			AnnotationDescriptor<X> type,
 			Consumer<AnnotationUsage<X>> consumer) {
-		final List<AnnotationUsage<X>> annotations = getRepeatedUsages( type );
+		final List<AnnotationUsage<X>> annotations = getRepeatedAnnotationUsages( type );
 		if ( annotations == null ) {
 			return;
 		}
@@ -106,9 +106,9 @@ public interface AnnotationTarget {
 	}
 
 	/**
-	 * Helper form of {@link #forEachUsage(AnnotationDescriptor, Consumer)}
+	 * Helper form of {@link #forEachAnnotationUsage(AnnotationDescriptor, Consumer)}
 	 */
-	<X extends Annotation> void forEachUsage(Class<X> type, Consumer<AnnotationUsage<X>> consumer);
+	<X extends Annotation> void forEachAnnotationUsage(Class<X> type, Consumer<AnnotationUsage<X>> consumer);
 
 	/**
 	 * Get a usage of the given annotation {@code type} whose {@code attributeToMatch} attribute value
@@ -116,19 +116,19 @@ public interface AnnotationTarget {
 	 *
 	 * @param matchName The name to match.
 	 */
-	default <X extends Annotation> AnnotationUsage<X> getNamedUsage(
+	default <X extends Annotation> AnnotationUsage<X> getNamedAnnotationUsage(
 			AnnotationDescriptor<X> type,
 			String matchName) {
-		return getNamedUsage( type, matchName, "name" );
+		return getNamedAnnotationUsage( type, matchName, "name" );
 	}
 
 	/**
-	 * Helper form of {@linkplain #getNamedUsage(AnnotationDescriptor, String)}
+	 * Helper form of {@linkplain #getNamedAnnotationUsage(AnnotationDescriptor, String)}
 	 */
-	default <X extends Annotation> AnnotationUsage<X> getNamedUsage(
+	default <X extends Annotation> AnnotationUsage<X> getNamedAnnotationUsage(
 			Class<X> type,
 			String matchName) {
-		return getNamedUsage( type, matchName, "name" );
+		return getNamedAnnotationUsage( type, matchName, "name" );
 	}
 
 	/**
@@ -138,15 +138,15 @@ public interface AnnotationTarget {
 	 * @param matchName The name to match.
 	 * @param attributeToMatch Name of the attribute to match on.
 	 */
-	<X extends Annotation> AnnotationUsage<X> getNamedUsage(
+	<X extends Annotation> AnnotationUsage<X> getNamedAnnotationUsage(
 			AnnotationDescriptor<X> type,
 			String matchName,
 			String attributeToMatch);
 
 	/**
-	 * Helper form of {@linkplain #getNamedUsage(AnnotationDescriptor, String, String)}
+	 * Helper form of {@linkplain #getNamedAnnotationUsage(AnnotationDescriptor, String, String)}
 	 */
-	<X extends Annotation> AnnotationUsage<X> getNamedUsage(
+	<X extends Annotation> AnnotationUsage<X> getNamedAnnotationUsage(
 			Class<X> type,
 			String matchName,
 			String attributeToMatch);

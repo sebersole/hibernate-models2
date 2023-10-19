@@ -8,7 +8,6 @@ package org.hibernate.models.source.internal;
 
 import java.lang.annotation.Annotation;
 import java.util.List;
-import java.util.function.Consumer;
 
 import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.IndexedConsumer;
@@ -21,7 +20,7 @@ import org.hibernate.models.source.spi.MethodDetails;
 /**
  * @author Steve Ebersole
  */
-public interface ClassDetailsSupport extends ClassDetails, AnnotationTargetSupport {
+public interface ClassDetailsSupport extends MutableClassDetails, AnnotationTargetSupport, MutableAnnotationTarget {
 
 	@Override
 	default void forEachField(IndexedConsumer<FieldDetails> consumer) {
@@ -48,25 +47,25 @@ public interface ClassDetailsSupport extends ClassDetails, AnnotationTargetSuppo
 	}
 
 	@Override
-	default <A extends Annotation> AnnotationUsage<A> getUsage(AnnotationDescriptor<A> type) {
-		final AnnotationUsage<A> localUsage = AnnotationTargetSupport.super.getUsage( type );
+	default <A extends Annotation> AnnotationUsage<A> getAnnotationUsage(AnnotationDescriptor<A> type) {
+		final AnnotationUsage<A> localUsage = AnnotationTargetSupport.super.getAnnotationUsage( type );
 		if ( localUsage != null ) {
 			return localUsage;
 		}
 
 		if ( type.isInherited() && getSuperType() != null ) {
-			return getSuperType().getUsage( type );
+			return getSuperType().getAnnotationUsage( type );
 		}
 
 		return null;
 	}
 
 	@Override
-	default  <A extends Annotation> List<AnnotationUsage<A>> getRepeatedUsages(AnnotationDescriptor<A> type) {
-		final List<AnnotationUsage<A>> localUsages = AnnotationTargetSupport.super.getRepeatedUsages( type );
+	default  <A extends Annotation> List<AnnotationUsage<A>> getRepeatedAnnotationUsages(AnnotationDescriptor<A> type) {
+		final List<AnnotationUsage<A>> localUsages = AnnotationTargetSupport.super.getRepeatedAnnotationUsages( type );
 
 		if ( type.isInherited() && getSuperType() != null ) {
-			final List<AnnotationUsage<A>> inheritedUsages = getSuperType().getRepeatedUsages( type );
+			final List<AnnotationUsage<A>> inheritedUsages = getSuperType().getRepeatedAnnotationUsages( type );
 			return CollectionHelper.join( localUsages, inheritedUsages );
 		}
 
@@ -74,17 +73,17 @@ public interface ClassDetailsSupport extends ClassDetails, AnnotationTargetSuppo
 	}
 
 	@Override
-	default <A extends Annotation> AnnotationUsage<A> getNamedUsage(
+	default <A extends Annotation> AnnotationUsage<A> getNamedAnnotationUsage(
 			AnnotationDescriptor<A> type,
 			String matchValue,
 			String attributeToMatch) {
-		final AnnotationUsage<A> localUsage = AnnotationTargetSupport.super.getNamedUsage( type, matchValue, attributeToMatch );
+		final AnnotationUsage<A> localUsage = AnnotationTargetSupport.super.getNamedAnnotationUsage( type, matchValue, attributeToMatch );
 		if ( localUsage != null ) {
 			return localUsage;
 		}
 
 		if ( type.isInherited() && getSuperType() != null ) {
-			return getSuperType().getNamedUsage( type, matchValue, attributeToMatch );
+			return getSuperType().getNamedAnnotationUsage( type, matchValue, attributeToMatch );
 		}
 		return null;
 	}

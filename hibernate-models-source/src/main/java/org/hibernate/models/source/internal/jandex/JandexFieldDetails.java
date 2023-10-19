@@ -6,6 +6,7 @@
  */
 package org.hibernate.models.source.internal.jandex;
 
+import org.hibernate.models.source.internal.MutableMemberDetails;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.FieldDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
@@ -18,7 +19,7 @@ import static org.hibernate.models.source.internal.ModifierUtils.isPersistableFi
 /**
  * @author Steve Ebersole
  */
-public class JandexFieldDetails extends AbstractAnnotationTarget implements FieldDetails {
+public class JandexFieldDetails extends AbstractAnnotationTarget implements FieldDetails, MutableMemberDetails {
 	private final FieldInfo fieldInfo;
 	private final ClassDetails type;
 
