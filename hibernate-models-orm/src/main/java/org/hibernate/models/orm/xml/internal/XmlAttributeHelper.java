@@ -8,7 +8,16 @@ package org.hibernate.models.orm.xml.internal;
 
 import java.beans.Introspector;
 
+import org.hibernate.boot.jaxb.mapping.AttributesContainer;
 import org.hibernate.boot.jaxb.mapping.JaxbBasic;
+import org.hibernate.boot.jaxb.mapping.JaxbElementCollection;
+import org.hibernate.boot.jaxb.mapping.JaxbEmbedded;
+import org.hibernate.boot.jaxb.mapping.JaxbHbmAnyMapping;
+import org.hibernate.boot.jaxb.mapping.JaxbHbmManyToAny;
+import org.hibernate.boot.jaxb.mapping.JaxbManyToMany;
+import org.hibernate.boot.jaxb.mapping.JaxbOneToMany;
+import org.hibernate.boot.jaxb.mapping.JaxbOneToOne;
+import org.hibernate.boot.jaxb.mapping.PersistentAttribute;
 import org.hibernate.models.source.internal.MutableClassDetails;
 import org.hibernate.models.source.internal.MutableMemberDetails;
 import org.hibernate.models.source.spi.FieldDetails;
@@ -65,6 +74,107 @@ public class XmlAttributeHelper {
 		return null;
 	}
 
+	public static void handleAttributes(
+			AttributesContainer attributesContainer,
+			MutableClassDetails mutableClassDetails,
+			AccessType classAccessType,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		for ( int i = 0; i < attributesContainer.getBasicAttributes().size(); i++ ) {
+			handleBasicAttribute(
+					attributesContainer.getBasicAttributes().get( i ),
+					mutableClassDetails,
+					classAccessType,
+					sourceModelBuildingContext
+			);
+		}
+
+		for ( int i = 0; i < attributesContainer.getEmbeddedAttributes().size(); i++ ) {
+			handleEmbeddedAttribute(
+					attributesContainer.getEmbeddedAttributes().get( i ),
+					mutableClassDetails,
+					classAccessType,
+					sourceModelBuildingContext
+			);
+		}
+
+		for ( int i = 0; i < attributesContainer.getOneToOneAttributes().size(); i++ ) {
+			handleOneToOneAttribute(
+					attributesContainer.getOneToOneAttributes().get( i ),
+					mutableClassDetails,
+					classAccessType,
+					sourceModelBuildingContext
+			);
+		}
+
+		for ( int i = 0; i < attributesContainer.getManyToOneAttributes().size(); i++ ) {
+			handleManyToOneAttribute(
+					attributesContainer.getOneToOneAttributes().get( i ),
+					mutableClassDetails,
+					classAccessType,
+					sourceModelBuildingContext
+			);
+		}
+
+		for ( int i = 0; i < attributesContainer.getDiscriminatedAssociations().size(); i++ ) {
+			handleDiscriminatedAssociationAttribute(
+					attributesContainer.getDiscriminatedAssociations().get( i ),
+					mutableClassDetails,
+					classAccessType,
+					sourceModelBuildingContext
+			);
+		}
+
+		for ( int i = 0; i < attributesContainer.getElementCollectionAttributes().size(); i++ ) {
+			handleElementCollectionAttribute(
+					attributesContainer.getElementCollectionAttributes().get( i ),
+					mutableClassDetails,
+					classAccessType,
+					sourceModelBuildingContext
+			);
+		}
+
+		for ( int i = 0; i < attributesContainer.getOneToManyAttributes().size(); i++ ) {
+			handleOneToManyAttribute(
+					attributesContainer.getOneToManyAttributes().get( i ),
+					mutableClassDetails,
+					classAccessType,
+					sourceModelBuildingContext
+			);
+		}
+
+		for ( int i = 0; i < attributesContainer.getManyToManyAttributes().size(); i++ ) {
+			handleManyToManyAttribute(
+					attributesContainer.getManyToManyAttributes().get( i ),
+					mutableClassDetails,
+					classAccessType,
+					sourceModelBuildingContext
+			);
+		}
+
+		for ( int i = 0; i < attributesContainer.getPluralDiscriminatedAssociations().size(); i++ ) {
+			handlePluralDiscriminatedAssociationAttribute(
+					attributesContainer.getPluralDiscriminatedAssociations().get( i ),
+					mutableClassDetails,
+					classAccessType,
+					sourceModelBuildingContext
+			);
+		}
+
+	}
+
+	public static void applyCommonAttributeAnnotations(
+			PersistentAttribute jaxbAttribute,
+			MutableMemberDetails memberDetails,
+			AccessType accessType,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		XmlAnnotationHelper.applyAccess( accessType, memberDetails, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyAttributeAccessor(
+				jaxbAttribute.getAttributeAccessor(),
+				memberDetails,
+				sourceModelBuildingContext
+		);
+	}
+
 	public static void handleBasicAttribute(
 			JaxbBasic jaxbBasic,
 			MutableClassDetails mutableClassDetails,
@@ -97,24 +207,69 @@ public class XmlAttributeHelper {
 		XmlAnnotationHelper.applyEnumerated( jaxbBasic.getEnumerated(), memberDetails, sourceModelBuildingContext );
 		XmlAnnotationHelper.applyNationalized( jaxbBasic.getNationalized(), memberDetails, sourceModelBuildingContext );
 		XmlAnnotationHelper.applyJdbcTypeCode( jaxbBasic.getJdbcTypeCode(), memberDetails, sourceModelBuildingContext );
-
 	}
 
-	private static void applyCommonAttributeAnnotations(
-			JaxbBasic jaxbBasic,
-			MutableMemberDetails memberDetails,
-			AccessType accessType,
+	public static void handleEmbeddedAttribute(
+			JaxbEmbedded jaxbEmbedded,
+			MutableClassDetails mutableClassDetails,
+			AccessType classAccessType,
 			SourceModelBuildingContext sourceModelBuildingContext) {
-		XmlAnnotationHelper.applyAccess( accessType, memberDetails, sourceModelBuildingContext );
-		XmlAnnotationHelper.applyAttributeAccessor(
-				jaxbBasic.getAttributeAccessor(),
-				memberDetails,
-				sourceModelBuildingContext
-		);
-		XmlAnnotationHelper.applyAttributeAccessor(
-				jaxbBasic.getAttributeAccessor(),
-				memberDetails,
-				sourceModelBuildingContext
-		);
+		throw new UnsupportedOperationException( "Support for embedded attributes not yet implemented" );
+	}
+
+	public static void handleOneToOneAttribute(
+			JaxbOneToOne jaxbOneToOne,
+			MutableClassDetails mutableClassDetails,
+			AccessType classAccessType,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		throw new UnsupportedOperationException( "Support for one-to-one attributes not yet implemented" );
+	}
+
+	public static void handleManyToOneAttribute(
+			JaxbOneToOne jaxbOneToOne,
+			MutableClassDetails mutableClassDetails,
+			AccessType classAccessType,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		throw new UnsupportedOperationException( "Support for many-to-one attributes not yet implemented" );
+	}
+
+	public static void handleDiscriminatedAssociationAttribute(
+			JaxbHbmAnyMapping jaxbHbmAnyMapping,
+			MutableClassDetails mutableClassDetails,
+			AccessType classAccessType,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		throw new UnsupportedOperationException( "Support for any attributes not yet implemented" );
+	}
+
+	public static void handleElementCollectionAttribute(
+			JaxbElementCollection jaxbElementCollection,
+			MutableClassDetails mutableClassDetails,
+			AccessType classAccessType,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		throw new UnsupportedOperationException( "Support for element-collection attributes not yet implemented" );
+	}
+
+	public static void handleOneToManyAttribute(
+			JaxbOneToMany jaxbOneToMany,
+			MutableClassDetails mutableClassDetails,
+			AccessType classAccessType,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		throw new UnsupportedOperationException( "Support for one-to-many attributes not yet implemented" );
+	}
+
+	public static void handleManyToManyAttribute(
+			JaxbManyToMany jaxbManyToMany,
+			MutableClassDetails mutableClassDetails,
+			AccessType classAccessType,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		throw new UnsupportedOperationException( "Support for many-to-many attributes not yet implemented" );
+	}
+
+	public static void handlePluralDiscriminatedAssociationAttribute(
+			JaxbHbmManyToAny jaxbHbmManyToAny,
+			MutableClassDetails mutableClassDetails,
+			AccessType classAccessType,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		throw new UnsupportedOperationException( "Support for many-to-any attributes not yet implemented" );
 	}
 }
