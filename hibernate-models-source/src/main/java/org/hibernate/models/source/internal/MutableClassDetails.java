@@ -13,7 +13,7 @@ import org.hibernate.models.source.spi.MethodDetails;
 /**
  * @author Steve Ebersole
  */
-public interface MutableClassDetails extends ClassDetails {
+public interface MutableClassDetails extends ClassDetails, MutableAnnotationTarget {
 	default void clearMemberAnnotationUsages() {
 		forEachField( (i, field) -> ( (MutableAnnotationTarget) field ).clearAnnotationUsages() );
 		forEachMethod( (i, method) -> ( (MutableAnnotationTarget) method ).clearAnnotationUsages() );

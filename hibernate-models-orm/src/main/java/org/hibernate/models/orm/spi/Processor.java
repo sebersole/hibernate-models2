@@ -35,7 +35,6 @@ import org.hibernate.models.orm.internal.ProcessResultCollector;
 import org.hibernate.models.orm.xml.XmlResourceException;
 import org.hibernate.models.orm.xml.internal.ResourceStreamLocatorImpl;
 import org.hibernate.models.orm.xml.internal.XmlManagedTypeHelper;
-import org.hibernate.models.orm.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.models.orm.xml.spi.XmlResources;
 import org.hibernate.models.source.UnknownClassException;
 import org.hibernate.models.source.internal.jandex.JandexClassDetails;
@@ -117,7 +116,7 @@ public class Processor {
 			jaxbRoot.getEmbeddables().forEach( (embeddable) -> {
 				if ( xmlMappingsGloballyComplete || embeddable.isMetadataComplete() ) {
 					embeddableCompletes.add( embeddable );
-					applyCompleteEmbeddableMapping( jaxbRoot, embeddable, collectedXmlResources.getPersistenceUnitMetadata(), sourceModelBuildingContext );
+					XmlManagedTypeHelper.makeCompleteEmbeddableMapping( jaxbRoot, embeddable, collectedXmlResources.getPersistenceUnitMetadata(), sourceModelBuildingContext );
 				}
 				else {
 					embeddableOverrides.add( embeddable );
@@ -127,7 +126,7 @@ public class Processor {
 			jaxbRoot.getMappedSuperclasses().forEach( (mappedSuperclass) -> {
 				if ( xmlMappingsGloballyComplete || mappedSuperclass.isMetadataComplete() ) {
 					mappedSuperclassesCompletes.add( mappedSuperclass );
-					applyCompleteMappedSuperclassMapping( jaxbRoot, mappedSuperclass, collectedXmlResources.getPersistenceUnitMetadata(), sourceModelBuildingContext );
+					XmlManagedTypeHelper.makeCompleteMappedSuperclassMapping( jaxbRoot, mappedSuperclass, collectedXmlResources.getPersistenceUnitMetadata(), sourceModelBuildingContext );
 				}
 				else {
 					mappedSuperclassesOverrides.add( mappedSuperclass );
@@ -182,9 +181,9 @@ public class Processor {
 				mappingBuildingContext
 		);
 
-		applyEntityOverrides( allEntities, entityOverrides );
-		applyMappedSuperclassOverrides( mappedSuperClasses, mappedSuperclassesOverrides );
-		applyEmbeddableOverrides( embeddables, embeddableOverrides );
+		XmlManagedTypeHelper.applyEntityOverrides( allEntities, entityOverrides );
+		XmlManagedTypeHelper.applyMappedSuperclassOverrides( mappedSuperClasses, mappedSuperclassesOverrides );
+		XmlManagedTypeHelper.applyEmbeddableOverrides( embeddables, embeddableOverrides );
 
 		final Set<EntityHierarchy> entityHierarchies = createEntityHierarchies(
 				rootEntities,
@@ -211,38 +210,6 @@ public class Processor {
 					entry.getKey()
 			);
 		}
-	}
-
-	private static void applyEmbeddableOverrides(
-			Map<String, ClassDetails> embeddables,
-			List<JaxbEmbeddable> embeddableOverrides) {
-
-	}
-
-	private static void applyMappedSuperclassOverrides(
-			Map<String, ClassDetails> mappedSuperClasses,
-			List<JaxbMappedSuperclass> mappedSuperclassesOverrides) {
-
-	}
-
-	private static void applyEntityOverrides(Map<String, ClassDetails> allEntities, List<JaxbEntity> entityOverrides) {
-
-	}
-
-	private static void applyCompleteMappedSuperclassMapping(
-			JaxbEntityMappings jaxbRoot,
-			JaxbMappedSuperclass mappedSuperclass,
-			PersistenceUnitMetadata persistenceUnitMetadata,
-			SourceModelBuildingContext sourceModelBuildingContext) {
-
-	}
-
-	private static void applyCompleteEmbeddableMapping(
-			JaxbEntityMappings jaxbRoot,
-			JaxbEmbeddable embeddable,
-			PersistenceUnitMetadata persistenceUnitMetadata,
-			SourceModelBuildingContext sourceModelBuildingContext) {
-
 	}
 
 	private static void collectListedResources(
