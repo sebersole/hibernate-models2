@@ -27,10 +27,12 @@ import org.hibernate.boot.jaxb.mapping.JaxbGeneratedValue;
 import org.hibernate.boot.jaxb.mapping.JaxbLob;
 import org.hibernate.boot.jaxb.mapping.JaxbNationalized;
 import org.hibernate.boot.jaxb.mapping.JaxbSequenceGenerator;
+import org.hibernate.boot.jaxb.mapping.JaxbTable;
 import org.hibernate.boot.jaxb.mapping.JaxbTableGenerator;
 import org.hibernate.boot.jaxb.mapping.JaxbUuidGenerator;
 import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.StringHelper;
+import org.hibernate.models.orm.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.models.source.internal.MutableAnnotationTarget;
 import org.hibernate.models.source.internal.MutableMemberDetails;
 import org.hibernate.models.source.internal.dynamic.DynamicAnnotationUsage;
@@ -39,7 +41,6 @@ import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.ClassDetailsRegistry;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
-import org.hibernate.tuple.GenerationTiming;
 
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
@@ -52,11 +53,14 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Lob;
 import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 import jakarta.persistence.TableGenerator;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 
 import static java.util.Collections.emptyList;
+import static org.hibernate.internal.util.NullnessHelper.coalesce;
+import static org.hibernate.models.internal.StringHelper.nullIfEmpty;
 
 /**
  * Helper for creating annotation from equivalent JAXB
@@ -407,5 +411,25 @@ public class XmlAnnotationHelper {
 		annotationUsage.setAttributeValue( "converter", converter );
 		annotationUsage.setAttributeValue( "attributeName", jaxbConvert.getAttributeName() );
 		annotationUsage.setAttributeValue( "disableConversion", jaxbConvert.isDisableConversion() );
+	}
+
+	public static void applyTable(
+			JaxbTable jaxbTable,
+			MutableAnnotationTarget target,
+			PersistenceUnitMetadata persistenceUnitMetadata) {
+		final DynamicAnnotationUsage<Table> tableAnn = new DynamicAnnotationUsage<>( Table.class, target );
+		tableAnn.setAttributeValue( "name", nullIfEmpty( jaxbTable.getName() ) );
+		tableAnn.setAttributeValue( "catalog", coalesce(
+				nullIfEmpty( jaxbTable.getCatalog() ),
+				persistenceUnitMetadata.getDefaultCatalog()
+		) );
+		tableAnn.setAttributeValue( "schema",  coalesce(
+				nullIfEmpty( jaxbTable.getSchema() ),
+				persistenceUnitMetadata.getDefaultSchema()
+		) );
+		// todo : uniqueConstraints
+		// todo : indexes
+		target.addAnnotationUsage( tableAnn );
+
 	}
 }

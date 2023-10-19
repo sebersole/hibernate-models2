@@ -24,10 +24,8 @@ import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
 
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
-import static org.hibernate.models.internal.StringHelper.nullIfEmpty;
 
 /**
  * @author Steve Ebersole
@@ -79,19 +77,7 @@ public class XmlManagedTypeHelper {
 		annotationTarget.addAnnotationUsage( entityAnn );
 
 		if ( jaxbEntity.getTable() != null ) {
-			final DynamicAnnotationUsage<Table> tableAnn = new DynamicAnnotationUsage<>( Table.class, classDetails );
-			tableAnn.setAttributeValue( "name", nullIfEmpty( jaxbEntity.getTable().getName() ) );
-			tableAnn.setAttributeValue( "catalog", coalesce(
-					nullIfEmpty( jaxbEntity.getTable().getCatalog() ),
-					persistenceUnitMetadata.getDefaultCatalog()
-			) );
-			tableAnn.setAttributeValue( "schema",  coalesce(
-					nullIfEmpty( jaxbEntity.getTable().getSchema() ),
-					persistenceUnitMetadata.getDefaultSchema()
-			) );
-			// todo : uniqueConstraints
-			// todo : indexes
-			annotationTarget.addAnnotationUsage( tableAnn );
+			XmlAnnotationHelper.applyTable( jaxbEntity.getTable(), (MutableAnnotationTarget) classDetails, persistenceUnitMetadata );
 		}
 
 		final AccessType classAccessType = coalesce(
@@ -113,8 +99,7 @@ public class XmlManagedTypeHelper {
 						sourceModelBuildingContext
 				);
 
-				XmlAnnotationHelper.applyAccess( accessType, memberDetails, sourceModelBuildingContext );
-				XmlAnnotationHelper.applyAttributeAccessor( jaxbId.getAttributeAccessor(), memberDetails, sourceModelBuildingContext );
+				XmlAttributeHelper.applyCommonAttributeAnnotations( jaxbId, memberDetails, accessType, sourceModelBuildingContext );
 
 				XmlAnnotationHelper.applyColumn( jaxbId.getColumn(), memberDetails, sourceModelBuildingContext );
 
@@ -148,49 +133,10 @@ public class XmlManagedTypeHelper {
 			XmlAnnotationHelper.applyAttributeOverrides( jaxbEmbeddedId.getAttributeOverride(), memberDetails, sourceModelBuildingContext );
 		}
 
-		for ( int i = 0; i < attributes.getBasicAttributes().size(); i++ ) {
-			XmlAttributeHelper.handleBasicAttribute(
-					attributes.getBasicAttributes().get( i ),
-					mutableClassDetails,
-					classAccessType,
-					sourceModelBuildingContext
-			);
-		}
-
 		if ( attributes.getNaturalId() != null ) {
 			throw new UnsupportedOperationException( "Support for natural-id not yet implemented" );
 		}
 
-		for ( int i = 0; i < attributes.getEmbeddedAttributes().size(); i++ ) {
-			throw new UnsupportedOperationException( "Support for embedded attributes not yet implemented" );
-		}
-
-		for ( int i = 0; i < attributes.getOneToOneAttributes().size(); i++ ) {
-			throw new UnsupportedOperationException( "Support for one-to-one attributes not yet implemented" );
-		}
-
-		for ( int i = 0; i < attributes.getManyToOneAttributes().size(); i++ ) {
-			throw new UnsupportedOperationException( "Support for many-to-one attributes not yet implemented" );
-		}
-
-		for ( int i = 0; i < attributes.getElementCollectionAttributes().size(); i++ ) {
-			throw new UnsupportedOperationException( "Support for element-collection attributes not yet implemented" );
-		}
-
-		for ( int i = 0; i < attributes.getOneToManyAttributes().size(); i++ ) {
-			throw new UnsupportedOperationException( "Support for one-to-many attributes not yet implemented" );
-		}
-
-		for ( int i = 0; i < attributes.getManyToManyAttributes().size(); i++ ) {
-			throw new UnsupportedOperationException( "Support for many-to-many attributes not yet implemented" );
-		}
-
-		for ( int i = 0; i < attributes.getDiscriminatedAssociations().size(); i++ ) {
-			throw new UnsupportedOperationException( "Support for any attributes not yet implemented" );
-		}
-
-		for ( int i = 0; i < attributes.getPluralDiscriminatedAssociations().size(); i++ ) {
-			throw new UnsupportedOperationException( "Support for many-to-any attributes not yet implemented" );
-		}
+		XmlAttributeHelper.handleAttributes( jaxbEntity.getAttributes(), mutableClassDetails, classAccessType, sourceModelBuildingContext );
 	}
 }
