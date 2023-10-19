@@ -50,6 +50,7 @@ public class ProcessResultCollector {
 		getGlobalRegistrations().collectCompositeUserTypeRegistrations( jaxbRoot.getCompositeUserTypeRegistrations() );
 		getGlobalRegistrations().collectCollectionTypeRegistrations( jaxbRoot.getCollectionUserTypeRegistrations() );
 		getGlobalRegistrations().collectEmbeddableInstantiatorRegistrations( jaxbRoot.getEmbeddableInstantiatorRegistrations() );
+		getGlobalRegistrations().collectFilterDefinitions( jaxbRoot.getFilterDefinitions() );
 
 		final JaxbPersistenceUnitMetadata persistenceUnitMetadata = jaxbRoot.getPersistenceUnitMetadata();
 		if ( persistenceUnitMetadata != null ) {
@@ -74,6 +75,7 @@ public class ProcessResultCollector {
 		getGlobalRegistrations().collectCompositeUserTypeRegistrations( classDetails );
 		getGlobalRegistrations().collectCollectionTypeRegistrations( classDetails );
 		getGlobalRegistrations().collectEmbeddableInstantiatorRegistrations( classDetails );
+		getGlobalRegistrations().collectFilterDefinitions( classDetails );
 
 		if ( areIdGeneratorsGlobal ) {
 			getGlobalRegistrations().collectIdGenerators( classDetails );
@@ -91,6 +93,7 @@ public class ProcessResultCollector {
 		getGlobalRegistrations().collectCompositeUserTypeRegistrations( packageDetails );
 		getGlobalRegistrations().collectCollectionTypeRegistrations( packageDetails );
 		getGlobalRegistrations().collectEmbeddableInstantiatorRegistrations( packageDetails );
+		getGlobalRegistrations().collectFilterDefinitions( packageDetails );
 
 		// todo : others?
 	}
@@ -115,6 +118,7 @@ public class ProcessResultCollector {
 				getGlobalRegistrations().getCompositeUserTypeRegistrations(),
 				getGlobalRegistrations().getCollectionTypeRegistrations(),
 				getGlobalRegistrations().getEmbeddableInstantiatorRegistrations(),
+				getGlobalRegistrations().getFilterDefRegistrations(),
 //				jpaNamedQueries == null ? emptyMap() : jpaNamedQueries,
 //				hibernateNamedHqlQueries == null ? emptyMap() : hibernateNamedHqlQueries,
 //				hibernateNamedNativeQueries == null ? emptyMap() : hibernateNamedNativeQueries
