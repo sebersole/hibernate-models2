@@ -28,6 +28,7 @@ public class ProcessResultImpl implements ProcessResult {
 	private final List<CompositeUserTypeRegistration> compositeUserTypeRegistrations;
 	private final List<CollectionTypeRegistration> collectionTypeRegistrations;
 	private final List<EmbeddableInstantiatorRegistration> embeddableInstantiatorRegistrations;
+	private final Map<String, FilterDefRegistration> filterDefRegistrations;
 	private final Map<String, NamedQueryRegistration> jpaNamedQueries;
 	private final Map<String, NamedQueryRegistration> hibernateNamedHqlQueries;
 	private final Map<String, NamedQueryRegistration> hibernateNamedNativeQueries;
@@ -42,6 +43,7 @@ public class ProcessResultImpl implements ProcessResult {
 			List<CompositeUserTypeRegistration> compositeUserTypeRegistrations,
 			List<CollectionTypeRegistration> collectionTypeRegistrations,
 			List<EmbeddableInstantiatorRegistration> embeddableInstantiatorRegistrations,
+			Map<String, FilterDefRegistration> filterDefRegistrations,
 			Map<String, NamedQueryRegistration> jpaNamedQueries,
 			Map<String, NamedQueryRegistration> hibernateNamedHqlQueries,
 			Map<String, NamedQueryRegistration> hibernateNamedNativeQueries) {
@@ -54,6 +56,7 @@ public class ProcessResultImpl implements ProcessResult {
 		this.compositeUserTypeRegistrations = compositeUserTypeRegistrations;
 		this.collectionTypeRegistrations = collectionTypeRegistrations;
 		this.embeddableInstantiatorRegistrations = embeddableInstantiatorRegistrations;
+		this.filterDefRegistrations = filterDefRegistrations;
 		this.jpaNamedQueries = jpaNamedQueries;
 		this.hibernateNamedHqlQueries = hibernateNamedHqlQueries;
 		this.hibernateNamedNativeQueries = hibernateNamedNativeQueries;
@@ -102,6 +105,11 @@ public class ProcessResultImpl implements ProcessResult {
 	@Override
 	public List<EmbeddableInstantiatorRegistration> getEmbeddableInstantiatorRegistrations() {
 		return embeddableInstantiatorRegistrations;
+	}
+
+	@Override
+	public Map<String, FilterDefRegistration> getFilterDefRegistrations() {
+		return filterDefRegistrations;
 	}
 
 	@Override

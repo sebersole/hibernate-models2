@@ -13,7 +13,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.hibernate.AnnotationException;
+import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.ParamDef;
 import org.hibernate.annotations.Parameter;
 import org.hibernate.boot.jaxb.mapping.JaxbCollectionUserTypeRegistration;
 import org.hibernate.boot.jaxb.mapping.JaxbCompositeUserTypeRegistration;
@@ -22,6 +25,7 @@ import org.hibernate.boot.jaxb.mapping.JaxbConverterRegistration;
 import org.hibernate.boot.jaxb.mapping.JaxbEmbeddableInstantiatorRegistration;
 import org.hibernate.boot.jaxb.mapping.JaxbEntityListener;
 import org.hibernate.boot.jaxb.mapping.JaxbEntityMappings;
+import org.hibernate.boot.jaxb.mapping.JaxbFilterDef;
 import org.hibernate.boot.jaxb.mapping.JaxbGenericIdGenerator;
 import org.hibernate.boot.jaxb.mapping.JaxbJavaTypeRegistration;
 import org.hibernate.boot.jaxb.mapping.JaxbJdbcTypeRegistration;
@@ -43,10 +47,12 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.TableGenerator;
 
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
 import static org.hibernate.models.orm.spi.HibernateAnnotations.COLLECTION_TYPE_REG;
 import static org.hibernate.models.orm.spi.HibernateAnnotations.COMPOSITE_TYPE_REG;
 import static org.hibernate.models.orm.spi.HibernateAnnotations.CONVERTER_REG;
 import static org.hibernate.models.orm.spi.HibernateAnnotations.EMBEDDABLE_INSTANTIATOR_REG;
+import static org.hibernate.models.orm.spi.HibernateAnnotations.FILTER_DEF;
 import static org.hibernate.models.orm.spi.HibernateAnnotations.JAVA_TYPE_REG;
 import static org.hibernate.models.orm.spi.HibernateAnnotations.JDBC_TYPE_REG;
 import static org.hibernate.models.orm.spi.HibernateAnnotations.TYPE_REG;
@@ -67,6 +73,7 @@ public class GlobalRegistrations {
 	private List<CompositeUserTypeRegistration> compositeUserTypeRegistrations;
 	private List<CollectionTypeRegistration> collectionTypeRegistrations;
 	private List<EmbeddableInstantiatorRegistration> embeddableInstantiatorRegistrations;
+	private Map<String,FilterDefRegistration> filterDefRegistrations;
 
 	private Map<String,SequenceGeneratorRegistration> sequenceGeneratorRegistrations;
 	private Map<String,TableGeneratorRegistration> tableGeneratorRegistrations;
@@ -121,6 +128,9 @@ public class GlobalRegistrations {
 		return embeddableInstantiatorRegistrations == null ? emptyList() : embeddableInstantiatorRegistrations;
 	}
 
+	public Map<String, FilterDefRegistration> getFilterDefRegistrations() {
+		return filterDefRegistrations == null ? emptyMap() : filterDefRegistrations;
+	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// JavaTypeRegistration
@@ -362,6 +372,62 @@ public class GlobalRegistrations {
 			embeddableInstantiatorRegistrations = new ArrayList<>();
 		}
 		embeddableInstantiatorRegistrations.add( new EmbeddableInstantiatorRegistration( embeddableClass, instantiator ) );
+	}
+
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Filter-defs
+
+	public void collectFilterDefinitions(AnnotationTarget annotationTarget) {
+		annotationTarget.forEachAnnotationUsage( FILTER_DEF, (usage) -> collectFilterDefinition(
+				usage.getAttributeValue( "name" ),
+				usage.getAttributeValue( "defaultCondition" ),
+				extractFilterParameters( usage )
+		) );
+	}
+
+	private Map<String, ClassDetails> extractFilterParameters(AnnotationUsage<FilterDef> source) {
+		final List<AnnotationUsage<ParamDef>> parameters = source.getAttributeValue( "parameters" );
+		final Map<String, ClassDetails> result = new HashMap<>( parameters.size() );
+		for ( AnnotationUsage<ParamDef> parameter : parameters ) {
+			result.put( parameter.getAttributeValue( "name" ), parameter.getAttributeValue( "type" ) );
+		}
+		return result;
+	}
+
+	public void collectFilterDefinitions(List<JaxbFilterDef> filterDefinitions) {
+		if ( CollectionHelper.isEmpty( filterDefinitions ) ) {
+			return;
+		}
+
+		filterDefinitions.forEach( (filterDefinition) -> collectFilterDefinition(
+				filterDefinition.getName(),
+				filterDefinition.getCondition(),
+				extractFilterParameters( filterDefinition )
+		) );
+	}
+
+	private Map<String, ClassDetails> extractFilterParameters(JaxbFilterDef source) {
+		final List<JaxbFilterDef.JaxbFilterParam> parameters = source.getFilterParam();
+
+		// todo : update the mapping.xsd to account for new @ParamDef definition
+		// todo : handle simplified type names for XML, e.g. "String" instead of "java.lang.String"
+
+		final Map<String, ClassDetails> result = new HashMap<>( parameters.size() );
+		for ( JaxbFilterDef.JaxbFilterParam parameter : parameters ) {
+			result.put( parameter.getName(), classDetailsRegistry.resolveClassDetails( parameter.getType() ) );
+		}
+		return result;
+	}
+
+	public void collectFilterDefinition(String name, String defaultCondition, Map<String, ClassDetails> parameters) {
+		if ( filterDefRegistrations == null ) {
+			filterDefRegistrations = new HashMap<>();
+		}
+
+		if ( filterDefRegistrations.put( name, new FilterDefRegistration( name, defaultCondition, parameters ) ) != null ) {
+			throw new AnnotationException( "Multiple '@FilterDef' annotations define a filter named '" + name + "'" );
+		}
 	}
 
 

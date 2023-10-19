@@ -9,8 +9,10 @@ package org.hibernate.models.orm.process;
 import java.util.UUID;
 
 import org.hibernate.annotations.ConverterRegistration;
+import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.JavaTypeRegistration;
+import org.hibernate.annotations.ParamDef;
 import org.hibernate.id.IncrementGenerator;
 import org.hibernate.type.descriptor.java.StringJavaType;
 
@@ -38,6 +40,7 @@ import jakarta.persistence.TableGenerator;
 @NamedStoredProcedureQuery(name = "jpaCallable", procedureName = "jpa_callable")
 @org.hibernate.annotations.NamedQuery(name = "ormHql", query = "from Person")
 @org.hibernate.annotations.NamedNativeQuery(name = "ormNative", query = "select * from persons")
+@FilterDef(name = "name_filter", defaultCondition = "name = :name", parameters = {@ParamDef(name = "name", type = String.class)})
 public class Person {
 	@Id
 	private Integer id;

@@ -13,4 +13,9 @@
     <user-type class="java.util.UUID" descriptor="org.hibernate.models.orm.xml.MyUserType"/>
 
     <conversion converter="org.hibernate.type.YesNoConverter" class="boolean" auto-apply="true"/>
+    
+    <filter-def name="amount_filter">
+        <filter-param name="amount" type="java.lang.Integer"/>
+        <condition>amount = :amount</condition>
+    </filter-def>
 </entity-mappings>

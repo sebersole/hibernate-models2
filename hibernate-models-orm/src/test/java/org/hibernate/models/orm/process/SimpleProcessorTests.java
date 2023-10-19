@@ -7,7 +7,9 @@
 package org.hibernate.models.orm.process;
 
 import java.util.Iterator;
+import java.util.Map;
 
+import org.hibernate.models.orm.internal.FilterDefRegistration;
 import org.hibernate.models.orm.internal.ManagedResourcesImpl;
 import org.hibernate.models.orm.spi.EntityHierarchy;
 import org.hibernate.models.orm.spi.EntityTypeMetadata;
@@ -17,6 +19,7 @@ import org.hibernate.models.orm.spi.ProcessResult;
 import org.hibernate.models.orm.spi.Processor;
 import org.hibernate.models.source.SourceModelTestHelper;
 import org.hibernate.models.source.internal.SourceModelBuildingContextImpl;
+import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.type.CharBooleanConverter;
 import org.hibernate.type.YesNoConverter;
 import org.hibernate.type.descriptor.converter.spi.BasicValueConverter;
@@ -111,6 +114,8 @@ public class SimpleProcessorTests {
 			validatePersonHierarchy( two );
 			validateJoinedHierarchy( one );
 		}
+
+		validateFilterDefs( processResult.getFilterDefRegistrations() );
 	}
 
 	private void validatePersonHierarchy(EntityHierarchy hierarchy) {
@@ -144,5 +149,16 @@ public class SimpleProcessorTests {
 		assertThat( subMetadata.getSuperType() ).isEqualTo( rootMetadata );
 		assertThat( subMetadata.hasSubTypes() ).isFalse();
 		assertThat( subMetadata.getNumberOfSubTypes() ).isEqualTo( 0 );
+	}
+
+	private void validateFilterDefs(Map<String, FilterDefRegistration> filterDefRegistrations) {
+		assertThat( filterDefRegistrations ).hasSize( 1 );
+		assertThat( filterDefRegistrations ).containsKey( "name_filter" );
+		final FilterDefRegistration nameFilter = filterDefRegistrations.get( "name_filter" );
+		assertThat( nameFilter.getDefaultCondition() ).isEqualTo( "name = :name" );
+		final Map<String, ClassDetails> parameters = nameFilter.getParameters();
+		assertThat( parameters ).hasSize( 1 );
+		assertThat( parameters ).containsKey( "name" );
+		assertThat( parameters.get( "name" ).getName() ).isEqualTo( String.class.getName() );
 	}
 }
