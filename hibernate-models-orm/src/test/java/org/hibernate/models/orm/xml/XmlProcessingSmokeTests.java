@@ -7,8 +7,10 @@
 package org.hibernate.models.orm.xml;
 
 import java.util.List;
+import java.util.Map;
 
 import org.hibernate.boot.jaxb.mapping.JaxbEntityMappings;
+import org.hibernate.models.orm.internal.FilterDefRegistration;
 import org.hibernate.models.orm.internal.GlobalRegistrations;
 import org.hibernate.models.orm.internal.ProcessResultCollector;
 import org.hibernate.models.orm.xml.internal.XmlDocumentImpl;
@@ -16,6 +18,7 @@ import org.hibernate.models.orm.xml.spi.XmlResources;
 import org.hibernate.models.orm.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.models.source.SourceModelTestHelper;
 import org.hibernate.models.source.internal.StringTypeDescriptor;
+import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 import org.hibernate.type.descriptor.jdbc.ClobJdbcType;
 
@@ -134,5 +137,18 @@ public class XmlProcessingSmokeTests {
 		assertThat( globalRegistrations.getConverterRegistrations() ).hasSize( 1 );
 		assertThat( globalRegistrations.getConverterRegistrations().get(0).getConverterType().getClassName() )
 				.isEqualTo( org.hibernate.type.YesNoConverter.class.getName() );
+
+		validateFilterDefs( globalRegistrations.getFilterDefRegistrations() );
+	}
+
+	private void validateFilterDefs(Map<String, FilterDefRegistration> filterDefRegistrations) {
+		assertThat( filterDefRegistrations ).hasSize( 1 );
+		assertThat( filterDefRegistrations ).containsKey( "amount_filter" );
+		final FilterDefRegistration filterDef = filterDefRegistrations.get( "amount_filter" );
+		assertThat( filterDef.getDefaultCondition() ).isEqualTo( "amount = :amount" );
+		final Map<String, ClassDetails> parameters = filterDef.getParameters();
+		assertThat( parameters ).hasSize( 1 );
+		assertThat( parameters ).containsKey( "amount" );
+		assertThat( parameters.get( "amount" ).getName() ).isEqualTo( Integer.class.getName() );
 	}
 }
