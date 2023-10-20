@@ -24,6 +24,7 @@ import org.hibernate.boot.jaxb.mapping.JaxbEmbeddable;
 import org.hibernate.boot.jaxb.mapping.JaxbEntity;
 import org.hibernate.boot.jaxb.mapping.JaxbEntityMappings;
 import org.hibernate.boot.jaxb.mapping.JaxbMappedSuperclass;
+import org.hibernate.boot.jaxb.mapping.ManagedType;
 import org.hibernate.boot.jaxb.spi.BindableMappingDescriptor;
 import org.hibernate.boot.jaxb.spi.Binding;
 import org.hibernate.models.internal.CollectionHelper;
@@ -84,6 +85,24 @@ public class Processor {
 		return process( managedResources, explicitlyListedClasses, options, sourceModelBuildingContext, ormModelBuildingContext );
 	}
 
+	public static class OverrideTuple<M extends ManagedType> {
+		private final JaxbEntityMappings jaxbRoot;
+		private final M managedType;
+
+		public OverrideTuple(JaxbEntityMappings jaxbRoot, M managedType) {
+			this.jaxbRoot = jaxbRoot;
+			this.managedType = managedType;
+		}
+
+		public JaxbEntityMappings getJaxbRoot() {
+			return jaxbRoot;
+		}
+
+		public M getManagedType() {
+			return managedType;
+		}
+	}
+
 	public static ProcessResult process(
 			ManagedResources managedResources,
 			List<String> explicitlyListedClasses,
@@ -101,11 +120,11 @@ public class Processor {
 		//			b. collect "incomplete" (override) mappings
 		//		3. apply XML overrides
 
-		final List<JaxbEntity> entityOverrides = new ArrayList<>();
+		final List<OverrideTuple<JaxbEntity>> entityOverrides = new ArrayList<>();
 		final List<JaxbEntity> entityCompletes = new ArrayList<>();
-		final List<JaxbMappedSuperclass> mappedSuperclassesOverrides = new ArrayList<>();
+		final List<OverrideTuple<JaxbMappedSuperclass>> mappedSuperclassesOverrides = new ArrayList<>();
 		final List<JaxbMappedSuperclass> mappedSuperclassesCompletes = new ArrayList<>();
-		final List<JaxbEmbeddable> embeddableOverrides = new ArrayList<>();
+		final List<OverrideTuple<JaxbEmbeddable>> embeddableOverrides = new ArrayList<>();
 		final List<JaxbEmbeddable> embeddableCompletes = new ArrayList<>();
 
 		final boolean xmlMappingsGloballyComplete = collectedXmlResources.getPersistenceUnitMetadata().areXmlMappingsComplete();
@@ -114,32 +133,32 @@ public class Processor {
 			processResultCollector.apply( jaxbRoot );
 
 			jaxbRoot.getEmbeddables().forEach( (embeddable) -> {
-				if ( xmlMappingsGloballyComplete || embeddable.isMetadataComplete() ) {
+				if ( xmlMappingsGloballyComplete || embeddable.isMetadataComplete() == Boolean.TRUE ) {
 					embeddableCompletes.add( embeddable );
 					XmlManagedTypeHelper.makeCompleteEmbeddableMapping( jaxbRoot, embeddable, collectedXmlResources.getPersistenceUnitMetadata(), sourceModelBuildingContext );
 				}
 				else {
-					embeddableOverrides.add( embeddable );
+					embeddableOverrides.add( new OverrideTuple<>( jaxbRoot, embeddable ) );
 				}
 			} );
 
 			jaxbRoot.getMappedSuperclasses().forEach( (mappedSuperclass) -> {
-				if ( xmlMappingsGloballyComplete || mappedSuperclass.isMetadataComplete() ) {
+				if ( xmlMappingsGloballyComplete || mappedSuperclass.isMetadataComplete() == Boolean.TRUE ) {
 					mappedSuperclassesCompletes.add( mappedSuperclass );
 					XmlManagedTypeHelper.makeCompleteMappedSuperclassMapping( jaxbRoot, mappedSuperclass, collectedXmlResources.getPersistenceUnitMetadata(), sourceModelBuildingContext );
 				}
 				else {
-					mappedSuperclassesOverrides.add( mappedSuperclass );
+					mappedSuperclassesOverrides.add( new OverrideTuple<>( jaxbRoot, mappedSuperclass ) );
 				}
 			});
 
 			jaxbRoot.getEntities().forEach( (entity) -> {
-				if ( xmlMappingsGloballyComplete || entity.isMetadataComplete() ) {
+				if ( xmlMappingsGloballyComplete || entity.isMetadataComplete() == Boolean.TRUE ) {
 					entityCompletes.add( entity );
 					XmlManagedTypeHelper.makeCompleteEntityMapping( jaxbRoot, entity, collectedXmlResources.getPersistenceUnitMetadata(), sourceModelBuildingContext );
 				}
 				else {
-					entityOverrides.add( entity );
+					entityOverrides.add( new OverrideTuple<>( jaxbRoot, entity ) );
 				}
 			} );
 		} );
@@ -181,9 +200,9 @@ public class Processor {
 				mappingBuildingContext
 		);
 
-		XmlManagedTypeHelper.applyEntityOverrides( allEntities, entityOverrides );
-		XmlManagedTypeHelper.applyMappedSuperclassOverrides( mappedSuperClasses, mappedSuperclassesOverrides );
-		XmlManagedTypeHelper.applyEmbeddableOverrides( embeddables, embeddableOverrides );
+		XmlManagedTypeHelper.applyEntityOverrides( allEntities, entityOverrides, sourceModelBuildingContext );
+		XmlManagedTypeHelper.applyMappedSuperclassOverrides( mappedSuperClasses, mappedSuperclassesOverrides, sourceModelBuildingContext );
+		XmlManagedTypeHelper.applyEmbeddableOverrides( embeddables, embeddableOverrides, sourceModelBuildingContext );
 
 		final Set<EntityHierarchy> entityHierarchies = createEntityHierarchies(
 				rootEntities,

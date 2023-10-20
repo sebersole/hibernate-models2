@@ -20,6 +20,7 @@ import org.hibernate.boot.jaxb.mapping.JaxbMappedSuperclass;
 import org.hibernate.boot.jaxb.mapping.ManagedType;
 import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.StringHelper;
+import org.hibernate.models.orm.spi.Processor;
 import org.hibernate.models.orm.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.models.source.internal.MutableClassDetails;
 import org.hibernate.models.source.internal.MutableMemberDetails;
@@ -288,19 +289,31 @@ public class XmlManagedTypeHelper {
 
 	public static void applyMappedSuperclassOverrides(
 			Map<String, ClassDetails> mappedSuperClasses,
-			List<JaxbMappedSuperclass> mappedSuperclassesOverrides) {
-
+			List<Processor.OverrideTuple<JaxbMappedSuperclass>> mappedSuperclassesOverrides,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		throw new UnsupportedOperationException( "<mapped-superclass/> override support not yet implemented" );
 	}
 
 	public static void applyEntityOverrides(
 			Map<String, ClassDetails> allEntities,
-			List<JaxbEntity> entityOverrides) {
+			List<Processor.OverrideTuple<JaxbEntity>> entityOverrides,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		entityOverrides.forEach( (overrideTuple) -> {
+			final JaxbEntityMappings jaxbRoot = overrideTuple.getJaxbRoot();
+			final JaxbEntity jaxbEntity = overrideTuple.getManagedType();
+			final String className = determineClassName( jaxbRoot, jaxbEntity );
+			final MutableClassDetails classDetails = (MutableClassDetails) sourceModelBuildingContext
+					.getClassDetailsRegistry()
+					.resolveClassDetails( className );
+		} );
 
+		throw new UnsupportedOperationException( "<entity/> override support not yet implemented" );
 	}
 
 	public static void applyEmbeddableOverrides(
 			Map<String, ClassDetails> embeddables,
-			List<JaxbEmbeddable> embeddableOverrides) {
-
+			List<Processor.OverrideTuple<JaxbEmbeddable>> embeddableOverrides,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		throw new UnsupportedOperationException( "<embeddable/> override support not yet implemented" );
 	}
 }

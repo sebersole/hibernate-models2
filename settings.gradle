@@ -21,6 +21,7 @@ dependencyResolutionManagement {
 
 			def hibernateVersion = version "hibernateOrm", "6.3.0.Final"
 			library( "hibernateCore", "org.hibernate.orm", "hibernate-core" ).versionRef( hibernateVersion )
+			library( "hibernateTesting", "org.hibernate.orm", "hibernate-testing" ).versionRef( hibernateVersion )
 			library( "hibernatePlatform", "org.hibernate.orm", "hibernate-platform" ).versionRef( hibernateVersion )
 
 			def jacksonVersion = version "jackson", "2.14.1"
