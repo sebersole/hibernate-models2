@@ -291,7 +291,9 @@ public class XmlManagedTypeHelper {
 			Map<String, ClassDetails> mappedSuperClasses,
 			List<Processor.OverrideTuple<JaxbMappedSuperclass>> mappedSuperclassesOverrides,
 			SourceModelBuildingContext sourceModelBuildingContext) {
-		throw new UnsupportedOperationException( "<mapped-superclass/> override support not yet implemented" );
+		if ( CollectionHelper.isNotEmpty( mappedSuperclassesOverrides ) ) {
+			throw new UnsupportedOperationException( "<mapped-superclass/> override support not yet implemented" );
+		}
 	}
 
 	public static void applyEntityOverrides(
@@ -305,15 +307,18 @@ public class XmlManagedTypeHelper {
 			final MutableClassDetails classDetails = (MutableClassDetails) sourceModelBuildingContext
 					.getClassDetailsRegistry()
 					.resolveClassDetails( className );
+
+			throw new UnsupportedOperationException( "<entity/> override support not yet implemented" );
 		} );
 
-		throw new UnsupportedOperationException( "<entity/> override support not yet implemented" );
 	}
 
 	public static void applyEmbeddableOverrides(
 			Map<String, ClassDetails> embeddables,
 			List<Processor.OverrideTuple<JaxbEmbeddable>> embeddableOverrides,
 			SourceModelBuildingContext sourceModelBuildingContext) {
-		throw new UnsupportedOperationException( "<embeddable/> override support not yet implemented" );
+		if ( CollectionHelper.isNotEmpty( embeddableOverrides ) ) {
+			throw new UnsupportedOperationException( "<embeddable/> override support not yet implemented" );
+		}
 	}
 }
