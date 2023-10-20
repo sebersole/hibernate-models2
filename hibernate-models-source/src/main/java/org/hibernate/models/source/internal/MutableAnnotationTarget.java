@@ -18,6 +18,8 @@ import org.hibernate.models.source.spi.AnnotationUsage;
 public interface MutableAnnotationTarget extends AnnotationTarget {
 	void clearAnnotationUsages();
 
+	<X extends Annotation> void removeAnnotationUsage(Class<X> annotationType);
+
 	<X extends Annotation> void addAnnotationUsage(AnnotationUsage<X> annotationUsage);
 
 	default <X extends Annotation> void addAnnotationUsages(List<AnnotationUsage<X>> annotationUsages) {

@@ -22,6 +22,7 @@ import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.orm.spi.Processor;
 import org.hibernate.models.orm.xml.spi.PersistenceUnitMetadata;
+import org.hibernate.models.source.internal.MutableAnnotationUsage;
 import org.hibernate.models.source.internal.MutableClassDetails;
 import org.hibernate.models.source.internal.MutableMemberDetails;
 import org.hibernate.models.source.internal.SourceModelLogging;
@@ -30,12 +31,14 @@ import org.hibernate.models.source.internal.dynamic.DynamicClassDetails;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
+import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Inheritance;
 
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
+import static org.hibernate.models.orm.xml.internal.XmlAnnotationHelper.getOrMakeAnnotation;
 
 /**
  * @author Steve Ebersole
@@ -108,9 +111,7 @@ public class XmlManagedTypeHelper {
 		classDetails.clearMemberAnnotationUsages();
 		classDetails.clearAnnotationUsages();
 
-		final DynamicAnnotationUsage<Entity> entityAnn = new DynamicAnnotationUsage<>( Entity.class, classDetails );
-		entityAnn.setAttributeValue( "name", jaxbEntity.getName() );
-		classDetails.addAnnotationUsage( entityAnn );
+		XmlAnnotationHelper.applyEntity( jaxbEntity, classDetails, sourceModelBuildingContext );
 
 		applyInheritance( jaxbEntity, classDetails, sourceModelBuildingContext );
 
@@ -145,12 +146,11 @@ public class XmlManagedTypeHelper {
 			return;
 		}
 
-		final DynamicAnnotationUsage<Inheritance> annotationUsage = new DynamicAnnotationUsage<>(
+		final MutableAnnotationUsage<Inheritance> inheritanceAnn = getOrMakeAnnotation(
 				Inheritance.class,
 				classDetails
 		);
-		classDetails.addAnnotationUsage( annotationUsage );
-		annotationUsage.setAttributeValue( "strategy", jaxbEntity.getInheritance().getStrategy() );
+		inheritanceAnn.setAttributeValue( "strategy", jaxbEntity.getInheritance().getStrategy() );
 	}
 
 	private static void handleIdMappings(
@@ -299,6 +299,7 @@ public class XmlManagedTypeHelper {
 	public static void applyEntityOverrides(
 			Map<String, ClassDetails> allEntities,
 			List<Processor.OverrideTuple<JaxbEntity>> entityOverrides,
+			PersistenceUnitMetadata persistenceUnitMetadata,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		entityOverrides.forEach( (overrideTuple) -> {
 			final JaxbEntityMappings jaxbRoot = overrideTuple.getJaxbRoot();
@@ -308,9 +309,166 @@ public class XmlManagedTypeHelper {
 					.getClassDetailsRegistry()
 					.resolveClassDetails( className );
 
-			throw new UnsupportedOperationException( "<entity/> override support not yet implemented" );
+			XmlAnnotationHelper.applyEntity( jaxbEntity, classDetails, sourceModelBuildingContext );
+
+			applyInheritanceOverride( jaxbEntity, classDetails, sourceModelBuildingContext );
+			XmlAnnotationHelper.applyTableOverride( jaxbEntity.getTable(), classDetails, persistenceUnitMetadata );
+
+			final AccessType classAccessType = coalesce(
+					jaxbEntity.getAccess(),
+					persistenceUnitMetadata.getAccessType()
+			);
+			if ( classAccessType != null ) {
+				final MutableAnnotationUsage<Access> accessAnnotation = getOrMakeAnnotation(
+						Access.class,
+						classDetails
+				);
+				accessAnnotation.setAttributeValue( "value", classAccessType );
+			}
+
+			final JaxbAttributes attributes = jaxbEntity.getAttributes();
+			applyIdMappingOverrides( attributes, classAccessType, classDetails, sourceModelBuildingContext );
+
+			XmlAttributeHelper.handleNaturalId( attributes.getNaturalId(), classDetails, classAccessType, sourceModelBuildingContext );
+			XmlAttributeHelper.handleAttributes( jaxbEntity.getAttributes(), classDetails, classAccessType, sourceModelBuildingContext );
+
+			// todo : id-class
+			// todo : entity-listeners
+			// todo : callbacks
+			// todo : secondary-tables
 		} );
 
+	}
+
+	private static void applyInheritanceOverride(
+			JaxbEntity jaxbEntity,
+			MutableClassDetails classDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( jaxbEntity.getInheritance() == null ) {
+			return;
+		}
+
+		final MutableAnnotationUsage<Inheritance> annotationUsage = getOrMakeAnnotation( Inheritance.class, classDetails );
+		annotationUsage.setAttributeValue( "strategy", jaxbEntity.getInheritance().getStrategy() );
+	}
+
+	private static void applyIdMappingOverrides(
+			JaxbAttributes attributes,
+			AccessType classAccessType,
+			MutableClassDetails classDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		final List<JaxbId> jaxbIds = attributes.getId();
+		final JaxbEmbeddedId jaxbEmbeddedId = attributes.getEmbeddedId();
+
+		if ( CollectionHelper.isNotEmpty( jaxbIds ) ) {
+			for ( int i = 0; i < jaxbIds.size(); i++ ) {
+				final JaxbId jaxbId = jaxbIds.get( i );
+				final AccessType accessType = coalesce( jaxbId.getAccess(), classAccessType );
+				final MutableMemberDetails memberDetails = XmlAttributeHelper.findAttributeMember(
+						jaxbId.getName(),
+						accessType,
+						classDetails,
+						sourceModelBuildingContext
+				);
+
+				final MutableMemberDetails inverseMemberDetails = XmlAttributeHelper.findAttributeMember(
+						jaxbId.getName(),
+						inverse( accessType ),
+						classDetails,
+						sourceModelBuildingContext
+				);
+				if ( inverseMemberDetails != null ) {
+					inverseMemberDetails.removeAnnotationUsage( Access.class );
+				}
+
+				XmlAnnotationHelper.applyIdOverride( jaxbId, memberDetails, sourceModelBuildingContext );
+				XmlAnnotationHelper.applyBasic( jaxbId, memberDetails, sourceModelBuildingContext );
+				XmlAttributeHelper.applyCommonAttributeAnnotations(
+						jaxbId,
+						memberDetails,
+						accessType,
+						sourceModelBuildingContext
+				);
+
+				XmlAnnotationHelper.applyColumn(
+						jaxbId.getColumn(),
+						memberDetails,
+						sourceModelBuildingContext
+				);
+
+				XmlAnnotationHelper.applyUserType(
+						jaxbId.getType(),
+						memberDetails,
+						sourceModelBuildingContext
+				);
+				XmlAnnotationHelper.applyJdbcTypeCode(
+						jaxbId.getJdbcTypeCode(),
+						memberDetails,
+						sourceModelBuildingContext
+				);
+				XmlAnnotationHelper.applyTemporal(
+						jaxbId.getTemporal(),
+						memberDetails,
+						sourceModelBuildingContext
+				);
+
+				XmlAnnotationHelper.applyGeneratedValue(
+						jaxbId.getGeneratedValue(),
+						memberDetails,
+						sourceModelBuildingContext
+				);
+				XmlAnnotationHelper.applySequenceGenerator(
+						jaxbId.getSequenceGenerator(),
+						memberDetails,
+						sourceModelBuildingContext
+				);
+				XmlAnnotationHelper.applyTableGenerator(
+						jaxbId.getTableGenerator(),
+						memberDetails,
+						sourceModelBuildingContext
+				);
+				XmlAnnotationHelper.applyUuidGenerator(
+						jaxbId.getUuidGenerator(),
+						memberDetails,
+						sourceModelBuildingContext
+				);
+
+				// todo : unsaved-value?
+			}
+		}
+		else if ( jaxbEmbeddedId != null ) {
+			final AccessType accessType = coalesce( jaxbEmbeddedId.getAccess(), classAccessType );
+			final MutableMemberDetails memberDetails = XmlAttributeHelper.findAttributeMember(
+					jaxbEmbeddedId.getName(),
+					accessType,
+					classDetails,
+					sourceModelBuildingContext
+			);
+
+			XmlAnnotationHelper.applyEmbeddedId( jaxbEmbeddedId, memberDetails, sourceModelBuildingContext );
+			XmlAttributeHelper.applyCommonAttributeAnnotations(
+					jaxbEmbeddedId,
+					memberDetails,
+					accessType,
+					sourceModelBuildingContext
+			);
+
+			XmlAnnotationHelper.applyAttributeOverrides(
+					jaxbEmbeddedId.getAttributeOverride(),
+					memberDetails,
+					sourceModelBuildingContext
+			);
+		}
+		else {
+			SourceModelLogging.SOURCE_MODEL_LOGGER.debugf(
+					"Identifiable type [%s] contained no <id/> nor <embedded-id/>",
+					classDetails.getName()
+			);
+		}
+	}
+
+	private static AccessType inverse(AccessType accessType) {
+		return accessType == AccessType.FIELD ? AccessType.PROPERTY : AccessType.FIELD;
 	}
 
 	public static void applyEmbeddableOverrides(

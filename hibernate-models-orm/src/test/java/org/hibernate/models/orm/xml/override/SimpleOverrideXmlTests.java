@@ -35,7 +35,6 @@ import static org.hibernate.models.internal.SimpleClassLoading.SIMPLE_CLASS_LOAD
  */
 public class SimpleOverrideXmlTests {
 	@Test
-	@FailureExpected
 	void testSimpleCompleteEntity() {
 
 		final ManagedResourcesImpl.Builder managedResourcesBuilder = new ManagedResourcesImpl.Builder();
@@ -85,5 +84,6 @@ public class SimpleOverrideXmlTests {
 		final AnnotationUsage<Column> nameColumnAnn = nameAttribute.getMember().getAnnotationUsage( Column.class );
 		assertThat( nameColumnAnn ).isNotNull();
 		assertThat( nameColumnAnn.<String>getAttributeValue( "name" ) ).isEqualTo( "description" );
+		assertThat( nameColumnAnn.<String>getAttributeValue( "columnDefinition" ) ).isEqualTo( "nvarchar(512)" );
 	}
 }
