@@ -7,18 +7,20 @@
 package org.hibernate.models.orm.process;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
-import org.hibernate.models.orm.internal.FilterDefRegistration;
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.ParamDef;
 import org.hibernate.models.orm.internal.ManagedResourcesImpl;
 import org.hibernate.models.orm.spi.EntityHierarchy;
 import org.hibernate.models.orm.spi.EntityTypeMetadata;
-import org.hibernate.models.orm.spi.IdentifiableTypeMetadata;
 import org.hibernate.models.orm.spi.ManagedResources;
 import org.hibernate.models.orm.spi.ProcessResult;
 import org.hibernate.models.orm.spi.Processor;
 import org.hibernate.models.source.SourceModelTestHelper;
 import org.hibernate.models.source.internal.SourceModelBuildingContextImpl;
+import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.type.CharBooleanConverter;
 import org.hibernate.type.YesNoConverter;
@@ -115,7 +117,7 @@ public class SimpleProcessorTests {
 			validateJoinedHierarchy( one );
 		}
 
-		validateFilterDefs( processResult.getFilterDefRegistrations() );
+		validateFilterDefs( processResult.getGlobalRegistrations().getFilterDefRegistrations() );
 	}
 
 	private void validatePersonHierarchy(EntityHierarchy hierarchy) {
@@ -151,14 +153,14 @@ public class SimpleProcessorTests {
 		assertThat( subMetadata.getNumberOfSubTypes() ).isEqualTo( 0 );
 	}
 
-	private void validateFilterDefs(Map<String, FilterDefRegistration> filterDefRegistrations) {
+	private void validateFilterDefs(Map<String, AnnotationUsage<FilterDef>> filterDefRegistrations) {
 		assertThat( filterDefRegistrations ).hasSize( 1 );
 		assertThat( filterDefRegistrations ).containsKey( "name_filter" );
-		final FilterDefRegistration nameFilter = filterDefRegistrations.get( "name_filter" );
-		assertThat( nameFilter.getDefaultCondition() ).isEqualTo( "name = :name" );
-		final Map<String, ClassDetails> parameters = nameFilter.getParameters();
+		final AnnotationUsage<FilterDef> nameFilter = filterDefRegistrations.get( "name_filter" );
+		assertThat( nameFilter.<String>getAttributeValue( "defaultCondition" ) ).isEqualTo( "name = :name" );
+		final List<AnnotationUsage<ParamDef>> parameters = nameFilter.getAttributeValue( "parameters" );
 		assertThat( parameters ).hasSize( 1 );
-		assertThat( parameters ).containsKey( "name" );
-		assertThat( parameters.get( "name" ).getName() ).isEqualTo( String.class.getName() );
+		assertThat( parameters.get( 0 ).<String>getAttributeValue( "name" ) ).isEqualTo( "name" );
+		assertThat( parameters.get( 0 ).<ClassDetails>getAttributeValue( "type" ).getName() ).isEqualTo( String.class.getName() );
 	}
 }

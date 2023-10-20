@@ -6,7 +6,6 @@
  */
 package org.hibernate.models.orm.internal;
 
-import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -14,10 +13,17 @@ import java.util.List;
 import java.util.Map;
 
 import org.hibernate.AnnotationException;
+import org.hibernate.annotations.CollectionTypeRegistration;
+import org.hibernate.annotations.CompositeTypeRegistration;
+import org.hibernate.annotations.ConverterRegistration;
+import org.hibernate.annotations.EmbeddableInstantiatorRegistration;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.JavaTypeRegistration;
+import org.hibernate.annotations.JdbcTypeRegistration;
 import org.hibernate.annotations.ParamDef;
 import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.TypeRegistration;
 import org.hibernate.boot.jaxb.mapping.JaxbCollectionUserTypeRegistration;
 import org.hibernate.boot.jaxb.mapping.JaxbCompositeUserTypeRegistration;
 import org.hibernate.boot.jaxb.mapping.JaxbConfigurationParameter;
@@ -33,8 +39,9 @@ import org.hibernate.boot.jaxb.mapping.JaxbSequenceGenerator;
 import org.hibernate.boot.jaxb.mapping.JaxbTableGenerator;
 import org.hibernate.boot.jaxb.mapping.JaxbUserTypeRegistration;
 import org.hibernate.internal.util.collections.CollectionHelper;
-import org.hibernate.metamodel.CollectionClassification;
 import org.hibernate.models.internal.StringHelper;
+import org.hibernate.models.orm.spi.GlobalRegistrations;
+import org.hibernate.models.source.internal.MutableClassDetails;
 import org.hibernate.models.source.internal.dynamic.DynamicAnnotationUsage;
 import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
 import org.hibernate.models.source.spi.AnnotationTarget;
@@ -43,6 +50,7 @@ import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.ClassDetailsRegistry;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
+import jakarta.persistence.Converter;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.TableGenerator;
 
@@ -60,20 +68,24 @@ import static org.hibernate.models.orm.spi.HibernateAnnotations.TYPE_REG;
 /**
  * @author Steve Ebersole
  */
-public class GlobalRegistrations {
+public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	private final ClassDetailsRegistry classDetailsRegistry;
 	private final AnnotationDescriptorRegistry annotationDescriptorRegistry;
 
 	private List<EntityListenerRegistration> entityListenerRegistrations;
-	private List<ClassDetails> autoAppliedConverters;
-	private List<ConversionRegistration> converterRegistrations;
-	private List<JavaTypeRegistration> javaTypeRegistrations;
-	private List<JdbcTypeRegistration> jdbcTypeRegistrations;
-	private List<UserTypeRegistration> userTypeRegistrations;
-	private List<CompositeUserTypeRegistration> compositeUserTypeRegistrations;
-	private List<CollectionTypeRegistration> collectionTypeRegistrations;
-	private List<EmbeddableInstantiatorRegistration> embeddableInstantiatorRegistrations;
-	private Map<String,FilterDefRegistration> filterDefRegistrations;
+
+	private List<AnnotationUsage<Converter>> autoAppliedConverters;
+	private List<AnnotationUsage<ConverterRegistration>> converterRegistrations;
+
+	private List<AnnotationUsage<JavaTypeRegistration>> javaTypeRegistrations;
+	private List<AnnotationUsage<JdbcTypeRegistration>> jdbcTypeRegistrations;
+	private List<AnnotationUsage<TypeRegistration>> userTypeRegistrations;
+	private List<AnnotationUsage<CompositeTypeRegistration>> compositeUserTypeRegistrations;
+	private List<AnnotationUsage<CollectionTypeRegistration>> collectionTypeRegistrations;
+
+	private List<AnnotationUsage<EmbeddableInstantiatorRegistration>> embeddableInstantiatorRegistrations;
+
+	private Map<String,AnnotationUsage<FilterDef>> filterDefRegistrations;
 
 	private Map<String,SequenceGeneratorRegistration> sequenceGeneratorRegistrations;
 	private Map<String,TableGeneratorRegistration> tableGeneratorRegistrations;
@@ -83,11 +95,11 @@ public class GlobalRegistrations {
 	private Map<String, NamedQueryRegistration> hibernateNamedHqlQueries;
 	private Map<String, NamedQueryRegistration> hibernateNamedNativeQueries;
 
-	public GlobalRegistrations(SourceModelBuildingContext sourceModelBuildingContext) {
+	public GlobalRegistrationsImpl(SourceModelBuildingContext sourceModelBuildingContext) {
 		this( sourceModelBuildingContext.getClassDetailsRegistry(), sourceModelBuildingContext.getAnnotationDescriptorRegistry() );
 	}
 
-	public GlobalRegistrations(ClassDetailsRegistry classDetailsRegistry, AnnotationDescriptorRegistry annotationDescriptorRegistry) {
+	public GlobalRegistrationsImpl(ClassDetailsRegistry classDetailsRegistry, AnnotationDescriptorRegistry annotationDescriptorRegistry) {
 		this.classDetailsRegistry = classDetailsRegistry;
 		this.annotationDescriptorRegistry = annotationDescriptorRegistry;
 	}
@@ -96,50 +108,62 @@ public class GlobalRegistrations {
 		return entityListenerRegistrations;
 	}
 
-	public List<ConversionRegistration> getConverterRegistrations() {
+	public List<AnnotationUsage<ConverterRegistration>> getConverterRegistrations() {
 		return converterRegistrations == null ? emptyList() : converterRegistrations;
 	}
 
-	public List<ClassDetails> getAutoAppliedConverters() {
+	public List<AnnotationUsage<Converter>> getAutoAppliedConverters() {
 		return autoAppliedConverters == null ? emptyList() : autoAppliedConverters;
 	}
 
-	public List<JavaTypeRegistration> getJavaTypeRegistrations() {
+	public List<AnnotationUsage<JavaTypeRegistration>> getJavaTypeRegistrations() {
 		return javaTypeRegistrations == null ? emptyList() : javaTypeRegistrations;
 	}
 
-	public List<JdbcTypeRegistration> getJdbcTypeRegistrations() {
+	public List<AnnotationUsage<JdbcTypeRegistration>> getJdbcTypeRegistrations() {
 		return jdbcTypeRegistrations == null ? emptyList() : jdbcTypeRegistrations;
 	}
 
-	public List<UserTypeRegistration> getUserTypeRegistrations() {
+	public List<AnnotationUsage<TypeRegistration>> getUserTypeRegistrations() {
 		return userTypeRegistrations == null ? emptyList() : userTypeRegistrations;
 	}
 
-	public List<CompositeUserTypeRegistration> getCompositeUserTypeRegistrations() {
+	public List<AnnotationUsage<CompositeTypeRegistration>> getCompositeUserTypeRegistrations() {
 		return compositeUserTypeRegistrations == null ? emptyList() : compositeUserTypeRegistrations;
 	}
 
-	public List<CollectionTypeRegistration> getCollectionTypeRegistrations() {
+	public List<AnnotationUsage<CollectionTypeRegistration>> getCollectionTypeRegistrations() {
 		return collectionTypeRegistrations == null ? emptyList() : collectionTypeRegistrations;
 	}
 
-	public List<EmbeddableInstantiatorRegistration> getEmbeddableInstantiatorRegistrations() {
+	public List<AnnotationUsage<EmbeddableInstantiatorRegistration>> getEmbeddableInstantiatorRegistrations() {
 		return embeddableInstantiatorRegistrations == null ? emptyList() : embeddableInstantiatorRegistrations;
 	}
 
-	public Map<String, FilterDefRegistration> getFilterDefRegistrations() {
+	public Map<String, AnnotationUsage<FilterDef>> getFilterDefRegistrations() {
 		return filterDefRegistrations == null ? emptyMap() : filterDefRegistrations;
+	}
+
+	@Override
+	public Map<String, NamedQueryRegistration> getJpaNamedQueries() {
+		throw new UnsupportedOperationException( "Not yet implemented" );
+	}
+
+	@Override
+	public Map<String, NamedQueryRegistration> getHibernateNamedHqlQueries() {
+		throw new UnsupportedOperationException( "Not yet implemented" );
+	}
+
+	@Override
+	public Map<String, NamedQueryRegistration> getHibernateNamedNativeQueries() {
+		throw new UnsupportedOperationException( "Not yet implemented" );
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// JavaTypeRegistration
 
 	public void collectJavaTypeRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachAnnotationUsage( JAVA_TYPE_REG, (usage) -> collectJavaTypeRegistration(
-				usage.getAttributeValue( "javaType" ),
-				usage.getAttributeValue( "descriptorClass" )
-		) );
+		annotationTarget.forEachAnnotationUsage( JAVA_TYPE_REG, this::collectJavaTypeRegistration );
 	}
 
 	public void collectJavaTypeRegistrations(List<JaxbJavaTypeRegistration> registrations) {
@@ -147,17 +171,22 @@ public class GlobalRegistrations {
 			return;
 		}
 
-		registrations.forEach( (reg) -> collectJavaTypeRegistration(
-				classDetailsRegistry.resolveClassDetails( reg.getClazz() ),
-				classDetailsRegistry.resolveClassDetails( reg.getDescriptor() )
-		) );
+		registrations.forEach( (reg) -> {
+			final ClassDetails descriptorClass = classDetailsRegistry.resolveClassDetails( reg.getDescriptor() );
+			final ClassDetails domainTypeClass = classDetailsRegistry.resolveClassDetails( reg.getClazz() );
+
+			final DynamicAnnotationUsage<JavaTypeRegistration> annotationUsage = new DynamicAnnotationUsage<>( JavaTypeRegistration.class );
+			annotationUsage.setAttributeValue( "javaType", domainTypeClass );
+			annotationUsage.setAttributeValue( "descriptorClass", descriptorClass );
+			collectJavaTypeRegistration( annotationUsage );
+		} );
 	}
 
-	public  void collectJavaTypeRegistration(ClassDetails javaType, ClassDetails descriptor) {
+	public  void collectJavaTypeRegistration(AnnotationUsage<JavaTypeRegistration> annotationUsage) {
 		if ( javaTypeRegistrations == null ) {
 			javaTypeRegistrations = new ArrayList<>();
 		}
-		javaTypeRegistrations.add( new JavaTypeRegistration( javaType, descriptor ) );
+		javaTypeRegistrations.add( annotationUsage );
 	}
 
 
@@ -165,10 +194,7 @@ public class GlobalRegistrations {
 	// JdbcTypeRegistration
 
 	public void collectJdbcTypeRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachAnnotationUsage( JDBC_TYPE_REG, (usage) -> collectJdbcTypeRegistration(
-				usage.getAttributeValue( "registrationCode" ),
-				usage.getAttributeValue( "value" )
-		) );
+		annotationTarget.forEachAnnotationUsage( JDBC_TYPE_REG, this::collectJdbcTypeRegistration );
 	}
 
 	public void collectJdbcTypeRegistrations(List<JaxbJdbcTypeRegistration> registrations) {
@@ -176,17 +202,20 @@ public class GlobalRegistrations {
 			return;
 		}
 
-		registrations.forEach( (reg) -> collectJdbcTypeRegistration(
-				reg.getCode(),
-				classDetailsRegistry.resolveClassDetails( reg.getDescriptor() )
-		) );
+		registrations.forEach( (reg) -> {
+			final ClassDetails descriptorClassDetails = classDetailsRegistry.resolveClassDetails( reg.getDescriptor() );
+			final DynamicAnnotationUsage<JdbcTypeRegistration> annotationUsage = new DynamicAnnotationUsage<>( JdbcTypeRegistration.class );
+			annotationUsage.setAttributeValue( "registrationCode", reg.getCode() );
+			annotationUsage.setAttributeValue( "value", descriptorClassDetails );
+			collectJdbcTypeRegistration( annotationUsage );
+		} );
 	}
 
-	public void collectJdbcTypeRegistration(Integer registrationCode, ClassDetails descriptor) {
+	public void collectJdbcTypeRegistration(AnnotationUsage<JdbcTypeRegistration> annotationUsage) {
 		if ( jdbcTypeRegistrations == null ) {
 			jdbcTypeRegistrations = new ArrayList<>();
 		}
-		jdbcTypeRegistrations.add( new JdbcTypeRegistration( registrationCode, descriptor ) );
+		jdbcTypeRegistrations.add( annotationUsage );
 	}
 
 
@@ -194,12 +223,7 @@ public class GlobalRegistrations {
 	// ConversionRegistration
 
 	public void collectConverterRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachAnnotationUsage( CONVERTER_REG, (usage) -> {
-			final ClassDetails domainType = usage.getAttributeValue( "domainType" );
-			final ClassDetails converterType = usage.getAttributeValue( "converter" );
-			final boolean autoApply = usage.getAttributeValue( "autoApply" );
-			collectConverterRegistration( new ConversionRegistration( domainType, converterType, autoApply ) );
-		} );
+		annotationTarget.forEachAnnotationUsage( CONVERTER_REG, this::collectConverterRegistration );
 	}
 
 	public void collectConverterRegistrations(List<JaxbConverterRegistration> registrations) {
@@ -208,6 +232,14 @@ public class GlobalRegistrations {
 		}
 
 		registrations.forEach( (registration) -> {
+			final MutableClassDetails converterType = (MutableClassDetails) classDetailsRegistry.resolveClassDetails( registration.getConverter() );
+			final DynamicAnnotationUsage<ConverterRegistration> annotationUsage = new DynamicAnnotationUsage<>(
+					ConverterRegistration.class,
+					converterType
+			);
+			// technically does not need this, but...
+			converterType.addAnnotationUsage( annotationUsage );
+
 			final ClassDetails explicitDomainType;
 			final String explicitDomainTypeName = registration.getClazz();
 			if ( StringHelper.isNotEmpty( explicitDomainTypeName ) ) {
@@ -216,13 +248,15 @@ public class GlobalRegistrations {
 			else {
 				explicitDomainType = null;
 			}
-			final ClassDetails converterType = classDetailsRegistry.resolveClassDetails( registration.getConverter() );
-			final boolean autoApply = registration.isAutoApply();
-			collectConverterRegistration( new ConversionRegistration( explicitDomainType, converterType, autoApply ) );
+
+			annotationUsage.setAttributeValue( "converter", converterType );
+			annotationUsage.setAttributeValue( "domainType", explicitDomainType );
+			annotationUsage.setAttributeValue( "autoApply", registration.isAutoApply() );
+			collectConverterRegistration( annotationUsage );
 		} );
 	}
 
-	public void collectConverterRegistration(ConversionRegistration conversion) {
+	public void collectConverterRegistration(AnnotationUsage<ConverterRegistration> conversion) {
 		if ( converterRegistrations == null ) {
 			converterRegistrations = new ArrayList<>();
 		}
@@ -234,10 +268,7 @@ public class GlobalRegistrations {
 	// UserTypeRegistration
 
 	public void collectUserTypeRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachAnnotationUsage( TYPE_REG, (usage) -> collectUserTypeRegistration(
-				usage.getAttributeValue( "basicClass" ),
-				usage.getAttributeValue( "userType" )
-		) );
+		annotationTarget.forEachAnnotationUsage( TYPE_REG, this::collectUserTypeRegistration );
 	}
 
 	public void collectUserTypeRegistrations(List<JaxbUserTypeRegistration> registrations) {
@@ -248,15 +279,19 @@ public class GlobalRegistrations {
 		registrations.forEach( (reg) -> {
 			final ClassDetails domainTypeDetails = classDetailsRegistry.resolveClassDetails( reg.getClazz() );
 			final ClassDetails descriptorDetails = classDetailsRegistry.resolveClassDetails( reg.getDescriptor() );
-			collectUserTypeRegistration( domainTypeDetails, descriptorDetails );
+
+			final DynamicAnnotationUsage<TypeRegistration> annotationUsage = new DynamicAnnotationUsage<>( TypeRegistration.class );
+			annotationUsage.setAttributeValue( "basicClass", domainTypeDetails );
+			annotationUsage.setAttributeValue( "userType", descriptorDetails );
+			collectUserTypeRegistration( annotationUsage );
 		} );
 	}
 
-	public void collectUserTypeRegistration(ClassDetails domainClass, ClassDetails userTypeClass) {
+	public void collectUserTypeRegistration(AnnotationUsage<TypeRegistration> annotationUsage) {
 		if ( userTypeRegistrations == null ) {
 			userTypeRegistrations = new ArrayList<>();
 		}
-		userTypeRegistrations.add( new UserTypeRegistration( domainClass, userTypeClass ) );
+		userTypeRegistrations.add( annotationUsage );
 	}
 
 
@@ -264,10 +299,7 @@ public class GlobalRegistrations {
 	// CompositeUserTypeRegistration
 
 	public void collectCompositeUserTypeRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachAnnotationUsage( COMPOSITE_TYPE_REG, (usage) -> collectCompositeUserTypeRegistration(
-				usage.getAttributeValue( "embeddableClass" ),
-				usage.getAttributeValue( "userType" )
-		) );
+		annotationTarget.forEachAnnotationUsage( COMPOSITE_TYPE_REG, this::collectCompositeUserTypeRegistration );
 	}
 
 	public void collectCompositeUserTypeRegistrations(List<JaxbCompositeUserTypeRegistration> registrations) {
@@ -275,17 +307,22 @@ public class GlobalRegistrations {
 			return;
 		}
 
-		registrations.forEach( (reg) -> collectCompositeUserTypeRegistration(
-				classDetailsRegistry.resolveClassDetails( reg.getClazz() ),
-				classDetailsRegistry.resolveClassDetails( reg.getDescriptor() )
-		) );
+		registrations.forEach( (reg) -> {
+			final ClassDetails compositeType = classDetailsRegistry.resolveClassDetails( reg.getClazz() );
+			final ClassDetails descriptorType = classDetailsRegistry.resolveClassDetails( reg.getDescriptor() );
+
+			final DynamicAnnotationUsage<CompositeTypeRegistration> usage = new DynamicAnnotationUsage<>( CompositeTypeRegistration.class );
+			usage.setAttributeValue( "embeddableClass", compositeType );
+			usage.setAttributeValue( "userType", descriptorType );
+			collectCompositeUserTypeRegistration( usage );
+		} );
 	}
 
-	public void collectCompositeUserTypeRegistration(ClassDetails domainClass, ClassDetails userTypeClass) {
+	public void collectCompositeUserTypeRegistration(AnnotationUsage<CompositeTypeRegistration> annotationUsage) {
 		if ( compositeUserTypeRegistrations == null ) {
 			compositeUserTypeRegistrations = new ArrayList<>();
 		}
-		compositeUserTypeRegistrations.add( new CompositeUserTypeRegistration( domainClass, userTypeClass ) );
+		compositeUserTypeRegistrations.add( annotationUsage );
 	}
 
 
@@ -293,24 +330,7 @@ public class GlobalRegistrations {
 	// CollectionTypeRegistration
 
 	public void collectCollectionTypeRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachAnnotationUsage( COLLECTION_TYPE_REG, (usage) -> collectCollectionTypeRegistration(
-				usage.getAttributeValue( "classification" ),
-				usage.getAttributeValue( "type" ),
-				extractParameterMap( usage )
-		) );
-	}
-
-	private Map<String,String> extractParameterMap(AnnotationUsage<? extends Annotation> source) {
-		final List<AnnotationUsage<Parameter>> parameters = source.getAttributeValue( "parameters" );
-
-		final Map<String,String> result = new HashMap<>();
-		for ( AnnotationUsage<Parameter> parameter : parameters ) {
-			result.put(
-					parameter.getAttributeValue( "name" ),
-					parameter.getAttributeValue( "value" )
-			);
-		}
-		return result;
+		annotationTarget.forEachAnnotationUsage( COLLECTION_TYPE_REG, this::collectCollectionTypeRegistration );
 	}
 
 	public void collectCollectionTypeRegistrations(List<JaxbCollectionUserTypeRegistration> registrations) {
@@ -318,31 +338,40 @@ public class GlobalRegistrations {
 			return;
 		}
 
-		registrations.forEach( (reg) -> collectCollectionTypeRegistration(
-				reg.getClassification(),
-				classDetailsRegistry.resolveClassDetails( reg.getDescriptor() ),
-				extractParameterMap( reg.getParameters() )
-		) );
+		registrations.forEach( (reg) -> {
+			final ClassDetails typeDetails = classDetailsRegistry.resolveClassDetails( reg.getDescriptor() );
+
+			final DynamicAnnotationUsage<CollectionTypeRegistration> typeRegistration = new DynamicAnnotationUsage<>( CollectionTypeRegistration.class );
+			typeRegistration.setAttributeValue( "classification", reg.getClassification() );
+			typeRegistration.setAttributeValue( "type", typeDetails );
+			typeRegistration.setAttributeValue( "parameters", extractParameters( reg.getParameters() ) );
+
+			collectCollectionTypeRegistration( typeRegistration );
+		} );
 	}
 
-	private Map<String, String> extractParameterMap(List<JaxbConfigurationParameter> parameters) {
+	private List<AnnotationUsage<Parameter>> extractParameters(List<JaxbConfigurationParameter> parameters) {
 		if ( CollectionHelper.isEmpty( parameters ) ) {
-			return Collections.emptyMap();
+			return Collections.emptyList();
 		}
 
-		final Map<String,String> result = new HashMap<>();
-		parameters.forEach( parameter -> result.put( parameter.getName(), parameter.getValue() ) );
+		final List<AnnotationUsage<Parameter>> result = new ArrayList<>();
+		parameters.forEach( (parameter) -> result.add( makeParameter( parameter ) ) );
 		return result;
 	}
 
-	public void collectCollectionTypeRegistration(
-			CollectionClassification classification,
-			ClassDetails userTypeClass,
-			Map<String,String> parameters) {
+	private AnnotationUsage<Parameter> makeParameter(JaxbConfigurationParameter jaxbParameter) {
+		final DynamicAnnotationUsage<Parameter> parameter = new DynamicAnnotationUsage<>( Parameter.class );
+		parameter.setAttributeValue( "name", jaxbParameter.getName() );
+		parameter.setAttributeValue( "value", jaxbParameter.getValue() );
+		return parameter;
+	}
+
+	public void collectCollectionTypeRegistration(AnnotationUsage<CollectionTypeRegistration> annotationUsage) {
 		if ( collectionTypeRegistrations == null ) {
 			collectionTypeRegistrations = new ArrayList<>();
 		}
-		collectionTypeRegistrations.add( new CollectionTypeRegistration( classification, userTypeClass, parameters ) );
+		collectionTypeRegistrations.add( annotationUsage );
 	}
 
 
@@ -350,10 +379,7 @@ public class GlobalRegistrations {
 	// EmbeddableInstantiatorRegistration
 
 	public void collectEmbeddableInstantiatorRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachAnnotationUsage( EMBEDDABLE_INSTANTIATOR_REG, (usage) -> collectEmbeddableInstantiatorRegistration(
-				usage.getAttributeValue( "embeddableClass" ),
-				usage.getAttributeValue( "instantiator" )
-		) );
+		annotationTarget.forEachAnnotationUsage( EMBEDDABLE_INSTANTIATOR_REG, this::collectEmbeddableInstantiatorRegistration );
 	}
 
 	public void collectEmbeddableInstantiatorRegistrations(List<JaxbEmbeddableInstantiatorRegistration> registrations) {
@@ -361,17 +387,25 @@ public class GlobalRegistrations {
 			return;
 		}
 
-		registrations.forEach( (reg) -> collectEmbeddableInstantiatorRegistration(
-				classDetailsRegistry.resolveClassDetails( reg.getEmbeddableClass() ),
-				classDetailsRegistry.resolveClassDetails( reg.getInstantiator() )
-		) );
+		registrations.forEach( (reg) -> {
+			final ClassDetails embeddableClass = classDetailsRegistry.resolveClassDetails( reg.getEmbeddableClass() );
+			final ClassDetails instantiatorClass = classDetailsRegistry.resolveClassDetails( reg.getInstantiator() );
+
+			final DynamicAnnotationUsage<EmbeddableInstantiatorRegistration> usage = new DynamicAnnotationUsage<>(
+					EmbeddableInstantiatorRegistration.class,
+					instantiatorClass
+			);
+			usage.setAttributeValue( "embeddableClass", embeddableClass );
+			usage.setAttributeValue( "instantiator", instantiatorClass );
+			collectEmbeddableInstantiatorRegistration( usage );
+		} );
 	}
 
-	public void collectEmbeddableInstantiatorRegistration(ClassDetails embeddableClass, ClassDetails instantiator) {
+	public void collectEmbeddableInstantiatorRegistration(AnnotationUsage<EmbeddableInstantiatorRegistration> usage) {
 		if ( embeddableInstantiatorRegistrations == null ) {
 			embeddableInstantiatorRegistrations = new ArrayList<>();
 		}
-		embeddableInstantiatorRegistrations.add( new EmbeddableInstantiatorRegistration( embeddableClass, instantiator ) );
+		embeddableInstantiatorRegistrations.add( usage );
 	}
 
 
@@ -379,20 +413,7 @@ public class GlobalRegistrations {
 	// Filter-defs
 
 	public void collectFilterDefinitions(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachAnnotationUsage( FILTER_DEF, (usage) -> collectFilterDefinition(
-				usage.getAttributeValue( "name" ),
-				usage.getAttributeValue( "defaultCondition" ),
-				extractFilterParameters( usage )
-		) );
-	}
-
-	private Map<String, ClassDetails> extractFilterParameters(AnnotationUsage<FilterDef> source) {
-		final List<AnnotationUsage<ParamDef>> parameters = source.getAttributeValue( "parameters" );
-		final Map<String, ClassDetails> result = new HashMap<>( parameters.size() );
-		for ( AnnotationUsage<ParamDef> parameter : parameters ) {
-			result.put( parameter.getAttributeValue( "name" ), parameter.getAttributeValue( "type" ) );
-		}
-		return result;
+		annotationTarget.forEachAnnotationUsage( FILTER_DEF, this::collectFilterDefinition );
 	}
 
 	public void collectFilterDefinitions(List<JaxbFilterDef> filterDefinitions) {
@@ -400,33 +421,42 @@ public class GlobalRegistrations {
 			return;
 		}
 
-		filterDefinitions.forEach( (filterDefinition) -> collectFilterDefinition(
-				filterDefinition.getName(),
-				filterDefinition.getCondition(),
-				extractFilterParameters( filterDefinition )
-		) );
+		filterDefinitions.forEach( (filterDefinition) -> {
+			final DynamicAnnotationUsage<FilterDef> filterDef = new DynamicAnnotationUsage<>( FilterDef.class );
+			filterDef.setAttributeValue( "name", filterDefinition.getName() );
+			filterDef.setAttributeValue( "defaultCondition", filterDefinition.getCondition() );
+			filterDef.setAttributeValue( "parameters", extractFilterParameters( filterDefinition ) );
+			collectFilterDefinition( filterDefinition.getName(), filterDef );
+		} );
 	}
 
-	private Map<String, ClassDetails> extractFilterParameters(JaxbFilterDef source) {
+	private List<AnnotationUsage<ParamDef>> extractFilterParameters(JaxbFilterDef source) {
 		final List<JaxbFilterDef.JaxbFilterParam> parameters = source.getFilterParam();
 
 		// todo : update the mapping.xsd to account for new @ParamDef definition
 		// todo : handle simplified type names for XML, e.g. "String" instead of "java.lang.String"
 
-		final Map<String, ClassDetails> result = new HashMap<>( parameters.size() );
+		final List<AnnotationUsage<ParamDef>> result = new ArrayList<>( parameters.size() );
 		for ( JaxbFilterDef.JaxbFilterParam parameter : parameters ) {
-			result.put( parameter.getName(), classDetailsRegistry.resolveClassDetails( parameter.getType() ) );
+			final DynamicAnnotationUsage<ParamDef> paramDef = new DynamicAnnotationUsage<>( ParamDef.class );
+			paramDef.setAttributeValue( "name", parameter.getName() );
+			paramDef.setAttributeValue( "type", classDetailsRegistry.resolveClassDetails( parameter.getType() ) );
+			result.add( paramDef );
 		}
 		return result;
 	}
 
-	public void collectFilterDefinition(String name, String defaultCondition, Map<String, ClassDetails> parameters) {
+	public void collectFilterDefinition(AnnotationUsage<FilterDef> filterDef) {
+		collectFilterDefinition( filterDef.getAttributeValue( "name" ), filterDef );
+	}
+
+	public void collectFilterDefinition(String name, AnnotationUsage<FilterDef> filterDef) {
 		if ( filterDefRegistrations == null ) {
 			filterDefRegistrations = new HashMap<>();
 		}
 
-		if ( filterDefRegistrations.put( name, new FilterDefRegistration( name, defaultCondition, parameters ) ) != null ) {
-			throw new AnnotationException( "Multiple '@FilterDef' annotations define a filter named '" + name + "'" );
+		if ( filterDefRegistrations.put( name, filterDef ) != null ) {
+			throw new AnnotationException( "Multiple `@FilterDef` annotations define with the same name '" + name + "'" );
 		}
 	}
 

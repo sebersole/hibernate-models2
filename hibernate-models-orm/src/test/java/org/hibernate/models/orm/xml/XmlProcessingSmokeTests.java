@@ -9,15 +9,17 @@ package org.hibernate.models.orm.xml;
 import java.util.List;
 import java.util.Map;
 
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.ParamDef;
 import org.hibernate.boot.jaxb.mapping.JaxbEntityMappings;
-import org.hibernate.models.orm.internal.FilterDefRegistration;
-import org.hibernate.models.orm.internal.GlobalRegistrations;
+import org.hibernate.models.orm.internal.GlobalRegistrationsImpl;
 import org.hibernate.models.orm.internal.ProcessResultCollector;
 import org.hibernate.models.orm.xml.internal.XmlDocumentImpl;
 import org.hibernate.models.orm.xml.spi.XmlResources;
 import org.hibernate.models.orm.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.models.source.SourceModelTestHelper;
 import org.hibernate.models.source.internal.StringTypeDescriptor;
+import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 import org.hibernate.type.descriptor.jdbc.ClobJdbcType;
@@ -121,34 +123,34 @@ public class XmlProcessingSmokeTests {
 		final ProcessResultCollector processResultCollector = new ProcessResultCollector( false, buildingContext );
 		collectedXmlResources.getDocuments().forEach( processResultCollector::apply );
 
-		final GlobalRegistrations globalRegistrations = processResultCollector.getGlobalRegistrations();
+		final GlobalRegistrationsImpl globalRegistrations = processResultCollector.getGlobalRegistrations();
 		assertThat( globalRegistrations.getJavaTypeRegistrations() ).hasSize( 1 );
-		assertThat( globalRegistrations.getJavaTypeRegistrations().get(0).getDescriptor().getClassName() )
+		assertThat( globalRegistrations.getJavaTypeRegistrations().get(0).<ClassDetails>getAttributeValue( "descriptorClass" ).getClassName() )
 				.isEqualTo( StringTypeDescriptor.class.getName() );
 
 		assertThat( globalRegistrations.getJdbcTypeRegistrations() ).hasSize( 1 );
-		assertThat( globalRegistrations.getJdbcTypeRegistrations().get(0).getDescriptor().getClassName() )
+		assertThat( globalRegistrations.getJdbcTypeRegistrations().get(0).<ClassDetails>getAttributeValue( "value" ).getClassName() )
 				.isEqualTo( ClobJdbcType.class.getName() );
 
 		assertThat( globalRegistrations.getUserTypeRegistrations() ).hasSize( 1 );
-		assertThat( globalRegistrations.getUserTypeRegistrations().get(0).getUserTypeClass().getClassName() )
+		assertThat( globalRegistrations.getUserTypeRegistrations().get(0).<ClassDetails>getAttributeValue( "userType" ).getClassName() )
 				.isEqualTo( MyUserType.class.getName() );
 
 		assertThat( globalRegistrations.getConverterRegistrations() ).hasSize( 1 );
-		assertThat( globalRegistrations.getConverterRegistrations().get(0).getConverterType().getClassName() )
+		assertThat( globalRegistrations.getConverterRegistrations().get(0).<ClassDetails>getAttributeValue( "converter" ).getClassName() )
 				.isEqualTo( org.hibernate.type.YesNoConverter.class.getName() );
 
 		validateFilterDefs( globalRegistrations.getFilterDefRegistrations() );
 	}
 
-	private void validateFilterDefs(Map<String, FilterDefRegistration> filterDefRegistrations) {
+	private void validateFilterDefs(Map<String, AnnotationUsage<FilterDef>> filterDefRegistrations) {
 		assertThat( filterDefRegistrations ).hasSize( 1 );
 		assertThat( filterDefRegistrations ).containsKey( "amount_filter" );
-		final FilterDefRegistration filterDef = filterDefRegistrations.get( "amount_filter" );
-		assertThat( filterDef.getDefaultCondition() ).isEqualTo( "amount = :amount" );
-		final Map<String, ClassDetails> parameters = filterDef.getParameters();
+		final AnnotationUsage<FilterDef> filterDef = filterDefRegistrations.get( "amount_filter" );
+		assertThat( filterDef.<String>getAttributeValue( "defaultCondition" ) ).isEqualTo( "amount = :amount" );
+		final List<AnnotationUsage<ParamDef>> parameters = filterDef.getAttributeValue( "parameters" );
 		assertThat( parameters ).hasSize( 1 );
-		assertThat( parameters ).containsKey( "amount" );
-		assertThat( parameters.get( "amount" ).getName() ).isEqualTo( Integer.class.getName() );
+		assertThat( parameters.get(0).<String>getAttributeValue( "name" ) ).isEqualTo( "amount" );
+		assertThat( parameters.get(0).<ClassDetails>getAttributeValue( "type" ).getName() ).isEqualTo( Integer.class.getName() );
 	}
 }

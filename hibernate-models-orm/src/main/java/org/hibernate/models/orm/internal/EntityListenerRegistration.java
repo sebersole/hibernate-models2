@@ -14,6 +14,12 @@ import org.hibernate.models.source.spi.ClassDetailsRegistry;
 import org.hibernate.models.source.spi.MethodDetails;
 
 /**
+ * Represents an entity listener defined in XML.
+ *
+ * @apiNote Simply using {@code AnnotationUsage<EntityListeners>} is not enough here
+ *
+ * @see jakarta.persistence.EntityListeners
+ *
  * @author Steve Ebersole
  */
 public class EntityListenerRegistration {
