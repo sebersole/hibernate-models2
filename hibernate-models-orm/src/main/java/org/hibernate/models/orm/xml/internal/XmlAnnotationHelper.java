@@ -6,6 +6,7 @@
  */
 package org.hibernate.models.orm.xml.internal;
 
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,6 +29,7 @@ import org.hibernate.boot.jaxb.mapping.JaxbColumnType;
 import org.hibernate.boot.jaxb.mapping.JaxbConfigurationParameter;
 import org.hibernate.boot.jaxb.mapping.JaxbConvert;
 import org.hibernate.boot.jaxb.mapping.JaxbEmbeddedId;
+import org.hibernate.boot.jaxb.mapping.JaxbEntity;
 import org.hibernate.boot.jaxb.mapping.JaxbGeneratedValue;
 import org.hibernate.boot.jaxb.mapping.JaxbId;
 import org.hibernate.boot.jaxb.mapping.JaxbLob;
@@ -41,6 +43,7 @@ import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.orm.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.models.source.internal.MutableAnnotationTarget;
+import org.hibernate.models.source.internal.MutableAnnotationUsage;
 import org.hibernate.models.source.internal.MutableClassDetails;
 import org.hibernate.models.source.internal.MutableMemberDetails;
 import org.hibernate.models.source.internal.dynamic.DynamicAnnotationUsage;
@@ -58,6 +61,7 @@ import jakarta.persistence.Basic;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -81,14 +85,30 @@ import static org.hibernate.models.internal.StringHelper.nullIfEmpty;
  */
 public class XmlAnnotationHelper {
 
-	public static void applyBasic(
-			JaxbBasic jaxbBasic,
-			MutableMemberDetails memberDetails,
+	public static <A extends Annotation> MutableAnnotationUsage<A> getOrMakeAnnotation(
+			Class<A> annotationType,
+			MutableAnnotationTarget target) {
+		final AnnotationUsage<A> existing = target.getAnnotationUsage( annotationType );
+		if ( existing != null ) {
+			return (MutableAnnotationUsage<A>) existing;
+		}
+
+		final DynamicAnnotationUsage<A> created = new DynamicAnnotationUsage<>( annotationType, target );
+		target.addAnnotationUsage( created );
+		return created;
+	}
+
+	/**
+	 * Handle creating {@linkplain Entity @Entity} from a {@code <entity/>} element
+	 */
+	public static void applyEntity(
+			JaxbEntity jaxbEntity,
+			MutableClassDetails classDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
-		final DynamicAnnotationUsage<Basic> annotationUsage = new DynamicAnnotationUsage<>( Basic.class, memberDetails );
-		memberDetails.addAnnotationUsage( annotationUsage );
-		annotationUsage.setAttributeValue( "fetch", jaxbBasic.getFetch() );
-		annotationUsage.setAttributeValue( "optional", jaxbBasic.isOptional() );
+		final MutableAnnotationUsage<Entity> entityUsage = getOrMakeAnnotation( Entity.class, classDetails );
+		if ( StringHelper.isNotEmpty( jaxbEntity.getName() ) ) {
+			entityUsage.setAttributeValue( "name", jaxbEntity.getName() );
+		}
 	}
 
 	public static void applyBasic(
@@ -99,6 +119,19 @@ public class XmlAnnotationHelper {
 		memberDetails.addAnnotationUsage( annotationUsage );
 		annotationUsage.setAttributeValue( "fetch", EAGER );
 		annotationUsage.setAttributeValue( "optional", false );
+	}
+
+	public static void applyBasic(
+			JaxbBasic jaxbBasic,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		final MutableAnnotationUsage<Basic> basicAnn = getOrMakeAnnotation( Basic.class, memberDetails );
+		if ( jaxbBasic.getFetch() != null ) {
+			basicAnn.setAttributeValue( "fetch", jaxbBasic.getFetch() );
+		}
+		if ( jaxbBasic.isOptional() != null ) {
+			basicAnn.setAttributeValue( "optional", jaxbBasic.isOptional() );
+		}
 	}
 
 	public static void applyAccess(
@@ -141,14 +174,13 @@ public class XmlAnnotationHelper {
 			return;
 		}
 
-		final DynamicAnnotationUsage<Column> columnAnn = createColumnAnnotation( jaxbColumn, memberDetails );
-		memberDetails.addAnnotationUsage( columnAnn );
+		createColumnAnnotation( jaxbColumn, memberDetails );
 	}
 
-	private static DynamicAnnotationUsage<Column> createColumnAnnotation(
+	private static MutableAnnotationUsage<Column> createColumnAnnotation(
 			JaxbColumn jaxbColumn,
-			AnnotationTarget target) {
-		final DynamicAnnotationUsage<Column> columnAnn = new DynamicAnnotationUsage<>( Column.class, target );
+			MutableAnnotationTarget target) {
+		final MutableAnnotationUsage<Column> columnAnn = getOrMakeAnnotation( Column.class, target );
 
 		if ( jaxbColumn != null ) {
 			if ( StringHelper.isNotEmpty( jaxbColumn.getName() ) ) {
@@ -464,19 +496,65 @@ public class XmlAnnotationHelper {
 			MutableAnnotationTarget target,
 			PersistenceUnitMetadata persistenceUnitMetadata) {
 		final DynamicAnnotationUsage<Table> tableAnn = new DynamicAnnotationUsage<>( Table.class, target );
-		tableAnn.setAttributeValue( "name", nullIfEmpty( jaxbTable.getName() ) );
-		tableAnn.setAttributeValue( "catalog", coalesce(
-				nullIfEmpty( jaxbTable.getCatalog() ),
-				persistenceUnitMetadata.getDefaultCatalog()
-		) );
-		tableAnn.setAttributeValue( "schema",  coalesce(
-				nullIfEmpty( jaxbTable.getSchema() ),
-				persistenceUnitMetadata.getDefaultSchema()
-		) );
-		// todo : uniqueConstraints
-		// todo : indexes
 		target.addAnnotationUsage( tableAnn );
 
+		applyTableAttributes( tableAnn, jaxbTable, persistenceUnitMetadata );
+
+		// todo : uniqueConstraints
+		// todo : indexes
+	}
+
+	public static void applyTableOverride(
+			JaxbTable jaxbTable,
+			MutableAnnotationTarget target,
+			PersistenceUnitMetadata persistenceUnitMetadata) {
+		if ( jaxbTable == null ) {
+			return;
+		}
+
+		final MutableAnnotationUsage<Table> tableAnn = getOrMakeAnnotation( Table.class, target );
+
+		applyTableAttributes( tableAnn, jaxbTable, persistenceUnitMetadata );
+
+		// todo : uniqueConstraints
+		// todo : indexes
+	}
+
+	private static void applyTableAttributes(
+			MutableAnnotationUsage<Table> tableAnn,
+			JaxbTable jaxbTable,
+			PersistenceUnitMetadata persistenceUnitMetadata) {
+		applyAttributeIfSpecified( tableAnn, "name", jaxbTable.getName() );
+		applyAttributeIfSpecified( tableAnn, "catalog", jaxbTable.getCatalog(), persistenceUnitMetadata.getDefaultCatalog() );
+		applyAttributeIfSpecified( tableAnn, "schema", jaxbTable.getSchema(), persistenceUnitMetadata.getDefaultSchema() );
+	}
+
+	private static <A extends Annotation> void applyAttributeIfSpecified(
+			MutableAnnotationUsage<A> annotationUsage,
+			String attributeName,
+			String value) {
+		if ( StringHelper.isNotEmpty( value ) ) {
+			annotationUsage.setAttributeValue( attributeName, value );
+		}
+	}
+
+	private static <A extends Annotation, V> void applyAttributeIfSpecified(
+			MutableAnnotationUsage<A> annotationUsage,
+			String attributeName,
+			V... values) {
+		final V coalesced = coalesce( values );
+		if ( coalesced != null ) {
+			annotationUsage.setAttributeValue( attributeName, coalesced );
+		}
+	}
+
+	private static <A extends Annotation> void applyAttributeIfSpecified(
+			MutableAnnotationUsage<A> tableAnn,
+			String attributeName,
+			Object value) {
+		if ( value != null ) {
+			tableAnn.setAttributeValue( attributeName, value );
+		}
 	}
 
 	public static void applyNaturalId(
@@ -526,6 +604,17 @@ public class XmlAnnotationHelper {
 		memberDetails.addAnnotationUsage( annotationUsage );
 	}
 
+	public static void applyIdOverride(
+			JaxbId jaxbId,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( jaxbId == null ) {
+			return;
+		}
+
+		getOrMakeAnnotation( Id.class, memberDetails );
+	}
+
 	public static void applyEmbeddedId(
 			JaxbEmbeddedId jaxbEmbeddedId,
 			MutableMemberDetails memberDetails,
@@ -538,5 +627,16 @@ public class XmlAnnotationHelper {
 				memberDetails
 		);
 		memberDetails.addAnnotationUsage( annotationUsage );
+	}
+
+	public static void applyEmbeddedIdOverride(
+			JaxbEmbeddedId jaxbEmbeddedId,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( jaxbEmbeddedId == null ) {
+			return;
+		}
+
+		getOrMakeAnnotation( EmbeddedId.class, memberDetails );
 	}
 }

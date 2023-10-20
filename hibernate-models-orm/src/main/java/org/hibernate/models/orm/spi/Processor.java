@@ -200,7 +200,13 @@ public class Processor {
 				mappingBuildingContext
 		);
 
-		XmlManagedTypeHelper.applyEntityOverrides( allEntities, entityOverrides, sourceModelBuildingContext );
+		XmlManagedTypeHelper.applyEntityOverrides(
+				allEntities,
+				entityOverrides,
+				collectedXmlResources.getPersistenceUnitMetadata(),
+				sourceModelBuildingContext
+		);
+
 		XmlManagedTypeHelper.applyMappedSuperclassOverrides( mappedSuperClasses, mappedSuperclassesOverrides, sourceModelBuildingContext );
 		XmlManagedTypeHelper.applyEmbeddableOverrides( embeddables, embeddableOverrides, sourceModelBuildingContext );
 

@@ -6,6 +6,7 @@
  */
 package org.hibernate.models.orm.xml;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Basic;
@@ -18,6 +19,7 @@ public class SimpleEntity {
 	@Id
 	private Integer id;
 	@Basic
+	@Column(columnDefinition = "nvarchar(512)")
 	private String name;
 
 	protected SimpleEntity() {
