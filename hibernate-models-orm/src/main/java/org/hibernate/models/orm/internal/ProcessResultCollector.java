@@ -29,15 +29,15 @@ import static java.util.Collections.emptyMap;
  * @author Steve Ebersole
  */
 public class ProcessResultCollector {
-	private final GlobalRegistrations globalRegistrations;
+	private final GlobalRegistrationsImpl globalRegistrations;
 	private final boolean areIdGeneratorsGlobal;
 
 	public ProcessResultCollector(boolean areIdGeneratorsGlobal, SourceModelBuildingContext sourceModelBuildingContext) {
-		this.globalRegistrations = new GlobalRegistrations( sourceModelBuildingContext );
+		this.globalRegistrations = new GlobalRegistrationsImpl( sourceModelBuildingContext );
 		this.areIdGeneratorsGlobal = areIdGeneratorsGlobal;
 	}
 
-	public GlobalRegistrations getGlobalRegistrations() {
+	public GlobalRegistrationsImpl getGlobalRegistrations() {
 		return globalRegistrations;
 	}
 
@@ -116,21 +116,7 @@ public class ProcessResultCollector {
 				entityHierarchies,
 				mappedSuperclasses,
 				embeddables,
-				getGlobalRegistrations().getJavaTypeRegistrations(),
-				getGlobalRegistrations().getJdbcTypeRegistrations(),
-				getGlobalRegistrations().getConverterRegistrations(),
-				getGlobalRegistrations().getAutoAppliedConverters(),
-				getGlobalRegistrations().getUserTypeRegistrations(),
-				getGlobalRegistrations().getCompositeUserTypeRegistrations(),
-				getGlobalRegistrations().getCollectionTypeRegistrations(),
-				getGlobalRegistrations().getEmbeddableInstantiatorRegistrations(),
-				getGlobalRegistrations().getFilterDefRegistrations(),
-//				jpaNamedQueries == null ? emptyMap() : jpaNamedQueries,
-//				hibernateNamedHqlQueries == null ? emptyMap() : hibernateNamedHqlQueries,
-//				hibernateNamedNativeQueries == null ? emptyMap() : hibernateNamedNativeQueries
-				emptyMap(),
-				emptyMap(),
-				emptyMap()
+				getGlobalRegistrations()
 		);
 	}
 }

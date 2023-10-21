@@ -5,8 +5,9 @@
  * Copyright: Red Hat Inc. and Hibernate Authors
  */
 
-package org.hibernate.models.orm.internal;
+package org.hibernate.models.orm.spi;
 
+import java.lang.annotation.Annotation;
 import java.util.List;
 import java.util.Objects;
 
@@ -19,6 +20,7 @@ import org.hibernate.boot.model.convert.spi.ConverterDescriptor;
 import org.hibernate.boot.model.convert.spi.JpaAttributeConverterCreationContext;
 import org.hibernate.boot.model.convert.spi.RegisteredConversion;
 import org.hibernate.models.Copied;
+import org.hibernate.models.source.spi.AnnotationDescriptor;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.resource.beans.spi.ManagedBean;
 import org.hibernate.type.descriptor.converter.internal.JpaAttributeConverterImpl;
@@ -41,13 +43,19 @@ public class ConversionRegistration {
 	private final ClassDetails explicitDomainType;
 	private final ClassDetails converterType;
 	private final boolean autoApply;
+	private final AnnotationDescriptor<? extends Annotation> source;
 
-	public ConversionRegistration(ClassDetails explicitDomainType, ClassDetails converterType, boolean autoApply) {
+	public ConversionRegistration(
+			ClassDetails explicitDomainType,
+			ClassDetails converterType,
+			boolean autoApply,
+			AnnotationDescriptor<? extends Annotation> source) {
 		assert converterType != null;
 
 		this.explicitDomainType = explicitDomainType;
 		this.converterType = converterType;
 		this.autoApply = autoApply;
+		this.source = source;
 	}
 
 	@Override
@@ -79,6 +87,15 @@ public class ConversionRegistration {
 
 	public boolean isAutoApply() {
 		return autoApply;
+	}
+
+	public AnnotationDescriptor<? extends Annotation> getSource() {
+		return source;
+	}
+
+	@Override
+	public String toString() {
+		return "ConversionRegistration( " + converterType.getClassName() + ", " + source.getAnnotationType().getSimpleName() + ", " + autoApply + ")";
 	}
 
 	public ConverterDescriptor makeConverterDescriptor(ClassmateContext classmateContext) {

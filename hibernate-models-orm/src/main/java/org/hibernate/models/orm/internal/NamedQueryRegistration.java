@@ -8,14 +8,16 @@ package org.hibernate.models.orm.internal;
 
 import java.lang.annotation.Annotation;
 
+import org.hibernate.models.orm.HibernateAnnotations;
+import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.source.spi.AnnotationUsage;
 
 /**
- * @see org.hibernate.models.orm.spi.JpaAnnotations#NAMED_QUERY
- * @see org.hibernate.models.orm.spi.JpaAnnotations#NAMED_NATIVE_QUERY
- * @see org.hibernate.models.orm.spi.JpaAnnotations#NAMED_STORED_PROCEDURE_QUERY
- * @see org.hibernate.models.orm.spi.HibernateAnnotations#NAMED_QUERY
- * @see org.hibernate.models.orm.spi.HibernateAnnotations#NAMED_NATIVE_QUERY
+ * @see JpaAnnotations#NAMED_QUERY
+ * @see JpaAnnotations#NAMED_NATIVE_QUERY
+ * @see JpaAnnotations#NAMED_STORED_PROCEDURE_QUERY
+ * @see HibernateAnnotations#NAMED_QUERY
+ * @see HibernateAnnotations#NAMED_NATIVE_QUERY
  *
  * @author Steve Ebersole
  */

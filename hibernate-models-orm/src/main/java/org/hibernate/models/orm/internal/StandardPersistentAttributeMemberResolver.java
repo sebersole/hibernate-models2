@@ -13,7 +13,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import org.hibernate.models.orm.AccessTypePlacementException;
-import org.hibernate.models.orm.spi.JpaAnnotations;
+import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.orm.spi.OrmModelBuildingContext;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;

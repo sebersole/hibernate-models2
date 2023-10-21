@@ -13,7 +13,6 @@ import org.hibernate.models.orm.internal.FilterDefRegistration;
 import org.hibernate.models.orm.internal.ManagedResourcesImpl;
 import org.hibernate.models.orm.spi.EntityHierarchy;
 import org.hibernate.models.orm.spi.EntityTypeMetadata;
-import org.hibernate.models.orm.spi.IdentifiableTypeMetadata;
 import org.hibernate.models.orm.spi.ManagedResources;
 import org.hibernate.models.orm.spi.ProcessResult;
 import org.hibernate.models.orm.spi.Processor;
@@ -115,7 +114,7 @@ public class SimpleProcessorTests {
 			validateJoinedHierarchy( one );
 		}
 
-		validateFilterDefs( processResult.getFilterDefRegistrations() );
+		validateFilterDefs( processResult.getGlobalRegistrations().getFilterDefRegistrations() );
 	}
 
 	private void validatePersonHierarchy(EntityHierarchy hierarchy) {

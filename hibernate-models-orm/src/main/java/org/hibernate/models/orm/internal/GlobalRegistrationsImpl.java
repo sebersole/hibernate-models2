@@ -35,6 +35,12 @@ import org.hibernate.boot.jaxb.mapping.JaxbUserTypeRegistration;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.CollectionClassification;
 import org.hibernate.models.internal.StringHelper;
+import org.hibernate.models.orm.spi.ConversionRegistration;
+import org.hibernate.models.orm.spi.EntityListenerRegistration;
+import org.hibernate.models.orm.spi.GlobalRegistrations;
+import org.hibernate.models.orm.spi.JavaTypeRegistration;
+import org.hibernate.models.orm.spi.JdbcTypeRegistration;
+import org.hibernate.models.orm.spi.UserTypeRegistration;
 import org.hibernate.models.source.internal.dynamic.DynamicAnnotationUsage;
 import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
 import org.hibernate.models.source.spi.AnnotationTarget;
@@ -48,24 +54,23 @@ import jakarta.persistence.TableGenerator;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
-import static org.hibernate.models.orm.spi.HibernateAnnotations.COLLECTION_TYPE_REG;
-import static org.hibernate.models.orm.spi.HibernateAnnotations.COMPOSITE_TYPE_REG;
-import static org.hibernate.models.orm.spi.HibernateAnnotations.CONVERTER_REG;
-import static org.hibernate.models.orm.spi.HibernateAnnotations.EMBEDDABLE_INSTANTIATOR_REG;
-import static org.hibernate.models.orm.spi.HibernateAnnotations.FILTER_DEF;
-import static org.hibernate.models.orm.spi.HibernateAnnotations.JAVA_TYPE_REG;
-import static org.hibernate.models.orm.spi.HibernateAnnotations.JDBC_TYPE_REG;
-import static org.hibernate.models.orm.spi.HibernateAnnotations.TYPE_REG;
+import static org.hibernate.models.orm.HibernateAnnotations.COLLECTION_TYPE_REG;
+import static org.hibernate.models.orm.HibernateAnnotations.COMPOSITE_TYPE_REG;
+import static org.hibernate.models.orm.HibernateAnnotations.CONVERTER_REG;
+import static org.hibernate.models.orm.HibernateAnnotations.EMBEDDABLE_INSTANTIATOR_REG;
+import static org.hibernate.models.orm.HibernateAnnotations.FILTER_DEF;
+import static org.hibernate.models.orm.HibernateAnnotations.JAVA_TYPE_REG;
+import static org.hibernate.models.orm.HibernateAnnotations.JDBC_TYPE_REG;
+import static org.hibernate.models.orm.HibernateAnnotations.TYPE_REG;
 
 /**
  * @author Steve Ebersole
  */
-public class GlobalRegistrations {
+public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	private final ClassDetailsRegistry classDetailsRegistry;
 	private final AnnotationDescriptorRegistry annotationDescriptorRegistry;
 
 	private List<EntityListenerRegistration> entityListenerRegistrations;
-	private List<ClassDetails> autoAppliedConverters;
 	private List<ConversionRegistration> converterRegistrations;
 	private List<JavaTypeRegistration> javaTypeRegistrations;
 	private List<JdbcTypeRegistration> jdbcTypeRegistrations;
@@ -79,57 +84,73 @@ public class GlobalRegistrations {
 	private Map<String,TableGeneratorRegistration> tableGeneratorRegistrations;
 	private Map<String,GenericGeneratorRegistration> genericGeneratorRegistrations;
 
-	private Map<String, NamedQueryRegistration> jpaNamedQueries;
-	private Map<String, NamedQueryRegistration> hibernateNamedHqlQueries;
-	private Map<String, NamedQueryRegistration> hibernateNamedNativeQueries;
-
-	public GlobalRegistrations(SourceModelBuildingContext sourceModelBuildingContext) {
+	public GlobalRegistrationsImpl(SourceModelBuildingContext sourceModelBuildingContext) {
 		this( sourceModelBuildingContext.getClassDetailsRegistry(), sourceModelBuildingContext.getAnnotationDescriptorRegistry() );
 	}
 
-	public GlobalRegistrations(ClassDetailsRegistry classDetailsRegistry, AnnotationDescriptorRegistry annotationDescriptorRegistry) {
+	public GlobalRegistrationsImpl(ClassDetailsRegistry classDetailsRegistry, AnnotationDescriptorRegistry annotationDescriptorRegistry) {
 		this.classDetailsRegistry = classDetailsRegistry;
 		this.annotationDescriptorRegistry = annotationDescriptorRegistry;
 	}
 
+	@Override
 	public List<EntityListenerRegistration> getEntityListenerRegistrations() {
 		return entityListenerRegistrations;
 	}
 
+	@Override
 	public List<ConversionRegistration> getConverterRegistrations() {
 		return converterRegistrations == null ? emptyList() : converterRegistrations;
 	}
 
-	public List<ClassDetails> getAutoAppliedConverters() {
-		return autoAppliedConverters == null ? emptyList() : autoAppliedConverters;
-	}
-
+	@Override
 	public List<JavaTypeRegistration> getJavaTypeRegistrations() {
 		return javaTypeRegistrations == null ? emptyList() : javaTypeRegistrations;
 	}
 
+	@Override
 	public List<JdbcTypeRegistration> getJdbcTypeRegistrations() {
 		return jdbcTypeRegistrations == null ? emptyList() : jdbcTypeRegistrations;
 	}
 
+	@Override
 	public List<UserTypeRegistration> getUserTypeRegistrations() {
 		return userTypeRegistrations == null ? emptyList() : userTypeRegistrations;
 	}
 
+	@Override
 	public List<CompositeUserTypeRegistration> getCompositeUserTypeRegistrations() {
 		return compositeUserTypeRegistrations == null ? emptyList() : compositeUserTypeRegistrations;
 	}
 
+	@Override
 	public List<CollectionTypeRegistration> getCollectionTypeRegistrations() {
 		return collectionTypeRegistrations == null ? emptyList() : collectionTypeRegistrations;
 	}
 
+	@Override
 	public List<EmbeddableInstantiatorRegistration> getEmbeddableInstantiatorRegistrations() {
 		return embeddableInstantiatorRegistrations == null ? emptyList() : embeddableInstantiatorRegistrations;
 	}
 
+	@Override
 	public Map<String, FilterDefRegistration> getFilterDefRegistrations() {
 		return filterDefRegistrations == null ? emptyMap() : filterDefRegistrations;
+	}
+
+	@Override
+	public Map<String, SequenceGeneratorRegistration> getSequenceGeneratorRegistrations() {
+		return sequenceGeneratorRegistrations == null ? emptyMap() : sequenceGeneratorRegistrations;
+	}
+
+	@Override
+	public Map<String, TableGeneratorRegistration> getTableGeneratorRegistrations() {
+		return tableGeneratorRegistrations == null ? emptyMap() : tableGeneratorRegistrations;
+	}
+
+	@Override
+	public Map<String, GenericGeneratorRegistration> getGenericGeneratorRegistrations() {
+		return genericGeneratorRegistrations == null ? emptyMap() : genericGeneratorRegistrations;
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -154,10 +175,14 @@ public class GlobalRegistrations {
 	}
 
 	public  void collectJavaTypeRegistration(ClassDetails javaType, ClassDetails descriptor) {
+		collectJavaTypeRegistration( new JavaTypeRegistration( javaType, descriptor ) );
+	}
+
+	public  void collectJavaTypeRegistration(JavaTypeRegistration registration) {
 		if ( javaTypeRegistrations == null ) {
 			javaTypeRegistrations = new ArrayList<>();
 		}
-		javaTypeRegistrations.add( new JavaTypeRegistration( javaType, descriptor ) );
+		javaTypeRegistrations.add( registration );
 	}
 
 
@@ -198,7 +223,7 @@ public class GlobalRegistrations {
 			final ClassDetails domainType = usage.getAttributeValue( "domainType" );
 			final ClassDetails converterType = usage.getAttributeValue( "converter" );
 			final boolean autoApply = usage.getAttributeValue( "autoApply" );
-			collectConverterRegistration( new ConversionRegistration( domainType, converterType, autoApply ) );
+			collectConverterRegistration( new ConversionRegistration( domainType, converterType, autoApply, CONVERTER_REG ) );
 		} );
 	}
 
@@ -218,7 +243,7 @@ public class GlobalRegistrations {
 			}
 			final ClassDetails converterType = classDetailsRegistry.resolveClassDetails( registration.getConverter() );
 			final boolean autoApply = registration.isAutoApply();
-			collectConverterRegistration( new ConversionRegistration( explicitDomainType, converterType, autoApply ) );
+			collectConverterRegistration( new ConversionRegistration( explicitDomainType, converterType, autoApply, CONVERTER_REG ) );
 		} );
 	}
 

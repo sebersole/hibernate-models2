@@ -12,13 +12,9 @@ import java.util.Set;
 
 import org.hibernate.models.orm.internal.CollectionTypeRegistration;
 import org.hibernate.models.orm.internal.CompositeUserTypeRegistration;
-import org.hibernate.models.orm.internal.ConversionRegistration;
 import org.hibernate.models.orm.internal.EmbeddableInstantiatorRegistration;
 import org.hibernate.models.orm.internal.FilterDefRegistration;
-import org.hibernate.models.orm.internal.JavaTypeRegistration;
-import org.hibernate.models.orm.internal.JdbcTypeRegistration;
 import org.hibernate.models.orm.internal.NamedQueryRegistration;
-import org.hibernate.models.orm.internal.UserTypeRegistration;
 import org.hibernate.models.source.spi.ClassDetails;
 
 /**
@@ -42,27 +38,8 @@ public interface ProcessResult {
 	 */
 	Map<String,ClassDetails> getEmbeddables();
 
-	List<JavaTypeRegistration> getJavaTypeRegistrations();
-
-	List<JdbcTypeRegistration> getJdbcTypeRegistrations();
-
-	List<ConversionRegistration> getConverterRegistrations();
-
-	List<ClassDetails> getAutoAppliedConverters();
-
-	List<UserTypeRegistration> getUserTypeRegistrations();
-
-	List<CompositeUserTypeRegistration> getCompositeUserTypeRegistrations();
-
-	List<CollectionTypeRegistration> getCollectionTypeRegistrations();
-
-	List<EmbeddableInstantiatorRegistration> getEmbeddableInstantiatorRegistrations();
-
-	Map<String, FilterDefRegistration> getFilterDefRegistrations();
-
-	Map<String, NamedQueryRegistration> getJpaNamedQueries();
-
-	Map<String, NamedQueryRegistration> getHibernateNamedHqlQueries();
-
-	Map<String, NamedQueryRegistration> getHibernateNamedNativeQueries();
+	/**
+	 * Global registrations collected while processing the persistence-unit.
+	 */
+	GlobalRegistrations getGlobalRegistrations();
 }

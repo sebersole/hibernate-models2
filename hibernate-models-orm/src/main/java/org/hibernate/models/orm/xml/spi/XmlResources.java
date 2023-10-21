@@ -28,6 +28,9 @@ import org.hibernate.models.spi.ClassLoading;
 import static org.hibernate.boot.jaxb.internal.MappingBinder.NON_VALIDATING;
 
 /**
+ * Keeps track of collected/aggregated {@linkplain #getPersistenceUnitMetadata() metadata}
+ * across all {@linkplain #getDocuments() mapping documents} in the persistence-unit
+ *
  * @author Steve Ebersole
  */
 public class XmlResources {
@@ -37,6 +40,9 @@ public class XmlResources {
 	public XmlResources() {
 	}
 
+	/**
+	 * Build an XmlResources reference based on the given {@code managedResources}
+	 */
 	public static XmlResources collectXmlResources(
 			ManagedResources managedResources,
 			SourceModelBuildingContext sourceModelBuildingContext) {
@@ -67,10 +73,17 @@ public class XmlResources {
 		return collected;
 	}
 
+	/**
+	 * The metadata collected/aggregated across all of the {@linkplain #getDocuments() mapping documents}
+	 * in the persistence-unit.
+	 */
 	public PersistenceUnitMetadata getPersistenceUnitMetadata() {
 		return persistenceUnitMetadata;
 	}
 
+	/**
+	 * All documents in the persistence-unit
+	 */
 	public List<JaxbEntityMappings> getDocuments() {
 		return documents;
 	}

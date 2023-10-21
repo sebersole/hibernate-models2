@@ -12,7 +12,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import org.hibernate.models.orm.spi.JpaAnnotations;
+import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.orm.spi.OrmModelBuildingContext;
 import org.hibernate.models.orm.spi.PersistentAttributeMemberResolver;
 import org.hibernate.models.source.spi.ClassDetails;
