@@ -35,14 +35,20 @@ import org.hibernate.boot.jaxb.mapping.JaxbUserTypeRegistration;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.CollectionClassification;
 import org.hibernate.models.internal.StringHelper;
+import org.hibernate.models.orm.spi.CollectionTypeRegistration;
+import org.hibernate.models.orm.spi.CompositeUserTypeRegistration;
 import org.hibernate.models.orm.spi.ConversionRegistration;
+import org.hibernate.models.orm.spi.EmbeddableInstantiatorRegistration;
 import org.hibernate.models.orm.spi.EntityListenerRegistration;
+import org.hibernate.models.orm.spi.FilterDefRegistration;
+import org.hibernate.models.orm.spi.GenericGeneratorRegistration;
 import org.hibernate.models.orm.spi.GlobalRegistrations;
 import org.hibernate.models.orm.spi.JavaTypeRegistration;
 import org.hibernate.models.orm.spi.JdbcTypeRegistration;
+import org.hibernate.models.orm.spi.SequenceGeneratorRegistration;
+import org.hibernate.models.orm.spi.TableGeneratorRegistration;
 import org.hibernate.models.orm.spi.UserTypeRegistration;
 import org.hibernate.models.source.internal.dynamic.DynamicAnnotationUsage;
-import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
 import org.hibernate.models.source.spi.AnnotationTarget;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
@@ -68,7 +74,6 @@ import static org.hibernate.models.orm.HibernateAnnotations.TYPE_REG;
  */
 public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	private final ClassDetailsRegistry classDetailsRegistry;
-	private final AnnotationDescriptorRegistry annotationDescriptorRegistry;
 
 	private List<EntityListenerRegistration> entityListenerRegistrations;
 	private List<ConversionRegistration> converterRegistrations;
@@ -78,19 +83,18 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	private List<CompositeUserTypeRegistration> compositeUserTypeRegistrations;
 	private List<CollectionTypeRegistration> collectionTypeRegistrations;
 	private List<EmbeddableInstantiatorRegistration> embeddableInstantiatorRegistrations;
-	private Map<String,FilterDefRegistration> filterDefRegistrations;
+	private Map<String, FilterDefRegistration> filterDefRegistrations;
 
 	private Map<String,SequenceGeneratorRegistration> sequenceGeneratorRegistrations;
 	private Map<String,TableGeneratorRegistration> tableGeneratorRegistrations;
 	private Map<String,GenericGeneratorRegistration> genericGeneratorRegistrations;
 
 	public GlobalRegistrationsImpl(SourceModelBuildingContext sourceModelBuildingContext) {
-		this( sourceModelBuildingContext.getClassDetailsRegistry(), sourceModelBuildingContext.getAnnotationDescriptorRegistry() );
+		this( sourceModelBuildingContext.getClassDetailsRegistry() );
 	}
 
-	public GlobalRegistrationsImpl(ClassDetailsRegistry classDetailsRegistry, AnnotationDescriptorRegistry annotationDescriptorRegistry) {
+	public GlobalRegistrationsImpl(ClassDetailsRegistry classDetailsRegistry) {
 		this.classDetailsRegistry = classDetailsRegistry;
-		this.annotationDescriptorRegistry = annotationDescriptorRegistry;
 	}
 
 	@Override

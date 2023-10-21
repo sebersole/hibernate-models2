@@ -4,27 +4,29 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright: Red Hat Inc. and Hibernate Authors
  */
-package org.hibernate.models.orm.internal;
+package org.hibernate.models.orm.spi;
 
 import org.hibernate.models.source.spi.ClassDetails;
 
 /**
+ * @see org.hibernate.annotations.EmbeddableInstantiatorRegistration
+ *
  * @author Steve Ebersole
  */
-public class CompositeUserTypeRegistration {
+public class EmbeddableInstantiatorRegistration {
 	private final ClassDetails embeddableClass;
-	private final ClassDetails userTypeClass;
+	private final ClassDetails instantiator;
 
-	public CompositeUserTypeRegistration(ClassDetails embeddableClass, ClassDetails userTypeClass) {
+	public EmbeddableInstantiatorRegistration(ClassDetails embeddableClass, ClassDetails instantiator) {
 		this.embeddableClass = embeddableClass;
-		this.userTypeClass = userTypeClass;
+		this.instantiator = instantiator;
 	}
 
 	public ClassDetails getEmbeddableClass() {
 		return embeddableClass;
 	}
 
-	public ClassDetails getUserTypeClass() {
-		return userTypeClass;
+	public ClassDetails getInstantiator() {
+		return instantiator;
 	}
 }

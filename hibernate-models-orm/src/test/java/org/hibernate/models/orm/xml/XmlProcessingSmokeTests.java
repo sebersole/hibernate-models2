@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.hibernate.boot.jaxb.mapping.JaxbEntityMappings;
-import org.hibernate.models.orm.internal.FilterDefRegistration;
+import org.hibernate.models.orm.spi.FilterDefRegistration;
 import org.hibernate.models.orm.internal.GlobalRegistrationsImpl;
 import org.hibernate.models.orm.internal.ProcessResultCollector;
 import org.hibernate.models.orm.xml.internal.XmlDocumentImpl;

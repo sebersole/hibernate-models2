@@ -9,7 +9,7 @@ package org.hibernate.models.orm.process;
 import java.util.Iterator;
 import java.util.Map;
 
-import org.hibernate.models.orm.internal.FilterDefRegistration;
+import org.hibernate.models.orm.spi.FilterDefRegistration;
 import org.hibernate.models.orm.internal.ManagedResourcesImpl;
 import org.hibernate.models.orm.spi.EntityHierarchy;
 import org.hibernate.models.orm.spi.EntityTypeMetadata;
