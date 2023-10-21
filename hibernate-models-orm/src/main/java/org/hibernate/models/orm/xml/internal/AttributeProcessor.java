@@ -6,27 +6,23 @@
  */
 package org.hibernate.models.orm.xml.internal;
 
-import java.beans.Introspector;
-
-import org.hibernate.annotations.NaturalId;
 import org.hibernate.boot.jaxb.mapping.AttributesContainer;
 import org.hibernate.boot.jaxb.mapping.JaxbBasic;
 import org.hibernate.boot.jaxb.mapping.JaxbElementCollection;
 import org.hibernate.boot.jaxb.mapping.JaxbEmbedded;
+import org.hibernate.boot.jaxb.mapping.JaxbEmbeddedId;
 import org.hibernate.boot.jaxb.mapping.JaxbHbmAnyMapping;
 import org.hibernate.boot.jaxb.mapping.JaxbHbmManyToAny;
+import org.hibernate.boot.jaxb.mapping.JaxbId;
 import org.hibernate.boot.jaxb.mapping.JaxbManyToMany;
 import org.hibernate.boot.jaxb.mapping.JaxbManyToOne;
 import org.hibernate.boot.jaxb.mapping.JaxbNaturalId;
 import org.hibernate.boot.jaxb.mapping.JaxbOneToMany;
 import org.hibernate.boot.jaxb.mapping.JaxbOneToOne;
 import org.hibernate.boot.jaxb.mapping.PersistentAttribute;
-import org.hibernate.models.orm.MemberResolutionException;
 import org.hibernate.models.source.internal.MutableClassDetails;
 import org.hibernate.models.source.internal.MutableMemberDetails;
 import org.hibernate.models.source.internal.dynamic.DynamicAnnotationUsage;
-import org.hibernate.models.source.spi.FieldDetails;
-import org.hibernate.models.source.spi.MethodDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
 import jakarta.persistence.AccessType;
@@ -35,78 +31,12 @@ import jakarta.persistence.Embedded;
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
 
 /**
+ * Helper for handling persistent attributes defined in mapping XML in metadata-complete mode
+ *
  * @author Steve Ebersole
  */
-public class XmlAttributeHelper {
-	/**
-	 * Find the member backing the named attribute
-	 */
-	public static MutableMemberDetails getAttributeMember(
-			String attributeName,
-			AccessType accessType,
-			MutableClassDetails classDetails,
-			SourceModelBuildingContext buildingContext) {
-		final MutableMemberDetails result = findAttributeMember(
-				attributeName,
-				accessType,
-				classDetails,
-				buildingContext
-		);
-		if ( result == null ) {
-			throw new MemberResolutionException(
-					String.format(
-							"Could not locate attribute member - %s (%s)",
-							attributeName,
-							classDetails.getName()
-					)
-			);
-		}
-		return result;
-	}
-
-	/**
-	 * Find the member backing the named attribute
-	 */
-	public static MutableMemberDetails findAttributeMember(
-			String attributeName,
-			AccessType accessType,
-			MutableClassDetails classDetails,
-			SourceModelBuildingContext buildingContext) {
-		if ( accessType == AccessType.PROPERTY ) {
-			for ( int i = 0; i < classDetails.getMethods().size(); i++ ) {
-				final MethodDetails methodDetails = classDetails.getMethods().get( i );
-				if ( methodDetails.getMethodKind() == MethodDetails.MethodKind.GETTER ) {
-					if ( methodDetails.getName().startsWith( "get" ) ) {
-						final String stemName = methodDetails.getName().substring( 3 );
-						final String decapitalizedStemName = Introspector.decapitalize( stemName );
-						if ( stemName.equals( attributeName ) || decapitalizedStemName.equals( attributeName ) ) {
-							return (MutableMemberDetails) methodDetails;
-						}
-					}
-					else if ( methodDetails.getName().startsWith( "is" ) ) {
-						final String stemName = methodDetails.getName().substring( 2 );
-						final String decapitalizedStemName = Introspector.decapitalize( stemName );
-						if ( stemName.equals( attributeName ) || decapitalizedStemName.equals( attributeName ) ) {
-							return (MutableMemberDetails) methodDetails;
-						}
-					}
-				}
-			}
-		}
-		else {
-			assert accessType == AccessType.FIELD;
-			for ( int i = 0; i < classDetails.getFields().size(); i++ ) {
-				final FieldDetails fieldDetails = classDetails.getFields().get( i );
-				if ( fieldDetails.getName().equals( attributeName ) ) {
-					return (MutableMemberDetails) fieldDetails;
-				}
-			}
-		}
-
-		return null;
-	}
-
-	public static void handleNaturalId(
+public class AttributeProcessor {
+	public static void processNaturalId(
 			JaxbNaturalId jaxbNaturalId,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
@@ -118,7 +48,7 @@ public class XmlAttributeHelper {
 		XmlAnnotationHelper.applyNaturalIdCache( jaxbNaturalId, mutableClassDetails, sourceModelBuildingContext );
 
 		jaxbNaturalId.getBasic().forEach( (jaxbBasic) -> {
-			final MutableMemberDetails backingMember = handleBasicAttribute(
+			final MutableMemberDetails backingMember = processBasicAttribute(
 					jaxbBasic,
 					mutableClassDetails,
 					classAccessType,
@@ -127,7 +57,7 @@ public class XmlAttributeHelper {
 			XmlAnnotationHelper.applyNaturalId( jaxbNaturalId, backingMember, sourceModelBuildingContext );
 		} );
 		jaxbNaturalId.getEmbedded().forEach( (jaxbEmbedded) -> {
-			final MutableMemberDetails backingMember = handleEmbeddedAttribute(
+			final MutableMemberDetails backingMember = processEmbeddedAttribute(
 					jaxbEmbedded,
 					mutableClassDetails,
 					classAccessType,
@@ -136,7 +66,7 @@ public class XmlAttributeHelper {
 			XmlAnnotationHelper.applyNaturalId( jaxbNaturalId, backingMember, sourceModelBuildingContext );
 		} );
 		jaxbNaturalId.getManyToOne().forEach( (jaxbManyToOne) -> {
-			final MutableMemberDetails backingMember = handleManyToOneAttribute(
+			final MutableMemberDetails backingMember = processManyToOneAttribute(
 					jaxbManyToOne,
 					mutableClassDetails,
 					classAccessType,
@@ -145,7 +75,7 @@ public class XmlAttributeHelper {
 			XmlAnnotationHelper.applyNaturalId( jaxbNaturalId, backingMember, sourceModelBuildingContext );
 		} );
 		jaxbNaturalId.getAny().forEach( (jaxbAny) -> {
-			final MutableMemberDetails backingMember = handleDiscriminatedAssociationAttribute(
+			final MutableMemberDetails backingMember = processDiscriminatedAssociationAttribute(
 					jaxbAny,
 					mutableClassDetails,
 					classAccessType,
@@ -155,15 +85,13 @@ public class XmlAttributeHelper {
 		} );
 	}
 
-
-
-	public static void handleAttributes(
+	public static void processAttributes(
 			AttributesContainer attributesContainer,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		for ( int i = 0; i < attributesContainer.getBasicAttributes().size(); i++ ) {
-			handleBasicAttribute(
+			processBasicAttribute(
 					attributesContainer.getBasicAttributes().get( i ),
 					mutableClassDetails,
 					classAccessType,
@@ -172,7 +100,7 @@ public class XmlAttributeHelper {
 		}
 
 		for ( int i = 0; i < attributesContainer.getEmbeddedAttributes().size(); i++ ) {
-			handleEmbeddedAttribute(
+			processEmbeddedAttribute(
 					attributesContainer.getEmbeddedAttributes().get( i ),
 					mutableClassDetails,
 					classAccessType,
@@ -181,7 +109,7 @@ public class XmlAttributeHelper {
 		}
 
 		for ( int i = 0; i < attributesContainer.getOneToOneAttributes().size(); i++ ) {
-			handleOneToOneAttribute(
+			processOneToOneAttribute(
 					attributesContainer.getOneToOneAttributes().get( i ),
 					mutableClassDetails,
 					classAccessType,
@@ -190,7 +118,7 @@ public class XmlAttributeHelper {
 		}
 
 		for ( int i = 0; i < attributesContainer.getManyToOneAttributes().size(); i++ ) {
-			handleManyToOneAttribute(
+			processManyToOneAttribute(
 					attributesContainer.getManyToOneAttributes().get( i ),
 					mutableClassDetails,
 					classAccessType,
@@ -199,7 +127,7 @@ public class XmlAttributeHelper {
 		}
 
 		for ( int i = 0; i < attributesContainer.getDiscriminatedAssociations().size(); i++ ) {
-			handleDiscriminatedAssociationAttribute(
+			processDiscriminatedAssociationAttribute(
 					attributesContainer.getDiscriminatedAssociations().get( i ),
 					mutableClassDetails,
 					classAccessType,
@@ -208,7 +136,7 @@ public class XmlAttributeHelper {
 		}
 
 		for ( int i = 0; i < attributesContainer.getElementCollectionAttributes().size(); i++ ) {
-			handleElementCollectionAttribute(
+			processElementCollectionAttribute(
 					attributesContainer.getElementCollectionAttributes().get( i ),
 					mutableClassDetails,
 					classAccessType,
@@ -217,7 +145,7 @@ public class XmlAttributeHelper {
 		}
 
 		for ( int i = 0; i < attributesContainer.getOneToManyAttributes().size(); i++ ) {
-			handleOneToManyAttribute(
+			processOneToManyAttribute(
 					attributesContainer.getOneToManyAttributes().get( i ),
 					mutableClassDetails,
 					classAccessType,
@@ -226,7 +154,7 @@ public class XmlAttributeHelper {
 		}
 
 		for ( int i = 0; i < attributesContainer.getManyToManyAttributes().size(); i++ ) {
-			handleManyToManyAttribute(
+			processManyToManyAttribute(
 					attributesContainer.getManyToManyAttributes().get( i ),
 					mutableClassDetails,
 					classAccessType,
@@ -235,7 +163,7 @@ public class XmlAttributeHelper {
 		}
 
 		for ( int i = 0; i < attributesContainer.getPluralDiscriminatedAssociations().size(); i++ ) {
-			handlePluralDiscriminatedAssociationAttribute(
+			processPluralDiscriminatedAssociationAttribute(
 					attributesContainer.getPluralDiscriminatedAssociations().get( i ),
 					mutableClassDetails,
 					classAccessType,
@@ -245,7 +173,7 @@ public class XmlAttributeHelper {
 
 	}
 
-	public static void applyCommonAttributeAnnotations(
+	public static void processCommonAttributeAnnotations(
 			PersistentAttribute jaxbAttribute,
 			MutableMemberDetails memberDetails,
 			AccessType accessType,
@@ -258,13 +186,108 @@ public class XmlAttributeHelper {
 		);
 	}
 
-	public static MutableMemberDetails handleBasicAttribute(
+	public static void processBasicIdAttribute(
+			JaxbId jaxbId,
+			MutableClassDetails declarer,
+			AccessType classAccessType,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		final AccessType accessType = coalesce( jaxbId.getAccess(), classAccessType );
+		final MutableMemberDetails memberDetails = XmlProcessingHelper.getAttributeMember(
+				jaxbId.getName(),
+				accessType,
+				declarer,
+				sourceModelBuildingContext
+		);
+		XmlAnnotationHelper.applyId( jaxbId, memberDetails, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyBasic( jaxbId, memberDetails, sourceModelBuildingContext );
+		AttributeProcessor.processCommonAttributeAnnotations(
+				jaxbId,
+				memberDetails,
+				accessType,
+				sourceModelBuildingContext
+		);
+
+		XmlAnnotationHelper.applyColumn(
+				jaxbId.getColumn(),
+				memberDetails,
+				sourceModelBuildingContext
+		);
+
+		XmlAnnotationHelper.applyUserType(
+				jaxbId.getType(),
+				memberDetails,
+				sourceModelBuildingContext
+		);
+		XmlAnnotationHelper.applyJdbcTypeCode(
+				jaxbId.getJdbcTypeCode(),
+				memberDetails,
+				sourceModelBuildingContext
+		);
+		XmlAnnotationHelper.applyTemporal(
+				jaxbId.getTemporal(),
+				memberDetails,
+				sourceModelBuildingContext
+		);
+
+		XmlAnnotationHelper.applyGeneratedValue(
+				jaxbId.getGeneratedValue(),
+				memberDetails,
+				sourceModelBuildingContext
+		);
+		XmlAnnotationHelper.applySequenceGenerator(
+				jaxbId.getSequenceGenerator(),
+				memberDetails,
+				sourceModelBuildingContext
+		);
+		XmlAnnotationHelper.applyTableGenerator(
+				jaxbId.getTableGenerator(),
+				memberDetails,
+				sourceModelBuildingContext
+		);
+		XmlAnnotationHelper.applyUuidGenerator(
+				jaxbId.getUuidGenerator(),
+				memberDetails,
+				sourceModelBuildingContext
+		);
+
+		// todo : unsaved-value?
+	}
+
+	public static void processEmbeddedIdAttribute(
+			JaxbEmbeddedId jaxbEmbeddedId,
+			MutableClassDetails classDetails,
+			AccessType classAccessType,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		final AccessType accessType = coalesce( jaxbEmbeddedId.getAccess(), classAccessType );
+		final MutableMemberDetails memberDetails = XmlProcessingHelper.findAttributeMember(
+				jaxbEmbeddedId.getName(),
+				accessType,
+				classDetails,
+				sourceModelBuildingContext
+		);
+
+		XmlAnnotationHelper.applyEmbeddedId( jaxbEmbeddedId, memberDetails, sourceModelBuildingContext );
+		AttributeProcessor.processCommonAttributeAnnotations(
+				jaxbEmbeddedId,
+				memberDetails,
+				accessType,
+				sourceModelBuildingContext
+		);
+
+		XmlAnnotationHelper.applyAttributeOverrides(
+				jaxbEmbeddedId.getAttributeOverride(),
+				memberDetails,
+				sourceModelBuildingContext
+		);
+	}
+
+	public static MutableMemberDetails processBasicAttribute(
 			JaxbBasic jaxbBasic,
 			MutableClassDetails declarer,
 			AccessType classAccessType,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		final AccessType accessType = coalesce( jaxbBasic.getAccess(), classAccessType );
-		final MutableMemberDetails memberDetails = XmlAttributeHelper.getAttributeMember(
+		final MutableMemberDetails memberDetails = XmlProcessingHelper.getAttributeMember(
 				jaxbBasic.getName(),
 				accessType,
 				declarer,
@@ -273,7 +296,7 @@ public class XmlAttributeHelper {
 
 		XmlAnnotationHelper.applyBasic( jaxbBasic, memberDetails, sourceModelBuildingContext );
 
-		applyCommonAttributeAnnotations( jaxbBasic, memberDetails, accessType, sourceModelBuildingContext );
+		processCommonAttributeAnnotations( jaxbBasic, memberDetails, accessType, sourceModelBuildingContext );
 		// only semi-common
 		XmlAnnotationHelper.applyOptimisticLockInclusion( jaxbBasic.isOptimisticLock(), memberDetails, sourceModelBuildingContext );
 
@@ -294,13 +317,13 @@ public class XmlAttributeHelper {
 		return memberDetails;
 	}
 
-	public static MutableMemberDetails handleEmbeddedAttribute(
+	public static MutableMemberDetails processEmbeddedAttribute(
 			JaxbEmbedded jaxbEmbedded,
 			MutableClassDetails declarer,
 			AccessType classAccessType,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		final AccessType accessType = coalesce( jaxbEmbedded.getAccess(), classAccessType );
-		final MutableMemberDetails memberDetails = XmlAttributeHelper.getAttributeMember(
+		final MutableMemberDetails memberDetails = XmlProcessingHelper.getAttributeMember(
 				jaxbEmbedded.getName(),
 				accessType,
 				declarer,
@@ -313,14 +336,15 @@ public class XmlAttributeHelper {
 		);
 		memberDetails.addAnnotationUsage( annotationUsage );
 
-		XmlAttributeHelper.applyCommonAttributeAnnotations( jaxbEmbedded, memberDetails, accessType, sourceModelBuildingContext );
+		processCommonAttributeAnnotations( jaxbEmbedded, memberDetails, accessType, sourceModelBuildingContext );
 		XmlAnnotationHelper.applyAttributeOverrides( jaxbEmbedded.getAttributeOverride(), memberDetails, sourceModelBuildingContext );
 		XmlAnnotationHelper.applyAssociationOverrides( jaxbEmbedded.getAssociationOverride(), memberDetails, sourceModelBuildingContext );
 
 		return memberDetails;
 	}
 
-	public static MutableMemberDetails handleOneToOneAttribute(
+	@SuppressWarnings("UnusedReturnValue")
+	public static MutableMemberDetails processOneToOneAttribute(
 			JaxbOneToOne jaxbOneToOne,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
@@ -328,7 +352,7 @@ public class XmlAttributeHelper {
 		throw new UnsupportedOperationException( "Support for one-to-one attributes not yet implemented" );
 	}
 
-	public static MutableMemberDetails handleManyToOneAttribute(
+	public static MutableMemberDetails processManyToOneAttribute(
 			JaxbManyToOne jaxbOneToOne,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
@@ -336,7 +360,7 @@ public class XmlAttributeHelper {
 		throw new UnsupportedOperationException( "Support for many-to-one attributes not yet implemented" );
 	}
 
-	public static MutableMemberDetails handleDiscriminatedAssociationAttribute(
+	public static MutableMemberDetails processDiscriminatedAssociationAttribute(
 			JaxbHbmAnyMapping jaxbHbmAnyMapping,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
@@ -344,7 +368,8 @@ public class XmlAttributeHelper {
 		throw new UnsupportedOperationException( "Support for any attributes not yet implemented" );
 	}
 
-	public static MutableMemberDetails handleElementCollectionAttribute(
+	@SuppressWarnings("UnusedReturnValue")
+	public static MutableMemberDetails processElementCollectionAttribute(
 			JaxbElementCollection jaxbElementCollection,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
@@ -352,7 +377,8 @@ public class XmlAttributeHelper {
 		throw new UnsupportedOperationException( "Support for element-collection attributes not yet implemented" );
 	}
 
-	public static MutableMemberDetails handleOneToManyAttribute(
+	@SuppressWarnings("UnusedReturnValue")
+	public static MutableMemberDetails processOneToManyAttribute(
 			JaxbOneToMany jaxbOneToMany,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
@@ -360,7 +386,8 @@ public class XmlAttributeHelper {
 		throw new UnsupportedOperationException( "Support for one-to-many attributes not yet implemented" );
 	}
 
-	public static MutableMemberDetails handleManyToManyAttribute(
+	@SuppressWarnings("UnusedReturnValue")
+	public static MutableMemberDetails processManyToManyAttribute(
 			JaxbManyToMany jaxbManyToMany,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
@@ -368,7 +395,8 @@ public class XmlAttributeHelper {
 		throw new UnsupportedOperationException( "Support for many-to-many attributes not yet implemented" );
 	}
 
-	public static MutableMemberDetails handlePluralDiscriminatedAssociationAttribute(
+	@SuppressWarnings("UnusedReturnValue")
+	public static MutableMemberDetails processPluralDiscriminatedAssociationAttribute(
 			JaxbHbmManyToAny jaxbHbmManyToAny,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,

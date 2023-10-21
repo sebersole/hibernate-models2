@@ -80,7 +80,7 @@ public class AnnotationUsageBuilder {
 			}
 
 			final Class<? extends Annotation> annotationType = buildingContext
-					.getClassLoadingAccess()
+					.getClassLoading()
 					.classForName( annotation.name().toString() );
 
 			final AnnotationDescriptor<?> annotationDescriptor = annotationDescriptorRegistry.getDescriptor( annotationType );

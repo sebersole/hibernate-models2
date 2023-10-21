@@ -66,6 +66,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
 import jakarta.persistence.Lob;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
@@ -76,7 +77,7 @@ import jakarta.persistence.TemporalType;
 import static jakarta.persistence.FetchType.EAGER;
 import static java.util.Collections.emptyList;
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
-import static org.hibernate.models.internal.StringHelper.nullIfEmpty;
+import static org.hibernate.models.orm.xml.internal.XmlProcessingHelper.getOrMakeAnnotation;
 
 /**
  * Helper for creating annotation from equivalent JAXB
@@ -85,27 +86,15 @@ import static org.hibernate.models.internal.StringHelper.nullIfEmpty;
  */
 public class XmlAnnotationHelper {
 
-	public static <A extends Annotation> MutableAnnotationUsage<A> getOrMakeAnnotation(
-			Class<A> annotationType,
-			MutableAnnotationTarget target) {
-		final AnnotationUsage<A> existing = target.getAnnotationUsage( annotationType );
-		if ( existing != null ) {
-			return (MutableAnnotationUsage<A>) existing;
-		}
-
-		final DynamicAnnotationUsage<A> created = new DynamicAnnotationUsage<>( annotationType, target );
-		target.addAnnotationUsage( created );
-		return created;
-	}
-
 	/**
-	 * Handle creating {@linkplain Entity @Entity} from a {@code <entity/>} element
+	 * Handle creating {@linkplain Entity @Entity} from an {@code <entity/>} element.
+	 * Used in both complete and override modes.
 	 */
 	public static void applyEntity(
 			JaxbEntity jaxbEntity,
 			MutableClassDetails classDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
-		final MutableAnnotationUsage<Entity> entityUsage = getOrMakeAnnotation( Entity.class, classDetails );
+		final MutableAnnotationUsage<Entity> entityUsage = XmlProcessingHelper.getOrMakeAnnotation( Entity.class, classDetails );
 		if ( StringHelper.isNotEmpty( jaxbEntity.getName() ) ) {
 			entityUsage.setAttributeValue( "name", jaxbEntity.getName() );
 		}
@@ -125,7 +114,7 @@ public class XmlAnnotationHelper {
 			JaxbBasic jaxbBasic,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
-		final MutableAnnotationUsage<Basic> basicAnn = getOrMakeAnnotation( Basic.class, memberDetails );
+		final MutableAnnotationUsage<Basic> basicAnn = XmlProcessingHelper.getOrMakeAnnotation( Basic.class, memberDetails );
 		if ( jaxbBasic.getFetch() != null ) {
 			basicAnn.setAttributeValue( "fetch", jaxbBasic.getFetch() );
 		}
@@ -180,7 +169,7 @@ public class XmlAnnotationHelper {
 	private static MutableAnnotationUsage<Column> createColumnAnnotation(
 			JaxbColumn jaxbColumn,
 			MutableAnnotationTarget target) {
-		final MutableAnnotationUsage<Column> columnAnn = getOrMakeAnnotation( Column.class, target );
+		final MutableAnnotationUsage<Column> columnAnn = XmlProcessingHelper.getOrMakeAnnotation( Column.class, target );
 
 		if ( jaxbColumn != null ) {
 			if ( StringHelper.isNotEmpty( jaxbColumn.getName() ) ) {
@@ -372,14 +361,20 @@ public class XmlAnnotationHelper {
 			return;
 		}
 
-		final DynamicAnnotationUsage<SequenceGenerator> annotationUsage = new DynamicAnnotationUsage<>( SequenceGenerator.class, memberDetails );
-		memberDetails.addAnnotationUsage( annotationUsage );
-		annotationUsage.setAttributeValue( "name", jaxbGenerator.getName() );
-		annotationUsage.setAttributeValue( "sequenceName", jaxbGenerator.getSequenceName() );
-		annotationUsage.setAttributeValue( "catalog", jaxbGenerator.getCatalog() );
-		annotationUsage.setAttributeValue( "schema", jaxbGenerator.getSchema() );
-		annotationUsage.setAttributeValue( "initialValue", jaxbGenerator.getInitialValue() );
-		annotationUsage.setAttributeValue( "allocationSize", jaxbGenerator.getInitialValue() );
+		final MutableAnnotationUsage<SequenceGenerator> sequenceAnn = XmlProcessingHelper.getOrMakeNamedAnnotation(
+				SequenceGenerator.class,
+				jaxbGenerator.getName(),
+				memberDetails
+		);
+
+		if ( StringHelper.isNotEmpty( jaxbGenerator.getSequenceName() ) ) {
+			sequenceAnn.setAttributeValue( "sequenceName", jaxbGenerator.getSequenceName() );
+		}
+
+		sequenceAnn.setAttributeValue( "catalog", jaxbGenerator.getCatalog() );
+		sequenceAnn.setAttributeValue( "schema", jaxbGenerator.getSchema() );
+		sequenceAnn.setAttributeValue( "initialValue", jaxbGenerator.getInitialValue() );
+		sequenceAnn.setAttributeValue( "allocationSize", jaxbGenerator.getInitialValue() );
 	}
 
 	public static void applyTableGenerator(
@@ -512,7 +507,7 @@ public class XmlAnnotationHelper {
 			return;
 		}
 
-		final MutableAnnotationUsage<Table> tableAnn = getOrMakeAnnotation( Table.class, target );
+		final MutableAnnotationUsage<Table> tableAnn = XmlProcessingHelper.getOrMakeAnnotation( Table.class, target );
 
 		applyTableAttributes( tableAnn, jaxbTable, persistenceUnitMetadata );
 
@@ -604,17 +599,6 @@ public class XmlAnnotationHelper {
 		memberDetails.addAnnotationUsage( annotationUsage );
 	}
 
-	public static void applyIdOverride(
-			JaxbId jaxbId,
-			MutableMemberDetails memberDetails,
-			SourceModelBuildingContext sourceModelBuildingContext) {
-		if ( jaxbId == null ) {
-			return;
-		}
-
-		getOrMakeAnnotation( Id.class, memberDetails );
-	}
-
 	public static void applyEmbeddedId(
 			JaxbEmbeddedId jaxbEmbeddedId,
 			MutableMemberDetails memberDetails,
@@ -629,14 +613,18 @@ public class XmlAnnotationHelper {
 		memberDetails.addAnnotationUsage( annotationUsage );
 	}
 
-	public static void applyEmbeddedIdOverride(
-			JaxbEmbeddedId jaxbEmbeddedId,
-			MutableMemberDetails memberDetails,
+	static void applyInheritance(
+			JaxbEntity jaxbEntity,
+			MutableClassDetails classDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
-		if ( jaxbEmbeddedId == null ) {
+		if ( jaxbEntity.getInheritance() == null ) {
 			return;
 		}
 
-		getOrMakeAnnotation( EmbeddedId.class, memberDetails );
+		final MutableAnnotationUsage<Inheritance> inheritanceAnn = getOrMakeAnnotation(
+				Inheritance.class,
+				classDetails
+		);
+		inheritanceAnn.setAttributeValue( "strategy", jaxbEntity.getInheritance().getStrategy() );
 	}
 }

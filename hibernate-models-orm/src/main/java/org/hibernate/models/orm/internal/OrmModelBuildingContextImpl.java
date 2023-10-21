@@ -31,7 +31,7 @@ public class OrmModelBuildingContextImpl implements OrmModelBuildingContext {
 		this(
 				sourceModelBuildingContext.getClassDetailsRegistry(),
 				sourceModelBuildingContext.getAnnotationDescriptorRegistry(),
-				sourceModelBuildingContext.getClassLoadingAccess(),
+				sourceModelBuildingContext.getClassLoading(),
 				sourceModelBuildingContext.getJandexIndex(),
 				classmateContext
 		);

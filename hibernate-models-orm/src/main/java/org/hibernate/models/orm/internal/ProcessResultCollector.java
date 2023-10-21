@@ -6,6 +6,7 @@
  */
 package org.hibernate.models.orm.internal;
 
+import java.util.Map;
 import java.util.Set;
 
 import org.hibernate.boot.jaxb.mapping.JaxbEntityListeners;
@@ -15,7 +16,6 @@ import org.hibernate.boot.jaxb.mapping.JaxbPersistenceUnitMetadata;
 import org.hibernate.models.orm.spi.ProcessResult;
 import org.hibernate.models.orm.spi.EntityHierarchy;
 import org.hibernate.models.source.spi.ClassDetails;
-import org.hibernate.models.source.spi.ClassDetailsRegistry;
 import org.hibernate.models.source.spi.PackageDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
@@ -100,16 +100,22 @@ public class ProcessResultCollector {
 
 	/**
 	 * Builder for {@linkplain ProcessResult} based on our internal state plus
-	 * the incoming set of entity hierarchies.
+	 * the incoming set of managed types.
 	 *
-	 * @param entityHierarchies Hierarchies to be {@linkplain ProcessResult#getEntityHierarchies() included}
-	 * in the result
+	 * @param entityHierarchies All entity hierarchies defined in the persistence-unit
+	 * @param mappedSuperclasses All mapped-superclasses defined in the persistence-unit
+	 * @param embeddables All embeddables defined in the persistence-unit
 	 *
 	 * @see org.hibernate.models.orm.spi.Processor#process
 	 */
-	public ProcessResult createResult(Set<EntityHierarchy> entityHierarchies) {
+	public ProcessResult createResult(
+			Set<EntityHierarchy> entityHierarchies,
+			Map<String, ClassDetails> mappedSuperclasses,
+			Map<String, ClassDetails> embeddables) {
 		return new ProcessResultImpl(
 				entityHierarchies,
+				mappedSuperclasses,
+				embeddables,
 				getGlobalRegistrations().getJavaTypeRegistrations(),
 				getGlobalRegistrations().getJdbcTypeRegistrations(),
 				getGlobalRegistrations().getConverterRegistrations(),

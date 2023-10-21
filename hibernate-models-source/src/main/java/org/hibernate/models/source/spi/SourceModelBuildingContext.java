@@ -34,7 +34,7 @@ public interface SourceModelBuildingContext extends SharedNamedAnnotationScope {
 	 * really use this access.  At this level, accessing the class-loader at all
 	 * sh
 	 */
-	ClassLoading getClassLoadingAccess();
+	ClassLoading getClassLoading();
 
 	/**
 	 * Access to the pre-built Jandex index}, if any.

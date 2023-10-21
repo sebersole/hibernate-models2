@@ -14,6 +14,8 @@ import org.hibernate.boot.ResourceStreamLocator;
 import org.hibernate.models.spi.ClassLoading;
 
 /**
+ * Adapts {@linkplain ClassLoading} as a {@linkplain ResourceStreamLocator}
+ *
  * @author Steve Ebersole
  */
 public class ResourceStreamLocatorImpl implements ResourceStreamLocator {

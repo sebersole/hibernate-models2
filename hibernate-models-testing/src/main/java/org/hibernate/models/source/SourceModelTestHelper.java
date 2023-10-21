@@ -73,7 +73,7 @@ public class SourceModelTestHelper {
 
 			if ( knownClass.isAnnotation() ) {
 				final Class<? extends Annotation> annotationClass = buildingContext
-						.getClassLoadingAccess()
+						.getClassLoading()
 						.classForName( knownClass.name().toString() );
 				annotationDescriptorRegistry.resolveDescriptor( annotationClass, annotationType -> JdkBuilders.buildAnnotationDescriptor(
 						annotationType,

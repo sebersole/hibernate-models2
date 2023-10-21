@@ -27,7 +27,20 @@ import org.hibernate.models.source.spi.ClassDetails;
  * @author Steve Ebersole
  */
 public interface ProcessResult {
+	/**
+	 * All entity hierarchies defined in the persistence unit
+	 */
 	Set<EntityHierarchy> getEntityHierarchies();
+
+	/**
+	 * All mapped-superclasses defined in the persistence unit
+	 */
+	Map<String,ClassDetails> getMappedSuperclasses();
+
+	/**
+	 * All embeddables defined in the persistence unit
+	 */
+	Map<String,ClassDetails> getEmbeddables();
 
 	List<JavaTypeRegistration> getJavaTypeRegistrations();
 

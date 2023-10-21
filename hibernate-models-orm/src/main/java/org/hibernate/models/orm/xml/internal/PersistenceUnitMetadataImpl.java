@@ -23,6 +23,10 @@ import static org.hibernate.internal.util.StringHelper.isNotEmpty;
 import static org.hibernate.internal.util.StringHelper.splitTrimmingTokens;
 
 /**
+ * Aggregator of information from {@code entity-mappings/persistence-unit-metadata}
+ * and {@code entity-mappings/persistence-unit-metadata/persistence-unit-defaults}
+ * across all mapping XML files in the persistence-unit.
+ *
  * @author Steve Ebersole
  */
 public final class PersistenceUnitMetadataImpl implements PersistenceUnitMetadata {
