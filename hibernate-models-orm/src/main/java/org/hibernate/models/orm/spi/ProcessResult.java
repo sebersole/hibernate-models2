@@ -6,15 +6,9 @@
  */
 package org.hibernate.models.orm.spi;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.hibernate.models.orm.internal.CollectionTypeRegistration;
-import org.hibernate.models.orm.internal.CompositeUserTypeRegistration;
-import org.hibernate.models.orm.internal.EmbeddableInstantiatorRegistration;
-import org.hibernate.models.orm.internal.FilterDefRegistration;
-import org.hibernate.models.orm.internal.NamedQueryRegistration;
 import org.hibernate.models.source.spi.ClassDetails;
 
 /**

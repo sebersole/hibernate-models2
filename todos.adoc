@@ -5,3 +5,4 @@
 * Support `<extends/>`?  This comes from hbm.xml world, but not seeing its usefulness.
 * Support for dynamic embeddables in XSD
 * Allow mapped-superclass in dynamic models? XSD change
+* Update the mapping.xsd to account for new @GenericGenerator definition

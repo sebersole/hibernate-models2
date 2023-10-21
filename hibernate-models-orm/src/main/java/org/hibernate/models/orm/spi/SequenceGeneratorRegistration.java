@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright: Red Hat Inc. and Hibernate Authors
  */
-package org.hibernate.models.orm.internal;
+package org.hibernate.models.orm.spi;
 
 import org.hibernate.models.source.spi.AnnotationUsage;
 

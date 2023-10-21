@@ -4,23 +4,24 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright: Red Hat Inc. and Hibernate Authors
  */
-package org.hibernate.models.orm.internal;
+package org.hibernate.models.orm.spi;
 
-import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.models.source.spi.AnnotationUsage;
 
+import jakarta.persistence.TableGenerator;
+
 /**
- * Global registration of a generic generator
+ * Global registration of a table generator
  *
  * @see org.hibernate.models.orm.spi.Processor.Options#areGeneratorsGlobal()
  *
  * @author Steve Ebersole
  */
-public class GenericGeneratorRegistration {
+public class TableGeneratorRegistration {
 	private final String name;
-	private final AnnotationUsage<GenericGenerator> configuration;
+	private final AnnotationUsage<TableGenerator> configuration;
 
-	public GenericGeneratorRegistration(String name, AnnotationUsage<GenericGenerator> configuration) {
+	public TableGeneratorRegistration(String name, AnnotationUsage<TableGenerator> configuration) {
 		this.name = name;
 		this.configuration = configuration;
 	}
@@ -29,7 +30,7 @@ public class GenericGeneratorRegistration {
 		return name;
 	}
 
-	public AnnotationUsage<GenericGenerator> getConfiguration() {
+	public AnnotationUsage<TableGenerator> getConfiguration() {
 		return configuration;
 	}
 }
