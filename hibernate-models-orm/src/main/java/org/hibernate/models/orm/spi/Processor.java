@@ -21,6 +21,7 @@ import org.hibernate.boot.jaxb.mapping.JaxbMappedSuperclass;
 import org.hibernate.boot.jaxb.mapping.ManagedType;
 import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.StringHelper;
+import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.orm.internal.EntityHierarchyBuilder;
 import org.hibernate.models.orm.internal.OrmModelBuildingContextImpl;
 import org.hibernate.models.orm.internal.OrmModelLogging;

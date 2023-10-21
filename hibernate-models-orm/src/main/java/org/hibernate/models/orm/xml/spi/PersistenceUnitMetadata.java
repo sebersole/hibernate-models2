@@ -16,6 +16,10 @@ import org.hibernate.property.access.spi.PropertyAccessStrategy;
 import jakarta.persistence.AccessType;
 
 /**
+ * Aggregator of information from {@code entity-mappings/persistence-unit-metadata}
+ * and {@code entity-mappings/persistence-unit-metadata/persistence-unit-defaults}
+ * across all mapping XML files in the persistence-unit.
+ *
  * @author Steve Ebersole
  */
 public interface PersistenceUnitMetadata {

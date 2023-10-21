@@ -11,7 +11,7 @@ import java.util.Map;
 
 import org.hibernate.boot.jaxb.mapping.JaxbEntityMappings;
 import org.hibernate.models.orm.internal.FilterDefRegistration;
-import org.hibernate.models.orm.internal.GlobalRegistrations;
+import org.hibernate.models.orm.internal.GlobalRegistrationsImpl;
 import org.hibernate.models.orm.internal.ProcessResultCollector;
 import org.hibernate.models.orm.xml.internal.XmlDocumentImpl;
 import org.hibernate.models.orm.xml.spi.XmlResources;
@@ -121,7 +121,7 @@ public class XmlProcessingSmokeTests {
 		final ProcessResultCollector processResultCollector = new ProcessResultCollector( false, buildingContext );
 		collectedXmlResources.getDocuments().forEach( processResultCollector::apply );
 
-		final GlobalRegistrations globalRegistrations = processResultCollector.getGlobalRegistrations();
+		final GlobalRegistrationsImpl globalRegistrations = processResultCollector.getGlobalRegistrations();
 		assertThat( globalRegistrations.getJavaTypeRegistrations() ).hasSize( 1 );
 		assertThat( globalRegistrations.getJavaTypeRegistrations().get(0).getDescriptor().getClassName() )
 				.isEqualTo( StringTypeDescriptor.class.getName() );

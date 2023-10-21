@@ -15,7 +15,7 @@ import org.hibernate.models.orm.spi.AttributeMetadata;
 import org.hibernate.models.orm.spi.EntityHierarchy;
 import org.hibernate.models.orm.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.spi.IdentifiableTypeMetadata;
-import org.hibernate.models.orm.spi.JpaAnnotations;
+import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.orm.spi.OrmModelBuildingContext;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
