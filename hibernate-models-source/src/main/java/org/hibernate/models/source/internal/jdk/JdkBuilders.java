@@ -6,7 +6,6 @@
  */
 package org.hibernate.models.source.internal.jdk;
 
-import java.beans.Introspector;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Repeatable;
 import java.lang.reflect.Method;
@@ -18,7 +17,6 @@ import org.hibernate.models.source.internal.TypeDescriptors;
 import org.hibernate.models.source.spi.AnnotationDescriptor;
 import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
 import org.hibernate.models.source.spi.AttributeDescriptor;
-import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.ClassDetailsBuilder;
 import org.hibernate.models.source.spi.MethodDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
@@ -42,7 +40,7 @@ public class JdkBuilders implements ClassDetailsBuilder {
 
 	public static JdkClassDetails buildClassDetailsStatic(String name, SourceModelBuildingContext buildingContext) {
 		return buildClassDetailsStatic(
-				buildingContext.getClassLoadingAccess().classForName( name ),
+				buildingContext.getClassLoading().classForName( name ),
 				buildingContext
 		);
 	}

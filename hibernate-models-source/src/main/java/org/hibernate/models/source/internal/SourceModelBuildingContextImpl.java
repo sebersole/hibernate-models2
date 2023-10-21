@@ -60,7 +60,7 @@ public class SourceModelBuildingContextImpl implements SourceModelBuildingContex
 	}
 
 	@Override
-	public ClassLoading getClassLoadingAccess() {
+	public ClassLoading getClassLoading() {
 		return classLoadingAccess;
 	}
 

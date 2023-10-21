@@ -6,9 +6,6 @@
  */
 package org.hibernate.models.orm.spi;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -17,25 +14,18 @@ import java.util.Map;
 import java.util.Set;
 
 import org.hibernate.boot.internal.ClassmateContext;
-import org.hibernate.boot.jaxb.Origin;
-import org.hibernate.boot.jaxb.SourceType;
-import org.hibernate.boot.jaxb.internal.MappingBinder;
 import org.hibernate.boot.jaxb.mapping.JaxbEmbeddable;
 import org.hibernate.boot.jaxb.mapping.JaxbEntity;
 import org.hibernate.boot.jaxb.mapping.JaxbEntityMappings;
 import org.hibernate.boot.jaxb.mapping.JaxbMappedSuperclass;
 import org.hibernate.boot.jaxb.mapping.ManagedType;
-import org.hibernate.boot.jaxb.spi.BindableMappingDescriptor;
-import org.hibernate.boot.jaxb.spi.Binding;
 import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.orm.internal.EntityHierarchyBuilder;
 import org.hibernate.models.orm.internal.OrmModelBuildingContextImpl;
 import org.hibernate.models.orm.internal.OrmModelLogging;
 import org.hibernate.models.orm.internal.ProcessResultCollector;
-import org.hibernate.models.orm.xml.XmlResourceException;
-import org.hibernate.models.orm.xml.internal.ResourceStreamLocatorImpl;
-import org.hibernate.models.orm.xml.internal.XmlManagedTypeHelper;
+import org.hibernate.models.orm.xml.internal.ManagedTypeProcessor;
 import org.hibernate.models.orm.xml.spi.XmlResources;
 import org.hibernate.models.source.UnknownClassException;
 import org.hibernate.models.source.internal.jandex.JandexClassDetails;
@@ -54,8 +44,10 @@ import org.jboss.jandex.IndexView;
 
 import jakarta.persistence.Embeddable;
 
-import static org.hibernate.boot.jaxb.internal.MappingBinder.NON_VALIDATING;
 import static org.hibernate.models.orm.internal.EntityHierarchyBuilder.createEntityHierarchies;
+import static org.hibernate.models.orm.xml.internal.ManagedTypeProcessor.processOverrideEmbeddable;
+import static org.hibernate.models.orm.xml.internal.ManagedTypeProcessor.processOverrideEntity;
+import static org.hibernate.models.orm.xml.internal.ManagedTypeProcessor.processOverrideMappedSuperclass;
 
 /**
  * Processes {@linkplain ManagedResources managed resources} and produces a
@@ -109,60 +101,64 @@ public class Processor {
 			Options options,
 			SourceModelBuildingContext sourceModelBuildingContext,
 			OrmModelBuildingContext mappingBuildingContext) {
-		final XmlResources collectedXmlResources = collectXmlResources( managedResources, mappingBuildingContext );
 		final ProcessResultCollector processResultCollector = new ProcessResultCollector( options.areGeneratorsGlobal(), sourceModelBuildingContext );
 
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// process XML
-		//		1. handle registrations (JavaType, etc.) and named references (named query, etc.)
-		//		2. process managed types -
+		//		1. Collect and aggregate information from all known XML mappings
+		//		2. Handle registrations (JavaType, etc.) and named references (named query, etc.)
+		//		3. Process managed types -
 		//			a. create ClassDetails for all "complete" mappings
 		//			b. collect "incomplete" (override) mappings
-		//		3. apply XML overrides
+		//		4. Apply XML overrides
+
+		final XmlResources collectedXmlResources = XmlResources.collectXmlResources( managedResources, sourceModelBuildingContext );
+		final boolean xmlMappingsGloballyComplete = collectedXmlResources.getPersistenceUnitMetadata().areXmlMappingsComplete();
 
 		final List<OverrideTuple<JaxbEntity>> entityOverrides = new ArrayList<>();
-		final List<JaxbEntity> entityCompletes = new ArrayList<>();
 		final List<OverrideTuple<JaxbMappedSuperclass>> mappedSuperclassesOverrides = new ArrayList<>();
-		final List<JaxbMappedSuperclass> mappedSuperclassesCompletes = new ArrayList<>();
 		final List<OverrideTuple<JaxbEmbeddable>> embeddableOverrides = new ArrayList<>();
-		final List<JaxbEmbeddable> embeddableCompletes = new ArrayList<>();
-
-		final boolean xmlMappingsGloballyComplete = collectedXmlResources.getPersistenceUnitMetadata().areXmlMappingsComplete();
 
 		collectedXmlResources.getDocuments().forEach( (jaxbRoot) -> {
 			processResultCollector.apply( jaxbRoot );
 
 			jaxbRoot.getEmbeddables().forEach( (embeddable) -> {
 				if ( xmlMappingsGloballyComplete || embeddable.isMetadataComplete() == Boolean.TRUE ) {
-					embeddableCompletes.add( embeddable );
-					XmlManagedTypeHelper.makeCompleteEmbeddableMapping( jaxbRoot, embeddable, collectedXmlResources.getPersistenceUnitMetadata(), sourceModelBuildingContext );
+					// the XML mapping is complete, we can process it immediately
+					ManagedTypeProcessor.processCompleteEmbeddable( jaxbRoot, embeddable, collectedXmlResources.getPersistenceUnitMetadata(), sourceModelBuildingContext );
 				}
 				else {
+					// otherwise, wait to process it until later
 					embeddableOverrides.add( new OverrideTuple<>( jaxbRoot, embeddable ) );
 				}
 			} );
 
 			jaxbRoot.getMappedSuperclasses().forEach( (mappedSuperclass) -> {
 				if ( xmlMappingsGloballyComplete || mappedSuperclass.isMetadataComplete() == Boolean.TRUE ) {
-					mappedSuperclassesCompletes.add( mappedSuperclass );
-					XmlManagedTypeHelper.makeCompleteMappedSuperclassMapping( jaxbRoot, mappedSuperclass, collectedXmlResources.getPersistenceUnitMetadata(), sourceModelBuildingContext );
+					// the XML mapping is complete, we can process it immediately
+					ManagedTypeProcessor.processCompleteMappedSuperclass( jaxbRoot, mappedSuperclass, collectedXmlResources.getPersistenceUnitMetadata(), sourceModelBuildingContext );
 				}
 				else {
+					// otherwise, wait to process it until later
 					mappedSuperclassesOverrides.add( new OverrideTuple<>( jaxbRoot, mappedSuperclass ) );
 				}
 			});
 
 			jaxbRoot.getEntities().forEach( (entity) -> {
 				if ( xmlMappingsGloballyComplete || entity.isMetadataComplete() == Boolean.TRUE ) {
-					entityCompletes.add( entity );
-					XmlManagedTypeHelper.makeCompleteEntityMapping( jaxbRoot, entity, collectedXmlResources.getPersistenceUnitMetadata(), sourceModelBuildingContext );
+					// the XML mapping is complete, we can process it immediately
+					ManagedTypeProcessor.processCompleteEntity( jaxbRoot, entity, collectedXmlResources.getPersistenceUnitMetadata(), sourceModelBuildingContext );
 				}
 				else {
+					// otherwise, wait to process it until later
 					entityOverrides.add( new OverrideTuple<>( jaxbRoot, entity ) );
 				}
 			} );
 		} );
 
+		// At this point, we know all classes in the persistence-unit - begin to process them.
+		// But we need to account for `<exclude-unlisted-classes/>` from `persistence.xml` - set up
+		// `classInclusions` and `packageInclusions` to handle `<exclude-unlisted-classes/>`
 		final ActiveClassInclusions classInclusions;
 		final ActivePackageInclusions packageInclusions;
 		if ( options.shouldIgnoreUnlistedClasses() ) {
@@ -180,51 +176,68 @@ public class Processor {
 			packageInclusions = null;
 		}
 
-		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		// process "global" annotations - id generators, registrations, named references
-		// todo : possibly handle annotation versions of registrations and named references at the same time as (XML#1)?
+		// Now inclusions/exclusions are set up, begin processing the classes in earnest.
+		// This includes a number of parts -
+		//		1. process "global" annotations - id generators, registrations, named references
+		//		2. collect the complete sets of
+		//			a. root entities
+		//			b. mapped-superclasses
+		//			c. *explicit* embeddables[1]
+		//		3. apply mapping XML overrides
+		//
+		// [1] Hibernate supports implicit embeddables, where the class does not define `@Embeddable` but the persistent attribute defines `@Embedded` or `@EmbeddedId`
 
 		final Set<ClassDetails> rootEntities = new HashSet<>();
-		final Map<String,ClassDetails> allEntities = new HashMap<>();
 		final Map<String,ClassDetails> mappedSuperClasses = new HashMap<>();
 		final Map<String,ClassDetails> embeddables = new HashMap<>();
+
+		final Map<String,ClassDetails> unusedMappedSuperClasses = new HashMap<>();
 
 		processResources(
 				classInclusions,
 				packageInclusions,
 				processResultCollector,
 				rootEntities,
-				allEntities,
 				mappedSuperClasses,
 				embeddables,
+				unusedMappedSuperClasses,
 				mappingBuildingContext
 		);
 
-		XmlManagedTypeHelper.applyEntityOverrides(
-				allEntities,
+		processOverrideEntity(
 				entityOverrides,
 				collectedXmlResources.getPersistenceUnitMetadata(),
 				sourceModelBuildingContext
 		);
 
-		XmlManagedTypeHelper.applyMappedSuperclassOverrides( mappedSuperClasses, mappedSuperclassesOverrides, sourceModelBuildingContext );
-		XmlManagedTypeHelper.applyEmbeddableOverrides( embeddables, embeddableOverrides, sourceModelBuildingContext );
+		processOverrideMappedSuperclass(
+				mappedSuperclassesOverrides,
+				collectedXmlResources.getPersistenceUnitMetadata(),
+				sourceModelBuildingContext
+		);
 
+		processOverrideEmbeddable(
+				embeddableOverrides,
+				collectedXmlResources.getPersistenceUnitMetadata(),
+				sourceModelBuildingContext
+		);
+
+		// Collect the entity hierarchies based on the set of `rootEntities`
 		final Set<EntityHierarchy> entityHierarchies = createEntityHierarchies(
 				rootEntities,
 				(identifiableType) -> {
 					if ( identifiableType instanceof MappedSuperclassTypeMetadata ) {
-						mappedSuperClasses.remove( identifiableType.getClassDetails().getClassName() );
+						unusedMappedSuperClasses.remove( identifiableType.getClassDetails().getClassName() );
 					}
 				},
 				mappingBuildingContext
 		);
 
 		if ( OrmModelLogging.ORM_MODEL_LOGGER.isDebugEnabled() ) {
-			warnAboutUnusedMappedSuperclasses( mappedSuperClasses );
+			warnAboutUnusedMappedSuperclasses( unusedMappedSuperClasses );
 		}
 
-		return processResultCollector.createResult( entityHierarchies );
+		return processResultCollector.createResult( entityHierarchies, mappedSuperClasses, embeddables );
 	}
 
 	private static void warnAboutUnusedMappedSuperclasses(Map<String, ClassDetails> mappedSuperClasses) {
@@ -243,7 +256,7 @@ public class Processor {
 			ActivePackageInclusions packageInclusions,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		final ClassDetailsRegistry classDetailsRegistry = sourceModelBuildingContext.getClassDetailsRegistry();
-		final ClassLoading classLoading = sourceModelBuildingContext.getClassLoadingAccess();
+		final ClassLoading classLoading = sourceModelBuildingContext.getClassLoading();
 
 		explicitlyListedClasses.forEach( (listed) -> {
 			if ( listed.endsWith( "package-info" ) ) {
@@ -281,36 +294,6 @@ public class Processor {
 		} );
 	}
 
-	private static XmlResources collectXmlResources(
-			ManagedResources managedResources,
-			OrmModelBuildingContext mappingBuildingContext) {
-		final ClassLoading classLoading = mappingBuildingContext.getClassLoading();
-		final ResourceStreamLocatorImpl resourceStreamLocator = new ResourceStreamLocatorImpl( classLoading );
-		final MappingBinder mappingBinder = new MappingBinder( resourceStreamLocator, NON_VALIDATING );
-		final XmlResources collected = new XmlResources();
-
-		final List<String> xmlMappings = managedResources.getXmlMappings();
-		for ( int i = 0; i < xmlMappings.size(); i++ ) {
-			final String xmlMapping = xmlMappings.get( i );
-			final URL resource = classLoading.locateResource( xmlMapping );
-			if ( resource == null ) {
-				throw new XmlResourceException( "Unable to locate XML mapping - " + xmlMapping );
-			}
-			try (InputStream inputStream = resource.openStream()) {
-				final Binding<BindableMappingDescriptor> binding = mappingBinder.bind(
-						inputStream,
-						new Origin( SourceType.RESOURCE, xmlMapping )
-				);
-				collected.addDocument( (JaxbEntityMappings) binding.getRoot() );
-			}
-			catch (IOException e) {
-				throw new XmlResourceException( "Unable to bind XML mapping - " + xmlMapping, e );
-			}
-		}
-
-		return collected;
-	}
-
 	private static void fillRegistries(SourceModelBuildingContext buildingContext) {
 		final ClassDetailsRegistry classDetailsRegistry = buildingContext.getClassDetailsRegistry();
 		final AnnotationDescriptorRegistry annotationDescriptorRegistry = buildingContext.getAnnotationDescriptorRegistry();
@@ -330,7 +313,7 @@ public class Processor {
 				// it is always safe to load the annotation classes - we will never be enhancing them
 				//noinspection rawtypes
 				final Class annotationClass = buildingContext
-						.getClassLoadingAccess()
+						.getClassLoading()
 						.classForName( className );
 				//noinspection unchecked
 				annotationDescriptorRegistry.resolveDescriptor(
@@ -351,9 +334,9 @@ public class Processor {
 			PackageInclusions packageInclusions,
 			ProcessResultCollector processResultCollector,
 			Set<ClassDetails> rootEntities,
-			Map<String,ClassDetails> allEntities,
 			Map<String,ClassDetails> mappedSuperClasses,
 			Map<String,ClassDetails> embeddables,
+			Map<String,ClassDetails> unusedMappedSuperClasses,
 			OrmModelBuildingContext mappingBuildingContext) {
 		final ClassDetailsRegistry classDetailsRegistry = mappingBuildingContext.getClassDetailsRegistry();
 		classDetailsRegistry.forEachClassDetails( (classDetails) -> {
@@ -365,28 +348,20 @@ public class Processor {
 			processResultCollector.apply( classDetails );
 
 			if ( classDetails.getAnnotationUsage( JpaAnnotations.MAPPED_SUPERCLASS ) != null ) {
+				unusedMappedSuperClasses.put( classDetails.getName(), classDetails );
 				if ( classDetails.getClassName() != null ) {
 					mappedSuperClasses.put( classDetails.getClassName(), classDetails );
 				}
-				processIdentifiableType( classDetails, mappingBuildingContext );
 			}
 			else if ( classDetails.getAnnotationUsage( JpaAnnotations.ENTITY ) != null ) {
-				if ( classDetails.getClassName() != null ) {
-					allEntities.put( classDetails.getClassName(), classDetails );
-				}
 				if ( EntityHierarchyBuilder.isRoot( classDetails ) ) {
 					rootEntities.add( classDetails );
 				}
-				processIdentifiableType( classDetails, mappingBuildingContext );
 			}
 			else if ( classDetails.getAnnotationUsage( Embeddable.class ) != null ) {
 				if ( classDetails.getClassName() != null ) {
 					embeddables.put( classDetails.getClassName(), classDetails );
 				}
-				processNonIdentifiableType( classDetails, mappingBuildingContext );
-			}
-			else {
-				processNonIdentifiableType( classDetails, mappingBuildingContext );
 			}
 		} );
 
@@ -435,17 +410,4 @@ public class Processor {
 			return inclusionList.contains( packageDetails );
 		}
 	}
-
-	private static void processIdentifiableType(
-			ClassDetails classDetails,
-			OrmModelBuildingContext mappingBuildingContext) {
-
-	}
-
-	private static void processNonIdentifiableType(
-			ClassDetails classDetails,
-			OrmModelBuildingContext mappingBuildingContext) {
-
-	}
-
 }

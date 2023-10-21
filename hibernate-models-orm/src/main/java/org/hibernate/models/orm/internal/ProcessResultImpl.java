@@ -20,6 +20,8 @@ import org.hibernate.models.source.spi.ClassDetails;
 public class ProcessResultImpl implements ProcessResult {
 	private final Set<EntityHierarchy> entityHierarchies;
 
+	private final Map<String, ClassDetails> mappedSuperclasses;
+	private final Map<String, ClassDetails> embeddables;
 	private final List<JavaTypeRegistration> javaTypeRegistrations;
 	private final List<JdbcTypeRegistration> jdbcTypeRegistrations;
 	private final List<ConversionRegistration> converterRegistrations;
@@ -35,6 +37,8 @@ public class ProcessResultImpl implements ProcessResult {
 
 	public ProcessResultImpl(
 			Set<EntityHierarchy> entityHierarchies,
+			Map<String, ClassDetails> mappedSuperclasses,
+			Map<String, ClassDetails> embeddables,
 			List<JavaTypeRegistration> javaTypeRegistrations,
 			List<JdbcTypeRegistration> jdbcTypeRegistrations,
 			List<ConversionRegistration> converterRegistrations,
@@ -48,6 +52,8 @@ public class ProcessResultImpl implements ProcessResult {
 			Map<String, NamedQueryRegistration> hibernateNamedHqlQueries,
 			Map<String, NamedQueryRegistration> hibernateNamedNativeQueries) {
 		this.entityHierarchies = entityHierarchies;
+		this.mappedSuperclasses = mappedSuperclasses;
+		this.embeddables = embeddables;
 		this.javaTypeRegistrations = javaTypeRegistrations;
 		this.jdbcTypeRegistrations = jdbcTypeRegistrations;
 		this.converterRegistrations = converterRegistrations;
@@ -65,6 +71,15 @@ public class ProcessResultImpl implements ProcessResult {
 	@Override
 	public Set<EntityHierarchy> getEntityHierarchies() {
 		return entityHierarchies;
+	}
+
+	public Map<String, ClassDetails> getMappedSuperclasses() {
+		return mappedSuperclasses;
+	}
+
+	@Override
+	public Map<String, ClassDetails> getEmbeddables() {
+		return embeddables;
 	}
 
 	@Override
