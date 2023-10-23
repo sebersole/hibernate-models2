@@ -6,7 +6,7 @@
  */
 package org.hibernate.models.orm.spi;
 
-import org.hibernate.boot.jaxb.mapping.JaxbEntityListener;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityListenerImpl;
 import org.hibernate.internal.util.MutableObject;
 import org.hibernate.models.ModelsException;
 import org.hibernate.models.source.spi.ClassDetails;
@@ -96,7 +96,7 @@ public class EntityListenerRegistration {
 	public MethodDetails getPostLoadMethod() {
 		return postLoadMethod;
 	}
-	public static EntityListenerRegistration from(JaxbEntityListener jaxbMapping, ClassDetailsRegistry classDetailsRegistry) {
+	public static EntityListenerRegistration from(JaxbEntityListenerImpl jaxbMapping, ClassDetailsRegistry classDetailsRegistry) {
 		final ClassDetails listenerClassDetails = classDetailsRegistry.resolveClassDetails( jaxbMapping.getClazz() );
 		final MutableObject<MethodDetails> prePersistMethod = new MutableObject<>();
 		final MutableObject<MethodDetails> postPersistMethod = new MutableObject<>();

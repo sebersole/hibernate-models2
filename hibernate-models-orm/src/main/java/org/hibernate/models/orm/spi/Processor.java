@@ -14,11 +14,11 @@ import java.util.Map;
 import java.util.Set;
 
 import org.hibernate.boot.internal.ClassmateContext;
-import org.hibernate.boot.jaxb.mapping.JaxbEmbeddable;
-import org.hibernate.boot.jaxb.mapping.JaxbEntity;
-import org.hibernate.boot.jaxb.mapping.JaxbEntityMappings;
-import org.hibernate.boot.jaxb.mapping.JaxbMappedSuperclass;
-import org.hibernate.boot.jaxb.mapping.ManagedType;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddableImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbManagedType;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbMappedSuperclassImpl;
 import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.orm.JpaAnnotations;
@@ -78,16 +78,16 @@ public class Processor {
 		return process( managedResources, explicitlyListedClasses, options, sourceModelBuildingContext, ormModelBuildingContext );
 	}
 
-	public static class OverrideTuple<M extends ManagedType> {
-		private final JaxbEntityMappings jaxbRoot;
+	public static class OverrideTuple<M extends JaxbManagedType> {
+		private final JaxbEntityMappingsImpl jaxbRoot;
 		private final M managedType;
 
-		public OverrideTuple(JaxbEntityMappings jaxbRoot, M managedType) {
+		public OverrideTuple(JaxbEntityMappingsImpl jaxbRoot, M managedType) {
 			this.jaxbRoot = jaxbRoot;
 			this.managedType = managedType;
 		}
 
-		public JaxbEntityMappings getJaxbRoot() {
+		public JaxbEntityMappingsImpl getJaxbRoot() {
 			return jaxbRoot;
 		}
 
@@ -116,9 +116,9 @@ public class Processor {
 		final XmlResources collectedXmlResources = XmlResources.collectXmlResources( managedResources, sourceModelBuildingContext );
 		final boolean xmlMappingsGloballyComplete = collectedXmlResources.getPersistenceUnitMetadata().areXmlMappingsComplete();
 
-		final List<OverrideTuple<JaxbEntity>> entityOverrides = new ArrayList<>();
-		final List<OverrideTuple<JaxbMappedSuperclass>> mappedSuperclassesOverrides = new ArrayList<>();
-		final List<OverrideTuple<JaxbEmbeddable>> embeddableOverrides = new ArrayList<>();
+		final List<OverrideTuple<JaxbEntityImpl>> entityOverrides = new ArrayList<>();
+		final List<OverrideTuple<JaxbMappedSuperclassImpl>> mappedSuperclassesOverrides = new ArrayList<>();
+		final List<OverrideTuple<JaxbEmbeddableImpl>> embeddableOverrides = new ArrayList<>();
 
 		collectedXmlResources.getDocuments().forEach( (jaxbRoot) -> {
 			processResultCollector.apply( jaxbRoot );

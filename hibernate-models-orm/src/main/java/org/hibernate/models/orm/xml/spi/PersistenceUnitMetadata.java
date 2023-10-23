@@ -10,7 +10,7 @@ import java.util.EnumSet;
 import java.util.Set;
 
 import org.hibernate.annotations.CascadeType;
-import org.hibernate.boot.jaxb.mapping.JaxbEntityListener;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityListenerImpl;
 import org.hibernate.property.access.spi.PropertyAccessStrategy;
 
 import jakarta.persistence.AccessType;
@@ -69,5 +69,5 @@ public interface PersistenceUnitMetadata {
 	 * Entity listeners in effect for the entire persistence unit
 	 * See {@code entity-mappings/persistence-unit-metadata/persistence-unit-defaults/entity-listeners}
 	 */
-	Set<JaxbEntityListener> getEntityListeners();
+	Set<JaxbEntityListenerImpl> getEntityListeners();
 }

@@ -18,20 +18,20 @@ import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.ParamDef;
 import org.hibernate.annotations.Parameter;
-import org.hibernate.boot.jaxb.mapping.JaxbCollectionUserTypeRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbCompositeUserTypeRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbConfigurationParameter;
-import org.hibernate.boot.jaxb.mapping.JaxbConverterRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbEmbeddableInstantiatorRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbEntityListener;
-import org.hibernate.boot.jaxb.mapping.JaxbEntityMappings;
-import org.hibernate.boot.jaxb.mapping.JaxbFilterDef;
-import org.hibernate.boot.jaxb.mapping.JaxbGenericIdGenerator;
-import org.hibernate.boot.jaxb.mapping.JaxbJavaTypeRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbJdbcTypeRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbSequenceGenerator;
-import org.hibernate.boot.jaxb.mapping.JaxbTableGenerator;
-import org.hibernate.boot.jaxb.mapping.JaxbUserTypeRegistration;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbCollectionUserTypeRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbCompositeUserTypeRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbConfigurationParameterImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbConverterRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddableInstantiatorRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityListenerImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbFilterDefImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbGenericIdGeneratorImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbJavaTypeRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbJdbcTypeRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbSequenceGeneratorImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbTableGeneratorImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbUserTypeRegistrationImpl;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.CollectionClassification;
 import org.hibernate.models.internal.StringHelper;
@@ -167,7 +167,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		) );
 	}
 
-	public void collectJavaTypeRegistrations(List<JaxbJavaTypeRegistration> registrations) {
+	public void collectJavaTypeRegistrations(List<JaxbJavaTypeRegistrationImpl> registrations) {
 		if ( CollectionHelper.isEmpty( registrations ) ) {
 			return;
 		}
@@ -200,7 +200,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		) );
 	}
 
-	public void collectJdbcTypeRegistrations(List<JaxbJdbcTypeRegistration> registrations) {
+	public void collectJdbcTypeRegistrations(List<JaxbJdbcTypeRegistrationImpl> registrations) {
 		if ( CollectionHelper.isEmpty( registrations ) ) {
 			return;
 		}
@@ -231,7 +231,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		} );
 	}
 
-	public void collectConverterRegistrations(List<JaxbConverterRegistration> registrations) {
+	public void collectConverterRegistrations(List<JaxbConverterRegistrationImpl> registrations) {
 		if ( CollectionHelper.isEmpty( registrations ) ) {
 			return;
 		}
@@ -269,7 +269,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		) );
 	}
 
-	public void collectUserTypeRegistrations(List<JaxbUserTypeRegistration> registrations) {
+	public void collectUserTypeRegistrations(List<JaxbUserTypeRegistrationImpl> registrations) {
 		if ( CollectionHelper.isEmpty( registrations ) ) {
 			return;
 		}
@@ -299,7 +299,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		) );
 	}
 
-	public void collectCompositeUserTypeRegistrations(List<JaxbCompositeUserTypeRegistration> registrations) {
+	public void collectCompositeUserTypeRegistrations(List<JaxbCompositeUserTypeRegistrationImpl> registrations) {
 		if ( CollectionHelper.isEmpty( registrations ) ) {
 			return;
 		}
@@ -342,7 +342,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		return result;
 	}
 
-	public void collectCollectionTypeRegistrations(List<JaxbCollectionUserTypeRegistration> registrations) {
+	public void collectCollectionTypeRegistrations(List<JaxbCollectionUserTypeRegistrationImpl> registrations) {
 		if ( CollectionHelper.isEmpty( registrations ) ) {
 			return;
 		}
@@ -354,7 +354,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		) );
 	}
 
-	private Map<String, String> extractParameterMap(List<JaxbConfigurationParameter> parameters) {
+	private Map<String, String> extractParameterMap(List<JaxbConfigurationParameterImpl> parameters) {
 		if ( CollectionHelper.isEmpty( parameters ) ) {
 			return Collections.emptyMap();
 		}
@@ -385,7 +385,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		) );
 	}
 
-	public void collectEmbeddableInstantiatorRegistrations(List<JaxbEmbeddableInstantiatorRegistration> registrations) {
+	public void collectEmbeddableInstantiatorRegistrations(List<JaxbEmbeddableInstantiatorRegistrationImpl> registrations) {
 		if ( CollectionHelper.isEmpty( registrations ) ) {
 			return;
 		}
@@ -424,7 +424,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		return result;
 	}
 
-	public void collectFilterDefinitions(List<JaxbFilterDef> filterDefinitions) {
+	public void collectFilterDefinitions(List<JaxbFilterDefImpl> filterDefinitions) {
 		if ( CollectionHelper.isEmpty( filterDefinitions ) ) {
 			return;
 		}
@@ -436,14 +436,14 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		) );
 	}
 
-	private Map<String, ClassDetails> extractFilterParameters(JaxbFilterDef source) {
-		final List<JaxbFilterDef.JaxbFilterParam> parameters = source.getFilterParam();
+	private Map<String, ClassDetails> extractFilterParameters(JaxbFilterDefImpl source) {
+		final List<JaxbFilterDefImpl.JaxbFilterParamImpl> parameters = source.getFilterParam();
 
 		// todo : update the mapping.xsd to account for new @ParamDef definition
 		// todo : handle simplified type names for XML, e.g. "String" instead of "java.lang.String"
 
 		final Map<String, ClassDetails> result = new HashMap<>( parameters.size() );
-		for ( JaxbFilterDef.JaxbFilterParam parameter : parameters ) {
+		for ( JaxbFilterDefImpl.JaxbFilterParamImpl parameter : parameters ) {
 			result.put( parameter.getName(), classDetailsRegistry.resolveClassDetails( parameter.getType() ) );
 		}
 		return result;
@@ -463,7 +463,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// EntityListenerRegistration
 
-	public void collectEntityListenerRegistrations(List<JaxbEntityListener> listeners) {
+	public void collectEntityListenerRegistrations(List<JaxbEntityListenerImpl> listeners) {
 		if ( CollectionHelper.isEmpty( listeners ) ) {
 			return;
 		}
@@ -482,7 +482,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Id generators
 
-	public void collectIdGenerators(JaxbEntityMappings jaxbRoot) {
+	public void collectIdGenerators(JaxbEntityMappingsImpl jaxbRoot) {
 		collectSequenceGenerators( jaxbRoot.getSequenceGenerators() );
 		collectTableGenerators( jaxbRoot.getTableGenerators() );
 		collectGenericGenerators( jaxbRoot.getGenericGenerators() );
@@ -500,7 +500,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Sequence generator
 
-	public void collectSequenceGenerators(List<JaxbSequenceGenerator> sequenceGenerators) {
+	public void collectSequenceGenerators(List<JaxbSequenceGeneratorImpl> sequenceGenerators) {
 		if ( CollectionHelper.isEmpty( sequenceGenerators ) ) {
 			return;
 		}
@@ -534,7 +534,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Table generator
 
-	public void collectTableGenerators(List<JaxbTableGenerator> tableGenerators) {
+	public void collectTableGenerators(List<JaxbTableGeneratorImpl> tableGenerators) {
 		if ( CollectionHelper.isEmpty( tableGenerators ) ) {
 			return;
 		}
@@ -571,7 +571,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Generic generators
 
-	private void collectGenericGenerators(List<JaxbGenericIdGenerator> genericGenerators) {
+	private void collectGenericGenerators(List<JaxbGenericIdGeneratorImpl> genericGenerators) {
 		if ( CollectionHelper.isEmpty( genericGenerators ) ) {
 			return;
 		}

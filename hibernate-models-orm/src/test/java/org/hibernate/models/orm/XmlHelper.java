@@ -14,9 +14,9 @@ import org.hibernate.boot.ResourceStreamLocator;
 import org.hibernate.boot.jaxb.Origin;
 import org.hibernate.boot.jaxb.SourceType;
 import org.hibernate.boot.jaxb.internal.MappingBinder;
-import org.hibernate.boot.jaxb.mapping.JaxbEntityMappings;
-import org.hibernate.boot.jaxb.spi.BindableMappingDescriptor;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
 import org.hibernate.boot.jaxb.spi.Binding;
+import org.hibernate.boot.jaxb.spi.JaxbBindableMappingDescriptor;
 import org.hibernate.models.orm.xml.XmlResourceException;
 import org.hibernate.models.spi.ClassLoading;
 
@@ -26,14 +26,14 @@ import static org.hibernate.boot.jaxb.internal.MappingBinder.NON_VALIDATING;
  * @author Steve Ebersole
  */
 public class XmlHelper {
-	public static JaxbEntityMappings loadMapping(String resourceName, ClassLoading classLoadingAccess) {
+	public static JaxbEntityMappingsImpl loadMapping(String resourceName, ClassLoading classLoadingAccess) {
 		final ResourceStreamLocatorImpl resourceStreamLocator = new ResourceStreamLocatorImpl( classLoadingAccess );
 		final MappingBinder mappingBinder = new MappingBinder( resourceStreamLocator, NON_VALIDATING );
-		final Binding<BindableMappingDescriptor> binding = mappingBinder.bind(
+		final Binding<JaxbBindableMappingDescriptor> binding = mappingBinder.bind(
 				resourceStreamLocator.locateResourceStream( resourceName ),
 				new Origin( SourceType.RESOURCE, resourceName )
 		);
-		return (JaxbEntityMappings) binding.getRoot();
+		return (JaxbEntityMappingsImpl) binding.getRoot();
 	}
 
 	private static class ResourceStreamLocatorImpl implements ResourceStreamLocator {

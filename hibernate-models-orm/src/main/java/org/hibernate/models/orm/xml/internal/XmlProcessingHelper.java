@@ -9,8 +9,8 @@ package org.hibernate.models.orm.xml.internal;
 import java.beans.Introspector;
 import java.lang.annotation.Annotation;
 
-import org.hibernate.boot.jaxb.mapping.JaxbEntityMappings;
-import org.hibernate.boot.jaxb.mapping.ManagedType;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbManagedType;
 import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.orm.MemberResolutionException;
 import org.hibernate.models.source.internal.MutableAnnotationTarget;
@@ -37,7 +37,7 @@ public class XmlProcessingHelper {
 	 * @param jaxbRoot The {@code <entity-mappings/>} node for access to the package (if one)
 	 * @param jaxbManagedType The class JAXB node
 	 */
-	public static String determineClassName(JaxbEntityMappings jaxbRoot, ManagedType jaxbManagedType) {
+	public static String determineClassName(JaxbEntityMappingsImpl jaxbRoot, JaxbManagedType jaxbManagedType) {
 		if ( StringHelper.isQualified( jaxbManagedType.getClazz() ) ) {
 			return jaxbManagedType.getClazz();
 		}

@@ -10,6 +10,7 @@ import java.lang.annotation.Annotation;
 import java.util.function.Consumer;
 
 import org.hibernate.annotations.*;
+import org.hibernate.annotations.internal.Extends;
 import org.hibernate.models.orm.internal.OrmAnnotationHelper;
 import org.hibernate.models.source.spi.AnnotationDescriptor;
 
@@ -67,6 +68,7 @@ public interface HibernateAnnotations {
 	AnnotationDescriptor<EmbeddableInstantiator> EMBEDDABLE_INSTANTIATOR = createOrmDescriptor( EmbeddableInstantiator.class );
 	AnnotationDescriptor<EmbeddableInstantiatorRegistrations> EMBEDDABLE_INSTANTIATOR_REGS = createOrmDescriptor( EmbeddableInstantiatorRegistrations.class );
 	AnnotationDescriptor<EmbeddableInstantiatorRegistration> EMBEDDABLE_INSTANTIATOR_REG = createOrmDescriptor( EmbeddableInstantiatorRegistration.class, EMBEDDABLE_INSTANTIATOR_REGS );
+	AnnotationDescriptor<Extends> EXTENDS = createOrmDescriptor( Extends.class );
 	AnnotationDescriptor<Fetch> FETCH = createOrmDescriptor( Fetch.class );
 	AnnotationDescriptor<FetchProfiles> FETCH_PROFILES = createOrmDescriptor( FetchProfiles.class );
 	AnnotationDescriptor<FetchProfile> FETCH_PROFILE = createOrmDescriptor( FetchProfile.class, FETCH_PROFILES );

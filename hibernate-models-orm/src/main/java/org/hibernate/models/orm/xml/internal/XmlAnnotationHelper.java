@@ -7,38 +7,47 @@
 package org.hibernate.models.orm.xml.internal;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import org.hibernate.annotations.AttributeAccessor;
 import org.hibernate.annotations.Formula;
+import org.hibernate.annotations.JavaType;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Nationalized;
 import org.hibernate.annotations.NaturalId;
 import org.hibernate.annotations.NaturalIdCache;
 import org.hibernate.annotations.OptimisticLock;
 import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.Target;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UuidGenerator;
-import org.hibernate.boot.jaxb.mapping.JaxbAssociationOverride;
-import org.hibernate.boot.jaxb.mapping.JaxbAttributeOverride;
-import org.hibernate.boot.jaxb.mapping.JaxbBasic;
-import org.hibernate.boot.jaxb.mapping.JaxbCaching;
-import org.hibernate.boot.jaxb.mapping.JaxbColumn;
-import org.hibernate.boot.jaxb.mapping.JaxbColumnType;
-import org.hibernate.boot.jaxb.mapping.JaxbConfigurationParameter;
-import org.hibernate.boot.jaxb.mapping.JaxbConvert;
-import org.hibernate.boot.jaxb.mapping.JaxbEmbeddedId;
-import org.hibernate.boot.jaxb.mapping.JaxbEntity;
-import org.hibernate.boot.jaxb.mapping.JaxbGeneratedValue;
-import org.hibernate.boot.jaxb.mapping.JaxbId;
-import org.hibernate.boot.jaxb.mapping.JaxbLob;
-import org.hibernate.boot.jaxb.mapping.JaxbNationalized;
-import org.hibernate.boot.jaxb.mapping.JaxbNaturalId;
-import org.hibernate.boot.jaxb.mapping.JaxbSequenceGenerator;
-import org.hibernate.boot.jaxb.mapping.JaxbTable;
-import org.hibernate.boot.jaxb.mapping.JaxbTableGenerator;
-import org.hibernate.boot.jaxb.mapping.JaxbUuidGenerator;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbAssociationOverrideImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbAttributeOverrideImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicMapping;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbCachingImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbColumnImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbConfigurationParameterImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbConvertImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedIdImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntity;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbGeneratedValueImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbIdImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbLobImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbNationalizedImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbNaturalId;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbSequenceGeneratorImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbTableGeneratorImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbTableImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbUserTypeImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbUuidGeneratorImpl;
+import org.hibernate.models.ModelsException;
 import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.orm.xml.spi.PersistenceUnitMetadata;
@@ -52,6 +61,7 @@ import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.ClassDetailsRegistry;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
+import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
@@ -78,6 +88,7 @@ import static jakarta.persistence.FetchType.EAGER;
 import static java.util.Collections.emptyList;
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
 import static org.hibernate.models.orm.xml.internal.XmlProcessingHelper.getOrMakeAnnotation;
+import static org.hibernate.models.orm.xml.internal.XmlProcessingHelper.makeAnnotation;
 
 /**
  * Helper for creating annotation from equivalent JAXB
@@ -101,7 +112,7 @@ public class XmlAnnotationHelper {
 	}
 
 	public static void applyBasic(
-			JaxbId jaxbId,
+			JaxbIdImpl jaxbId,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		final DynamicAnnotationUsage<Basic> annotationUsage = new DynamicAnnotationUsage<>( Basic.class, memberDetails );
@@ -111,7 +122,7 @@ public class XmlAnnotationHelper {
 	}
 
 	public static void applyBasic(
-			JaxbBasic jaxbBasic,
+			JaxbBasicImpl jaxbBasic,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		final MutableAnnotationUsage<Basic> basicAnn = XmlProcessingHelper.getOrMakeAnnotation( Basic.class, memberDetails );
@@ -156,7 +167,7 @@ public class XmlAnnotationHelper {
 	}
 
 	public static void applyColumn(
-			JaxbColumn jaxbColumn,
+			JaxbColumnImpl jaxbColumn,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		if ( jaxbColumn == null ) {
@@ -167,7 +178,7 @@ public class XmlAnnotationHelper {
 	}
 
 	private static MutableAnnotationUsage<Column> createColumnAnnotation(
-			JaxbColumn jaxbColumn,
+			JaxbColumnImpl jaxbColumn,
 			MutableAnnotationTarget target) {
 		final MutableAnnotationUsage<Column> columnAnn = XmlProcessingHelper.getOrMakeAnnotation( Column.class, target );
 
@@ -237,7 +248,7 @@ public class XmlAnnotationHelper {
 	}
 
 	public static void applyUserType(
-			JaxbColumnType jaxbType,
+			JaxbUserTypeImpl jaxbType,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext buildingContext) {
 		if ( jaxbType == null ) {
@@ -247,13 +258,13 @@ public class XmlAnnotationHelper {
 		final DynamicAnnotationUsage<Type> typeAnn = new DynamicAnnotationUsage<>( Type.class, memberDetails );
 		memberDetails.addAnnotationUsage( typeAnn );
 
-		final ClassDetails userTypeImpl = buildingContext.getClassDetailsRegistry().resolveClassDetails( jaxbType.getValue() );
+		final ClassDetails userTypeImpl = resolveJavaType( jaxbType.getValue(), buildingContext );
 		typeAnn.setAttributeValue( "value", userTypeImpl );
 		typeAnn.setAttributeValue( "parameters", collectParameters( jaxbType.getParameters(), memberDetails ) );
 	}
 
 	private static List<AnnotationUsage<Parameter>> collectParameters(
-			List<JaxbConfigurationParameter> jaxbParameters,
+			List<JaxbConfigurationParameterImpl> jaxbParameters,
 			AnnotationTarget target) {
 		if ( CollectionHelper.isEmpty( jaxbParameters ) ) {
 			return emptyList();
@@ -269,17 +280,13 @@ public class XmlAnnotationHelper {
 		return parameterAnnList;
 	}
 
-	public static void applyJdbcTypeCode(
-			Integer jdbcTypeCode,
+	public static void applyTargetClass(
+			String name,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
-		if ( jdbcTypeCode == null ) {
-			return;
-		}
-
-		final DynamicAnnotationUsage<JdbcTypeCode> typeCodeAnn = new DynamicAnnotationUsage<>( JdbcTypeCode.class, memberDetails );
-		memberDetails.addAnnotationUsage( typeCodeAnn );
-		typeCodeAnn.setAttributeValue( "value", jdbcTypeCode );
+		final ClassDetails classDetails = resolveJavaType( name, sourceModelBuildingContext );
+		final DynamicAnnotationUsage<Target> targetAnn = makeAnnotation( Target.class, memberDetails );
+		targetAnn.setAttributeValue( "value", classDetails );
 	}
 
 	public static void applyTemporal(
@@ -296,7 +303,7 @@ public class XmlAnnotationHelper {
 	}
 
 	public static void applyLob(
-			JaxbLob jaxbLob,
+			JaxbLobImpl jaxbLob,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		if ( jaxbLob == null ) {
@@ -325,7 +332,7 @@ public class XmlAnnotationHelper {
 	}
 
 	public static void applyNationalized(
-			JaxbNationalized jaxbNationalized,
+			JaxbNationalizedImpl jaxbNationalized,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		if ( jaxbNationalized == null ) {
@@ -340,7 +347,7 @@ public class XmlAnnotationHelper {
 	}
 
 	public static void applyGeneratedValue(
-			JaxbGeneratedValue jaxbGeneratedValue,
+			JaxbGeneratedValueImpl jaxbGeneratedValue,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		if ( jaxbGeneratedValue == null ) {
@@ -354,7 +361,7 @@ public class XmlAnnotationHelper {
 	}
 
 	public static void applySequenceGenerator(
-			JaxbSequenceGenerator jaxbGenerator,
+			JaxbSequenceGeneratorImpl jaxbGenerator,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		if ( jaxbGenerator == null ) {
@@ -378,7 +385,7 @@ public class XmlAnnotationHelper {
 	}
 
 	public static void applyTableGenerator(
-			JaxbTableGenerator jaxbGenerator,
+			JaxbTableGeneratorImpl jaxbGenerator,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		if ( jaxbGenerator == null ) {
@@ -401,7 +408,7 @@ public class XmlAnnotationHelper {
 	}
 
 	public static void applyUuidGenerator(
-			JaxbUuidGenerator jaxbGenerator,
+			JaxbUuidGeneratorImpl jaxbGenerator,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		if ( jaxbGenerator == null ) {
@@ -414,7 +421,7 @@ public class XmlAnnotationHelper {
 	}
 
 	public static void applyAttributeOverrides(
-			List<JaxbAttributeOverride> jaxbOverrides,
+			List<JaxbAttributeOverrideImpl> jaxbOverrides,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		if ( CollectionHelper.isEmpty( jaxbOverrides ) ) {
@@ -433,7 +440,7 @@ public class XmlAnnotationHelper {
 	}
 
 	public static void applyAssociationOverrides(
-			List<JaxbAssociationOverride> jaxbOverrides,
+			List<JaxbAssociationOverrideImpl> jaxbOverrides,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		if ( CollectionHelper.isEmpty( jaxbOverrides ) ) {
@@ -466,7 +473,7 @@ public class XmlAnnotationHelper {
 	}
 
 	public static void applyConvert(
-			JaxbConvert jaxbConvert,
+			JaxbConvertImpl jaxbConvert,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		if ( jaxbConvert == null ) {
@@ -487,7 +494,7 @@ public class XmlAnnotationHelper {
 	}
 
 	public static void applyTable(
-			JaxbTable jaxbTable,
+			JaxbTableImpl jaxbTable,
 			MutableAnnotationTarget target,
 			PersistenceUnitMetadata persistenceUnitMetadata) {
 		final DynamicAnnotationUsage<Table> tableAnn = new DynamicAnnotationUsage<>( Table.class, target );
@@ -500,7 +507,7 @@ public class XmlAnnotationHelper {
 	}
 
 	public static void applyTableOverride(
-			JaxbTable jaxbTable,
+			JaxbTableImpl jaxbTable,
 			MutableAnnotationTarget target,
 			PersistenceUnitMetadata persistenceUnitMetadata) {
 		if ( jaxbTable == null ) {
@@ -517,7 +524,7 @@ public class XmlAnnotationHelper {
 
 	private static void applyTableAttributes(
 			MutableAnnotationUsage<Table> tableAnn,
-			JaxbTable jaxbTable,
+			JaxbTableImpl jaxbTable,
 			PersistenceUnitMetadata persistenceUnitMetadata) {
 		applyAttributeIfSpecified( tableAnn, "name", jaxbTable.getName() );
 		applyAttributeIfSpecified( tableAnn, "catalog", jaxbTable.getCatalog(), persistenceUnitMetadata.getDefaultCatalog() );
@@ -571,7 +578,7 @@ public class XmlAnnotationHelper {
 			JaxbNaturalId jaxbNaturalId,
 			MutableClassDetails classDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
-		if ( jaxbNaturalId == null || jaxbNaturalId.getCache() == null ) {
+		if ( jaxbNaturalId == null || jaxbNaturalId.getCaching() == null ) {
 			return;
 		}
 
@@ -581,12 +588,12 @@ public class XmlAnnotationHelper {
 		);
 		classDetails.addAnnotationUsage( annotationUsage );
 
-		final JaxbCaching jaxbCaching = jaxbNaturalId.getCache();
+		final JaxbCachingImpl jaxbCaching = jaxbNaturalId.getCaching();
 		annotationUsage.setAttributeValue( "region", jaxbCaching.getRegion() );
 	}
 
 	public static void applyId(
-			JaxbId jaxbId,
+			JaxbIdImpl jaxbId,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		if ( jaxbId == null ) {
@@ -600,7 +607,7 @@ public class XmlAnnotationHelper {
 	}
 
 	public static void applyEmbeddedId(
-			JaxbEmbeddedId jaxbEmbeddedId,
+			JaxbEmbeddedIdImpl jaxbEmbeddedId,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		if ( jaxbEmbeddedId == null ) {
@@ -626,5 +633,127 @@ public class XmlAnnotationHelper {
 				classDetails
 		);
 		inheritanceAnn.setAttributeValue( "strategy", jaxbEntity.getInheritance().getStrategy() );
+	}
+
+	public static ClassDetails resolveJavaType(String value, SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( StringHelper.isEmpty( value ) ) {
+			value = Object.class.getName();
+		}
+		else if ( Byte.class.getSimpleName().equals( value ) ) {
+			value = Byte.class.getName();
+		}
+		else if ( Boolean.class.getSimpleName().equals( value ) ) {
+			value = Boolean.class.getName();
+		}
+		else if ( Short.class.getSimpleName().equals( value ) ) {
+			value = Short.class.getName();
+		}
+		else if ( Integer.class.getSimpleName().equals( value ) ) {
+			value = Integer.class.getName();
+		}
+		else if ( Long.class.getSimpleName().equals( value ) ) {
+			value = Long.class.getName();
+		}
+		else if ( Double.class.getSimpleName().equals( value ) ) {
+			value = Double.class.getName();
+		}
+		else if ( Float.class.getSimpleName().equals( value ) ) {
+			value = Float.class.getName();
+		}
+		else if ( BigInteger.class.getSimpleName().equals( value ) ) {
+			value = BigInteger.class.getName();
+		}
+		else if ( BigDecimal.class.getSimpleName().equals( value ) ) {
+			value = BigDecimal.class.getName();
+		}
+		else if ( String.class.getSimpleName().equals( value ) ) {
+			value = String.class.getName();
+		}
+		else if ( Character.class.getSimpleName().equals( value ) ) {
+			value = Character.class.getName();
+		}
+		else if ( UUID.class.getSimpleName().equals( value ) ) {
+			value = Character.class.getName();
+		}
+
+		return sourceModelBuildingContext.getClassDetailsRegistry().resolveClassDetails( value );
+	}
+
+	public static void applyBasicTypeComposition(
+			JaxbBasicMapping jaxbBasicMapping,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( jaxbBasicMapping.getType() != null ) {
+			applyUserType( jaxbBasicMapping.getType(), memberDetails, sourceModelBuildingContext );
+		}
+		else if ( jaxbBasicMapping.getJavaType() != null ) {
+			applyJavaTypeDescriptor( jaxbBasicMapping.getJavaType(), memberDetails, sourceModelBuildingContext );
+		}
+		else if ( StringHelper.isNotEmpty( jaxbBasicMapping.getTarget() ) ) {
+			applyTargetClass( jaxbBasicMapping.getTarget(), memberDetails, sourceModelBuildingContext );
+		}
+
+		if ( StringHelper.isNotEmpty( jaxbBasicMapping.getJdbcType() ) ) {
+			applyJdbcTypeDescriptor( jaxbBasicMapping.getJdbcType(), memberDetails, sourceModelBuildingContext );
+		}
+		else if ( jaxbBasicMapping.getJdbcTypeCode() != null ) {
+			applyJdbcTypeCode( jaxbBasicMapping.getJdbcTypeCode(), memberDetails, sourceModelBuildingContext );
+		}
+		else if ( StringHelper.isNotEmpty( jaxbBasicMapping.getJdbcTypeName() ) ) {
+			applyJdbcTypeCode(
+					resolveJdbcTypeName( jaxbBasicMapping.getJdbcTypeName() ),
+					memberDetails,
+					sourceModelBuildingContext
+			);
+		}
+	}
+
+	private static int resolveJdbcTypeName(String name) {
+		try {
+			final Field matchingField = SqlTypes.class.getDeclaredField( name );
+			return matchingField.getInt( null );
+		}
+		catch (NoSuchFieldException | IllegalAccessException e) {
+			throw new ModelsException( "Could not resolve <jdbc-type-name>" + name + "</jdbc-type-name>", e );
+		}
+	}
+
+	public static void applyJavaTypeDescriptor(
+			String descriptorClassName,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		final DynamicAnnotationUsage<JavaType> typeAnn = new DynamicAnnotationUsage<>( JavaType.class, memberDetails );
+		memberDetails.addAnnotationUsage( typeAnn );
+
+		final ClassDetails descriptorClass = sourceModelBuildingContext
+				.getClassDetailsRegistry()
+				.resolveClassDetails( descriptorClassName );
+		typeAnn.setAttributeValue( "value", descriptorClass );
+	}
+
+
+	private static void applyJdbcTypeDescriptor(
+			String descriptorClassName,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		final ClassDetails descriptorClassDetails = sourceModelBuildingContext
+				.getClassDetailsRegistry()
+				.resolveClassDetails( descriptorClassName );
+		final DynamicAnnotationUsage<JdbcType> jdbcTypeAnn = makeAnnotation( JdbcType.class, memberDetails );
+		jdbcTypeAnn.setAttributeValue( "value", descriptorClassDetails );
+
+	}
+
+	public static void applyJdbcTypeCode(
+			Integer jdbcTypeCode,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( jdbcTypeCode == null ) {
+			return;
+		}
+
+		final DynamicAnnotationUsage<JdbcTypeCode> typeCodeAnn = new DynamicAnnotationUsage<>( JdbcTypeCode.class, memberDetails );
+		memberDetails.addAnnotationUsage( typeCodeAnn );
+		typeCodeAnn.setAttributeValue( "value", jdbcTypeCode );
 	}
 }
