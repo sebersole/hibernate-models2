@@ -1,0 +1,29 @@
+<!--
+  ~ Hibernate, Relational Persistence for Idiomatic Java
+  ~
+  ~ SPDX-License-Identifier: Apache-2.0
+  ~ Copyright: Red Hat Inc. and Hibernate Authors
+  -->
+<entity-mappings xmlns="http://www.hibernate.org/xsd/orm/mapping"
+                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                 version="3.1">
+    <entity name="SimpleEntity" metadata-complete="true">
+        <attributes>
+            <id name="id">
+                <java-type>
+                    <class>Integer</class>
+                </java-type>
+            </id>
+            <basic name="name">
+                <java-type>
+                    <class>String</class>
+                </java-type>
+            </basic>
+            <basic name="quantity">
+                <java-type>
+                    <class>int</class>
+                </java-type>
+            </basic>
+        </attributes>
+    </entity>
+</entity-mappings>

@@ -11,9 +11,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.hibernate.annotations.CascadeType;
-import org.hibernate.boot.jaxb.mapping.JaxbEntityListener;
-import org.hibernate.boot.jaxb.mapping.JaxbPersistenceUnitDefaults;
-import org.hibernate.boot.jaxb.mapping.JaxbPersistenceUnitMetadata;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityListenerImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitDefaultsImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitMetadataImpl;
 import org.hibernate.models.orm.internal.OrmModelLogging;
 import org.hibernate.models.orm.xml.spi.PersistenceUnitMetadata;
 
@@ -39,7 +39,7 @@ public final class PersistenceUnitMetadataImpl implements PersistenceUnitMetadat
 	private String defaultAccessStrategy;
 
 	private final EnumSet<CascadeType> defaultCascadeTypes = EnumSet.noneOf( CascadeType.class );
-	private final Set<JaxbEntityListener> globalEntityListeners = new HashSet<>();
+	private final Set<JaxbEntityListenerImpl> globalEntityListeners = new HashSet<>();
 
 	@Override
 	public boolean areXmlMappingsComplete() {
@@ -77,18 +77,18 @@ public final class PersistenceUnitMetadataImpl implements PersistenceUnitMetadat
 	}
 
 	@Override
-	public Set<JaxbEntityListener> getEntityListeners() {
+	public Set<JaxbEntityListenerImpl> getEntityListeners() {
 		return globalEntityListeners;
 	}
 
-	public void apply(JaxbPersistenceUnitMetadata metadata) {
+	public void apply(JaxbPersistenceUnitMetadataImpl metadata) {
 		if ( metadata == null ) {
 			return;
 		}
 
 		xmlComplete = xmlComplete || metadata.getXmlMappingMetadataComplete() != null;
 
-		final JaxbPersistenceUnitDefaults defaults = metadata.getPersistenceUnitDefaults();
+		final JaxbPersistenceUnitDefaultsImpl defaults = metadata.getPersistenceUnitDefaults();
 		if ( defaults == null ) {
 			return;
 		}

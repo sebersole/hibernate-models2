@@ -4,6 +4,7 @@ rootProject.name = 'hibernate-models2'
 dependencyResolutionManagement {
 	repositories {
 		mavenCentral()
+		mavenLocal()
 	}
 
 	versionCatalogs {
@@ -19,7 +20,7 @@ dependencyResolutionManagement {
 			def classmateVersion = version "classmate", "1.5.1"
 			library( "classmate", "com.fasterxml", "classmate" ).versionRef( classmateVersion )
 
-			def hibernateVersion = version "hibernateOrm", "6.3.0.Final"
+			def hibernateVersion = version "hibernateOrm", "7.0.0-XSD"
 			library( "hibernateCore", "org.hibernate.orm", "hibernate-core" ).versionRef( hibernateVersion )
 			library( "hibernateTesting", "org.hibernate.orm", "hibernate-testing" ).versionRef( hibernateVersion )
 			library( "hibernatePlatform", "org.hibernate.orm", "hibernate-platform" ).versionRef( hibernateVersion )

@@ -8,6 +8,8 @@ package org.hibernate.models.source.internal.jandex;
 
 import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.source.UnknownClassException;
+import org.hibernate.models.source.internal.jdk.JdkBuilders;
+import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.ClassDetailsBuilder;
 import org.hibernate.models.source.spi.MethodDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
@@ -29,17 +31,17 @@ public class JandexBuilders implements ClassDetailsBuilder {
 	}
 
 	@Override
-	public JandexClassDetails buildClassDetails(String name, SourceModelBuildingContext buildingContext) {
+	public ClassDetails buildClassDetails(String name, SourceModelBuildingContext buildingContext) {
 		return buildClassDetailsStatic( name, buildingContext.getJandexIndex(), buildingContext );
 	}
 
-	public static JandexClassDetails buildClassDetailsStatic(
+	public static ClassDetails buildClassDetailsStatic(
 			String name,
 			SourceModelBuildingContext processingContext) {
 		return buildClassDetailsStatic( name, processingContext.getJandexIndex(), processingContext );
 	}
 
-	public static JandexClassDetails buildClassDetailsStatic(
+	public static ClassDetails buildClassDetailsStatic(
 			String name,
 			IndexView jandexIndex,
 			SourceModelBuildingContext processingContext) {
@@ -49,10 +51,9 @@ public class JandexBuilders implements ClassDetailsBuilder {
 		final ClassInfo classInfo = jandexIndex.getClassByName( name );
 		if ( StringHelper.isNotEmpty( name ) && classInfo == null ) {
 			// potentially handle primitives
-			final Class<?> primitiveWrapperClass = resolveMatchingPrimitiveWrapper( name );
-			if ( primitiveWrapperClass != null ) {
-				final ClassInfo wrapperClassInfo = jandexIndex.getClassByName( primitiveWrapperClass.getName() );
-				return new JandexClassDetails( wrapperClassInfo, processingContext );
+			final Class<?> primitiveClass = resolvePrimitiveClass( name );
+			if ( primitiveClass != null ) {
+				return JdkBuilders.buildClassDetailsStatic( primitiveClass, processingContext );
 			}
 
 			throw new UnknownClassException( "Could not find class [" + name + "] in Jandex index" );
@@ -60,32 +61,60 @@ public class JandexBuilders implements ClassDetailsBuilder {
 		return new JandexClassDetails( classInfo, processingContext );
 	}
 
-	public static Class<?> resolveMatchingPrimitiveWrapper(String className) {
+	public static Class<?> resolvePrimitiveClass(String className) {
 		if ( "boolean".equals( className ) ) {
+			return boolean.class;
+		}
+
+		if ( Boolean.class.getSimpleName().equalsIgnoreCase( className ) || Boolean.class.getName().equals( className ) ) {
 			return Boolean.class;
 		}
 
 		if ( "byte".equals( className ) ) {
+			return byte.class;
+		}
+
+		if ( Byte.class.getSimpleName().equals( className ) || Byte.class.getName().equals( className ) ) {
 			return Byte.class;
 		}
 
 		if ( "short".equals( className ) ) {
+			return short.class;
+		}
+
+		if ( Short.class.getSimpleName().equals( className ) || Short.class.getName().equals( className ) ) {
 			return Short.class;
 		}
 
 		if ( "int".equals( className ) ) {
+			return int.class;
+		}
+
+		if ( Integer.class.getSimpleName().equals( className ) || Integer.class.getName().equals( className ) ) {
 			return Integer.class;
 		}
 
 		if ( "long".equals( className ) ) {
+			return long.class;
+		}
+
+		if ( Long.class.getSimpleName().equals( className ) || Long.class.getName().equals( className ) ) {
 			return Long.class;
 		}
 
 		if ( "double".equals( className ) ) {
+			return double.class;
+		}
+
+		if ( Double.class.getSimpleName().equals( className ) || Double.class.getName().equals( className ) ) {
 			return Double.class;
 		}
 
 		if ( "float".equals( className ) ) {
+			return float.class;
+		}
+
+		if ( Float.class.getSimpleName().equals( className ) || Float.class.getName().equals( className ) ) {
 			return Float.class;
 		}
 

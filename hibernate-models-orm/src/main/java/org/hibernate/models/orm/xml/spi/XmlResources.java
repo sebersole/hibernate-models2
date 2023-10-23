@@ -15,9 +15,9 @@ import java.util.List;
 import org.hibernate.boot.jaxb.Origin;
 import org.hibernate.boot.jaxb.SourceType;
 import org.hibernate.boot.jaxb.internal.MappingBinder;
-import org.hibernate.boot.jaxb.mapping.JaxbEntityMappings;
-import org.hibernate.boot.jaxb.spi.BindableMappingDescriptor;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
 import org.hibernate.boot.jaxb.spi.Binding;
+import org.hibernate.boot.jaxb.spi.JaxbBindableMappingDescriptor;
 import org.hibernate.models.orm.spi.ManagedResources;
 import org.hibernate.models.orm.xml.XmlResourceException;
 import org.hibernate.models.orm.xml.internal.PersistenceUnitMetadataImpl;
@@ -35,7 +35,7 @@ import static org.hibernate.boot.jaxb.internal.MappingBinder.NON_VALIDATING;
  */
 public class XmlResources {
 	private final PersistenceUnitMetadataImpl persistenceUnitMetadata = new PersistenceUnitMetadataImpl();
-	private final List<JaxbEntityMappings> documents = new ArrayList<>();
+	private final List<JaxbEntityMappingsImpl> documents = new ArrayList<>();
 
 	public XmlResources() {
 	}
@@ -59,11 +59,11 @@ public class XmlResources {
 				throw new XmlResourceException( "Unable to locate XML mapping - " + xmlMapping );
 			}
 			try (InputStream inputStream = resource.openStream()) {
-				final Binding<BindableMappingDescriptor> binding = mappingBinder.bind(
+				final Binding<JaxbBindableMappingDescriptor> binding = mappingBinder.bind(
 						inputStream,
 						new Origin( SourceType.RESOURCE, xmlMapping )
 				);
-				collected.addDocument( (JaxbEntityMappings) binding.getRoot() );
+				collected.addDocument( (JaxbEntityMappingsImpl) binding.getRoot() );
 			}
 			catch (IOException e) {
 				throw new XmlResourceException( "Unable to bind XML mapping - " + xmlMapping, e );
@@ -84,11 +84,11 @@ public class XmlResources {
 	/**
 	 * All documents in the persistence-unit
 	 */
-	public List<JaxbEntityMappings> getDocuments() {
+	public List<JaxbEntityMappingsImpl> getDocuments() {
 		return documents;
 	}
 
-	public void addDocument(JaxbEntityMappings document) {
+	public void addDocument(JaxbEntityMappingsImpl document) {
 		persistenceUnitMetadata.apply( document.getPersistenceUnitMetadata() );
 		documents.add( document );
 	}

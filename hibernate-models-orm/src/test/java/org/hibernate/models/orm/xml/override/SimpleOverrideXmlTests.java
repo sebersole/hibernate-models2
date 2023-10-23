@@ -18,7 +18,6 @@ import org.hibernate.models.source.SourceModelTestHelper;
 import org.hibernate.models.source.internal.SourceModelBuildingContextImpl;
 import org.hibernate.models.source.spi.AnnotationUsage;
 
-import org.hibernate.testing.orm.junit.FailureExpected;
 import org.junit.jupiter.api.Test;
 
 import org.jboss.jandex.Index;

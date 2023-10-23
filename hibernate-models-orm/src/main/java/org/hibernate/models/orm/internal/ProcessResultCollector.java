@@ -9,10 +9,10 @@ package org.hibernate.models.orm.internal;
 import java.util.Map;
 import java.util.Set;
 
-import org.hibernate.boot.jaxb.mapping.JaxbEntityListeners;
-import org.hibernate.boot.jaxb.mapping.JaxbEntityMappings;
-import org.hibernate.boot.jaxb.mapping.JaxbPersistenceUnitDefaults;
-import org.hibernate.boot.jaxb.mapping.JaxbPersistenceUnitMetadata;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityListenersImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitDefaultsImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitMetadataImpl;
 import org.hibernate.models.orm.spi.ProcessResult;
 import org.hibernate.models.orm.spi.EntityHierarchy;
 import org.hibernate.models.source.spi.ClassDetails;
@@ -42,7 +42,7 @@ public class ProcessResultCollector {
 	}
 
 
-	public void apply(JaxbEntityMappings jaxbRoot) {
+	public void apply(JaxbEntityMappingsImpl jaxbRoot) {
 		getGlobalRegistrations().collectJavaTypeRegistrations( jaxbRoot.getJavaTypeRegistrations() );
 		getGlobalRegistrations().collectJdbcTypeRegistrations( jaxbRoot.getJdbcTypeRegistrations() );
 		getGlobalRegistrations().collectConverterRegistrations( jaxbRoot.getConverterRegistrations() );
@@ -52,10 +52,10 @@ public class ProcessResultCollector {
 		getGlobalRegistrations().collectEmbeddableInstantiatorRegistrations( jaxbRoot.getEmbeddableInstantiatorRegistrations() );
 		getGlobalRegistrations().collectFilterDefinitions( jaxbRoot.getFilterDefinitions() );
 
-		final JaxbPersistenceUnitMetadata persistenceUnitMetadata = jaxbRoot.getPersistenceUnitMetadata();
+		final JaxbPersistenceUnitMetadataImpl persistenceUnitMetadata = jaxbRoot.getPersistenceUnitMetadata();
 		if ( persistenceUnitMetadata != null ) {
-			final JaxbPersistenceUnitDefaults persistenceUnitDefaults = persistenceUnitMetadata.getPersistenceUnitDefaults();
-			final JaxbEntityListeners entityListeners = persistenceUnitDefaults.getEntityListeners();
+			final JaxbPersistenceUnitDefaultsImpl persistenceUnitDefaults = persistenceUnitMetadata.getPersistenceUnitDefaults();
+			final JaxbEntityListenersImpl entityListeners = persistenceUnitDefaults.getEntityListeners();
 			if ( entityListeners != null ) {
 				getGlobalRegistrations().collectEntityListenerRegistrations( entityListeners.getEntityListener() );
 			}
