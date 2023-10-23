@@ -448,6 +448,12 @@ public class ManagedTypeProcessor {
 				sourceModelBuildingContext
 		);
 
+		jaxbEntity.getFilters().forEach( jaxbFilter -> XmlAnnotationHelper.applyFilter(
+				jaxbFilter,
+				classDetails,
+				sourceModelBuildingContext
+		) );
+
 		// todo : id-class
 		// todo : callbacks
 		// todo : entity-listeners

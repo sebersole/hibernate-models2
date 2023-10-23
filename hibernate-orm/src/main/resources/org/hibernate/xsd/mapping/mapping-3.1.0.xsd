@@ -1882,7 +1882,10 @@
 <!--                </xsd:sequence>-->
 <!--            </xsd:choice>-->
             <xsd:choice>
-                <xsd:element name="join-table" type="orm:join-table" minOccurs="0"/>
+                <xsd:sequence>
+                    <xsd:element name="join-table" type="orm:join-table" minOccurs="0"/>
+                    <xsd:element name="filter-join-table" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
+                </xsd:sequence>
                 <xsd:sequence>
                     <xsd:element name="join-column" type="orm:join-column" minOccurs="0" maxOccurs="unbounded"/>
                     <xsd:element name="foreign-key" type="orm:foreign-key" minOccurs="0"/>
@@ -1891,7 +1894,6 @@
             <xsd:element name="cascade" type="orm:cascade-type" minOccurs="0"/>
             <xsd:element name="on-delete" type="orm:on-delete-type" minOccurs="0"/>
             <xsd:element name="filter" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
-            <xsd:element name="filter-join-table" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
         </xsd:sequence>
         <xsd:attribute name="name" type="xsd:string" use="required"/>
         <xsd:attribute name="target-entity" type="xsd:string"/>
@@ -2483,7 +2485,7 @@
         <xsd:attribute name="name" use="required" type="xsd:string"/>
     </xsd:complexType>
 
-    <xsd:complexType name="hbm-filter" mixed="true">
+    <xsd:complexType name="hbm-filter">
         <xsd:annotation>
             <xsd:documentation>
                 Applies a filter defined by hbm-filter-def usage
@@ -2502,7 +2504,6 @@
                     </xsd:simpleContent>
                 </xsd:complexType>
             </xsd:element>
-            <xsd:element name="condition" type="xsd:string" />
         </xsd:sequence>
 
         <xsd:attribute name="name" use="required" type="xsd:string"/>
@@ -2858,6 +2859,7 @@
             <xsd:element name="discriminator" type="orm:hbm-any-discriminator"/>
             <xsd:element name="key" type="orm:hbm-any-key"/>
             <xsd:element name="cascade" type="orm:cascade-type" minOccurs="0"/>
+            <xsd:element name="filter" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
         </xsd:sequence>
 
         <xsd:attribute name="name" use="required" type="xsd:string"/>

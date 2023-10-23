@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.UUID;
 
 import org.hibernate.annotations.AttributeAccessor;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterJoinTable;
 import org.hibernate.annotations.CollectionType;
 import org.hibernate.annotations.Formula;
 import org.hibernate.annotations.JavaType;
@@ -25,6 +27,7 @@ import org.hibernate.annotations.NaturalId;
 import org.hibernate.annotations.NaturalIdCache;
 import org.hibernate.annotations.OptimisticLock;
 import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.SqlFragmentAlias;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.boot.internal.Target;
@@ -40,6 +43,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbConvertImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntity;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbGeneratedValueImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbHbmFilterImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbLobImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbNationalizedImpl;
@@ -90,6 +94,7 @@ import static jakarta.persistence.FetchType.EAGER;
 import static java.util.Collections.emptyList;
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
 import static org.hibernate.models.orm.xml.internal.XmlProcessingHelper.getOrMakeAnnotation;
+import static org.hibernate.models.orm.xml.internal.XmlProcessingHelper.getOrMakeNamedAnnotation;
 import static org.hibernate.models.orm.xml.internal.XmlProcessingHelper.makeAnnotation;
 
 /**
@@ -386,7 +391,7 @@ public class XmlAnnotationHelper {
 			return;
 		}
 
-		final MutableAnnotationUsage<SequenceGenerator> sequenceAnn = XmlProcessingHelper.getOrMakeNamedAnnotation(
+		final MutableAnnotationUsage<SequenceGenerator> sequenceAnn = getOrMakeNamedAnnotation(
 				SequenceGenerator.class,
 				jaxbGenerator.getName(),
 				memberDetails
@@ -786,5 +791,49 @@ public class XmlAnnotationHelper {
 		final DynamicAnnotationUsage<JdbcTypeCode> typeCodeAnn = new DynamicAnnotationUsage<>( JdbcTypeCode.class, memberDetails );
 		memberDetails.addAnnotationUsage( typeCodeAnn );
 		typeCodeAnn.setAttributeValue( "value", jdbcTypeCode );
+	}
+
+	static void applyFilter(
+			JaxbHbmFilterImpl jaxbFilter,
+			MutableAnnotationTarget target,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		applyFilter( jaxbFilter, target, Filter.class, sourceModelBuildingContext );
+	}
+
+	static void applyJoinTableFilters(
+			JaxbHbmFilterImpl jaxbFilter,
+			MutableAnnotationTarget target,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		applyFilter( jaxbFilter, target, FilterJoinTable.class, sourceModelBuildingContext );
+	}
+
+	private static <F extends Annotation> void applyFilter(
+			JaxbHbmFilterImpl jaxbFilter,
+			MutableAnnotationTarget target,
+			Class<F> filterAnnotationClass,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		// Since @Filter and @FilterJoinTable have exactly the same attributes,
+		// we can use the same method with parametrized annotation class
+		final MutableAnnotationUsage<F> filterAnn = getOrMakeNamedAnnotation(
+				filterAnnotationClass,
+				jaxbFilter.getName(),
+				target
+		);
+
+		applyAttributeIfSpecified( filterAnn, "condition", jaxbFilter.getCondition() );
+		applyAttributeIfSpecified( filterAnn, "deduceAliasInjectionPoints", jaxbFilter.isAutoAliasInjection() );
+
+		final List<JaxbHbmFilterImpl.JaxbAliasesImpl> aliases = jaxbFilter.getAliases();
+		if ( !CollectionHelper.isEmpty( aliases ) ) {
+			final List<MutableAnnotationUsage<SqlFragmentAlias>> sqlFragmentAliases = new ArrayList<>( aliases.size() );
+			for ( JaxbHbmFilterImpl.JaxbAliasesImpl alias : aliases ) {
+				final MutableAnnotationUsage<SqlFragmentAlias> aliasAnn = new DynamicAnnotationUsage<>( SqlFragmentAlias.class );
+				aliasAnn.setAttributeValue( "alias", alias.getAlias() );
+				aliasAnn.setAttributeValue( "table", alias.getTable() );
+				aliasAnn.setAttributeValue( "entity", alias.getEntity() );
+				sqlFragmentAliases.add( aliasAnn );
+			}
+			filterAnn.setAttributeValue( "aliases", sqlFragmentAliases );
+		}
 	}
 }
