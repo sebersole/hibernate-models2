@@ -256,18 +256,8 @@ public class AttributeProcessor {
 				sourceModelBuildingContext
 		);
 
-		XmlAnnotationHelper.applyUserType(
-				jaxbId.getType(),
-				memberDetails,
-				sourceModelBuildingContext
-		);
-		XmlAnnotationHelper.applyTargetClass(
-				jaxbId.getTargetClass(),
-				memberDetails,
-				sourceModelBuildingContext
-		);
-		XmlAnnotationHelper.applyJdbcType(
-				jaxbId.getJdbcType(),
+		XmlAnnotationHelper.applyBasicTypeComposition(
+				jaxbId,
 				memberDetails,
 				sourceModelBuildingContext
 		);
@@ -359,9 +349,7 @@ public class AttributeProcessor {
 
 		XmlAnnotationHelper.applyConvert( jaxbBasic.getConvert(), memberDetails, sourceModelBuildingContext );
 
-		XmlAnnotationHelper.applyUserType( jaxbBasic.getType(), memberDetails, sourceModelBuildingContext );
-		XmlAnnotationHelper.applyTargetClass( jaxbBasic.getTargetClass(), memberDetails, sourceModelBuildingContext );
-		XmlAnnotationHelper.applyJdbcType( jaxbBasic.getJdbcType(), memberDetails, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyBasicTypeComposition( jaxbBasic, memberDetails, sourceModelBuildingContext );
 		XmlAnnotationHelper.applyTemporal( jaxbBasic.getTemporal(), memberDetails, sourceModelBuildingContext );
 		XmlAnnotationHelper.applyLob( jaxbBasic.getLob(), memberDetails, sourceModelBuildingContext );
 		XmlAnnotationHelper.applyEnumerated( jaxbBasic.getEnumerated(), memberDetails, sourceModelBuildingContext );

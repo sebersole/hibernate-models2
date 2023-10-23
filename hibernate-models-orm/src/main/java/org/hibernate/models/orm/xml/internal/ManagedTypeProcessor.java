@@ -304,57 +304,57 @@ public class ManagedTypeProcessor {
 
 		if ( jaxbPersistentAttribute instanceof JaxbIdImpl ) {
 			final JaxbIdImpl jaxbId = (JaxbIdImpl) jaxbPersistentAttribute;
-			if ( jaxbId.getJavaType() == null || jaxbId.getJavaType().getClazz() == null ) {
-				return null;
-			}
-			else {
-				return XmlAnnotationHelper.resolveJavaType(
-						jaxbId.getJavaType().getClazz(),
-						sourceModelBuildingContext
-				);
-			}
+			return XmlAnnotationHelper.resolveJavaType( jaxbId.getTarget(), sourceModelBuildingContext );
 		}
 
 		if ( jaxbPersistentAttribute instanceof JaxbEmbeddedIdImpl ) {
 			final JaxbEmbeddedIdImpl jaxbEmbeddedId = (JaxbEmbeddedIdImpl) jaxbPersistentAttribute;
-			// need target-class here...
-			throw new UnsupportedOperationException( "Not yet implemented" );
-		}
-
-		if ( jaxbPersistentAttribute instanceof JaxbBasicImpl ) {
-			final JaxbBasicImpl jaxbBasic = (JaxbBasicImpl) jaxbPersistentAttribute;
-			if ( jaxbBasic.getJavaType() == null || jaxbBasic.getJavaType().getClazz() == null ) {
-				return null;
-			}
-			else {
-				return XmlAnnotationHelper.resolveJavaType(
-						jaxbBasic.getJavaType().getClazz(),
-						sourceModelBuildingContext
-				);
-			}
-		}
-
-		if ( jaxbPersistentAttribute instanceof JaxbEmbeddedImpl ) {
-			final JaxbEmbeddedImpl jaxbEmbedded = (JaxbEmbeddedImpl) jaxbPersistentAttribute;
-			if ( jaxbEmbedded.getEmbeddable() == null ) {
+			final String target = jaxbEmbeddedId.getEmbeddable();
+			if ( StringHelper.isEmpty( target ) ) {
 				return null;
 			}
 			final ClassDetailsRegistry classDetailsRegistry = sourceModelBuildingContext.getClassDetailsRegistry();
 			return classDetailsRegistry.resolveClassDetails(
-					jaxbEmbedded.getEmbeddable(),
+					target,
+					() -> new DynamicClassDetails( target, sourceModelBuildingContext )
+			);
+		}
+
+		if ( jaxbPersistentAttribute instanceof JaxbBasicImpl ) {
+			final JaxbBasicImpl jaxbBasic = (JaxbBasicImpl) jaxbPersistentAttribute;
+			return XmlAnnotationHelper.resolveJavaType( jaxbBasic.getTarget(), sourceModelBuildingContext );
+		}
+
+		if ( jaxbPersistentAttribute instanceof JaxbEmbeddedImpl ) {
+			final JaxbEmbeddedImpl jaxbEmbedded = (JaxbEmbeddedImpl) jaxbPersistentAttribute;
+			final String target = jaxbEmbedded.getTarget();
+			if ( StringHelper.isEmpty( target ) ) {
+				return null;
+			}
+			final ClassDetailsRegistry classDetailsRegistry = sourceModelBuildingContext.getClassDetailsRegistry();
+			return classDetailsRegistry.resolveClassDetails(
+					target,
+					() -> new DynamicClassDetails( target, sourceModelBuildingContext )
+			);
+		}
+
+		if ( jaxbPersistentAttribute instanceof JaxbOneToOneImpl ) {
+			final JaxbOneToOneImpl jaxbOneToOne = (JaxbOneToOneImpl) jaxbPersistentAttribute;
+			final String target = jaxbOneToOne.getTargetEntity();
+			if ( StringHelper.isEmpty( target ) ) {
+				return null;
+			}
+			final ClassDetailsRegistry classDetailsRegistry = sourceModelBuildingContext.getClassDetailsRegistry();
+			return classDetailsRegistry.resolveClassDetails(
+					target,
 					() -> new DynamicClassDetails(
-							jaxbEmbedded.getEmbeddable(),
+							target,
 							null,
 							false,
 							null,
 							sourceModelBuildingContext
 					)
 			);
-		}
-
-		if ( jaxbPersistentAttribute instanceof JaxbOneToOneImpl ) {
-			final JaxbOneToOneImpl jaxbOneToOne = (JaxbOneToOneImpl) jaxbPersistentAttribute;
-			final String targetEntity = jaxbOneToOne.getTargetEntity();
 		}
 
 		if ( jaxbPersistentAttribute instanceof JaxbAnyMappingImpl ) {

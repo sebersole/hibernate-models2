@@ -6,6 +6,7 @@
  */
 package org.hibernate.models.orm.xml.dynamic;
 
+import org.hibernate.annotations.JavaType;
 import org.hibernate.models.orm.internal.ManagedResourcesImpl;
 import org.hibernate.models.orm.spi.EntityHierarchy;
 import org.hibernate.models.orm.spi.EntityTypeMetadata;
@@ -66,7 +67,8 @@ public class DynamicModelTests {
 		assertThat( idField.getType().getClassName() ).isEqualTo( Integer.class.getName() );
 
 		final FieldDetails nameField = rootEntity.getClassDetails().findFieldByName( "name" );
-		assertThat( nameField.getType().getClassName() ).isEqualTo( String.class.getName() );
+		assertThat( nameField.getType().getClassName() ).isEqualTo( Object.class.getName() );
+		assertThat( nameField.getAnnotationUsage( JavaType.class ) ).isNotNull();
 
 		final FieldDetails qtyField = rootEntity.getClassDetails().findFieldByName( "quantity" );
 		assertThat( qtyField.getType().getClassName() ).isEqualTo( int.class.getName() );

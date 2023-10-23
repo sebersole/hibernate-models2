@@ -7,6 +7,7 @@
 package org.hibernate.models.orm.xml.internal;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -15,6 +16,7 @@ import java.util.UUID;
 
 import org.hibernate.annotations.AttributeAccessor;
 import org.hibernate.annotations.Formula;
+import org.hibernate.annotations.JavaType;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Nationalized;
@@ -28,6 +30,7 @@ import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbAssociationOverrideImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbAttributeOverrideImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicMapping;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbCachingImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbColumnImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbConfigurationParameterImpl;
@@ -36,17 +39,15 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntity;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbGeneratedValueImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbIdImpl;
-import org.hibernate.boot.jaxb.mapping.spi.JaxbJavaTypeImpl;
-import org.hibernate.boot.jaxb.mapping.spi.JaxbJdbcTypeImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbLobImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbNationalizedImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbNaturalId;
-import org.hibernate.boot.jaxb.mapping.spi.JaxbNaturalIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbSequenceGeneratorImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbTableGeneratorImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbTableImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbUserTypeImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbUuidGeneratorImpl;
+import org.hibernate.models.ModelsException;
 import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.orm.xml.spi.PersistenceUnitMetadata;
@@ -60,6 +61,7 @@ import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.ClassDetailsRegistry;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
+import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
@@ -285,47 +287,6 @@ public class XmlAnnotationHelper {
 		final ClassDetails classDetails = resolveJavaType( name, sourceModelBuildingContext );
 		final DynamicAnnotationUsage<Target> targetAnn = makeAnnotation( Target.class, memberDetails );
 		targetAnn.setAttributeValue( "value", classDetails );
-	}
-
-	public static void applyJdbcType(
-			JaxbJdbcTypeImpl jaxbJdbcType,
-			MutableMemberDetails memberDetails,
-			SourceModelBuildingContext sourceModelBuildingContext) {
-		if ( jaxbJdbcType == null ) {
-			return;
-		}
-
-		if ( jaxbJdbcType.getCode() != null ) {
-			applyJdbcTypeCode( jaxbJdbcType.getCode(), memberDetails, sourceModelBuildingContext );
-		}
-		else if ( jaxbJdbcType.getDescriptor() != null ) {
-			applyJdbcTypeDescriptor( jaxbJdbcType.getDescriptor(), memberDetails, sourceModelBuildingContext );
-		}
-	}
-
-	private static void applyJdbcTypeDescriptor(
-			String descriptorName,
-			MutableMemberDetails memberDetails,
-			SourceModelBuildingContext sourceModelBuildingContext) {
-		final ClassDetails descriptorClassDetails = sourceModelBuildingContext
-				.getClassDetailsRegistry()
-				.resolveClassDetails( descriptorName );
-		final DynamicAnnotationUsage<JdbcType> jdbcTypeAnn = makeAnnotation( JdbcType.class, memberDetails );
-		jdbcTypeAnn.setAttributeValue( "value", descriptorClassDetails );
-
-	}
-
-	public static void applyJdbcTypeCode(
-			Integer jdbcTypeCode,
-			MutableMemberDetails memberDetails,
-			SourceModelBuildingContext sourceModelBuildingContext) {
-		if ( jdbcTypeCode == null ) {
-			return;
-		}
-
-		final DynamicAnnotationUsage<JdbcTypeCode> typeCodeAnn = new DynamicAnnotationUsage<>( JdbcTypeCode.class, memberDetails );
-		memberDetails.addAnnotationUsage( typeCodeAnn );
-		typeCodeAnn.setAttributeValue( "value", jdbcTypeCode );
 	}
 
 	public static void applyTemporal(
@@ -716,5 +677,83 @@ public class XmlAnnotationHelper {
 		}
 
 		return sourceModelBuildingContext.getClassDetailsRegistry().resolveClassDetails( value );
+	}
+
+	public static void applyBasicTypeComposition(
+			JaxbBasicMapping jaxbBasicMapping,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( jaxbBasicMapping.getType() != null ) {
+			applyUserType( jaxbBasicMapping.getType(), memberDetails, sourceModelBuildingContext );
+		}
+		else if ( jaxbBasicMapping.getJavaType() != null ) {
+			applyJavaTypeDescriptor( jaxbBasicMapping.getJavaType(), memberDetails, sourceModelBuildingContext );
+		}
+		else if ( StringHelper.isNotEmpty( jaxbBasicMapping.getTarget() ) ) {
+			applyTargetClass( jaxbBasicMapping.getTarget(), memberDetails, sourceModelBuildingContext );
+		}
+
+		if ( StringHelper.isNotEmpty( jaxbBasicMapping.getJdbcType() ) ) {
+			applyJdbcTypeDescriptor( jaxbBasicMapping.getJdbcType(), memberDetails, sourceModelBuildingContext );
+		}
+		else if ( jaxbBasicMapping.getJdbcTypeCode() != null ) {
+			applyJdbcTypeCode( jaxbBasicMapping.getJdbcTypeCode(), memberDetails, sourceModelBuildingContext );
+		}
+		else if ( StringHelper.isNotEmpty( jaxbBasicMapping.getJdbcTypeName() ) ) {
+			applyJdbcTypeCode(
+					resolveJdbcTypeName( jaxbBasicMapping.getJdbcTypeName() ),
+					memberDetails,
+					sourceModelBuildingContext
+			);
+		}
+	}
+
+	private static int resolveJdbcTypeName(String name) {
+		try {
+			final Field matchingField = SqlTypes.class.getDeclaredField( name );
+			return matchingField.getInt( null );
+		}
+		catch (NoSuchFieldException | IllegalAccessException e) {
+			throw new ModelsException( "Could not resolve <jdbc-type-name>" + name + "</jdbc-type-name>", e );
+		}
+	}
+
+	public static void applyJavaTypeDescriptor(
+			String descriptorClassName,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		final DynamicAnnotationUsage<JavaType> typeAnn = new DynamicAnnotationUsage<>( JavaType.class, memberDetails );
+		memberDetails.addAnnotationUsage( typeAnn );
+
+		final ClassDetails descriptorClass = sourceModelBuildingContext
+				.getClassDetailsRegistry()
+				.resolveClassDetails( descriptorClassName );
+		typeAnn.setAttributeValue( "value", descriptorClass );
+	}
+
+
+	private static void applyJdbcTypeDescriptor(
+			String descriptorClassName,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		final ClassDetails descriptorClassDetails = sourceModelBuildingContext
+				.getClassDetailsRegistry()
+				.resolveClassDetails( descriptorClassName );
+		final DynamicAnnotationUsage<JdbcType> jdbcTypeAnn = makeAnnotation( JdbcType.class, memberDetails );
+		jdbcTypeAnn.setAttributeValue( "value", descriptorClassDetails );
+
+	}
+
+	public static void applyJdbcTypeCode(
+			Integer jdbcTypeCode,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( jdbcTypeCode == null ) {
+			return;
+		}
+
+		final DynamicAnnotationUsage<JdbcTypeCode> typeCodeAnn = new DynamicAnnotationUsage<>( JdbcTypeCode.class, memberDetails );
+		memberDetails.addAnnotationUsage( typeCodeAnn );
+		typeCodeAnn.setAttributeValue( "value", jdbcTypeCode );
 	}
 }
