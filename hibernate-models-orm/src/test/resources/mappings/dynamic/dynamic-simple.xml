@@ -10,19 +10,16 @@
     <entity name="SimpleEntity" metadata-complete="true">
         <attributes>
             <id name="id">
-                <java-type>
-                    <class>Integer</class>
-                </java-type>
+                <target>Integer</target>
+                <jdbc-type-name>BIGINT</jdbc-type-name>
             </id>
             <basic name="name">
-                <java-type>
-                    <class>String</class>
-                </java-type>
+                <java-type>org.hibernate.type.descriptor.java.StringJavaType</java-type>
+                <jdbc-type-code>12</jdbc-type-code>
             </basic>
             <basic name="quantity">
-                <java-type>
-                    <class>int</class>
-                </java-type>
+                <target>int</target>
+                <jdbc-type>org.hibernate.type.descriptor.jdbc.BigIntJdbcType</jdbc-type>
             </basic>
         </attributes>
     </entity>
