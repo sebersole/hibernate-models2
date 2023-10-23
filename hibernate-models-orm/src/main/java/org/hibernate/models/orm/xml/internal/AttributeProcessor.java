@@ -564,7 +564,12 @@ public class AttributeProcessor {
 			XmlAnnotationHelper.applyConvert( jaxbConvert, memberDetails, sourceModelBuildingContext );
 		} );
 
-		// todo : filter
+		jaxbElementCollection.getFilters().forEach( (jaxbFilter) -> XmlAnnotationHelper.applyFilter(
+				jaxbFilter,
+				memberDetails,
+				sourceModelBuildingContext
+		) );
+
 		// todo : attribute-override
 		// todo : association-override
 
