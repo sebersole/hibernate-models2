@@ -9,7 +9,7 @@ package org.hibernate.models.orm.xml;
 import java.util.List;
 import java.util.Map;
 
-import org.hibernate.boot.jaxb.mapping.JaxbEntityMappings;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
 import org.hibernate.models.orm.spi.FilterDefRegistration;
 import org.hibernate.models.orm.internal.GlobalRegistrationsImpl;
 import org.hibernate.models.orm.internal.ProcessResultCollector;
@@ -40,8 +40,8 @@ public class XmlProcessingSmokeTests {
 	void testPersistenceUnitDefaults1() {
 		final XmlResources collector = new XmlResources();
 
-		final JaxbEntityMappings simple1 = loadMapping( "mappings/simple1.xml", SIMPLE_CLASS_LOADING );
-		final JaxbEntityMappings simple2 = loadMapping( "mappings/simple2.xml", SIMPLE_CLASS_LOADING );
+		final JaxbEntityMappingsImpl simple1 = loadMapping( "mappings/simple1.xml", SIMPLE_CLASS_LOADING );
+		final JaxbEntityMappingsImpl simple2 = loadMapping( "mappings/simple2.xml", SIMPLE_CLASS_LOADING );
 		collector.addDocument( simple1 );
 		collector.addDocument( simple2);
 
@@ -88,8 +88,8 @@ public class XmlProcessingSmokeTests {
 	void testSimpleXmlDocumentBuilding() {
 		final XmlResources collector = new XmlResources();
 
-		final JaxbEntityMappings simple1 = loadMapping( "mappings/simple1.xml", SIMPLE_CLASS_LOADING );
-		final JaxbEntityMappings simple2 = loadMapping( "mappings/simple2.xml", SIMPLE_CLASS_LOADING );
+		final JaxbEntityMappingsImpl simple1 = loadMapping( "mappings/simple1.xml", SIMPLE_CLASS_LOADING );
+		final JaxbEntityMappingsImpl simple2 = loadMapping( "mappings/simple2.xml", SIMPLE_CLASS_LOADING );
 		collector.addDocument( simple1 );
 		collector.addDocument( simple2 );
 
@@ -115,7 +115,7 @@ public class XmlProcessingSmokeTests {
 		final SourceModelBuildingContext buildingContext = SourceModelTestHelper.createBuildingContext();
 		final XmlResources collectedXmlResources = new XmlResources();
 
-		final JaxbEntityMappings xmlMapping = loadMapping( "mappings/globals.xml", SIMPLE_CLASS_LOADING );
+		final JaxbEntityMappingsImpl xmlMapping = loadMapping( "mappings/globals.xml", SIMPLE_CLASS_LOADING );
 		collectedXmlResources.addDocument( xmlMapping );
 
 		final ProcessResultCollector processResultCollector = new ProcessResultCollector( false, buildingContext );

@@ -11,20 +11,20 @@ import java.util.Map;
 
 import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmNamedNativeQueryType;
 import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmNamedQueryType;
-import org.hibernate.boot.jaxb.mapping.JaxbCollectionUserTypeRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbCompositeUserTypeRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbConverter;
-import org.hibernate.boot.jaxb.mapping.JaxbConverterRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbEmbeddable;
-import org.hibernate.boot.jaxb.mapping.JaxbEmbeddableInstantiatorRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbEntity;
-import org.hibernate.boot.jaxb.mapping.JaxbJavaTypeRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbJdbcTypeRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbMappedSuperclass;
-import org.hibernate.boot.jaxb.mapping.JaxbNamedNativeQuery;
-import org.hibernate.boot.jaxb.mapping.JaxbNamedQuery;
-import org.hibernate.boot.jaxb.mapping.JaxbNamedStoredProcedureQuery;
-import org.hibernate.boot.jaxb.mapping.JaxbUserTypeRegistration;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbCollectionUserTypeRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbCompositeUserTypeRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbConverterImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbConverterRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddableImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddableInstantiatorRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbJavaTypeRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbJdbcTypeRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbMappedSuperclassImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbNamedNativeQueryImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbNamedQueryImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbNamedStoredProcedureQueryImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbUserTypeRegistrationImpl;
 
 import jakarta.persistence.AccessType;
 
@@ -32,37 +32,37 @@ import jakarta.persistence.AccessType;
  * @author Steve Ebersole
  */
 public interface XmlDocument {
-	List<JaxbEntity> getEntityMappings();
+	List<JaxbEntityImpl> getEntityMappings();
 
-	List<JaxbMappedSuperclass> getMappedSuperclassMappings();
+	List<JaxbMappedSuperclassImpl> getMappedSuperclassMappings();
 
-	List<JaxbEmbeddable> getEmbeddableMappings();
+	List<JaxbEmbeddableImpl> getEmbeddableMappings();
 
-	List<JaxbConverter> getConverters();
+	List<JaxbConverterImpl> getConverters();
 
-	List<JaxbConverterRegistration> getConverterRegistrations();
+	List<JaxbConverterRegistrationImpl> getConverterRegistrations();
 
-	List<JaxbJavaTypeRegistration> getJavaTypeRegistrations();
+	List<JaxbJavaTypeRegistrationImpl> getJavaTypeRegistrations();
 
-	List<JaxbJdbcTypeRegistration> getJdbcTypeRegistrations();
+	List<JaxbJdbcTypeRegistrationImpl> getJdbcTypeRegistrations();
 
-	List<JaxbUserTypeRegistration> getUserTypeRegistrations();
+	List<JaxbUserTypeRegistrationImpl> getUserTypeRegistrations();
 
-	List<JaxbCompositeUserTypeRegistration> getCompositeUserTypeRegistrations();
+	List<JaxbCompositeUserTypeRegistrationImpl> getCompositeUserTypeRegistrations();
 
-	List<JaxbCollectionUserTypeRegistration> getCollectionUserTypeRegistrations();
+	List<JaxbCollectionUserTypeRegistrationImpl> getCollectionUserTypeRegistrations();
 
-	List<JaxbEmbeddableInstantiatorRegistration> getEmbeddableInstantiatorRegistrations();
+	List<JaxbEmbeddableInstantiatorRegistrationImpl> getEmbeddableInstantiatorRegistrations();
 
-	Map<String, JaxbNamedQuery> getJpaNamedQueries();
+	Map<String, JaxbNamedQueryImpl> getJpaNamedQueries();
 
-	Map<String, JaxbNamedNativeQuery> getJpaNamedNativeQueries();
+	Map<String, JaxbNamedNativeQueryImpl> getJpaNamedNativeQueries();
 
 	Map<String, JaxbHbmNamedQueryType> getHibernateNamedQueries();
 
 	Map<String, JaxbHbmNamedNativeQueryType> getHibernateNamedNativeQueries();
 
-	Map<String, JaxbNamedStoredProcedureQuery> getNamedStoredProcedureQueries();
+	Map<String, JaxbNamedStoredProcedureQueryImpl> getNamedStoredProcedureQueries();
 
 	interface Defaults {
 		String getPackage();

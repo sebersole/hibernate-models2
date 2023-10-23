@@ -30,6 +30,14 @@ public class DynamicClassDetails extends AbstractAnnotationTarget implements Cla
 
 	private Class<?> javaType;
 
+	public DynamicClassDetails(String name, SourceModelBuildingContext buildingContext) {
+		this( name, null, buildingContext );
+	}
+
+	public DynamicClassDetails(String name, ClassDetails superType, SourceModelBuildingContext buildingContext) {
+		this( name, null, false, superType, buildingContext );
+	}
+
 	public DynamicClassDetails(
 			String name,
 			String className,

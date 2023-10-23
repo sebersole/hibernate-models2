@@ -13,21 +13,21 @@ import java.util.Map;
 
 import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmNamedNativeQueryType;
 import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmNamedQueryType;
-import org.hibernate.boot.jaxb.mapping.JaxbCollectionUserTypeRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbCompositeUserTypeRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbConverter;
-import org.hibernate.boot.jaxb.mapping.JaxbConverterRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbEmbeddable;
-import org.hibernate.boot.jaxb.mapping.JaxbEmbeddableInstantiatorRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbEntity;
-import org.hibernate.boot.jaxb.mapping.JaxbEntityMappings;
-import org.hibernate.boot.jaxb.mapping.JaxbJavaTypeRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbJdbcTypeRegistration;
-import org.hibernate.boot.jaxb.mapping.JaxbMappedSuperclass;
-import org.hibernate.boot.jaxb.mapping.JaxbNamedNativeQuery;
-import org.hibernate.boot.jaxb.mapping.JaxbNamedQuery;
-import org.hibernate.boot.jaxb.mapping.JaxbNamedStoredProcedureQuery;
-import org.hibernate.boot.jaxb.mapping.JaxbUserTypeRegistration;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbCollectionUserTypeRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbCompositeUserTypeRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbConverterImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbConverterRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddableImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddableInstantiatorRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbJavaTypeRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbJdbcTypeRegistrationImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbMappedSuperclassImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbNamedNativeQueryImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbNamedQueryImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbNamedStoredProcedureQueryImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbUserTypeRegistrationImpl;
 import org.hibernate.internal.util.NullnessHelper;
 import org.hibernate.models.orm.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.models.orm.xml.spi.XmlDocument;
@@ -41,39 +41,39 @@ import static org.hibernate.internal.util.collections.CollectionHelper.isEmpty;
  */
 public class XmlDocumentImpl implements XmlDocument {
 	private final DefaultsImpl defaults;
-	private final List<JaxbEntity> entityMappings;
-	private final List<JaxbMappedSuperclass> mappedSuperclassMappings;
-	private final List<JaxbEmbeddable> embeddableMappings;
-	private final List<JaxbConverter> converters;
-	private final List<JaxbConverterRegistration> converterRegistrations;
-	private final List<JaxbJavaTypeRegistration> javaTypeRegistrations;
-	private final List<JaxbJdbcTypeRegistration> jdbcTypeRegistrations;
-	private final List<JaxbUserTypeRegistration> userTypeRegistrations;
-	private final List<JaxbCompositeUserTypeRegistration> compositeUserTypeRegistrations;
-	private final List<JaxbCollectionUserTypeRegistration> collectionUserTypeRegistrations;
-	private final List<JaxbEmbeddableInstantiatorRegistration> embeddableInstantiatorRegistrations;
-	private final Map<String, JaxbNamedQuery> jpaNamedQueries;
-	private final Map<String, JaxbNamedNativeQuery> jpaNamedNativeQueries;
+	private final List<JaxbEntityImpl> entityMappings;
+	private final List<JaxbMappedSuperclassImpl> mappedSuperclassMappings;
+	private final List<JaxbEmbeddableImpl> embeddableMappings;
+	private final List<JaxbConverterImpl> converters;
+	private final List<JaxbConverterRegistrationImpl> converterRegistrations;
+	private final List<JaxbJavaTypeRegistrationImpl> javaTypeRegistrations;
+	private final List<JaxbJdbcTypeRegistrationImpl> jdbcTypeRegistrations;
+	private final List<JaxbUserTypeRegistrationImpl> userTypeRegistrations;
+	private final List<JaxbCompositeUserTypeRegistrationImpl> compositeUserTypeRegistrations;
+	private final List<JaxbCollectionUserTypeRegistrationImpl> collectionUserTypeRegistrations;
+	private final List<JaxbEmbeddableInstantiatorRegistrationImpl> embeddableInstantiatorRegistrations;
+	private final Map<String, JaxbNamedQueryImpl> jpaNamedQueries;
+	private final Map<String, JaxbNamedNativeQueryImpl> jpaNamedNativeQueries;
 	private final Map<String, JaxbHbmNamedQueryType> hibernateNamedQueries;
 	private final Map<String, JaxbHbmNamedNativeQueryType> hibernateNamedNativeQueries;
-	private final Map<String, JaxbNamedStoredProcedureQuery> namedStoredProcedureQueries;
+	private final Map<String, JaxbNamedStoredProcedureQueryImpl> namedStoredProcedureQueries;
 
 	private XmlDocumentImpl(
 			DefaultsImpl defaults,
-			List<JaxbEntity> entityMappings,
-			List<JaxbMappedSuperclass> mappedSuperclassMappings,
-			List<JaxbEmbeddable> embeddableMappings,
-			List<JaxbConverter> converters,
-			List<JaxbConverterRegistration> converterRegistrations,
-			List<JaxbJavaTypeRegistration> javaTypeRegistrations,
-			List<JaxbJdbcTypeRegistration> jdbcTypeRegistrations,
-			List<JaxbUserTypeRegistration> userTypeRegistrations,
-			List<JaxbCompositeUserTypeRegistration> compositeUserTypeRegistrations,
-			List<JaxbCollectionUserTypeRegistration> collectionUserTypeRegistrations,
-			List<JaxbEmbeddableInstantiatorRegistration> embeddableInstantiatorRegistrations,
-			Map<String, JaxbNamedQuery> jpaNamedQueries,
-			Map<String, JaxbNamedNativeQuery> jpaNamedNativeQueries,
-			Map<String, JaxbNamedStoredProcedureQuery> namedStoredProcedureQueries,
+			List<JaxbEntityImpl> entityMappings,
+			List<JaxbMappedSuperclassImpl> mappedSuperclassMappings,
+			List<JaxbEmbeddableImpl> embeddableMappings,
+			List<JaxbConverterImpl> converters,
+			List<JaxbConverterRegistrationImpl> converterRegistrations,
+			List<JaxbJavaTypeRegistrationImpl> javaTypeRegistrations,
+			List<JaxbJdbcTypeRegistrationImpl> jdbcTypeRegistrations,
+			List<JaxbUserTypeRegistrationImpl> userTypeRegistrations,
+			List<JaxbCompositeUserTypeRegistrationImpl> compositeUserTypeRegistrations,
+			List<JaxbCollectionUserTypeRegistrationImpl> collectionUserTypeRegistrations,
+			List<JaxbEmbeddableInstantiatorRegistrationImpl> embeddableInstantiatorRegistrations,
+			Map<String, JaxbNamedQueryImpl> jpaNamedQueries,
+			Map<String, JaxbNamedNativeQueryImpl> jpaNamedNativeQueries,
+			Map<String, JaxbNamedStoredProcedureQueryImpl> namedStoredProcedureQueries,
 			Map<String, JaxbHbmNamedQueryType> hibernateNamedQueries,
 			Map<String, JaxbHbmNamedNativeQueryType> hibernateNamedNativeQueries) {
 		this.defaults = defaults;
@@ -101,67 +101,67 @@ public class XmlDocumentImpl implements XmlDocument {
 	}
 
 	@Override
-	public List<JaxbEntity> getEntityMappings() {
+	public List<JaxbEntityImpl> getEntityMappings() {
 		return entityMappings;
 	}
 
-	@Override
-	public List<JaxbMappedSuperclass> getMappedSuperclassMappings() {
+		@Override
+	public List<JaxbMappedSuperclassImpl> getMappedSuperclassMappings() {
 		return mappedSuperclassMappings;
 	}
 
 	@Override
-	public List<JaxbEmbeddable> getEmbeddableMappings() {
+	public List<JaxbEmbeddableImpl> getEmbeddableMappings() {
 		return embeddableMappings;
 	}
 
 	@Override
-	public List<JaxbConverter> getConverters() {
+	public List<JaxbConverterImpl> getConverters() {
 		return converters;
 	}
 
 	@Override
-	public List<JaxbConverterRegistration> getConverterRegistrations() {
+	public List<JaxbConverterRegistrationImpl> getConverterRegistrations() {
 		return converterRegistrations;
 	}
 
 	@Override
-	public List<JaxbJavaTypeRegistration> getJavaTypeRegistrations() {
+	public List<JaxbJavaTypeRegistrationImpl> getJavaTypeRegistrations() {
 		return javaTypeRegistrations;
 	}
 
 	@Override
-	public List<JaxbJdbcTypeRegistration> getJdbcTypeRegistrations() {
+	public List<JaxbJdbcTypeRegistrationImpl> getJdbcTypeRegistrations() {
 		return jdbcTypeRegistrations;
 	}
 
 	@Override
-	public List<JaxbUserTypeRegistration> getUserTypeRegistrations() {
+	public List<JaxbUserTypeRegistrationImpl> getUserTypeRegistrations() {
 		return userTypeRegistrations;
 	}
 
 	@Override
-	public List<JaxbCompositeUserTypeRegistration> getCompositeUserTypeRegistrations() {
+	public List<JaxbCompositeUserTypeRegistrationImpl> getCompositeUserTypeRegistrations() {
 		return compositeUserTypeRegistrations;
 	}
 
 	@Override
-	public List<JaxbCollectionUserTypeRegistration> getCollectionUserTypeRegistrations() {
+	public List<JaxbCollectionUserTypeRegistrationImpl> getCollectionUserTypeRegistrations() {
 		return collectionUserTypeRegistrations;
 	}
 
 	@Override
-	public List<JaxbEmbeddableInstantiatorRegistration> getEmbeddableInstantiatorRegistrations() {
+	public List<JaxbEmbeddableInstantiatorRegistrationImpl> getEmbeddableInstantiatorRegistrations() {
 		return embeddableInstantiatorRegistrations;
 	}
 
 	@Override
-	public Map<String, JaxbNamedQuery> getJpaNamedQueries() {
+	public Map<String, JaxbNamedQueryImpl> getJpaNamedQueries() {
 		return jpaNamedQueries;
 	}
 
 	@Override
-	public Map<String, JaxbNamedNativeQuery> getJpaNamedNativeQueries() {
+	public Map<String, JaxbNamedNativeQueryImpl> getJpaNamedNativeQueries() {
 		return jpaNamedNativeQueries;
 	}
 
@@ -176,7 +176,7 @@ public class XmlDocumentImpl implements XmlDocument {
 	}
 
 	@Override
-	public Map<String, JaxbNamedStoredProcedureQuery> getNamedStoredProcedureQueries() {
+	public Map<String, JaxbNamedStoredProcedureQueryImpl> getNamedStoredProcedureQueries() {
 		return namedStoredProcedureQueries;
 	}
 
@@ -241,7 +241,7 @@ public class XmlDocumentImpl implements XmlDocument {
 			return impliedLaziness;
 		}
 
-		static DefaultsImpl consume(JaxbEntityMappings jaxbRoot, PersistenceUnitMetadata metadata) {
+		static DefaultsImpl consume(JaxbEntityMappingsImpl jaxbRoot, PersistenceUnitMetadata metadata) {
 			return new DefaultsImpl(
 					jaxbRoot.getPackage(),
 					NullnessHelper.coalesce( jaxbRoot.getAccess(), metadata.getAccessType() ),
@@ -254,7 +254,7 @@ public class XmlDocumentImpl implements XmlDocument {
 		}
 	}
 
-	public static XmlDocumentImpl consume(JaxbEntityMappings jaxbRoot, PersistenceUnitMetadata metadata) {
+	public static XmlDocumentImpl consume(JaxbEntityMappingsImpl jaxbRoot, PersistenceUnitMetadata metadata) {
 		return new XmlDocumentImpl(
 				DefaultsImpl.consume( jaxbRoot, metadata ),
 				jaxbRoot.getEntities(),
@@ -277,32 +277,32 @@ public class XmlDocumentImpl implements XmlDocument {
 		);
 	}
 
-	private static Map<String, JaxbNamedQuery> toNamedQueryMap(List<JaxbNamedQuery> namedQueries) {
+	private static Map<String, JaxbNamedQueryImpl> toNamedQueryMap(List<JaxbNamedQueryImpl> namedQueries) {
 		if ( isEmpty( namedQueries ) ) {
 			return Collections.emptyMap();
 		}
 
-		final Map<String, JaxbNamedQuery> map = new HashMap<>();
+		final Map<String, JaxbNamedQueryImpl> map = new HashMap<>();
 		namedQueries.forEach( (query) -> map.put( query.getName(), query ) );
 		return map;
 	}
 
-	private static Map<String, JaxbNamedNativeQuery> toNamedNativeQueryMap(List<JaxbNamedNativeQuery> namedQueries) {
+	private static Map<String, JaxbNamedNativeQueryImpl> toNamedNativeQueryMap(List<JaxbNamedNativeQueryImpl> namedQueries) {
 		if ( isEmpty( namedQueries ) ) {
 			return Collections.emptyMap();
 		}
 
-		final Map<String, JaxbNamedNativeQuery> map = new HashMap<>();
+		final Map<String, JaxbNamedNativeQueryImpl> map = new HashMap<>();
 		namedQueries.forEach( (query) -> map.put( query.getName(), query ) );
 		return map;
 	}
 
-	private static Map<String,JaxbNamedStoredProcedureQuery> toNamedProcedureQueryMap(List<JaxbNamedStoredProcedureQuery> namedQueries) {
+	private static Map<String,JaxbNamedStoredProcedureQueryImpl> toNamedProcedureQueryMap(List<JaxbNamedStoredProcedureQueryImpl> namedQueries) {
 		if ( isEmpty( namedQueries ) ) {
 			return Collections.emptyMap();
 		}
 
-		final Map<String, JaxbNamedStoredProcedureQuery> map = new HashMap<>();
+		final Map<String, JaxbNamedStoredProcedureQueryImpl> map = new HashMap<>();
 		namedQueries.forEach( (query) -> map.put( query.getName(), query ) );
 		return map;
 	}
