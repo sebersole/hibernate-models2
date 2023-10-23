@@ -61,6 +61,7 @@ import jakarta.persistence.TableGenerator;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
+import static org.hibernate.models.internal.CollectionHelper.isEmpty;
 import static org.hibernate.models.orm.HibernateAnnotations.COLLECTION_TYPE_REG;
 import static org.hibernate.models.orm.HibernateAnnotations.COMPOSITE_TYPE_REG;
 import static org.hibernate.models.orm.HibernateAnnotations.CONVERTER_REG;
@@ -418,6 +419,10 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 
 	private Map<String, ClassDetails> extractFilterParameters(AnnotationUsage<FilterDef> source) {
 		final List<AnnotationUsage<ParamDef>> parameters = source.getAttributeValue( "parameters" );
+		if ( isEmpty( parameters ) ) {
+			return null;
+		}
+
 		final Map<String, ClassDetails> result = new HashMap<>( parameters.size() );
 		for ( AnnotationUsage<ParamDef> parameter : parameters ) {
 			result.put( parameter.getAttributeValue( "name" ), parameter.getAttributeValue( "type" ) );
@@ -438,14 +443,14 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	}
 
 	private Map<String, ClassDetails> extractFilterParameters(JaxbFilterDefImpl source) {
-		final List<JaxbFilterDefImpl.JaxbFilterParamImpl> parameters = source.getFilterParam();
-
-		// todo : update the mapping.xsd to account for new @ParamDef definition
-		// todo : handle simplified type names for XML, e.g. "String" instead of "java.lang.String"
+		final List<JaxbFilterDefImpl.JaxbFilterParamImpl> parameters = source.getFilterParams();
+		if ( isEmpty( parameters ) ) {
+			return null;
+		}
 
 		final Map<String, ClassDetails> result = new HashMap<>( parameters.size() );
 		for ( JaxbFilterDefImpl.JaxbFilterParamImpl parameter : parameters ) {
-			// for now, don't check whether nothing was specified; this situation this
+			// for now, don't check whether nothing was specified; this situation
 			// should resolve to Object - let's see how that reacts
 			final ClassDetails targetClassDetails = XmlAnnotationHelper.resolveJavaType(
 					parameter.getType(),

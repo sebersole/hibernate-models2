@@ -65,4 +65,6 @@ public interface JaxbPluralAttribute extends JaxbPersistentAttribute {
 	JaxbForeignKeyImpl getMapKeyForeignKey();
 
 	void setMapKeyForeignKey(JaxbForeignKeyImpl value);
+
+	List<JaxbHbmFilterImpl> getFilters();
 }

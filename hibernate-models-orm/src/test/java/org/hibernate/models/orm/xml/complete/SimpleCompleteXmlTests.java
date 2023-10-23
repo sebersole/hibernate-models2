@@ -6,6 +6,10 @@
  */
 package org.hibernate.models.orm.xml.complete;
 
+import java.util.List;
+
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.SqlFragmentAlias;
 import org.hibernate.models.orm.internal.ManagedResourcesImpl;
 import org.hibernate.models.orm.spi.AttributeMetadata;
 import org.hibernate.models.orm.spi.EntityHierarchy;
@@ -87,5 +91,17 @@ public class SimpleCompleteXmlTests {
 		final AnnotationUsage<Column> nameColumnAnn = nameAttribute.getMember().getAnnotationUsage( Column.class );
 		assertThat( nameColumnAnn ).isNotNull();
 		assertThat( nameColumnAnn.<String>getAttributeValue( "name" ) ).isEqualTo( "description" );
+
+		validateFilterUsage( root.getClassDetails().getAnnotationUsage( Filter.class ) );
+	}
+
+	private void validateFilterUsage(AnnotationUsage<Filter> filter) {
+		assertThat( filter ).isNotNull();
+		assertThat( filter.<String>getAttributeValue( "name" ) ).isEqualTo( "name_filter" );
+		assertThat( filter.<String>getAttributeValue( "condition" ) ).isEqualTo( "{t}.name = :name" );
+		final List<AnnotationUsage<SqlFragmentAlias>> aliases = filter.getAttributeValue( "aliases" );
+		assertThat( aliases ).hasSize( 1 );
+		assertThat( aliases.get( 0 ).<String>getAttributeValue( "alias" ) ).isEqualTo( "t" );
+		assertThat( aliases.get( 0 ).<String>getAttributeValue( "table" ) ).isEqualTo( "SimpleEntity" );
 	}
 }
