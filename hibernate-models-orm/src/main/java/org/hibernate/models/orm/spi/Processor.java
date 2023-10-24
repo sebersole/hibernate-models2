@@ -44,6 +44,7 @@ import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.IndexView;
 
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.SharedCacheMode;
 
 import static org.hibernate.models.orm.internal.EntityHierarchyBuilder.createEntityHierarchies;
 import static org.hibernate.models.orm.xml.internal.ManagedTypeProcessor.processOverrideEmbeddable;
@@ -59,8 +60,17 @@ import static org.hibernate.models.orm.xml.internal.ManagedTypeProcessor.process
  */
 public class Processor {
 	public interface Options {
-		boolean areGeneratorsGlobal();
-		boolean shouldIgnoreUnlistedClasses();
+		default boolean areGeneratorsGlobal() {
+			return false;
+		}
+
+		default boolean shouldIgnoreUnlistedClasses() {
+			return false;
+		}
+
+		default SharedCacheMode getSharedCacheMode() {
+			return SharedCacheMode.UNSPECIFIED;
+		}
 	}
 
 	public static ProcessResult process(
@@ -70,17 +80,7 @@ public class Processor {
 		return process(
 				managedResources,
 				explicitlyListedClasses,
-				new Options() {
-					@Override
-					public boolean areGeneratorsGlobal() {
-						return false;
-					}
-
-					@Override
-					public boolean shouldIgnoreUnlistedClasses() {
-						return false;
-					}
-				},
+				new Options() { },
 				sourceModelBuildingContext
 		);
 	}

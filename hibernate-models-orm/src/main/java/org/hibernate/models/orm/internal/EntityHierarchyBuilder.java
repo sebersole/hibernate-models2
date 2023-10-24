@@ -86,6 +86,7 @@ public class EntityHierarchyBuilder {
 			hierarchies.add( new EntityHierarchyImpl(
 					rootEntity,
 					defaultAccessType,
+					org.hibernate.cache.spi.access.AccessType.TRANSACTIONAL,
 					typeConsumer,
 					modelContext
 			) );

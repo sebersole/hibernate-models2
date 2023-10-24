@@ -9,10 +9,15 @@ package org.hibernate.models.orm.internal;
 import java.util.Locale;
 import java.util.function.Consumer;
 
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.NaturalIdCache;
+import org.hibernate.cache.spi.access.AccessType;
+import org.hibernate.models.orm.JpaAnnotations;
+import org.hibernate.models.orm.spi.CacheRegion;
 import org.hibernate.models.orm.spi.EntityHierarchy;
 import org.hibernate.models.orm.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.spi.IdentifiableTypeMetadata;
-import org.hibernate.models.orm.JpaAnnotations;
+import org.hibernate.models.orm.spi.NaturalIdCacheRegion;
 import org.hibernate.models.orm.spi.OrmModelBuildingContext;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
@@ -29,12 +34,15 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 	private final EntityTypeMetadata rootEntityTypeMetadata;
 
 	private final InheritanceType inheritanceType;
+	private final CacheRegion cacheRegion;
+	private final NaturalIdCacheRegion naturalIdCacheRegion;
 
-	// todo (models) : version?  row-id?  tenant-id?  others?
+	// todo : version?  optimistic-locking?  row-id?  tenant-id?  others?
 
 	public EntityHierarchyImpl(
 			ClassDetails rootEntityClassDetails,
 			jakarta.persistence.AccessType defaultAccessType,
+			AccessType defaultCacheAccessType,
 			Consumer<IdentifiableTypeMetadata> typeConsumer,
 			OrmModelBuildingContext processingContext) {
 		this.rootEntityTypeMetadata = new EntityTypeMetadataImpl(
@@ -46,6 +54,12 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 		);
 
 		this.inheritanceType = determineInheritanceType( rootEntityTypeMetadata );
+
+		final AnnotationUsage<Cache> cacheAnnotation = rootEntityClassDetails.getAnnotationUsage( Cache.class );
+		final AnnotationUsage<NaturalIdCache> naturalIdCacheAnnotation = rootEntityClassDetails.getAnnotationUsage( NaturalIdCache.class );
+
+		cacheRegion = new CacheRegion( cacheAnnotation, defaultCacheAccessType, rootEntityClassDetails.getName() );
+		naturalIdCacheRegion = new NaturalIdCacheRegion( naturalIdCacheAnnotation, cacheRegion );
 	}
 
 	private InheritanceType determineInheritanceType(EntityTypeMetadata root) {
@@ -102,6 +116,16 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 	@Override
 	public InheritanceType getInheritanceType() {
 		return inheritanceType;
+	}
+
+	@Override
+	public CacheRegion getCacheRegion() {
+		return cacheRegion;
+	}
+
+	@Override
+	public NaturalIdCacheRegion getNaturalIdCacheRegion() {
+		return naturalIdCacheRegion;
 	}
 
 	@Override

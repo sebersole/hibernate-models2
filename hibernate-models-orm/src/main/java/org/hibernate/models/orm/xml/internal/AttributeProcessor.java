@@ -6,12 +6,14 @@
  */
 package org.hibernate.models.orm.xml.internal;
 
+import org.hibernate.annotations.Bag;
 import org.hibernate.annotations.CollectionId;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.Nationalized;
 import org.hibernate.annotations.SortComparator;
 import org.hibernate.annotations.SortNatural;
 import org.hibernate.boot.internal.CollectionClassification;
+import org.hibernate.boot.internal.LimitedCollectionClassification;
 import org.hibernate.boot.internal.Target;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbAnyMappingImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbAttributesContainer;
@@ -485,7 +487,12 @@ public class AttributeProcessor {
 					memberDetails
 			);
 			setIf( jaxbElementCollection.getClassification(), "value", collectionClassificationAnn );
+			if ( jaxbElementCollection.getClassification() == LimitedCollectionClassification.BAG ) {
+				getOrMakeAnnotation( Bag.class, memberDetails );
+			}
 		}
+
+		XmlAnnotationHelper.applyCollectionUserType( jaxbElementCollection.getCollectionType(), memberDetails, sourceModelBuildingContext );
 
 		if ( StringHelper.isNotEmpty( jaxbElementCollection.getSort() ) ) {
 			final MutableAnnotationUsage<SortComparator> sortAnn = getOrMakeAnnotation(

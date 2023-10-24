@@ -15,6 +15,8 @@ import org.hibernate.models.spi.ClassLoading;
 
 import org.jboss.jandex.IndexView;
 
+import jakarta.persistence.SharedCacheMode;
+
 /**
  * @author Steve Ebersole
  */
@@ -24,6 +26,7 @@ public class OrmModelBuildingContextImpl implements OrmModelBuildingContext {
 	private final ClassLoading classLoading;
 	private final IndexView jandexIndex;
 	private final ClassmateContext classmateContext;
+	private final SharedCacheMode sharedCacheMode;
 
 	public OrmModelBuildingContextImpl(
 			SourceModelBuildingContext sourceModelBuildingContext,
@@ -33,7 +36,8 @@ public class OrmModelBuildingContextImpl implements OrmModelBuildingContext {
 				sourceModelBuildingContext.getAnnotationDescriptorRegistry(),
 				sourceModelBuildingContext.getClassLoading(),
 				sourceModelBuildingContext.getJandexIndex(),
-				classmateContext
+				classmateContext,
+				SharedCacheMode.UNSPECIFIED
 		);
 	}
 
@@ -42,12 +46,14 @@ public class OrmModelBuildingContextImpl implements OrmModelBuildingContext {
 			AnnotationDescriptorRegistry annotationDescriptorRegistry,
 			ClassLoading classLoading,
 			IndexView jandexIndex,
-			ClassmateContext classmateContext) {
+			ClassmateContext classmateContext,
+			SharedCacheMode sharedCacheMode) {
 		this.classDetailsRegistry = classDetailsRegistry;
 		this.annotationDescriptorRegistry = annotationDescriptorRegistry;
 		this.classLoading = classLoading;
 		this.jandexIndex = jandexIndex;
 		this.classmateContext = classmateContext;
+		this.sharedCacheMode = sharedCacheMode;
 	}
 
 	@Override
@@ -73,5 +79,10 @@ public class OrmModelBuildingContextImpl implements OrmModelBuildingContext {
 	@Override
 	public ClassmateContext getClassmateContext() {
 		return classmateContext;
+	}
+
+	@Override
+	public SharedCacheMode getSharedCacheMode() {
+		return sharedCacheMode;
 	}
 }

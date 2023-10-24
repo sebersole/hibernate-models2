@@ -17,10 +17,10 @@ import org.hibernate.boot.model.source.spi.AttributePath;
 import org.hibernate.boot.model.source.spi.AttributeRole;
 import org.hibernate.boot.model.source.spi.NaturalIdMutability;
 import org.hibernate.models.internal.IndexedConsumer;
-import org.hibernate.models.orm.MultipleAttributeNaturesException;
-import org.hibernate.models.orm.spi.AttributeMetadata;
 import org.hibernate.models.orm.HibernateAnnotations;
 import org.hibernate.models.orm.JpaAnnotations;
+import org.hibernate.models.orm.MultipleAttributeNaturesException;
+import org.hibernate.models.orm.spi.AttributeMetadata;
 import org.hibernate.models.orm.spi.ManagedTypeMetadata;
 import org.hibernate.models.orm.spi.OrmModelBuildingContext;
 import org.hibernate.models.source.spi.AnnotationUsage;
@@ -148,11 +148,9 @@ public abstract class AbstractManagedTypeMetadata implements ManagedTypeMetadata
 	}
 
 	protected List<AttributeMetadata> resolveAttributes() {
-		final List<MemberDetails> backingMembers = StandardPersistentAttributeMemberResolver.INSTANCE.resolveAttributesMembers(
-				classDetails,
-				getAccessType(),
-				modelContext
-		);
+		final List<MemberDetails> backingMembers = getModelContext()
+				.getPersistentAttributeMemberResolver()
+				.resolveAttributesMembers( classDetails, getAccessType(), modelContext );
 
 		final List<AttributeMetadata> attributeList = arrayList( backingMembers.size() );
 

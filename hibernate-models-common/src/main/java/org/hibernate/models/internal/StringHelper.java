@@ -10,6 +10,7 @@ package org.hibernate.models.internal;
  * @author Steve Ebersole
  */
 public class StringHelper {
+	public static final String[] EMPTY_STRINGS = new String[0];
 
 	public static boolean isEmpty(String string) {
 		return string == null || string.isEmpty();
