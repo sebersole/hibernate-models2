@@ -28,10 +28,7 @@ public class JandexFieldDetails extends AbstractAnnotationTarget implements Fiel
 			SourceModelBuildingContext buildingContext) {
 		super( buildingContext );
 		this.fieldInfo = fieldInfo;
-		this.type = buildingContext.getClassDetailsRegistry().resolveClassDetails(
-				fieldInfo.type().name().toString(),
-				JandexBuilders::buildClassDetailsStatic
-		);
+		this.type = buildingContext.getClassDetailsRegistry().resolveClassDetails( fieldInfo.type().name().toString() );
 	}
 
 	@Override

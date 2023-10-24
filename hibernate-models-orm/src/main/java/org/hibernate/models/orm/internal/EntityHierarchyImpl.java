@@ -11,7 +11,9 @@ import java.util.function.Consumer;
 
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.NaturalIdCache;
+import org.hibernate.annotations.OptimisticLocking;
 import org.hibernate.cache.spi.access.AccessType;
+import org.hibernate.engine.OptimisticLockStyle;
 import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.orm.spi.CacheRegion;
 import org.hibernate.models.orm.spi.EntityHierarchy;
@@ -34,32 +36,80 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 	private final EntityTypeMetadata rootEntityTypeMetadata;
 
 	private final InheritanceType inheritanceType;
+	private final OptimisticLockStyle optimisticLockStyle;
+
 	private final CacheRegion cacheRegion;
 	private final NaturalIdCacheRegion naturalIdCacheRegion;
-
-	// todo : version?  optimistic-locking?  row-id?  tenant-id?  others?
 
 	public EntityHierarchyImpl(
 			ClassDetails rootEntityClassDetails,
 			jakarta.persistence.AccessType defaultAccessType,
 			AccessType defaultCacheAccessType,
 			Consumer<IdentifiableTypeMetadata> typeConsumer,
-			OrmModelBuildingContext processingContext) {
+			OrmModelBuildingContext modelBuildingContext) {
 		this.rootEntityTypeMetadata = new EntityTypeMetadataImpl(
 				rootEntityClassDetails,
 				this,
 				defaultAccessType,
 				typeConsumer,
-				processingContext
+				modelBuildingContext
 		);
 
 		this.inheritanceType = determineInheritanceType( rootEntityTypeMetadata );
+		this.optimisticLockStyle = determineOptimisticLockStyle( rootEntityTypeMetadata );
 
 		final AnnotationUsage<Cache> cacheAnnotation = rootEntityClassDetails.getAnnotationUsage( Cache.class );
 		final AnnotationUsage<NaturalIdCache> naturalIdCacheAnnotation = rootEntityClassDetails.getAnnotationUsage( NaturalIdCache.class );
-
 		cacheRegion = new CacheRegion( cacheAnnotation, defaultCacheAccessType, rootEntityClassDetails.getName() );
 		naturalIdCacheRegion = new NaturalIdCacheRegion( naturalIdCacheAnnotation, cacheRegion );
+	}
+
+	@Override
+	public EntityTypeMetadata getRoot() {
+		return rootEntityTypeMetadata;
+	}
+
+	@Override
+	public InheritanceType getInheritanceType() {
+		return inheritanceType;
+	}
+
+	@Override
+	public OptimisticLockStyle getOptimisticLockStyle() {
+		return optimisticLockStyle;
+	}
+
+	@Override
+	public CacheRegion getCacheRegion() {
+		return cacheRegion;
+	}
+
+	@Override
+	public NaturalIdCacheRegion getNaturalIdCacheRegion() {
+		return naturalIdCacheRegion;
+	}
+
+	@Override
+	public String toString() {
+		return String.format(
+				Locale.ROOT,
+				"EntityHierarchy(`%s` (%s))",
+				rootEntityTypeMetadata.getEntityName(),
+				inheritanceType.name()
+		);
+	}
+
+
+	private static final OptimisticLockStyle DEFAULT_LOCKING_STRATEGY = OptimisticLockStyle.VERSION;
+
+	private OptimisticLockStyle determineOptimisticLockStyle(EntityTypeMetadata rootEntityTypeMetadata) {
+		final AnnotationUsage<OptimisticLocking> lockStrategyAnn = rootEntityTypeMetadata
+				.getClassDetails()
+				.getAnnotationUsage( OptimisticLocking.class );
+		if ( lockStrategyAnn == null ) {
+			return DEFAULT_LOCKING_STRATEGY;
+		}
+		return lockStrategyAnn.getEnum( "type", DEFAULT_LOCKING_STRATEGY );
 	}
 
 	private InheritanceType determineInheritanceType(EntityTypeMetadata root) {
@@ -108,33 +158,4 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 		} );
 	}
 
-	@Override
-	public EntityTypeMetadata getRoot() {
-		return rootEntityTypeMetadata;
-	}
-
-	@Override
-	public InheritanceType getInheritanceType() {
-		return inheritanceType;
-	}
-
-	@Override
-	public CacheRegion getCacheRegion() {
-		return cacheRegion;
-	}
-
-	@Override
-	public NaturalIdCacheRegion getNaturalIdCacheRegion() {
-		return naturalIdCacheRegion;
-	}
-
-	@Override
-	public String toString() {
-		return String.format(
-				Locale.ROOT,
-				"EntityHierarchyImpl(`%s` (%s))",
-				rootEntityTypeMetadata.getEntityName(),
-				inheritanceType.name()
-		);
-	}
 }

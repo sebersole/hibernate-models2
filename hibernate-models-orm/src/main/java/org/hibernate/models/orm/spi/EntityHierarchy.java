@@ -6,6 +6,8 @@
  */
 package org.hibernate.models.orm.spi;
 
+import org.hibernate.engine.OptimisticLockStyle;
+
 import jakarta.persistence.InheritanceType;
 
 /**
@@ -24,6 +26,11 @@ public interface EntityHierarchy {
 	 * The inheritance strategy for the hierarchy.
 	 */
 	InheritanceType getInheritanceType();
+
+	/**
+	 * Style of optimistic locking for the hierarchy.
+	 */
+	OptimisticLockStyle getOptimisticLockStyle();
 
 	/**
 	 * The caching configuration for entities in this hierarchy.
