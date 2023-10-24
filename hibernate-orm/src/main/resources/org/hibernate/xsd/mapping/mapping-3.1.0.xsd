@@ -423,7 +423,7 @@
             <xsd:element name="mutable" type="xsd:boolean" minOccurs="0"/>
 
             <!-- hbm : declares the basis for optimistic locking : @OptimisticLocking -->
-            <xsd:element name="optimistic-lock" type="optimistic-locking-type" default="version" minOccurs="0"/>
+            <xsd:element name="optimistic-locking" type="optimistic-locking-type" default="version" minOccurs="0"/>
 
             <xsd:element name="id-class" type="orm:id-class" minOccurs="0"/>
 
@@ -827,6 +827,10 @@
                 See `jakarta.persistence.ElementCollection`
                 See `jakarta.persistence.OrderBy`
                 See `jakarta.persistence.OrderColumn`
+                See `jakarta.persistence.MapKey`
+                See `jakarta.persistence.MapKeyClass`
+                See `jakarta.persistence.MapKeyColumn`
+                (other MapKey* annotations)
                 See `@org.hibernate.annotations.AttributeAccessor`
                 See `@org.hibernate.annotations.OptimisticLock`
                 See `@org.hibernate.annotations.SortComparator`
@@ -839,38 +843,43 @@
             </xsd:documentation>
         </xsd:annotation>
         <xsd:sequence>
-            <xsd:element name="collection-id" type="orm:collection-id" minOccurs="0"/>
+            <xsd:group ref="collection-structure-group"/>
 
-            <xsd:choice>
-                <xsd:element name="order-by" type="orm:order-by" minOccurs="0"/>
-                <xsd:element name="order-column" type="orm:order-column" minOccurs="0"/>
-                <xsd:element name="sort" type="xsd:string" minOccurs="0" />
-            </xsd:choice>
+<!--            <xsd:element name="collection-id" type="orm:collection-id" minOccurs="0"/>-->
 
-            <xsd:choice>
-                <xsd:element name="map-key" type="orm:map-key" minOccurs="0"/>
-                <xsd:sequence>
-                    <xsd:element name="map-key-class" type="orm:map-key-class" minOccurs="0"/>
-                    <xsd:choice>
-                        <xsd:element name="map-key-temporal" type="orm:temporal" minOccurs="0"/>
-                        <xsd:element name="map-key-enumerated" type="orm:enumerated" minOccurs="0"/>
-                        <xsd:sequence>
-                            <xsd:element name="map-key-attribute-override" type="orm:attribute-override" minOccurs="0" maxOccurs="unbounded"/>
-                            <xsd:element name="map-key-convert" type="orm:convert" minOccurs="0" maxOccurs="unbounded"/>
-                        </xsd:sequence>
-                    </xsd:choice>
-                    <xsd:choice>
-                        <xsd:choice>
-                            <xsd:element name="map-key-column" type="orm:map-key-column" minOccurs="0"/>
-                            <xsd:element name="map-key-formula" type="xsd:string" minOccurs="0"/>
-                        </xsd:choice>
-                        <xsd:sequence>
-                            <xsd:element name="map-key-join-column" type="orm:map-key-join-column" minOccurs="0" maxOccurs="unbounded"/>
-                            <xsd:element name="map-key-foreign-key" type="orm:foreign-key" minOccurs="0"/>
-                        </xsd:sequence>
-                    </xsd:choice>
-                </xsd:sequence>
-            </xsd:choice>
+<!--            <xsd:choice>-->
+<!--                <xsd:element name="order-by" type="orm:order-by" minOccurs="0"/>-->
+<!--                <xsd:element name="order-column" type="orm:order-column" minOccurs="0"/>-->
+<!--                <xsd:element name="sort" type="xsd:string" minOccurs="0" />-->
+<!--                <xsd:element name="sort-natural">-->
+<!--                    <xsd:complexType/>-->
+<!--                </xsd:element>-->
+<!--            </xsd:choice>-->
+
+<!--            <xsd:choice>-->
+<!--                <xsd:element name="map-key" type="orm:map-key" minOccurs="0"/>-->
+<!--                <xsd:sequence>-->
+<!--                    <xsd:element name="map-key-class" type="orm:map-key-class" minOccurs="0"/>-->
+<!--                    <xsd:choice>-->
+<!--                        <xsd:element name="map-key-temporal" type="orm:temporal" minOccurs="0"/>-->
+<!--                        <xsd:element name="map-key-enumerated" type="orm:enumerated" minOccurs="0"/>-->
+<!--                        <xsd:sequence>-->
+<!--                            <xsd:element name="map-key-attribute-override" type="orm:attribute-override" minOccurs="0" maxOccurs="unbounded"/>-->
+<!--                            <xsd:element name="map-key-convert" type="orm:convert" minOccurs="0" maxOccurs="unbounded"/>-->
+<!--                        </xsd:sequence>-->
+<!--                    </xsd:choice>-->
+<!--                    <xsd:choice>-->
+<!--                        <xsd:choice>-->
+<!--                            <xsd:element name="map-key-column" type="orm:map-key-column" minOccurs="0"/>-->
+<!--                            <xsd:element name="map-key-formula" type="xsd:string" minOccurs="0"/>-->
+<!--                        </xsd:choice>-->
+<!--                        <xsd:sequence>-->
+<!--                            <xsd:element name="map-key-join-column" type="orm:map-key-join-column" minOccurs="0" maxOccurs="unbounded"/>-->
+<!--                            <xsd:element name="map-key-foreign-key" type="orm:foreign-key" minOccurs="0"/>-->
+<!--                        </xsd:sequence>-->
+<!--                    </xsd:choice>-->
+<!--                </xsd:sequence>-->
+<!--            </xsd:choice>-->
 
             <xsd:choice>
                 <xsd:sequence>
@@ -916,7 +925,7 @@
             </xsd:documentation>
         </xsd:annotation>
         <xsd:sequence>
-            <xsd:element name="column" minOccurs="0" maxOccurs="unbounded" type="orm:column"/>
+            <xsd:element name="column" minOccurs="0" type="orm:column"/>
             <xsd:element name="generator" type="orm:generated-value"/>
             <xsd:group ref="basic-type-group"/>
         </xsd:sequence>
@@ -1372,34 +1381,39 @@
             </xsd:documentation>
         </xsd:annotation>
         <xsd:sequence>
-            <xsd:element name="collection-id" type="orm:collection-id" minOccurs="0"/>
+            <xsd:group ref="collection-structure-group"/>
 
-            <xsd:choice>
-                <xsd:element name="order-by" type="orm:order-by" minOccurs="0"/>
-                <xsd:element name="order-column" type="orm:order-column" minOccurs="0"/>
-                <xsd:element name="sort" type="xsd:string" minOccurs="0" />
-            </xsd:choice>
-            <xsd:choice>
-                <xsd:element name="map-key" type="orm:map-key" minOccurs="0"/>
-                <xsd:sequence>
-                    <xsd:element name="map-key-class" type="orm:map-key-class" minOccurs="0"/>
-                    <xsd:choice>
-                        <xsd:element name="map-key-temporal" type="orm:temporal" minOccurs="0"/>
-                        <xsd:element name="map-key-enumerated" type="orm:enumerated" minOccurs="0"/>
-                        <xsd:sequence>
-                            <xsd:element name="map-key-attribute-override" type="orm:attribute-override" minOccurs="0" maxOccurs="unbounded"/>
-                            <xsd:element name="map-key-convert" type="orm:convert" minOccurs="0" maxOccurs="unbounded"/>
-                        </xsd:sequence>
-                    </xsd:choice>
-                    <xsd:choice>
-                        <xsd:element name="map-key-column" type="orm:map-key-column" minOccurs="0"/>
-                        <xsd:sequence>
-                            <xsd:element name="map-key-join-column" type="orm:map-key-join-column" minOccurs="0" maxOccurs="unbounded"/>
-                            <xsd:element name="map-key-foreign-key" type="orm:foreign-key" minOccurs="0"/>
-                        </xsd:sequence>
-                    </xsd:choice>
-                </xsd:sequence>
-            </xsd:choice>
+<!--            <xsd:element name="collection-id" type="orm:collection-id" minOccurs="0"/>-->
+
+<!--            <xsd:choice>-->
+<!--                <xsd:element name="order-by" type="orm:order-by" minOccurs="0"/>-->
+<!--                <xsd:element name="order-column" type="orm:order-column" minOccurs="0"/>-->
+<!--                <xsd:element name="sort" type="xsd:string" minOccurs="0" />-->
+<!--                <xsd:element name="sort-natural">-->
+<!--                    <xsd:complexType/>-->
+<!--                </xsd:element>-->
+<!--            </xsd:choice>-->
+<!--            <xsd:choice>-->
+<!--                <xsd:element name="map-key" type="orm:map-key" minOccurs="0"/>-->
+<!--                <xsd:sequence>-->
+<!--                    <xsd:element name="map-key-class" type="orm:map-key-class" minOccurs="0"/>-->
+<!--                    <xsd:choice>-->
+<!--                        <xsd:element name="map-key-temporal" type="orm:temporal" minOccurs="0"/>-->
+<!--                        <xsd:element name="map-key-enumerated" type="orm:enumerated" minOccurs="0"/>-->
+<!--                        <xsd:sequence>-->
+<!--                            <xsd:element name="map-key-attribute-override" type="orm:attribute-override" minOccurs="0" maxOccurs="unbounded"/>-->
+<!--                            <xsd:element name="map-key-convert" type="orm:convert" minOccurs="0" maxOccurs="unbounded"/>-->
+<!--                        </xsd:sequence>-->
+<!--                    </xsd:choice>-->
+<!--                    <xsd:choice>-->
+<!--                        <xsd:element name="map-key-column" type="orm:map-key-column" minOccurs="0"/>-->
+<!--                        <xsd:sequence>-->
+<!--                            <xsd:element name="map-key-join-column" type="orm:map-key-join-column" minOccurs="0" maxOccurs="unbounded"/>-->
+<!--                            <xsd:element name="map-key-foreign-key" type="orm:foreign-key" minOccurs="0"/>-->
+<!--                        </xsd:sequence>-->
+<!--                    </xsd:choice>-->
+<!--                </xsd:sequence>-->
+<!--            </xsd:choice>-->
             <xsd:element name="join-table" type="orm:join-table" minOccurs="0"/>
             <xsd:element name="cascade" type="orm:cascade-type" minOccurs="0"/>
             <xsd:element name="filter" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
@@ -1446,6 +1460,7 @@
         <xsd:attribute name="optional" type="xsd:boolean"/>
         <xsd:attribute name="access" type="orm:access-type"/>
         <xsd:attribute name="attribute-accessor" type="xsd:string" />
+        <xsd:attribute name="optimistic-lock" type="xsd:boolean" default="true" />
         <xsd:attribute name="maps-id" type="xsd:string"/>
         <xsd:attribute name="id" type="xsd:boolean"/>
         <xsd:attribute name="not-found" default="EXCEPTION" type="orm:not-found-enum"/>
@@ -1803,20 +1818,7 @@
 
     <!-- **************************************************** -->
 
-    <xsd:complexType name="one-to-many">
-        <xsd:annotation>
-            <xsd:documentation>
-
-                @Target({METHOD, FIELD}) @Retention(RUNTIME)
-                public @interface OneToMany {
-                Class targetEntity() default void.class;
-                CascadeType[] cascade() default {};
-                FetchType fetch() default LAZY;
-                String mappedBy() default "";
-                }
-
-            </xsd:documentation>
-        </xsd:annotation>
+    <xsd:group name="collection-structure-group">
         <xsd:sequence>
             <xsd:element name="collection-id" type="orm:collection-id" minOccurs="0"/>
 
@@ -1824,6 +1826,9 @@
                 <xsd:element name="order-by" type="orm:order-by" minOccurs="0"/>
                 <xsd:element name="order-column" type="orm:order-column" minOccurs="0"/>
                 <xsd:element name="sort" type="xsd:string" minOccurs="0" />
+                <xsd:element name="sort-natural">
+                    <xsd:complexType/>
+                </xsd:element>
             </xsd:choice>
             <xsd:choice>
                 <xsd:element name="map-key" type="orm:map-key" minOccurs="0"/>
@@ -1846,6 +1851,57 @@
                     </xsd:choice>
                 </xsd:sequence>
             </xsd:choice>
+        </xsd:sequence>
+    </xsd:group>
+
+    <xsd:complexType name="one-to-many">
+        <xsd:annotation>
+            <xsd:documentation>
+
+                @Target({METHOD, FIELD}) @Retention(RUNTIME)
+                public @interface OneToMany {
+                Class targetEntity() default void.class;
+                CascadeType[] cascade() default {};
+                FetchType fetch() default LAZY;
+                String mappedBy() default "";
+                }
+
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:group ref="collection-structure-group"/>
+
+<!--            <xsd:element name="collection-id" type="orm:collection-id" minOccurs="0"/>-->
+
+<!--            <xsd:choice>-->
+<!--                <xsd:element name="order-by" type="orm:order-by" minOccurs="0"/>-->
+<!--                <xsd:element name="order-column" type="orm:order-column" minOccurs="0"/>-->
+<!--                <xsd:element name="sort" type="xsd:string" minOccurs="0" />-->
+<!--                <xsd:element name="sort-natural">-->
+<!--                    <xsd:complexType/>-->
+<!--                </xsd:element>-->
+<!--            </xsd:choice>-->
+<!--            <xsd:choice>-->
+<!--                <xsd:element name="map-key" type="orm:map-key" minOccurs="0"/>-->
+<!--                <xsd:sequence>-->
+<!--                    <xsd:element name="map-key-class" type="orm:map-key-class" minOccurs="0"/>-->
+<!--                    <xsd:choice>-->
+<!--                        <xsd:element name="map-key-temporal" type="orm:temporal" minOccurs="0"/>-->
+<!--                        <xsd:element name="map-key-enumerated" type="orm:enumerated" minOccurs="0"/>-->
+<!--                        <xsd:sequence>-->
+<!--                            <xsd:element name="map-key-attribute-override" type="orm:attribute-override" minOccurs="0" maxOccurs="unbounded"/>-->
+<!--                            <xsd:element name="map-key-convert" type="orm:convert" minOccurs="0" maxOccurs="unbounded"/>-->
+<!--                        </xsd:sequence>-->
+<!--                    </xsd:choice>-->
+<!--                    <xsd:choice>-->
+<!--                        <xsd:element name="map-key-column" type="orm:map-key-column" minOccurs="0"/>-->
+<!--                        <xsd:sequence>-->
+<!--                            <xsd:element name="map-key-join-column" type="orm:map-key-join-column" minOccurs="0" maxOccurs="unbounded"/>-->
+<!--                            <xsd:element name="map-key-foreign-key" type="orm:foreign-key" minOccurs="0"/>-->
+<!--                        </xsd:sequence>-->
+<!--                    </xsd:choice>-->
+<!--                </xsd:sequence>-->
+<!--            </xsd:choice>-->
             <xsd:choice>
                 <xsd:element name="join-table" type="orm:join-table" minOccurs="0"/>
                 <xsd:sequence>
@@ -1910,6 +1966,7 @@
         <xsd:attribute name="optional" type="xsd:boolean"/>
         <xsd:attribute name="access" type="orm:access-type"/>
         <xsd:attribute name="attribute-accessor" type="xsd:string" />
+        <xsd:attribute name="optimistic-lock" type="xsd:boolean" default="true" />
         <xsd:attribute name="mapped-by" type="xsd:string"/>
         <xsd:attribute name="orphan-removal" type="xsd:boolean"/>
         <xsd:attribute name="maps-id" type="xsd:string"/>
@@ -2422,6 +2479,8 @@
             <xsd:documentation>
                 Specifies a filter definition.  After definition, a filter
                 can be applied to entity or collection by name.
+
+                See `@org.hibernate.annotations.FilterDef`
             </xsd:documentation>
         </xsd:annotation>
 
@@ -2431,6 +2490,8 @@
                     <xsd:annotation>
                         <xsd:documentation>
                             Used to identify all bind parameters in the condition elemement
+
+                            See `@org.hibernate.annotations.FilterDef.ParamDef`
                         </xsd:documentation>
                     </xsd:annotation>
                     <xsd:attribute name="name" use="required" type="xsd:string"/>
@@ -2744,12 +2805,12 @@
             <xsd:element name="discriminator" type="orm:hbm-any-discriminator"/>
             <xsd:element name="key" type="hbm-any-key" />
             <xsd:element name="cascade" type="orm:cascade-type" minOccurs="0"/>
-            <xsd:element name="optimistic-lock" type="xsd:boolean" default="true" minOccurs="0" />
         </xsd:sequence>
 
         <xsd:attribute name="name" use="required" type="xsd:string"/>
         <xsd:attribute name="access" type="orm:access-type"/>
         <xsd:attribute name="attribute-accessor" type="xsd:string" />
+        <xsd:attribute name="optimistic-lock" type="xsd:boolean" default="true" />
     </xsd:complexType>
 
     <xsd:complexType name="hbm-any-discriminator">
@@ -2804,17 +2865,28 @@
         </xsd:annotation>
 
         <xsd:sequence>
-            <xsd:element name="collection-id" type="orm:collection-id" minOccurs="0"/>
+            <xsd:group ref="collection-structure-group"/>
+
+<!--            <xsd:element name="collection-id" type="orm:collection-id" minOccurs="0"/>-->
+
+<!--            <xsd:element name="order-by" type="orm:order-by" minOccurs="0"/>-->
+<!--            <xsd:element name="order-column" type="orm:order-column" minOccurs="0"/>-->
+<!--            <xsd:element name="sort" type="xsd:string" minOccurs="0" />-->
+<!--            <xsd:element name="sort-natural">-->
+<!--                <xsd:complexType/>-->
+<!--            </xsd:element>-->
 
             <xsd:element name="discriminator" type="orm:hbm-any-discriminator"/>
             <xsd:element name="key" type="orm:hbm-any-key"/>
             <xsd:element name="cascade" type="orm:cascade-type" minOccurs="0"/>
-            <xsd:element name="optimistic-lock" type="xsd:boolean" default="true" minOccurs="0" />
         </xsd:sequence>
 
         <xsd:attribute name="name" use="required" type="xsd:string"/>
+        <xsd:attribute name="fetch" type="orm:fetch-type"/>
+        <xsd:attribute name="fetch-mode" type="orm:plural-fetch-mode"/>
         <xsd:attribute name="access" type="orm:access-type"/>
         <xsd:attribute name="attribute-accessor" type="xsd:string" />
+        <xsd:attribute name="optimistic-lock" type="xsd:boolean" default="true" />
         <xsd:attribute name="classification" type="orm:limited-collection-classification-enum" />
     </xsd:complexType>
 

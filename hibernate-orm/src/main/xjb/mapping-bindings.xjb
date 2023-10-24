@@ -235,39 +235,48 @@
         </bindings>
 
         <bindings node="//xsd:complexType[@name='id']">
-            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbPersistentAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbSingularAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbBasicMapping</inheritance:implements>
         </bindings>
 
         <bindings node="//xsd:complexType[@name='embedded-id']">
-            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbPersistentAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbSingularAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedMapping</inheritance:implements>
         </bindings>
 
         <bindings node="//xsd:complexType[@name='version']">
-            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbPersistentAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbSingularAttribute</inheritance:implements>
         </bindings>
 
         <bindings node="//xsd:complexType[@name='basic']">
-            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbPersistentAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbSingularAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbFetchableAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbLockableAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbBasicMapping</inheritance:implements>
         </bindings>
 
         <bindings node="//xsd:complexType[@name='embedded']">
-            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbPersistentAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbSingularAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbLockableAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedMapping</inheritance:implements>
         </bindings>
 
         <bindings node="//xsd:complexType[@name='one-to-one']">
-            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbToOneAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbSingularAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbFetchableAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbLockableAttribute</inheritance:implements>
         </bindings>
 
         <bindings node="//xsd:complexType[@name='many-to-one']">
-            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbToOneAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbSingularAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbFetchableAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbLockableAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbNotFoundCapable</inheritance:implements>
         </bindings>
 
         <bindings node="//xsd:complexType[@name='hbm-any-mapping']">
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbSingularAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbLockableAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbAnyMapping</inheritance:implements>
             <class name="JaxbAnyMappingImpl"/>
         </bindings>
@@ -282,21 +291,27 @@
 
         <bindings node="//xsd:complexType[@name='element-collection']">
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbFetchableAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbBasicMapping</inheritance:implements>
         </bindings>
 
         <bindings node="//xsd:complexType[@name='one-to-many']">
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbFetchableAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbAssociationAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbNotFoundCapable</inheritance:implements>
         </bindings>
 
         <bindings node="//xsd:complexType[@name='many-to-many']">
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbFetchableAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbAssociationAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbNotFoundCapable</inheritance:implements>
         </bindings>
 
         <bindings node="//xsd:complexType[@name='hbm-many-to-any']">
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAttribute</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbFetchableAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbAnyMapping</inheritance:implements>
             <class name="JaxbPluralAnyMappingImpl"/>
         </bindings>

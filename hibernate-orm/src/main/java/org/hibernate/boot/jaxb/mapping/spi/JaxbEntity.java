@@ -71,8 +71,8 @@ public interface JaxbEntity extends JaxbEntityOrMappedSuperclass {
 	Boolean isMutable();
 	void setMutable(Boolean value);
 
-	OptimisticLockStyle getOptimisticLock();
-	void setOptimisticLock(OptimisticLockStyle value);
+	OptimisticLockStyle getOptimisticLocking();
+	void setOptimisticLocking(OptimisticLockStyle value);
 
 	JaxbInheritanceImpl getInheritance();
 	void setInheritance(JaxbInheritanceImpl value);

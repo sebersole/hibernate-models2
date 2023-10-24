@@ -48,6 +48,7 @@ import org.hibernate.models.orm.spi.JdbcTypeRegistration;
 import org.hibernate.models.orm.spi.SequenceGeneratorRegistration;
 import org.hibernate.models.orm.spi.TableGeneratorRegistration;
 import org.hibernate.models.orm.spi.UserTypeRegistration;
+import org.hibernate.models.orm.xml.internal.XmlAnnotationHelper;
 import org.hibernate.models.source.internal.dynamic.DynamicAnnotationUsage;
 import org.hibernate.models.source.spi.AnnotationTarget;
 import org.hibernate.models.source.spi.AnnotationUsage;
@@ -444,7 +445,13 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 
 		final Map<String, ClassDetails> result = new HashMap<>( parameters.size() );
 		for ( JaxbFilterDefImpl.JaxbFilterParamImpl parameter : parameters ) {
-			result.put( parameter.getName(), classDetailsRegistry.resolveClassDetails( parameter.getType() ) );
+			// for now, don't check whether nothing was specified; this situation this
+			// should resolve to Object - let's see how that reacts
+			final ClassDetails targetClassDetails = XmlAnnotationHelper.resolveJavaType(
+					parameter.getType(),
+					classDetailsRegistry
+			);
+			result.put( parameter.getName(), targetClassDetails );
 		}
 		return result;
 	}

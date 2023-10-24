@@ -15,7 +15,11 @@
     <conversion converter="org.hibernate.type.YesNoConverter" class="boolean" auto-apply="true"/>
     
     <filter-def name="amount_filter">
-        <filter-param name="amount" type="java.lang.Integer"/>
+        <filter-param name="amount" type="int"/>
         <condition>amount = :amount</condition>
+    </filter-def>
+    <filter-def name="name_filter">
+        <filter-param name="name" type="string"/>
+        <condition>name = :name</condition>
     </filter-def>
 </entity-mappings>

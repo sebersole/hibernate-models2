@@ -13,18 +13,19 @@
                 <target>Integer</target>
                 <jdbc-type-name>BIGINT</jdbc-type-name>
             </id>
-            <embedded name="name">
-                <target>Name</target>
-            </embedded>
-            <element-collection name="labels" target-class="string">
+            <element-collection name="labels" target-class="string" classification="set">
+                <sort-natural/>
                 <collection-table name="labels">
                     <join-column name="contact_fk"/>
                 </collection-table>
             </element-collection>
+            <embedded name="name">
+                <target>Name</target>
+            </embedded>
         </attributes>
     </entity>
 
-    <embeddable name="Name">
+    <embeddable name="Name" metadata-complete="true">
         <attributes>
             <basic name="first">
                 <target>string</target>

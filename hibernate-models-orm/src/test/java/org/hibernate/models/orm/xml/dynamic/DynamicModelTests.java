@@ -115,8 +115,12 @@ public class DynamicModelTests {
 		assertThat( idField.getType().getClassName() ).isEqualTo( Integer.class.getName() );
 
 		final FieldDetails nameField = rootEntity.getClassDetails().findFieldByName( "name" );
-		assertThat( nameField.getType().getClassName() ).isEqualTo( "Name" );
+		assertThat( nameField.getType().getClassName() ).isNull();
+		assertThat( nameField.getType().getName() ).isEqualTo( "Name" );
 		assertThat( nameField.getAnnotationUsage( Target.class ) ).isNotNull();
+		assertThat( nameField.getAnnotationUsage( Target.class ).getString( "value" ) ).isEqualTo( "Name" );
+
+		assertThat( nameField.getType().getFields() ).hasSize( 2 );
 
 		final FieldDetails labelsField = rootEntity.getClassDetails().findFieldByName( "labels" );
 		assertThat( labelsField.getType().getClassName() ).isEqualTo( Set.class.getName() );
