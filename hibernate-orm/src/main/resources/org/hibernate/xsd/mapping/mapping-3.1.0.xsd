@@ -831,6 +831,7 @@
                 See `jakarta.persistence.MapKeyClass`
                 See `jakarta.persistence.MapKeyColumn`
                 (other MapKey* annotations)
+                See `@org.hibernate.annotations.CollectionType
                 See `@org.hibernate.annotations.AttributeAccessor`
                 See `@org.hibernate.annotations.OptimisticLock`
                 See `@org.hibernate.annotations.SortComparator`
@@ -844,42 +845,6 @@
         </xsd:annotation>
         <xsd:sequence>
             <xsd:group ref="collection-structure-group"/>
-
-<!--            <xsd:element name="collection-id" type="orm:collection-id" minOccurs="0"/>-->
-
-<!--            <xsd:choice>-->
-<!--                <xsd:element name="order-by" type="orm:order-by" minOccurs="0"/>-->
-<!--                <xsd:element name="order-column" type="orm:order-column" minOccurs="0"/>-->
-<!--                <xsd:element name="sort" type="xsd:string" minOccurs="0" />-->
-<!--                <xsd:element name="sort-natural">-->
-<!--                    <xsd:complexType/>-->
-<!--                </xsd:element>-->
-<!--            </xsd:choice>-->
-
-<!--            <xsd:choice>-->
-<!--                <xsd:element name="map-key" type="orm:map-key" minOccurs="0"/>-->
-<!--                <xsd:sequence>-->
-<!--                    <xsd:element name="map-key-class" type="orm:map-key-class" minOccurs="0"/>-->
-<!--                    <xsd:choice>-->
-<!--                        <xsd:element name="map-key-temporal" type="orm:temporal" minOccurs="0"/>-->
-<!--                        <xsd:element name="map-key-enumerated" type="orm:enumerated" minOccurs="0"/>-->
-<!--                        <xsd:sequence>-->
-<!--                            <xsd:element name="map-key-attribute-override" type="orm:attribute-override" minOccurs="0" maxOccurs="unbounded"/>-->
-<!--                            <xsd:element name="map-key-convert" type="orm:convert" minOccurs="0" maxOccurs="unbounded"/>-->
-<!--                        </xsd:sequence>-->
-<!--                    </xsd:choice>-->
-<!--                    <xsd:choice>-->
-<!--                        <xsd:choice>-->
-<!--                            <xsd:element name="map-key-column" type="orm:map-key-column" minOccurs="0"/>-->
-<!--                            <xsd:element name="map-key-formula" type="xsd:string" minOccurs="0"/>-->
-<!--                        </xsd:choice>-->
-<!--                        <xsd:sequence>-->
-<!--                            <xsd:element name="map-key-join-column" type="orm:map-key-join-column" minOccurs="0" maxOccurs="unbounded"/>-->
-<!--                            <xsd:element name="map-key-foreign-key" type="orm:foreign-key" minOccurs="0"/>-->
-<!--                        </xsd:sequence>-->
-<!--                    </xsd:choice>-->
-<!--                </xsd:sequence>-->
-<!--            </xsd:choice>-->
 
             <xsd:choice>
                 <xsd:sequence>
@@ -1818,8 +1783,22 @@
 
     <!-- **************************************************** -->
 
+    <xsd:complexType name="collection-user-type">
+        <xsd:annotation>
+            <xsd:documentation>
+                See `@org.hibernate.annotations.CollectionType`
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="parameters" minOccurs="0" maxOccurs="unbounded" type="configuration-parameter"/>
+        </xsd:sequence>
+        <xsd:attribute name="type" type="xsd:string" use="required"/>
+    </xsd:complexType>
+
     <xsd:group name="collection-structure-group">
         <xsd:sequence>
+            <xsd:element name="collection-type" type="orm:collection-user-type" minOccurs="0"/>
+
             <xsd:element name="collection-id" type="orm:collection-id" minOccurs="0"/>
 
             <xsd:choice>
@@ -3071,7 +3050,7 @@
         <xsd:sequence>
             <xsd:element name="parameters" minOccurs="0" maxOccurs="unbounded" type="configuration-parameter"/>
         </xsd:sequence>
-        <xsd:attribute name="value" type="xsd:string" use="required"/>
+        <xsd:attribute name="type" type="xsd:string" use="required"/>
     </xsd:complexType>
 
     <!-- **************************************************** -->
@@ -3097,5 +3076,4 @@
         </xsd:annotation>
         <xsd:attribute name="style" type="orm:uuid-generator-style" use="required"/>
     </xsd:complexType>
-
 </xsd:schema>

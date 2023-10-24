@@ -14,7 +14,6 @@ dependencies {
 
     testImplementation platform( libs.hibernatePlatform )
     testImplementation project( ":hibernate-models-testing" )
-    testImplementation project( ":hibernate-models-orm" )
     testImplementation libs.hibernateCore
 
     testRuntimeOnly testLibs.log4j

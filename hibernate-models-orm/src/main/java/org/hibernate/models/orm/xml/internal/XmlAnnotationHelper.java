@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.hibernate.annotations.AttributeAccessor;
+import org.hibernate.annotations.CollectionType;
 import org.hibernate.annotations.Formula;
 import org.hibernate.annotations.JavaType;
 import org.hibernate.annotations.JdbcType;
@@ -32,6 +33,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbAttributeOverrideImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicMapping;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbCachingImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbCollectionUserTypeImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbColumnImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbConfigurationParameterImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbConvertImpl;
@@ -258,12 +260,12 @@ public class XmlAnnotationHelper {
 		final DynamicAnnotationUsage<Type> typeAnn = new DynamicAnnotationUsage<>( Type.class, memberDetails );
 		memberDetails.addAnnotationUsage( typeAnn );
 
-		final ClassDetails userTypeImpl = resolveJavaType( jaxbType.getValue(), buildingContext );
+		final ClassDetails userTypeImpl = resolveJavaType( jaxbType.getType(), buildingContext );
 		typeAnn.setAttributeValue( "value", userTypeImpl );
 		typeAnn.setAttributeValue( "parameters", collectParameters( jaxbType.getParameters(), memberDetails ) );
 	}
 
-	private static List<AnnotationUsage<Parameter>> collectParameters(
+	public static List<AnnotationUsage<Parameter>> collectParameters(
 			List<JaxbConfigurationParameterImpl> jaxbParameters,
 			AnnotationTarget target) {
 		if ( CollectionHelper.isEmpty( jaxbParameters ) ) {
@@ -278,6 +280,22 @@ public class XmlAnnotationHelper {
 			annotationUsage.setAttributeValue( "value", jaxbParam.getValue() );
 		} );
 		return parameterAnnList;
+	}
+
+	public static void applyCollectionUserType(
+			JaxbCollectionUserTypeImpl jaxbType,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext buildingContext) {
+		if ( jaxbType == null ) {
+			return;
+		}
+
+		final DynamicAnnotationUsage<CollectionType> typeAnn = new DynamicAnnotationUsage<>( CollectionType.class, memberDetails );
+		memberDetails.addAnnotationUsage( typeAnn );
+
+		final ClassDetails userTypeImpl = resolveJavaType( jaxbType.getType(), buildingContext );
+		typeAnn.setAttributeValue( "type", userTypeImpl );
+		typeAnn.setAttributeValue( "parameters", collectParameters( jaxbType.getParameters(), memberDetails ) );
 	}
 
 	public static void applyTargetClass(

@@ -24,4 +24,14 @@ public interface EntityHierarchy {
 	 * The inheritance strategy for the hierarchy.
 	 */
 	InheritanceType getInheritanceType();
+
+	/**
+	 * The caching configuration for entities in this hierarchy.
+	 */
+	CacheRegion getCacheRegion();
+
+	/**
+	 * The caching configuration for this hierarchy's {@linkplain org.hibernate.annotations.NaturalId natural-id}
+	 */
+	NaturalIdCacheRegion getNaturalIdCacheRegion();
 }
