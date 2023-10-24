@@ -96,7 +96,22 @@ public class EntityListenerRegistration {
 	public MethodDetails getPostLoadMethod() {
 		return postLoadMethod;
 	}
-	public static EntityListenerRegistration from(JaxbEntityListenerImpl jaxbMapping, ClassDetailsRegistry classDetailsRegistry) {
+
+	public enum CallbackType {
+		/**
+		 * Methods are defined on the entity as instance methods
+		 */
+		CALLBACK,
+		/**
+		 * Methods are static and defined on a separate listener class
+		 */
+		LISTENER
+	}
+
+	public static EntityListenerRegistration from(
+			CallbackType callbackType,
+			JaxbEntityListenerImpl jaxbMapping,
+			ClassDetailsRegistry classDetailsRegistry) {
 		final ClassDetails listenerClassDetails = classDetailsRegistry.resolveClassDetails( jaxbMapping.getClazz() );
 		final MutableObject<MethodDetails> prePersistMethod = new MutableObject<>();
 		final MutableObject<MethodDetails> postPersistMethod = new MutableObject<>();
@@ -110,31 +125,38 @@ public class EntityListenerRegistration {
 			// todo : make this sensitive to method arguments once we have MethodDetails tracking arguments
 			//		for now, just match name
 			if ( jaxbMapping.getPrePersist() != null
-					&& methodDetails.getName().equals( jaxbMapping.getPrePersist().getMethodName() ) ) {
+					&& methodDetails.getName().equals( jaxbMapping.getPrePersist().getMethodName() )
+					&& matchesSignature( callbackType, methodDetails ) ) {
 				prePersistMethod.set( methodDetails );
 			}
 			else if ( jaxbMapping.getPostPersist().getMethodName() != null
-					&& methodDetails.getName().equals( jaxbMapping.getPostPersist().getMethodName() ) ) {
+					&& methodDetails.getName().equals( jaxbMapping.getPostPersist().getMethodName() )
+					&& matchesSignature( callbackType, methodDetails ) ) {
 				postPersistMethod.set( methodDetails );
 			}
 			else if ( jaxbMapping.getPreRemove() != null
-					&& methodDetails.getName().equals( jaxbMapping.getPreRemove().getMethodName() ) ) {
+					&& methodDetails.getName().equals( jaxbMapping.getPreRemove().getMethodName() )
+					&& matchesSignature( callbackType, methodDetails ) ) {
 				preRemoveMethod.set( methodDetails );
 			}
 			else if ( jaxbMapping.getPostRemove() != null
-					&& methodDetails.getName().equals( jaxbMapping.getPostRemove().getMethodName() ) ) {
+					&& methodDetails.getName().equals( jaxbMapping.getPostRemove().getMethodName() )
+					&& matchesSignature( callbackType, methodDetails ) ) {
 				postRemoveMethod.set( methodDetails );
 			}
 			else if ( jaxbMapping.getPreUpdate() != null
-					&& methodDetails.getName().equals( jaxbMapping.getPreUpdate().getMethodName() ) ) {
+					&& methodDetails.getName().equals( jaxbMapping.getPreUpdate().getMethodName() )
+					&& matchesSignature( callbackType, methodDetails ) ) {
 				preUpdateMethod.set( methodDetails );
 			}
 			else if ( jaxbMapping.getPostUpdate() != null
-					&& methodDetails.getName().equals( jaxbMapping.getPostUpdate().getMethodName() ) ) {
+					&& methodDetails.getName().equals( jaxbMapping.getPostUpdate().getMethodName() )
+					&& matchesSignature( callbackType, methodDetails ) ) {
 				postUpdateMethod.set( methodDetails );
 			}
 			else if ( jaxbMapping.getPostLoad() != null
-					&& methodDetails.getName().equals( jaxbMapping.getPostLoad().getMethodName() ) ) {
+					&& methodDetails.getName().equals( jaxbMapping.getPostLoad().getMethodName() )
+					&& matchesSignature( callbackType, methodDetails ) ) {
 				postLoadMethod.set( methodDetails );
 			}
 		} );
@@ -149,5 +171,19 @@ public class EntityListenerRegistration {
 				postUpdateMethod.get(),
 				postLoadMethod.get()
 		);
+	}
+
+	private static boolean matchesSignature(CallbackType callbackType, MethodDetails methodDetails) {
+		if ( callbackType == CallbackType.CALLBACK ) {
+			// should have no arguments.  and technically (spec) have a void return
+			return methodDetails.getArgumentTypes().isEmpty()
+					&& methodDetails.getReturnType() == null;
+		}
+		else {
+			assert callbackType == CallbackType.LISTENER;
+			// should have 1 argument.  and technically (spec) have a void return
+			return methodDetails.getArgumentTypes().size() == 1
+					&& methodDetails.getReturnType() == null;
+		}
 	}
 }

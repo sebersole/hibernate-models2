@@ -100,7 +100,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 
 	@Override
 	public List<EntityListenerRegistration> getEntityListenerRegistrations() {
-		return entityListenerRegistrations;
+		return entityListenerRegistrations == null ? emptyList() : entityListenerRegistrations;
 	}
 
 	@Override
@@ -480,7 +480,11 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		}
 
 		listeners.forEach( (listener) -> {
-			final EntityListenerRegistration listenerRegistration = EntityListenerRegistration.from( listener, classDetailsRegistry );
+			final EntityListenerRegistration listenerRegistration = EntityListenerRegistration.from(
+					EntityListenerRegistration.CallbackType.LISTENER,
+					listener,
+					classDetailsRegistry
+			);
 			entityListenerRegistrations.add( listenerRegistration );
 		} );
 	}
