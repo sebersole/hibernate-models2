@@ -156,7 +156,7 @@ public class JandexBuilders implements ClassDetailsBuilder {
 				&& method.name().startsWith( "set" ) ) {
 			return new JandexMethodDetails(
 					method,
-					MethodDetails.MethodKind.GETTER,
+					MethodDetails.MethodKind.SETTER,
 					buildingContext.getClassDetailsRegistry().resolveClassDetails( method.parameterType( 0 ).name().toString() ),
 					buildingContext
 			);

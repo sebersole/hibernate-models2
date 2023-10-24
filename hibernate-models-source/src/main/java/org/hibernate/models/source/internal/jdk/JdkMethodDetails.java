@@ -7,9 +7,12 @@
 package org.hibernate.models.source.internal.jdk;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.hibernate.models.source.internal.MutableMemberDetails;
 import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.source.spi.ClassDetailsRegistry;
 import org.hibernate.models.source.spi.MethodDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
@@ -23,6 +26,9 @@ public class JdkMethodDetails extends AbstractAnnotationTarget implements Method
 	private final MethodKind methodKind;
 	private final ClassDetails type;
 
+	private final ClassDetails returnType;
+	private final List<ClassDetails> argumentTypes;
+
 	public JdkMethodDetails(
 			Method method,
 			MethodKind methodKind,
@@ -32,6 +38,20 @@ public class JdkMethodDetails extends AbstractAnnotationTarget implements Method
 		this.method = method;
 		this.methodKind = methodKind;
 		this.type = type;
+
+		final ClassDetailsRegistry classDetailsRegistry = buildingContext.getClassDetailsRegistry();
+
+		if ( void.class.equals( method.getReturnType() ) ) {
+			returnType = null;
+		}
+		else {
+			returnType = classDetailsRegistry.getClassDetails( method.getReturnType().getName() );
+		}
+
+		this.argumentTypes = new ArrayList<>( method.getParameterCount() );
+		for ( int i = 0; i < method.getParameterTypes().length; i++ ) {
+			argumentTypes.add( classDetailsRegistry.resolveClassDetails( method.getParameterTypes()[i].getName() ) );
+		}
 	}
 
 	@Override
@@ -47,6 +67,16 @@ public class JdkMethodDetails extends AbstractAnnotationTarget implements Method
 	@Override
 	public ClassDetails getType() {
 		return type;
+	}
+
+	@Override
+	public ClassDetails getReturnType() {
+		return returnType;
+	}
+
+	@Override
+	public List<ClassDetails> getArgumentTypes() {
+		return argumentTypes;
 	}
 
 	@Override

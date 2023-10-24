@@ -7,6 +7,7 @@
 package org.hibernate.models.source.spi;
 
 import java.beans.Introspector;
+import java.util.List;
 
 import org.hibernate.models.ModelsException;
 
@@ -28,6 +29,9 @@ public interface MethodDetails extends MemberDetails {
 	default Kind getKind() {
 		return Kind.METHOD;
 	}
+
+	ClassDetails getReturnType();
+	List<ClassDetails> getArgumentTypes();
 
 	@Override
 	default String resolveAttributeName() {
