@@ -52,6 +52,18 @@ public interface AnnotationUsage<A extends Annotation> {
 	 */
 	<V> V getAttributeValue(String name);
 
+	/**
+	 * The value of the named annotation attribute
+	 */
+	default <V> V getAttributeValue(String name, V defaultValue) {
+		final Object attributeValue = getAttributeValue( name );
+		if ( attributeValue == null ) {
+			return defaultValue;
+		}
+		//noinspection unchecked
+		return (V) attributeValue;
+	}
+
 	default <V> V getAttributeValue(AttributeDescriptor<V> attributeDescriptor) {
 		return getAttributeValue( attributeDescriptor.getName() );
 	}
@@ -60,40 +72,80 @@ public interface AnnotationUsage<A extends Annotation> {
 		return getAttributeValue( name );
 	}
 
+	default String getString(String name, String defaultValue) {
+		return getAttributeValue( name, defaultValue );
+	}
+
 	default Boolean getBoolean(String name) {
 		return getAttributeValue( name );
+	}
+
+	default Boolean getBoolean(String name, boolean defaultValue) {
+		return getAttributeValue( name, defaultValue );
 	}
 
 	default Byte getByte(String name) {
 		return getAttributeValue( name );
 	}
 
+	default Byte getByte(String name, Byte defaultValue) {
+		return getAttributeValue( name, defaultValue );
+	}
+
 	default Short getShort(String name) {
 		return getAttributeValue( name );
+	}
+
+	default Short getShort(String name, Short defaultValue) {
+		return getAttributeValue( name, defaultValue );
 	}
 
 	default Integer getInteger(String name) {
 		return getAttributeValue( name );
 	}
 
+	default Integer getInteger(String name, Integer defaultValue) {
+		return getAttributeValue( name, defaultValue );
+	}
+
 	default Long getLong(String name) {
 		return getAttributeValue( name );
+	}
+
+	default Long getLong(String name, Long defaultValue) {
+		return getAttributeValue( name, defaultValue );
 	}
 
 	default Float getFloat(String name) {
 		return getAttributeValue( name );
 	}
 
+	default Float getFloat(String name, Float defaultValue) {
+		return getAttributeValue( name, defaultValue );
+	}
+
 	default Double getDouble(String name) {
 		return getAttributeValue( name );
+	}
+
+	default Double getDouble(String name, Double defaultValue) {
+		return getAttributeValue( name, defaultValue );
 	}
 
 	default <E extends Enum<E>> E getEnum(String name) {
 		return getAttributeValue( name );
 	}
 
+	default <E extends Enum<E>> E getEnum(String name, E defaultValue) {
+		return getAttributeValue( name, defaultValue );
+	}
+
 	default ClassDetails getClassDetails(String name) {
 		return getAttributeValue( name );
+	}
+
+	default ClassDetails getClassDetails(String name, ClassDetails defaultValue) {
+		return getAttributeValue( name, defaultValue );
 	}
 
 	default <X extends Annotation> AnnotationUsage<X> getNestedUsage(String name) {
