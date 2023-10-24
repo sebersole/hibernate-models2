@@ -50,6 +50,7 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.MappedSuperclass;
 
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
+import static org.hibernate.internal.util.NullnessHelper.nullif;
 import static org.hibernate.models.orm.xml.internal.AttributeProcessor.processAttributes;
 import static org.hibernate.models.orm.xml.internal.AttributeProcessor.processNaturalId;
 
@@ -367,7 +368,7 @@ public class ManagedTypeProcessor {
 
 		if ( jaxbPersistentAttribute instanceof JaxbPluralAttribute ) {
 			final JaxbPluralAttribute jaxbPluralAttribute = (JaxbPluralAttribute) jaxbPersistentAttribute;
-			final LimitedCollectionClassification classification = jaxbPluralAttribute.getClassification();
+			final LimitedCollectionClassification classification = nullif( jaxbPluralAttribute.getClassification(), LimitedCollectionClassification.BAG );
 			switch ( classification ) {
 				case BAG: {
 					return classDetailsRegistry.resolveClassDetails( Collection.class.getName() );
@@ -609,13 +610,11 @@ public class ManagedTypeProcessor {
 			// no class == dynamic...
 			classDetails = (MutableClassDetails) sourceModelBuildingContext
 					.getClassDetailsRegistry()
-					.resolveClassDetails( jaxbEmbeddable.getName() );
+					.resolveClassDetails( jaxbEmbeddable.getName(), DynamicClassDetails::new );
 			classAccessType = AccessType.FIELD;
 			memberAdjuster = ManagedTypeProcessor::adjustDynamicTypeMember;
 
 			prepareDynamicClass( classDetails, jaxbEmbeddable, persistenceUnitMetadata, sourceModelBuildingContext );
-
-			throw new UnsupportedOperationException( "Not yet implemented" );
 		}
 		else {
 			final String className = XmlProcessingHelper.determineClassName( jaxbRoot, jaxbEmbeddable );

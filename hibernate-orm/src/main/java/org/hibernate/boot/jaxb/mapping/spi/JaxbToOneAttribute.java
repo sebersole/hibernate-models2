@@ -11,6 +11,5 @@ package org.hibernate.boot.jaxb.mapping.spi;
  */
 public interface JaxbToOneAttribute extends JaxbAssociationAttribute {
 	JaxbSingularFetchModeImpl getFetchMode();
-
 	void setFetchMode(JaxbSingularFetchModeImpl mode);
 }

@@ -36,5 +36,5 @@ public @interface Target {
 	/**
 	 * The attribute's Java type
 	 */
-	Class<?> targetClass();
+	String value();
 }

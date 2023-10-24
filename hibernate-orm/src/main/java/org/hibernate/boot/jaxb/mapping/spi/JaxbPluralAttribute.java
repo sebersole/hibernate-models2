@@ -18,7 +18,7 @@ import jakarta.persistence.TemporalType;
  *
  * @author Brett Meyer
  */
-public interface JaxbPluralAttribute extends JaxbFetchableAttribute {
+public interface JaxbPluralAttribute extends JaxbPersistentAttribute {
 	JaxbPluralFetchModeImpl getFetchMode();
 	void setFetchMode(JaxbPluralFetchModeImpl mode);
 

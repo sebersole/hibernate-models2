@@ -192,4 +192,19 @@ public class XmlProcessingHelper {
 		created.setAttributeValue( nameAttributeName, name );
 		return created;
 	}
+
+	public static <A extends Annotation> void setIf(
+			Object value,
+			String attributeName,
+			MutableAnnotationUsage<A> annotationUsage) {
+		if ( value == null ) {
+			return;
+		}
+
+		if ( value instanceof String && ( (String) value ).isBlank() ) {
+			return;
+		}
+
+		annotationUsage.setAttributeValue( attributeName, value );
+	}
 }

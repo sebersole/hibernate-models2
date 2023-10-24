@@ -636,47 +636,60 @@ public class XmlAnnotationHelper {
 	}
 
 	public static ClassDetails resolveJavaType(String value, SourceModelBuildingContext sourceModelBuildingContext) {
+		return resolveJavaType( value, sourceModelBuildingContext.getClassDetailsRegistry() );
+	}
+
+	public static ClassDetails resolveJavaType(String value, ClassDetailsRegistry classDetailsRegistry) {
 		if ( StringHelper.isEmpty( value ) ) {
 			value = Object.class.getName();
 		}
-		else if ( Byte.class.getSimpleName().equals( value ) ) {
+		else if ( byte.class.getName().equals( value )
+				|| boolean.class.getName().equals( value )
+				|| short.class.getName().equals( value )
+				|| int.class.getName().equals( value )
+				|| long.class.getName().equals( value )
+				|| double.class.getName().equals( value )
+				|| float.class.getName().equals( value ) ) {
+			// nothing to do for primitives
+		}
+		else if ( Byte.class.getSimpleName().equalsIgnoreCase( value ) ) {
 			value = Byte.class.getName();
 		}
-		else if ( Boolean.class.getSimpleName().equals( value ) ) {
+		else if ( Boolean.class.getSimpleName().equalsIgnoreCase( value ) ) {
 			value = Boolean.class.getName();
 		}
-		else if ( Short.class.getSimpleName().equals( value ) ) {
+		else if ( Short.class.getSimpleName().equalsIgnoreCase( value ) ) {
 			value = Short.class.getName();
 		}
-		else if ( Integer.class.getSimpleName().equals( value ) ) {
+		else if ( Integer.class.getSimpleName().equalsIgnoreCase( value ) ) {
 			value = Integer.class.getName();
 		}
-		else if ( Long.class.getSimpleName().equals( value ) ) {
+		else if ( Long.class.getSimpleName().equalsIgnoreCase( value ) ) {
 			value = Long.class.getName();
 		}
-		else if ( Double.class.getSimpleName().equals( value ) ) {
+		else if ( Double.class.getSimpleName().equalsIgnoreCase( value ) ) {
 			value = Double.class.getName();
 		}
-		else if ( Float.class.getSimpleName().equals( value ) ) {
+		else if ( Float.class.getSimpleName().equalsIgnoreCase( value ) ) {
 			value = Float.class.getName();
 		}
-		else if ( BigInteger.class.getSimpleName().equals( value ) ) {
+		else if ( BigInteger.class.getSimpleName().equalsIgnoreCase( value ) ) {
 			value = BigInteger.class.getName();
 		}
-		else if ( BigDecimal.class.getSimpleName().equals( value ) ) {
+		else if ( BigDecimal.class.getSimpleName().equalsIgnoreCase( value ) ) {
 			value = BigDecimal.class.getName();
 		}
-		else if ( String.class.getSimpleName().equals( value ) ) {
+		else if ( String.class.getSimpleName().equalsIgnoreCase( value ) ) {
 			value = String.class.getName();
 		}
-		else if ( Character.class.getSimpleName().equals( value ) ) {
+		else if ( Character.class.getSimpleName().equalsIgnoreCase( value ) ) {
 			value = Character.class.getName();
 		}
-		else if ( UUID.class.getSimpleName().equals( value ) ) {
+		else if ( UUID.class.getSimpleName().equalsIgnoreCase( value ) ) {
 			value = Character.class.getName();
 		}
 
-		return sourceModelBuildingContext.getClassDetailsRegistry().resolveClassDetails( value );
+		return classDetailsRegistry.resolveClassDetails( value );
 	}
 
 	public static void applyBasicTypeComposition(

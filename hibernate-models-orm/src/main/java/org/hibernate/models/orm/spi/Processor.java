@@ -66,6 +66,28 @@ public class Processor {
 	public static ProcessResult process(
 			ManagedResources managedResources,
 			List<String> explicitlyListedClasses,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		return process(
+				managedResources,
+				explicitlyListedClasses,
+				new Options() {
+					@Override
+					public boolean areGeneratorsGlobal() {
+						return false;
+					}
+
+					@Override
+					public boolean shouldIgnoreUnlistedClasses() {
+						return false;
+					}
+				},
+				sourceModelBuildingContext
+		);
+	}
+
+	public static ProcessResult process(
+			ManagedResources managedResources,
+			List<String> explicitlyListedClasses,
 			Options options,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		fillRegistries( sourceModelBuildingContext );

@@ -12,7 +12,7 @@ package org.hibernate.boot.jaxb.mapping.spi;
  *
  * @author Steve Ebersole
  */
-public interface JaxbAssociationAttribute extends JaxbPersistentAttribute, JaxbFetchableAttribute {
+public interface JaxbAssociationAttribute extends JaxbPersistentAttribute {
 	JaxbJoinTableImpl getJoinTable();
 	void setJoinTable(JaxbJoinTableImpl value);
 

@@ -6,13 +6,23 @@
  */
 package org.hibernate.models.orm.xml.internal;
 
+import org.hibernate.annotations.CollectionId;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.Nationalized;
+import org.hibernate.annotations.SortComparator;
+import org.hibernate.annotations.SortNatural;
+import org.hibernate.boot.internal.CollectionClassification;
+import org.hibernate.boot.internal.Target;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbAnyMappingImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbAttributesContainer;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBaseAttributesContainer;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbCollectionIdImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbColumnImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbElementCollectionImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbGeneratedValueImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbManyToManyImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbManyToOneImpl;
@@ -21,15 +31,27 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbOneToManyImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbOneToOneImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistentAttribute;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAnyMappingImpl;
+import org.hibernate.internal.util.StringHelper;
+import org.hibernate.models.source.internal.MutableAnnotationUsage;
 import org.hibernate.models.source.internal.MutableClassDetails;
 import org.hibernate.models.source.internal.MutableMemberDetails;
-import org.hibernate.models.source.internal.dynamic.DynamicAnnotationUsage;
+import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.source.spi.ClassDetailsRegistry;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
 import jakarta.persistence.AccessType;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embedded;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Lob;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.OrderColumn;
+import jakarta.persistence.Temporal;
 
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
+import static org.hibernate.models.orm.xml.internal.XmlProcessingHelper.getOrMakeAnnotation;
+import static org.hibernate.models.orm.xml.internal.XmlProcessingHelper.setIf;
 
 /**
  * Helper for handling persistent attributes defined in mapping XML in metadata-complete mode
@@ -213,6 +235,8 @@ public class AttributeProcessor {
 			AccessType accessType,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		XmlAnnotationHelper.applyAccess( accessType, memberDetails, sourceModelBuildingContext );
+
+		// todo : optimistic-lock
 	}
 
 	public static MutableMemberDetails processBasicIdAttribute(
@@ -357,11 +381,12 @@ public class AttributeProcessor {
 				sourceModelBuildingContext
 		);
 
-		final DynamicAnnotationUsage<Embedded> annotationUsage = new DynamicAnnotationUsage<>(
-				Embedded.class,
-				memberDetails
-		);
-		memberDetails.addAnnotationUsage( annotationUsage );
+		XmlProcessingHelper.getOrMakeAnnotation( Embedded.class, memberDetails );
+
+		if ( StringHelper.isNotEmpty( jaxbEmbedded.getTarget() ) ) {
+			final MutableAnnotationUsage<Target> targetAnn = getOrMakeAnnotation( Target.class, memberDetails );
+			targetAnn.setAttributeValue( "value", jaxbEmbedded.getTarget() );
+		}
 
 		processCommonAttributeAnnotations( jaxbEmbedded, memberDetails, accessType, sourceModelBuildingContext );
 		XmlAnnotationHelper.applyAttributeOverrides( jaxbEmbedded.getAttributeOverride(), memberDetails, sourceModelBuildingContext );
@@ -398,10 +423,149 @@ public class AttributeProcessor {
 	@SuppressWarnings("UnusedReturnValue")
 	public static MutableMemberDetails processElementCollectionAttribute(
 			JaxbElementCollectionImpl jaxbElementCollection,
-			MutableClassDetails mutableClassDetails,
+			MutableClassDetails declarer,
 			AccessType classAccessType,
 			SourceModelBuildingContext sourceModelBuildingContext) {
-		throw new UnsupportedOperationException( "Support for element-collection attributes not yet implemented" );
+		final ClassDetailsRegistry classDetailsRegistry = sourceModelBuildingContext.getClassDetailsRegistry();
+
+		final AccessType accessType = coalesce( jaxbElementCollection.getAccess(), classAccessType );
+		final MutableMemberDetails memberDetails = XmlProcessingHelper.getAttributeMember(
+				jaxbElementCollection.getName(),
+				accessType,
+				declarer,
+				sourceModelBuildingContext
+		);
+
+		final MutableAnnotationUsage<ElementCollection> elementCollectionAnn = XmlProcessingHelper.getOrMakeAnnotation(
+				ElementCollection.class,
+				memberDetails
+		);
+		setIf( jaxbElementCollection.getTargetClass(), "targetClass", elementCollectionAnn );
+		setIf( jaxbElementCollection.getFetch(), "fetch", elementCollectionAnn );
+
+		processCommonAttributeAnnotations( jaxbElementCollection, memberDetails, accessType, sourceModelBuildingContext );
+
+		if ( jaxbElementCollection.getFetchMode() != null ) {
+			final MutableAnnotationUsage<Fetch> fetchAnn = getOrMakeAnnotation( Fetch.class, memberDetails );
+			fetchAnn.setAttributeValue( "value", jaxbElementCollection.getFetchMode() );
+		}
+
+		final JaxbCollectionIdImpl jaxbCollectionId = jaxbElementCollection.getCollectionId();
+		if ( jaxbCollectionId != null ) {
+			final MutableAnnotationUsage<CollectionId> collectionIdAnn = XmlProcessingHelper.getOrMakeAnnotation(
+					CollectionId.class,
+					memberDetails
+			);
+
+			final JaxbColumnImpl jaxbColumn = jaxbCollectionId.getColumn();
+			final MutableAnnotationUsage<Column> columnAnn = XmlProcessingHelper.getOrMakeAnnotation(
+					Column.class,
+					memberDetails
+			);
+			collectionIdAnn.setAttributeValue( "column", columnAnn );
+			setIf( jaxbColumn.getName(), "name", columnAnn );
+			columnAnn.setAttributeValue( "nullable", false );
+			columnAnn.setAttributeValue( "unique", false );
+			columnAnn.setAttributeValue( "updatable", false );
+			setIf( jaxbColumn.getLength(), "length", columnAnn );
+			setIf( jaxbColumn.getPrecision(), "precision", columnAnn );
+			setIf( jaxbColumn.getScale(), "scale", columnAnn );
+			setIf( jaxbColumn.getTable(), "table", columnAnn );
+			setIf( jaxbColumn.getColumnDefinition(), "columnDefinition", columnAnn );
+
+			final JaxbGeneratedValueImpl generator = jaxbCollectionId.getGenerator();
+			if ( generator != null ) {
+				setIf( generator.getGenerator(), "generator", collectionIdAnn );
+			}
+		}
+
+		if ( jaxbElementCollection.getClassification() != null ) {
+			final MutableAnnotationUsage<CollectionClassification> collectionClassificationAnn = getOrMakeAnnotation(
+					CollectionClassification.class,
+					memberDetails
+			);
+			setIf( jaxbElementCollection.getClassification(), "value", collectionClassificationAnn );
+		}
+
+		if ( StringHelper.isNotEmpty( jaxbElementCollection.getSort() ) ) {
+			final MutableAnnotationUsage<SortComparator> sortAnn = getOrMakeAnnotation(
+					SortComparator.class,
+					memberDetails
+			);
+			final ClassDetails comparatorClassDetails = classDetailsRegistry.resolveClassDetails( jaxbElementCollection.getSort() );
+			sortAnn.setAttributeValue( "value", comparatorClassDetails );
+		}
+
+		if ( jaxbElementCollection.getSortNatural() != null ) {
+			getOrMakeAnnotation( SortNatural.class, memberDetails );
+		}
+
+		if ( StringHelper.isNotEmpty( jaxbElementCollection.getOrderBy() ) ) {
+			final MutableAnnotationUsage<OrderBy> orderByAnn = getOrMakeAnnotation(
+					OrderBy.class,
+					memberDetails
+			);
+			orderByAnn.setAttributeValue( "value", jaxbElementCollection.getOrderBy() );
+		}
+
+		if ( jaxbElementCollection.getOrderColumn() != null ) {
+			final MutableAnnotationUsage<OrderColumn> orderByAnn = getOrMakeAnnotation(
+					OrderColumn.class,
+					memberDetails
+			);
+			setIf( jaxbElementCollection.getOrderColumn().getName(), "name", orderByAnn );
+			setIf( jaxbElementCollection.getOrderColumn().isNullable(), "nullable", orderByAnn );
+			setIf( jaxbElementCollection.getOrderColumn().isInsertable(), "insertable", orderByAnn );
+			setIf( jaxbElementCollection.getOrderColumn().isUpdatable(), "updatable", orderByAnn );
+			setIf( jaxbElementCollection.getOrderColumn().getColumnDefinition(), "columnDefinition", orderByAnn );
+		}
+
+		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		// elements
+
+		if ( jaxbElementCollection.getEnumerated() != null ) {
+			final MutableAnnotationUsage<Enumerated> enumeratedAnn = getOrMakeAnnotation(
+					Enumerated.class,
+					memberDetails
+			);
+			enumeratedAnn.setAttributeValue( "value", jaxbElementCollection.getEnumerated() );
+		}
+
+		if ( jaxbElementCollection.getLob() != null ) {
+			getOrMakeAnnotation( Lob.class, memberDetails );
+		}
+
+		if ( jaxbElementCollection.getNationalized() != null ) {
+			getOrMakeAnnotation( Nationalized.class, memberDetails );
+		}
+
+		if ( jaxbElementCollection.getTemporal() != null ) {
+			final MutableAnnotationUsage<Temporal> temporalAnn = getOrMakeAnnotation(
+					Temporal.class,
+					memberDetails
+			);
+			temporalAnn.setAttributeValue( "value", jaxbElementCollection.getTemporal() );
+		}
+
+		XmlAnnotationHelper.applyBasicTypeComposition( jaxbElementCollection, memberDetails, sourceModelBuildingContext );
+		if ( StringHelper.isNotEmpty( jaxbElementCollection.getTargetClass() ) ) {
+			final MutableAnnotationUsage<Target> targetAnn = getOrMakeAnnotation( Target.class, memberDetails );
+			targetAnn.setAttributeValue( "value", jaxbElementCollection.getTargetClass() );
+		}
+
+		jaxbElementCollection.getConvert().forEach( (jaxbConvert) -> {
+			XmlAnnotationHelper.applyConvert( jaxbConvert, memberDetails, sourceModelBuildingContext );
+		} );
+
+		// todo : filter
+		// todo : attribute-override
+		// todo : association-override
+
+		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		// map-key
+
+
+		return memberDetails;
 	}
 
 	@SuppressWarnings("UnusedReturnValue")

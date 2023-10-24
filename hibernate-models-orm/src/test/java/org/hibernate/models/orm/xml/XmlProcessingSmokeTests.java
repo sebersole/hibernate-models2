@@ -37,6 +37,14 @@ import static org.hibernate.models.orm.XmlHelper.loadMapping;
  */
 public class XmlProcessingSmokeTests {
 	@Test
+	void testGlobals() {
+		final XmlResources collector = new XmlResources();
+		collector.addDocument( loadMapping( "mappings/globals.xml", SIMPLE_CLASS_LOADING ) );
+
+
+	}
+
+	@Test
 	void testPersistenceUnitDefaults1() {
 		final XmlResources collector = new XmlResources();
 
@@ -142,13 +150,18 @@ public class XmlProcessingSmokeTests {
 	}
 
 	private void validateFilterDefs(Map<String, FilterDefRegistration> filterDefRegistrations) {
-		assertThat( filterDefRegistrations ).hasSize( 1 );
-		assertThat( filterDefRegistrations ).containsKey( "amount_filter" );
-		final FilterDefRegistration filterDef = filterDefRegistrations.get( "amount_filter" );
-		assertThat( filterDef.getDefaultCondition() ).isEqualTo( "amount = :amount" );
-		final Map<String, ClassDetails> parameters = filterDef.getParameters();
-		assertThat( parameters ).hasSize( 1 );
-		assertThat( parameters ).containsKey( "amount" );
-		assertThat( parameters.get( "amount" ).getName() ).isEqualTo( Integer.class.getName() );
+		assertThat( filterDefRegistrations ).hasSize( 2 );
+
+		final FilterDefRegistration amountFilter = filterDefRegistrations.get( "amount_filter" );
+		assertThat( amountFilter.getDefaultCondition() ).isEqualTo( "amount = :amount" );
+		assertThat( amountFilter.getParameters() ).hasSize( 1 );
+		final ClassDetails amountParameterType = amountFilter.getParameters().get( "amount" );
+		assertThat( amountParameterType.getClassName() ).isEqualTo( int.class.getName() );
+
+		final FilterDefRegistration nameFilter = filterDefRegistrations.get( "name_filter" );
+		assertThat( nameFilter.getDefaultCondition() ).isEqualTo( "name = :name" );
+		assertThat( nameFilter.getParameters() ).hasSize( 1 );
+		final ClassDetails nameParameterType = nameFilter.getParameters().get( "name" );
+		assertThat( nameParameterType.getClassName() ).isEqualTo( String.class.getName() );
 	}
 }
