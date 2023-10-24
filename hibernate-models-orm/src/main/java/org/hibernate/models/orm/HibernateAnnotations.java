@@ -10,7 +10,10 @@ import java.lang.annotation.Annotation;
 import java.util.function.Consumer;
 
 import org.hibernate.annotations.*;
-import org.hibernate.annotations.internal.Extends;
+import org.hibernate.boot.internal.Abstract;
+import org.hibernate.boot.internal.CollectionClassification;
+import org.hibernate.boot.internal.Extends;
+import org.hibernate.boot.internal.Target;
 import org.hibernate.models.orm.internal.OrmAnnotationHelper;
 import org.hibernate.models.source.spi.AnnotationDescriptor;
 
@@ -68,7 +71,6 @@ public interface HibernateAnnotations {
 	AnnotationDescriptor<EmbeddableInstantiator> EMBEDDABLE_INSTANTIATOR = createOrmDescriptor( EmbeddableInstantiator.class );
 	AnnotationDescriptor<EmbeddableInstantiatorRegistrations> EMBEDDABLE_INSTANTIATOR_REGS = createOrmDescriptor( EmbeddableInstantiatorRegistrations.class );
 	AnnotationDescriptor<EmbeddableInstantiatorRegistration> EMBEDDABLE_INSTANTIATOR_REG = createOrmDescriptor( EmbeddableInstantiatorRegistration.class, EMBEDDABLE_INSTANTIATOR_REGS );
-	AnnotationDescriptor<Extends> EXTENDS = createOrmDescriptor( Extends.class );
 	AnnotationDescriptor<Fetch> FETCH = createOrmDescriptor( Fetch.class );
 	AnnotationDescriptor<FetchProfiles> FETCH_PROFILES = createOrmDescriptor( FetchProfiles.class );
 	AnnotationDescriptor<FetchProfile> FETCH_PROFILE = createOrmDescriptor( FetchProfile.class, FETCH_PROFILES );
@@ -156,7 +158,6 @@ public interface HibernateAnnotations {
 	AnnotationDescriptor<Synchronize> SYNCHRONIZE = createOrmDescriptor( Synchronize.class );
 	AnnotationDescriptor<Tables> TABLES = createOrmDescriptor( Tables.class );
 	AnnotationDescriptor<Table> TABLE = createOrmDescriptor( Table.class, TABLES );
-	AnnotationDescriptor<Target> TARGET = createOrmDescriptor( Target.class );
 	AnnotationDescriptor<TenantId> TENANT_ID = createOrmDescriptor( TenantId.class );
 	AnnotationDescriptor<TimeZoneColumn> TZ_COLUMN = createOrmDescriptor( TimeZoneColumn.class );
 	AnnotationDescriptor<TimeZoneStorage> TZ_STORAGE = createOrmDescriptor( TimeZoneStorage.class );
@@ -170,6 +171,10 @@ public interface HibernateAnnotations {
 	AnnotationDescriptor<Where> WHERE = createOrmDescriptor( Where.class );
 	AnnotationDescriptor<WhereJoinTable> WHERE_JOIN_TABLE = createOrmDescriptor( WhereJoinTable.class );
 
+	AnnotationDescriptor<Abstract> ABSTRACT = createOrmDescriptor( Abstract.class );
+	AnnotationDescriptor<CollectionClassification> COLLECTION_CLASSIFICATION = createOrmDescriptor( CollectionClassification.class );
+	AnnotationDescriptor<Extends> EXTENDS = createOrmDescriptor( Extends.class );
+	AnnotationDescriptor<Target> TARGET = createOrmDescriptor( Target.class );
 
 	AnnotationDescriptor<DialectOverride.Checks> DIALECT_OVERRIDE_CHECKS = createOrmDescriptor( DialectOverride.Checks.class );
 	AnnotationDescriptor<DialectOverride.Check> DIALECT_OVERRIDE_CHECK = createOrmDescriptor( DialectOverride.Check.class, DIALECT_OVERRIDE_CHECKS );

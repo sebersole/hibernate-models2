@@ -1,0 +1,42 @@
+plugins {
+    id "org.hibernate.build.xjc-jakarta" version "1.0.2"
+}
+
+apply from: rootProject.file( "gradle/java-module.gradle" )
+
+dependencies {
+    api platform( libs.hibernatePlatform )
+    api libs.hibernateCore
+
+    implementation jakartaLibs.jaxbApi
+    implementation jakartaLibs.jaxb
+    implementation jakartaLibs.inject
+    implementation libs.logging
+
+    xjc jakartaLibs.xjc
+    xjc jakartaLibs.jaxb
+    xjc rootProject.fileTree(dir: 'patched-libs/jaxb2-basics', include: '*.jar')
+}
+
+def jaxbTargetDir = project.file( "${buildDir}/generated/sources/xjc/main" )
+
+xjc {
+    outputDirectory = jaxbTargetDir
+
+    schemas {
+        mapping {
+            xsdFile = file( 'src/main/resources/org/hibernate/xsd/mapping/mapping-3.1.0.xsd' )
+            xjcBindingFile = file( 'src/main/xjb/mapping-bindings.xjb' )
+            xjcExtensions += ['inheritance', 'simplify']
+        }
+    }
+}
+
+sourceSets {
+    main {
+        // add the XJC generated JAXB classes to the main source-set
+        java{
+            srcDir jaxbTargetDir
+        }
+    }
+}

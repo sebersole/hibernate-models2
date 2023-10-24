@@ -6,9 +6,14 @@
  */
 package org.hibernate.models.orm.xml.internal;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import org.hibernate.annotations.internal.Extends;
+import org.hibernate.boot.internal.Abstract;
+import org.hibernate.boot.internal.Extends;
+import org.hibernate.boot.internal.LimitedCollectionClassification;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbAnyMappingImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbAttributesContainer;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbAttributesContainerImpl;
@@ -23,6 +28,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbManagedType;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbMappedSuperclassImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbOneToOneImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistentAttribute;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAttribute;
 import org.hibernate.models.ModelsException;
 import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.StringHelper;
@@ -301,6 +307,7 @@ public class ManagedTypeProcessor {
 	private static ClassDetails determineDynamicAttributeJavaType(
 			JaxbPersistentAttribute jaxbPersistentAttribute,
 			SourceModelBuildingContext sourceModelBuildingContext) {
+		final ClassDetailsRegistry classDetailsRegistry = sourceModelBuildingContext.getClassDetailsRegistry();
 
 		if ( jaxbPersistentAttribute instanceof JaxbIdImpl ) {
 			final JaxbIdImpl jaxbId = (JaxbIdImpl) jaxbPersistentAttribute;
@@ -309,11 +316,10 @@ public class ManagedTypeProcessor {
 
 		if ( jaxbPersistentAttribute instanceof JaxbEmbeddedIdImpl ) {
 			final JaxbEmbeddedIdImpl jaxbEmbeddedId = (JaxbEmbeddedIdImpl) jaxbPersistentAttribute;
-			final String target = jaxbEmbeddedId.getEmbeddable();
+			final String target = jaxbEmbeddedId.getTarget();
 			if ( StringHelper.isEmpty( target ) ) {
 				return null;
 			}
-			final ClassDetailsRegistry classDetailsRegistry = sourceModelBuildingContext.getClassDetailsRegistry();
 			return classDetailsRegistry.resolveClassDetails(
 					target,
 					() -> new DynamicClassDetails( target, sourceModelBuildingContext )
@@ -331,7 +337,6 @@ public class ManagedTypeProcessor {
 			if ( StringHelper.isEmpty( target ) ) {
 				return null;
 			}
-			final ClassDetailsRegistry classDetailsRegistry = sourceModelBuildingContext.getClassDetailsRegistry();
 			return classDetailsRegistry.resolveClassDetails(
 					target,
 					() -> new DynamicClassDetails( target, sourceModelBuildingContext )
@@ -344,7 +349,6 @@ public class ManagedTypeProcessor {
 			if ( StringHelper.isEmpty( target ) ) {
 				return null;
 			}
-			final ClassDetailsRegistry classDetailsRegistry = sourceModelBuildingContext.getClassDetailsRegistry();
 			return classDetailsRegistry.resolveClassDetails(
 					target,
 					() -> new DynamicClassDetails(
@@ -358,9 +362,27 @@ public class ManagedTypeProcessor {
 		}
 
 		if ( jaxbPersistentAttribute instanceof JaxbAnyMappingImpl ) {
-			return sourceModelBuildingContext.getClassDetailsRegistry().getClassDetails( Object.class.getName() );
+			return classDetailsRegistry.getClassDetails( Object.class.getName() );
 		}
 
+		if ( jaxbPersistentAttribute instanceof JaxbPluralAttribute ) {
+			final JaxbPluralAttribute jaxbPluralAttribute = (JaxbPluralAttribute) jaxbPersistentAttribute;
+			final LimitedCollectionClassification classification = jaxbPluralAttribute.getClassification();
+			switch ( classification ) {
+				case BAG: {
+					return classDetailsRegistry.resolveClassDetails( Collection.class.getName() );
+				}
+				case LIST: {
+					return classDetailsRegistry.resolveClassDetails( List.class.getName() );
+				}
+				case SET: {
+					return classDetailsRegistry.resolveClassDetails( Set.class.getName() );
+				}
+				case MAP: {
+					return classDetailsRegistry.resolveClassDetails( Map.class.getName() );
+				}
+			}
+		}
 		throw new UnsupportedOperationException( "Resolution of dynamic attribute Java type not yet implemented for " + jaxbPersistentAttribute );
 	}
 
@@ -375,23 +397,6 @@ public class ManagedTypeProcessor {
 		);
 	}
 
-	private static void processNonDynamicEntity(
-			MutableClassDetails classDetails,
-			JaxbEntityImpl jaxbEntity,
-			AccessType classAccessType,
-			PersistenceUnitMetadata persistenceUnitMetadata,
-			SourceModelBuildingContext sourceModelBuildingContext) {
-		processEntityMetadata(
-				classDetails,
-				jaxbEntity,
-				classAccessType,
-				ManagedTypeProcessor::adjustNonDynamicTypeMember,
-				persistenceUnitMetadata,
-				sourceModelBuildingContext
-		);
-
-	}
-
 	private static void processEntityMetadata(
 			MutableClassDetails classDetails,
 			JaxbEntityImpl jaxbEntity,
@@ -402,6 +407,10 @@ public class ManagedTypeProcessor {
 		XmlAnnotationHelper.applyEntity( jaxbEntity, classDetails, sourceModelBuildingContext );
 		XmlAnnotationHelper.applyInheritance( jaxbEntity, classDetails, sourceModelBuildingContext );
 		classDetails.addAnnotationUsage( XmlAnnotationHelper.createAccessAnnotation( classAccessType, classDetails ) );
+
+		if ( jaxbEntity.isAbstract() != null ) {
+			XmlProcessingHelper.makeAnnotation( Abstract.class, classDetails );
+		}
 
 		if ( StringHelper.isNotEmpty( jaxbEntity.getExtends() ) ) {
 			final DynamicAnnotationUsage<Extends> extendsAnn = XmlProcessingHelper.makeAnnotation(
@@ -456,129 +465,6 @@ public class ManagedTypeProcessor {
 		);
 	}
 
-	private static void applyAttributesToDynamicClass(
-			MutableClassDetails dynamicClassDetails,
-			JaxbAttributesContainer attributes,
-			SourceModelBuildingContext sourceModelBuildingContext) {
-		attributes.getBasicAttributes().forEach( (jaxbBasic) -> {
-			final MapModeFieldDetails member = new MapModeFieldDetails(
-					jaxbBasic.getName(),
-					XmlAnnotationHelper.resolveJavaType( jaxbBasic.getType().getValue(), sourceModelBuildingContext ),
-					sourceModelBuildingContext
-			);
-			dynamicClassDetails.addField( member );
-			XmlAnnotationHelper.applyAttributeAccessor(
-					BuiltInPropertyAccessStrategies.MAP.getExternalName(),
-					member,
-					sourceModelBuildingContext
-			);
-		} );
-		attributes.getEmbeddedAttributes().forEach( (jaxbEmbedded) -> {
-			final MapModeFieldDetails member = new MapModeFieldDetails(
-					jaxbEmbedded.getName(),
-					null,
-					sourceModelBuildingContext
-			);
-			dynamicClassDetails.addField( member );
-			XmlAnnotationHelper.applyAttributeAccessor(
-					BuiltInPropertyAccessStrategies.MAP.getExternalName(),
-					member,
-					sourceModelBuildingContext
-			);
-		} );
-		attributes.getOneToOneAttributes().forEach( (jaxbOneToOne) -> {
-			final MapModeFieldDetails member = new MapModeFieldDetails(
-					jaxbOneToOne.getName(),
-					null,
-					sourceModelBuildingContext
-			);
-			dynamicClassDetails.addField( member );
-			XmlAnnotationHelper.applyAttributeAccessor(
-					BuiltInPropertyAccessStrategies.MAP.getExternalName(),
-					member,
-					sourceModelBuildingContext
-			);
-		} );
-		attributes.getManyToOneAttributes().forEach( (jaxbOneToOne) -> {
-			final MapModeFieldDetails member = new MapModeFieldDetails(
-					jaxbOneToOne.getName(),
-					null,
-					sourceModelBuildingContext
-			);
-			dynamicClassDetails.addField( member );
-			XmlAnnotationHelper.applyAttributeAccessor(
-					BuiltInPropertyAccessStrategies.MAP.getExternalName(),
-					member,
-					sourceModelBuildingContext
-			);
-		} );
-		attributes.getAnyMappingAttributes().forEach( (jaxbAny) -> {
-			final MapModeFieldDetails member = new MapModeFieldDetails(
-					jaxbAny.getName(),
-					null,
-					sourceModelBuildingContext
-			);
-			dynamicClassDetails.addField( member );
-			XmlAnnotationHelper.applyAttributeAccessor(
-					BuiltInPropertyAccessStrategies.MAP.getExternalName(),
-					member,
-					sourceModelBuildingContext
-			);
-		} );
-		attributes.getElementCollectionAttributes().forEach( (jaxbElementCollection) -> {
-			final MapModeFieldDetails member = new MapModeFieldDetails(
-					jaxbElementCollection.getName(),
-					null,
-					sourceModelBuildingContext
-			);
-			dynamicClassDetails.addField( member );
-			XmlAnnotationHelper.applyAttributeAccessor(
-					BuiltInPropertyAccessStrategies.MAP.getExternalName(),
-					member,
-					sourceModelBuildingContext
-			);
-		} );
-		attributes.getOneToManyAttributes().forEach( (jaxbOneToMany) -> {
-			final MapModeFieldDetails member = new MapModeFieldDetails(
-					jaxbOneToMany.getName(),
-					null,
-					sourceModelBuildingContext
-			);
-			dynamicClassDetails.addField( member );
-			XmlAnnotationHelper.applyAttributeAccessor(
-					BuiltInPropertyAccessStrategies.MAP.getExternalName(),
-					member,
-					sourceModelBuildingContext
-			);
-		} );
-		attributes.getManyToManyAttributes().forEach( (jaxbManyToMany) -> {
-			final MapModeFieldDetails member = new MapModeFieldDetails(
-					jaxbManyToMany.getName(),
-					null,
-					sourceModelBuildingContext
-			);
-			dynamicClassDetails.addField( member );
-			XmlAnnotationHelper.applyAttributeAccessor(
-					BuiltInPropertyAccessStrategies.MAP.getExternalName(),
-					member,
-					sourceModelBuildingContext
-			);
-		} );
-		attributes.getPluralAnyMappingAttributes().forEach( (jaxbManyToAny) -> {
-			final MapModeFieldDetails member = new MapModeFieldDetails(
-					jaxbManyToAny.getName(),
-					null,
-					sourceModelBuildingContext
-			);
-			dynamicClassDetails.addField( member );
-			XmlAnnotationHelper.applyAttributeAccessor(
-					BuiltInPropertyAccessStrategies.MAP.getExternalName(),
-					member,
-					sourceModelBuildingContext
-			);
-		} );
-
-	}
 	public static void processOverrideEntity(
 			List<Processor.OverrideTuple<JaxbEntityImpl>> entityOverrides,
 			PersistenceUnitMetadata persistenceUnitMetadata,
@@ -717,14 +603,17 @@ public class ManagedTypeProcessor {
 		final AttributeProcessor.MemberAdjuster memberAdjuster;
 
 		if ( StringHelper.isEmpty( jaxbEmbeddable.getClazz() ) ) {
+			if ( StringHelper.isEmpty( jaxbEmbeddable.getName() ) ) {
+				throw new ModelsException( "Embeddable did not define class nor name" );
+			}
 			// no class == dynamic...
-//			classDetails = (MutableClassDetails) sourceModelBuildingContext
-//					.getClassDetailsRegistry()
-//					.resolveClassDetails( jaxbEmbeddable.getName() );
-//			classAccessType = AccessType.FIELD;
-//			memberAdjuster = ManagedTypeProcessor::adjustDynamicTypeMember;
-//
-//			prepareDynamicClass( classDetails, jaxbEmbeddable, persistenceUnitMetadata, sourceModelBuildingContext );
+			classDetails = (MutableClassDetails) sourceModelBuildingContext
+					.getClassDetailsRegistry()
+					.resolveClassDetails( jaxbEmbeddable.getName() );
+			classAccessType = AccessType.FIELD;
+			memberAdjuster = ManagedTypeProcessor::adjustDynamicTypeMember;
+
+			prepareDynamicClass( classDetails, jaxbEmbeddable, persistenceUnitMetadata, sourceModelBuildingContext );
 
 			throw new UnsupportedOperationException( "Not yet implemented" );
 		}

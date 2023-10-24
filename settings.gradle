@@ -1,5 +1,11 @@
-rootProject.name = 'hibernate-models2'
+pluginManagement {
+	repositories {
+		gradlePluginPortal()
+		mavenCentral()
+	}
+}
 
+rootProject.name = 'hibernate-models2'
 
 dependencyResolutionManagement {
 	repositories {
@@ -26,7 +32,7 @@ dependencyResolutionManagement {
 			def classmateVersion = version "classmate", "1.5.1"
 			library( "classmate", "com.fasterxml", "classmate" ).versionRef( classmateVersion )
 
-			def hibernateVersion = version "hibernateOrm", "7.0.0-SNAPSHOT"
+			def hibernateVersion = version "hibernateOrm", "6.3.0.Final"
 			// withoutVersion assuming that the platform is applied
 			library( "hibernateCore", "org.hibernate.orm", "hibernate-core" ).withoutVersion()
 			library( "hibernatePlatform", "org.hibernate.orm", "hibernate-platform" ).versionRef( hibernateVersion )
@@ -39,38 +45,33 @@ dependencyResolutionManagement {
 			def jandexVersion = version "jandex", "3.1.2"
 			library( "jandex", "io.smallrye", "jandex" ).versionRef( jandexVersion )
 
-			def jaxbApiVersion = version "jaxbApi", "4.0.0"
-			library( "jaxbApi", "jakarta.xml.bind", "jakarta.xml.bind-api" ).versionRef( jaxbApiVersion )
-
-			def jaxbRuntimeVersion = version "jaxbRuntime", "4.0.2"
-			library( "jaxb", "org.glassfish.jaxb", "jaxb-runtime" ).versionRef( jaxbRuntimeVersion )
-
-			def jpaVersion = version "jpaRuntime", "3.1.0"
-			library( "jpa", "jakarta.persistence", "jakarta.persistence-api" ).versionRef( jpaVersion )
-
 			def jbossLoggingVersion = version "jbossLogging", "3.5.0.Final"
 			library( "logging", "org.jboss.logging", "jboss-logging" ).versionRef( jbossLoggingVersion )
 
 			def jbossLoggingToolVersion = version "jbossLoggingTool", "2.2.1.Final"
 			library( "loggingAnnotations", "org.jboss.logging", "jboss-logging-annotations" ).versionRef( jbossLoggingToolVersion )
 			library( "loggingProcessor", "org.jboss.logging", "jboss-logging-processor" ).versionRef( jbossLoggingToolVersion )
+		}
+		jakartaLibs {
+			def jpaVersion = version "jpaRuntime", "3.1.0"
+			library( "jpa", "jakarta.persistence", "jakarta.persistence-api" ).versionRef( jpaVersion )
+
+			def injectVersion = version "inject", "2.0.1"
+			def jaxbApiVersion = version "jaxbApi", "4.0.0"
+			def jaxbRuntimeVersion = version "jaxbRuntime", "4.0.2"
+			library( "inject", "jakarta.inject", "jakarta.inject-api" ).versionRef( injectVersion )
+			library( "jaxbApi", "jakarta.xml.bind", "jakarta.xml.bind-api" ).versionRef( jaxbApiVersion )
+			library( "jaxb", "org.glassfish.jaxb", "jaxb-runtime" ).versionRef( jaxbRuntimeVersion )
+			library( "xjc", "org.glassfish.jaxb", "jaxb-xjc" ).versionRef( jaxbRuntimeVersion )
 
 			def jsonbApiVersion = version "jsonbApi", "3.0.0"
-			library( "jsonbApi", "jakarta.json.bind", "jakarta.json.bind-api" ).versionRef( jsonbApiVersion )
-
 			def jsonbRuntimeVersion = version "jsonbRuntime", "3.0.2"
+			library( "jsonbApi", "jakarta.json.bind", "jakarta.json.bind-api" ).versionRef( jsonbApiVersion )
 			library( "jsonb", "org.eclipse", "yasson" ).versionRef( jsonbRuntimeVersion )
-
-			def xjcVersion = version "jaxbRuntime", jaxbRuntimeVersion
-			library( "xjc", "org.glassfish.jaxb", "jaxb-xjc" ).versionRef( xjcVersion )
 		}
-
 		testLibs {
 			def assertjVersion = version "assertj", "3.22.0"
 			library( "assertjCore", "org.assertj", "assertj-core" ).versionRef( assertjVersion )
-
-			def jpaVersion = version "jpa", "3.1.0"
-			library( "jpa", "jakarta.persistence", "jakarta.persistence-api" ).versionRef( jpaVersion )
 
 			def junit5Version = version "junit5", "5.9.2"
 			library( "junit5Api", "org.junit.jupiter", "junit-jupiter-api" ).versionRef( junit5Version )
@@ -88,6 +89,7 @@ include "hibernate-models-common"
 include "hibernate-models-source"
 include "hibernate-models-orm"
 include "hibernate-models-testing"
+include "hibernate-orm"
 
 rootProject.children.each { project ->
 	project.buildFileName = "${project.name}.gradle"

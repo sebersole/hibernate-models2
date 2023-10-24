@@ -64,20 +64,6 @@ public class AttributeProcessor {
 			JaxbBaseAttributesContainer attributesContainer,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
-			SourceModelBuildingContext sourceModelBuildingContext) {
-		processBaseAttributes(
-				attributesContainer,
-				mutableClassDetails,
-				classAccessType,
-				null,
-				sourceModelBuildingContext
-		);
-	}
-
-	public static void processBaseAttributes(
-			JaxbBaseAttributesContainer attributesContainer,
-			MutableClassDetails mutableClassDetails,
-			AccessType classAccessType,
 			MemberAdjuster memberAdjuster,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		for ( int i = 0; i < attributesContainer.getBasicAttributes().size(); i++ ) {
