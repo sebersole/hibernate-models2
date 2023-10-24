@@ -6,7 +6,10 @@
  */
 package org.hibernate.models.orm.xml.dynamic;
 
+import java.util.Set;
+
 import org.hibernate.annotations.JavaType;
+import org.hibernate.boot.internal.Target;
 import org.hibernate.models.orm.internal.ManagedResourcesImpl;
 import org.hibernate.models.orm.spi.EntityHierarchy;
 import org.hibernate.models.orm.spi.EntityTypeMetadata;
@@ -72,6 +75,51 @@ public class DynamicModelTests {
 
 		final FieldDetails qtyField = rootEntity.getClassDetails().findFieldByName( "quantity" );
 		assertThat( qtyField.getType().getClassName() ).isEqualTo( int.class.getName() );
+	}
+
+	@Test
+	void testSemiSimpleDynamicModel() {
+		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
+				.addXmlMappings( "mappings/dynamic/dynamic-semi-simple.xml" )
+				.build();
+		final Index jandexIndex = SourceModelTestHelper.buildJandexIndex( SIMPLE_CLASS_LOADING );
+		final SourceModelBuildingContextImpl buildingContext = SourceModelTestHelper.createBuildingContext(
+				jandexIndex,
+				SIMPLE_CLASS_LOADING
+		);
+
+		final ProcessResult processResult = Processor.process(
+				managedResources,
+				null,
+				new Processor.Options() {
+					@Override
+					public boolean areGeneratorsGlobal() {
+						return false;
+					}
+
+					@Override
+					public boolean shouldIgnoreUnlistedClasses() {
+						return false;
+					}
+				},
+				buildingContext
+		);
+
+		assertThat( processResult.getEntityHierarchies() ).hasSize( 1 );
+		final EntityHierarchy hierarchy = processResult.getEntityHierarchies().iterator().next();
+		final EntityTypeMetadata rootEntity = hierarchy.getRoot();
+		assertThat( rootEntity.getClassDetails().getClassName() ).isNull();
+		assertThat( rootEntity.getClassDetails().getName() ).isEqualTo( "Contact" );
+
+		final FieldDetails idField = rootEntity.getClassDetails().findFieldByName( "id" );
+		assertThat( idField.getType().getClassName() ).isEqualTo( Integer.class.getName() );
+
+		final FieldDetails nameField = rootEntity.getClassDetails().findFieldByName( "name" );
+		assertThat( nameField.getType().getClassName() ).isEqualTo( "Name" );
+		assertThat( nameField.getAnnotationUsage( Target.class ) ).isNotNull();
+
+		final FieldDetails labelsField = rootEntity.getClassDetails().findFieldByName( "labels" );
+		assertThat( labelsField.getType().getClassName() ).isEqualTo( Set.class.getName() );
 	}
 
 }

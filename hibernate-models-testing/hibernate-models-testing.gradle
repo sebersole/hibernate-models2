@@ -7,7 +7,6 @@ dependencies {
     implementation libs.jandex
 
     testImplementation platform( libs.hibernatePlatform )
-    testImplementation testLibs.jpa
     testImplementation libs.hibernateCore
     testRuntimeOnly testLibs.log4j
 }

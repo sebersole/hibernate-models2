@@ -1,9 +1,20 @@
-= Open Questions and To-do items
+= Stuff
+
+== Open Questions
 
 * Hierarchical packages?  E.g. should things defined on the `com.acme` package apply to things in the `com.acme.model` package?  Should `PackageDetails` have reference to its "parent" `PackageDetails`?
-* [.line-through]#Model `AnnotationAttributeValue`?  Dropped that here from earlier iterations - its only real benefit was to help model the idea of implicit (unspecified) values.  But since the quorum is to simply follow JLS, "this is the way".  It simplifies the code quite a bit and imo only makes sense if we want to be able to model that implicitness aspect# - Dropped `AnnotationAttributeValue`
-* Support `<extends/>`?  "Needed" for dynamic models and inheritance (if that's something we want to support).  Will also need a (internal) annotation
-* Allow mapped-superclass in dynamic models? XSD change
-* [.line-through]#Support for dynamic embeddables in XSD# - see `<dynamic-entity/>` and `<dynamic-embeddable/>`
-* [.line-through]#Update the mapping.xsd to account for new @GenericGenerator definition#
-* [.line-through]#todo : we need some form of "attribute (java) type" in the XSD for dynamic models# - see the new `<target-class/>` element plus `target-entity`
+* Allow mapped-superclass in dynamic models?
+* Support for `@Comment`
+
+
+== XML Annotations
+
+List of annotations I've come across as needing, mainly for dynamic models, which do not make general sense -
+
+* `@Abstract`
+* `@Extends`
+* `@CollectionClassification`
+* `@Target`[1]
+
+
+[1] org.hibernate.annotations.Target does exist, but is deprecated.  Can either repurpose that one or create a new one along with these others.
