@@ -31,6 +31,18 @@ public class SimpleEntity {
 		this.name = name;
 	}
 
+	public void prePersist() {
+		// used by hibernate lifecycle callbacks
+	}
+
+	public void preRemove() {
+		// used by hibernate lifecycle callbacks
+	}
+
+	public void preUpdate() {
+		// used by hibernate lifecycle callbacks
+	}
+
 	public Integer getId() {
 		return id;
 	}
