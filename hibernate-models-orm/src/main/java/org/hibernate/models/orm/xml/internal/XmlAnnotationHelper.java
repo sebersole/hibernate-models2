@@ -42,10 +42,13 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbConfigurationParameterImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbConvertImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntity;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityListenerImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbGeneratedValueImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbHbmFilterImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbIdClassImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbIdImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbLifecycleCallback;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbLifecycleCallbackContainer;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbLobImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbNationalizedImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbNaturalId;
@@ -67,6 +70,7 @@ import org.hibernate.models.source.spi.AnnotationTarget;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.ClassDetailsRegistry;
+import org.hibernate.models.source.spi.MethodDetails;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 import org.hibernate.type.SqlTypes;
 
@@ -79,6 +83,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -86,6 +91,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.Lob;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
+import jakarta.persistence.PostRemove;
+import jakarta.persistence.PostUpdate;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreRemove;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.TableGenerator;
@@ -859,6 +871,49 @@ public class XmlAnnotationHelper {
 					"value",
 					buildingContext.getClassDetailsRegistry().resolveClassDetails( jaxbIdClass.getClazz() )
 			);
+		}
+	}
+
+	static void applyEntityListener(
+			JaxbEntityListenerImpl jaxbEntityListener,
+			MutableClassDetails classDetails,
+			SourceModelBuildingContext buildingContext) {
+		final MutableAnnotationUsage<EntityListeners> entityListeners = getOrMakeAnnotation(
+				EntityListeners.class,
+				classDetails
+		);
+		final MutableClassDetails entityListenerClass = (MutableClassDetails) buildingContext.getClassDetailsRegistry()
+				.resolveClassDetails( jaxbEntityListener.getClazz() );
+		applyLifecycleCallbacks( jaxbEntityListener, entityListenerClass, buildingContext );
+		final List<ClassDetails> values = entityListeners.getAttributeValue( "value" );
+		if ( values != null ) {
+			values.add( entityListenerClass );
+		}
+		else {
+			entityListeners.setAttributeValue( "value", new ArrayList<>( List.of( entityListenerClass ) ) );
+		}
+	}
+	
+	static void applyLifecycleCallbacks(
+			JaxbLifecycleCallbackContainer lifecycleCallbackContainer,
+			MutableClassDetails classDetails,
+			SourceModelBuildingContext buildingContext) {
+		applyLifecycleCallback( lifecycleCallbackContainer.getPrePersist(), PrePersist.class, classDetails );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPostPersist(), PostPersist.class, classDetails );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPreRemove(), PreRemove.class, classDetails );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPostRemove(), PostRemove.class, classDetails );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPreUpdate(), PreUpdate.class, classDetails );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPostUpdate(), PostUpdate.class, classDetails );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPostLoad(), PostLoad.class, classDetails );
+	}
+
+	private static void applyLifecycleCallback(
+			JaxbLifecycleCallback lifecycleCallback,
+			Class<? extends Annotation> lifecycleAnnotation,
+			MutableClassDetails classDetails) {
+		if ( lifecycleCallback != null ) {
+			final MethodDetails method = classDetails.findMethodByName( lifecycleCallback.getMethodName() );
+			makeAnnotation( lifecycleAnnotation, (MutableMemberDetails) method );
 		}
 	}
 }

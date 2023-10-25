@@ -455,10 +455,8 @@ public class ManagedTypeProcessor {
 				sourceModelBuildingContext
 		) );
 
-		processCommonEntityOrMappedSuperclass( jaxbEntity, classDetails, sourceModelBuildingContext );
+		processEntityOrMappedSuperclass( jaxbEntity, classDetails, sourceModelBuildingContext );
 
-		// todo : callbacks
-		// todo : entity-listeners
 		// todo : secondary-tables
 	}
 
@@ -581,10 +579,7 @@ public class ManagedTypeProcessor {
 		final JaxbAttributesContainer attributes = jaxbMappedSuperclass.getAttributes();
 		processAttributes( attributes, classDetails, classAccessType, sourceModelBuildingContext );
 
-		processCommonEntityOrMappedSuperclass( jaxbMappedSuperclass, classDetails, sourceModelBuildingContext );
-
-		// todo : entity-listeners
-		// todo : callbacks
+		processEntityOrMappedSuperclass( jaxbMappedSuperclass, classDetails, sourceModelBuildingContext );
 	}
 
 	public static void processOverrideMappedSuperclass(
@@ -603,15 +598,19 @@ public class ManagedTypeProcessor {
 		} );
 	}
 
-	private static void processCommonEntityOrMappedSuperclass(
+	private static void processEntityOrMappedSuperclass(
 			JaxbEntityOrMappedSuperclass jaxbEntity,
 			MutableClassDetails classDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		XmlAnnotationHelper.applyIdClass( jaxbEntity.getIdClass(), classDetails, sourceModelBuildingContext );
 
-		// todo : entity-listeners
-		// todo : exclude default listeners (?)
-		// todo : exclude superclass listeners (?)
+		XmlAnnotationHelper.applyLifecycleCallbacks( jaxbEntity, classDetails, sourceModelBuildingContext );
+
+		if ( jaxbEntity.getEntityListeners() != null ) {
+			jaxbEntity.getEntityListeners().getEntityListener().forEach( ( jaxbEntityListener -> {
+				XmlAnnotationHelper.applyEntityListener( jaxbEntityListener, classDetails, sourceModelBuildingContext );
+			} ) );
+		}
 	}
 
 	public static void processCompleteEmbeddable(
