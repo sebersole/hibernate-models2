@@ -6,7 +6,7 @@
  */
 
 /**
- * Overall, this module is responsible for taking
+ * Overall, this module is responsible for taking a
  * {@linkplain org.hibernate.boot.model.process.spi.ManagedResources managed-resources} and
  * binding them into Hibernate's {@linkplain org.hibernate.mapping boot-time model}.
  *

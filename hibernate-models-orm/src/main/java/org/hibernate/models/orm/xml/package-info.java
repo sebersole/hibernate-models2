@@ -23,8 +23,6 @@
  *         applies overlay/override XML.
  *     </li>
  * </ol>
- * <p/>
- * First step is some {@linkplain }
  *
  * @author Steve Ebersole
  */

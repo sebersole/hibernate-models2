@@ -1,11 +1,14 @@
 pluginManagement {
+	plugins {
+		id "org.checkerframework" version "0.6.34" apply false
+	}
 	repositories {
 		gradlePluginPortal()
 		mavenCentral()
 	}
 }
 
-rootProject.name = 'hibernate-models2'
+rootProject.name = "hibernate-models2"
 
 dependencyResolutionManagement {
 	repositories {

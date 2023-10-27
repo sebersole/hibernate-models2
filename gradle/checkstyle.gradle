@@ -1,0 +1,8 @@
+apply plugin: 'checkstyle'
+
+checkstyle {
+	sourceSets = [ project.sourceSets.main ]
+	showViolations = false
+}
+// only include explicit sources (and thereby exclude generated sources)
+tasks.checkstyleMain.source = 'src/main'

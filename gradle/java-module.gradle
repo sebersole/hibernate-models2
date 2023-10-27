@@ -1,5 +1,7 @@
 apply plugin: "java-library"
 apply from: rootProject.file( "gradle/module.gradle" )
+apply from: rootProject.file( "gradle/checkstyle.gradle" )
+
 
 dependencies {
 	testImplementation testLibs.junit5Api
