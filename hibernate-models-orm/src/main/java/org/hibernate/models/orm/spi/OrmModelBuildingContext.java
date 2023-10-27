@@ -26,10 +26,6 @@ public interface OrmModelBuildingContext {
 
 	AnnotationDescriptorRegistry getAnnotationDescriptorRegistry();
 
-	ClassLoading getClassLoading();
-
-	IndexView getJandexIndex();
-
 	ClassmateContext getClassmateContext();
 
 	default PersistentAttributeMemberResolver getPersistentAttributeMemberResolver() {

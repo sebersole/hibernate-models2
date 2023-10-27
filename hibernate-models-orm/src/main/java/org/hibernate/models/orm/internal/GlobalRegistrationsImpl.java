@@ -54,7 +54,7 @@ import org.hibernate.models.source.spi.AnnotationTarget;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.ClassDetailsRegistry;
-import org.hibernate.models.source.spi.SourceModelBuildingContext;
+import org.hibernate.models.source.spi.SourceModelContext;
 
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.TableGenerator;
@@ -91,8 +91,8 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	private Map<String,TableGeneratorRegistration> tableGeneratorRegistrations;
 	private Map<String,GenericGeneratorRegistration> genericGeneratorRegistrations;
 
-	public GlobalRegistrationsImpl(SourceModelBuildingContext sourceModelBuildingContext) {
-		this( sourceModelBuildingContext.getClassDetailsRegistry() );
+	public GlobalRegistrationsImpl(SourceModelContext sourceModelContext) {
+		this( sourceModelContext.getClassDetailsRegistry() );
 	}
 
 	public GlobalRegistrationsImpl(ClassDetailsRegistry classDetailsRegistry) {

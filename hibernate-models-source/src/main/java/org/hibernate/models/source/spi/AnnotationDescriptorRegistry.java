@@ -34,6 +34,8 @@ public interface AnnotationDescriptorRegistry {
 	 */
 	<A extends Annotation> AnnotationDescriptor<A> getContainedRepeatableDescriptor(Class<A> javaType);
 
+	AnnotationDescriptorRegistry makeImmutableCopy();
+
 	@FunctionalInterface
 	interface DescriptorCreator<A extends Annotation> {
 		AnnotationDescriptor<A> createDescriptor(Class<A> annotationType);

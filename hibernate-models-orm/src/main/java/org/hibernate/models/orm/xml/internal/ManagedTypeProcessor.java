@@ -32,8 +32,8 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAttribute;
 import org.hibernate.models.ModelsException;
 import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.StringHelper;
-import org.hibernate.models.orm.spi.Processor;
 import org.hibernate.models.orm.xml.spi.PersistenceUnitMetadata;
+import org.hibernate.models.orm.xml.spi.XmlProcessingResult;
 import org.hibernate.models.source.internal.MutableClassDetails;
 import org.hibernate.models.source.internal.MutableMemberDetails;
 import org.hibernate.models.source.internal.SourceModelLogging;
@@ -473,7 +473,7 @@ public class ManagedTypeProcessor {
 	}
 
 	public static void processOverrideEntity(
-			List<Processor.OverrideTuple<JaxbEntityImpl>> entityOverrides,
+			List<XmlProcessingResult.OverrideTuple<JaxbEntityImpl>> entityOverrides,
 			PersistenceUnitMetadata persistenceUnitMetadata,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		entityOverrides.forEach( (overrideTuple) -> {
@@ -585,7 +585,7 @@ public class ManagedTypeProcessor {
 	}
 
 	public static void processOverrideMappedSuperclass(
-			List<Processor.OverrideTuple<JaxbMappedSuperclassImpl>> mappedSuperclassesOverrides,
+			List<XmlProcessingResult.OverrideTuple<JaxbMappedSuperclassImpl>> mappedSuperclassesOverrides,
 			PersistenceUnitMetadata persistenceUnitMetadata,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		mappedSuperclassesOverrides.forEach( (overrideTuple) -> {
@@ -667,7 +667,7 @@ public class ManagedTypeProcessor {
 	}
 
 	public static void processOverrideEmbeddable(
-			List<Processor.OverrideTuple<JaxbEmbeddableImpl>> embeddableOverrides,
+			List<XmlProcessingResult.OverrideTuple<JaxbEmbeddableImpl>> embeddableOverrides,
 			PersistenceUnitMetadata persistenceUnitMetadata,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		embeddableOverrides.forEach( (overrideTuple) -> {

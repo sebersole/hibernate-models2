@@ -11,9 +11,6 @@ import org.hibernate.models.orm.spi.OrmModelBuildingContext;
 import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
 import org.hibernate.models.source.spi.ClassDetailsRegistry;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
-import org.hibernate.models.spi.ClassLoading;
-
-import org.jboss.jandex.IndexView;
 
 import jakarta.persistence.SharedCacheMode;
 
@@ -23,8 +20,6 @@ import jakarta.persistence.SharedCacheMode;
 public class OrmModelBuildingContextTesting implements OrmModelBuildingContext {
 	private final ClassDetailsRegistry classDetailsRegistry;
 	private final AnnotationDescriptorRegistry annotationDescriptorRegistry;
-	private final ClassLoading classLoading;
-	private final IndexView jandexIndex;
 	private final ClassmateContext classmateContext;
 	private final SharedCacheMode sharedCacheMode;
 
@@ -38,8 +33,6 @@ public class OrmModelBuildingContextTesting implements OrmModelBuildingContext {
 			SharedCacheMode sharedCacheMode) {
 		classDetailsRegistry = sourceModelBuildingContext.getClassDetailsRegistry();
 		annotationDescriptorRegistry = sourceModelBuildingContext.getAnnotationDescriptorRegistry();
-		classLoading = sourceModelBuildingContext.getClassLoading();
-		jandexIndex = sourceModelBuildingContext.getJandexIndex();
 		this.classmateContext = classmateContext;
 		this.sharedCacheMode = sharedCacheMode;
 	}
@@ -52,16 +45,6 @@ public class OrmModelBuildingContextTesting implements OrmModelBuildingContext {
 	@Override
 	public AnnotationDescriptorRegistry getAnnotationDescriptorRegistry() {
 		return annotationDescriptorRegistry;
-	}
-
-	@Override
-	public ClassLoading getClassLoading() {
-		return classLoading;
-	}
-
-	@Override
-	public IndexView getJandexIndex() {
-		return jandexIndex;
 	}
 
 	@Override

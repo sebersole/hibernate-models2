@@ -17,7 +17,7 @@ import org.hibernate.models.orm.spi.AttributeMetadata;
 import org.hibernate.models.orm.spi.EntityHierarchy;
 import org.hibernate.models.orm.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.spi.OrmModelBuildingContext;
-import org.hibernate.models.orm.spi.ProcessResult;
+import org.hibernate.models.orm.spi.CategorizedDomainModel;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.MemberDetails;
 
@@ -32,9 +32,9 @@ import jakarta.persistence.Version;
  */
 public class HierarchyAttributeProcessor {
 	public static List<HierarchyAttributeDescriptor> preBindHierarchyAttributes(
-			ProcessResult processResult,
+			CategorizedDomainModel categorizedDomainModel,
 			OrmModelBuildingContext modelBuildingContext) {
-		final Set<EntityHierarchy> entityHierarchies = processResult.getEntityHierarchies();
+		final Set<EntityHierarchy> entityHierarchies = categorizedDomainModel.getEntityHierarchies();
 		final List<HierarchyAttributeDescriptor> hierarchyIdMembers = CollectionHelper.arrayList( entityHierarchies.size() );
 
 		for ( EntityHierarchy hierarchy : entityHierarchies ) {
@@ -75,6 +75,9 @@ public class HierarchyAttributeProcessor {
 		private Object collectedIdAttributes;
 		private AttributeMetadata versionAttribute;
 		private AttributeMetadata tenantIdAttribute;
+
+		// todo : row-id?
+		// todo : others?
 
 		public HierarchyAttributeDescriptor(EntityHierarchy entityHierarchy) {
 			this.entityHierarchy = entityHierarchy;

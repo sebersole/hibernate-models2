@@ -8,24 +8,18 @@ package org.hibernate.models.source.internal;
 
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Repeatable;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.hibernate.models.source.internal.jdk.AnnotationDescriptorImpl;
 import org.hibernate.models.source.spi.AnnotationDescriptor;
 import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
-import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
 /**
  * Access to AnnotationDescriptor instances based on a number of look-ups
  *
  * @author Steve Ebersole
  */
-public class AnnotationDescriptorRegistryImpl implements AnnotationDescriptorRegistry {
-	private final Map<Class<? extends Annotation>, AnnotationDescriptor<?>> descriptorMap = new ConcurrentHashMap<>();
-	private final Map<AnnotationDescriptor<?>, AnnotationDescriptor<?>> repeatableByContainerMap = new ConcurrentHashMap<>();
-
-	public AnnotationDescriptorRegistryImpl() {
+public class AnnotationDescriptorRegistryStandard extends AbstractAnnotationDescriptorRegistry {
+	public AnnotationDescriptorRegistryStandard() {
 	}
 
 	public void register(AnnotationDescriptor<?> descriptor) {
@@ -72,25 +66,8 @@ public class AnnotationDescriptorRegistryImpl implements AnnotationDescriptorReg
 		return descriptor;
 	}
 
-	/**
-	 * Returns the descriptor of the {@linkplain Repeatable repeatable} annotation
-	 * {@linkplain AnnotationDescriptor#getRepeatableContainer contained} by the given
-	 * {@code containerDescriptor}. For example, calling this method with JPA's
-	 * {@code NamedQueries} would return the descriptor for {@code NamedQuery}.
-	 * <p/>
-	 * It is the logical inverse of {@link AnnotationDescriptor#getRepeatableContainer}.
-	 */
 	@Override
-	public <A extends Annotation> AnnotationDescriptor<A> getContainedRepeatableDescriptor(AnnotationDescriptor<A> containerDescriptor) {
-		//noinspection unchecked
-		return (AnnotationDescriptor<A>) repeatableByContainerMap.get( containerDescriptor );
-	}
-
-	/**
-	 * @see #getContainedRepeatableDescriptor
-	 */
-	@Override
-	public <A extends Annotation> AnnotationDescriptor<A> getContainedRepeatableDescriptor(Class<A> containerJavaType) {
-		return getContainedRepeatableDescriptor( getDescriptor( containerJavaType ) );
+	public AnnotationDescriptorRegistry makeImmutableCopy() {
+		return new AnnotationDescriptorRegistryImmutable( descriptorMap, repeatableByContainerMap );
 	}
 }

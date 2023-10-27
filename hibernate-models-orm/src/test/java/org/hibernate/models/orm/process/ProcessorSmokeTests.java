@@ -6,8 +6,7 @@
  */
 package org.hibernate.models.orm.process;
 
-import org.hibernate.models.orm.internal.ManagedResourcesImpl;
-import org.hibernate.models.orm.spi.ManagedResources;
+import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.models.source.SourceModelTestHelper;
 import org.hibernate.models.source.internal.SourceModelBuildingContextImpl;
 import org.hibernate.models.source.spi.ClassDetails;
@@ -35,6 +34,7 @@ public class ProcessorSmokeTests {
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// ManagedResources is built by scanning and from explicit resources
 		// during ORM bootstrap
+
 		final ManagedResourcesImpl.Builder managedResourcesBuilder = new ManagedResourcesImpl.Builder();
 		managedResourcesBuilder
 				.addLoadedClasses( Person.class, MyStringConverter.class )

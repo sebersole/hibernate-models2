@@ -13,6 +13,9 @@ import org.hibernate.models.source.spi.ClassDetails;
 /**
  * Global registration of a filter definition
  *
+ * @see org.hibernate.annotations.FilterDef
+ * @see org.hibernate.boot.jaxb.mapping.JaxbFilterDef
+ *
  * @author Marco Belladelli
  */
 public class FilterDefRegistration {

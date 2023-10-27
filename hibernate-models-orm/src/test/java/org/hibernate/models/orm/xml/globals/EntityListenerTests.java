@@ -8,22 +8,20 @@ package org.hibernate.models.orm.xml.globals;
 
 import java.util.List;
 
-import org.hibernate.models.orm.internal.ManagedResourcesImpl;
+import org.hibernate.boot.internal.BootstrapContextImpl;
+import org.hibernate.boot.internal.MetadataBuilderImpl;
+import org.hibernate.boot.model.process.spi.ManagedResources;
+import org.hibernate.boot.registry.StandardServiceRegistry;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.models.orm.process.ManagedResourcesImpl;
+import org.hibernate.models.orm.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.spi.EntityListenerRegistration;
-import org.hibernate.models.orm.spi.ManagedResources;
-import org.hibernate.models.orm.spi.ProcessResult;
-import org.hibernate.models.orm.spi.Processor;
-import org.hibernate.models.orm.xml.SimpleEntity;
-import org.hibernate.models.source.SourceModelTestHelper;
-import org.hibernate.models.source.internal.SourceModelBuildingContextImpl;
 import org.hibernate.models.source.spi.MethodDetails;
 
 import org.junit.jupiter.api.Test;
 
-import org.jboss.jandex.Index;
-
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.models.internal.SimpleClassLoading.SIMPLE_CLASS_LOADING;
+import static org.hibernate.models.orm.spi.ManagedResourcesProcessor.processManagedResources;
 
 /**
  * @author Steve Ebersole
@@ -35,41 +33,25 @@ public class EntityListenerTests {
 				.addXmlMappings( "mappings/globals.xml" )
 				.build();
 
-		final Index jandexIndex = SourceModelTestHelper.buildJandexIndex(
-				SIMPLE_CLASS_LOADING,
-				SimpleEntity.class
-		);
-		final SourceModelBuildingContextImpl buildingContext = SourceModelTestHelper.createBuildingContext(
-				jandexIndex,
-				SIMPLE_CLASS_LOADING
-		);
-
-		final ProcessResult processResult = Processor.process(
-				managedResources,
-				null,
-				new Processor.Options() {
-					@Override
-					public boolean areGeneratorsGlobal() {
-						return false;
-					}
-
-					@Override
-					public boolean shouldIgnoreUnlistedClasses() {
-						return false;
-					}
-				},
-				buildingContext
-		);
-
-		final List<EntityListenerRegistration> registrations = processResult
-				.getGlobalRegistrations()
-				.getEntityListenerRegistrations();
-		assertThat( registrations ).hasSize( 1 );
-		final EntityListenerRegistration registration = registrations.get( 0 );
-		final MethodDetails postPersistMethod = registration.getPostPersistMethod();
-		assertThat( postPersistMethod ).isNotNull();
-		assertThat( postPersistMethod.getReturnType() ).isNull();
-		assertThat( postPersistMethod.getArgumentTypes() ).hasSize( 1 );
+		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
+			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl(
+					serviceRegistry,
+					new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry )
+			);
+			final CategorizedDomainModel categorizedDomainModel = processManagedResources(
+					managedResources,
+					bootstrapContext
+			);
+			final List<EntityListenerRegistration> registrations = categorizedDomainModel
+					.getGlobalRegistrations()
+					.getEntityListenerRegistrations();
+			assertThat( registrations ).hasSize( 1 );
+			final EntityListenerRegistration registration = registrations.get( 0 );
+			final MethodDetails postPersistMethod = registration.getPostPersistMethod();
+			assertThat( postPersistMethod ).isNotNull();
+			assertThat( postPersistMethod.getReturnType() ).isNull();
+			assertThat( postPersistMethod.getArgumentTypes() ).hasSize( 1 );
+		}
 	}
 
 }

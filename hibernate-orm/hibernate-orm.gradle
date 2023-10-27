@@ -8,9 +8,12 @@ dependencies {
     api platform( libs.hibernatePlatform )
     api libs.hibernateCore
 
+    implementation project( ":hibernate-models-source" )
+    implementation project( ":hibernate-models-common" )
     implementation jakartaLibs.jaxbApi
     implementation jakartaLibs.jaxb
     implementation jakartaLibs.inject
+    implementation libs.jandex
     implementation libs.logging
 
     xjc jakartaLibs.xjc

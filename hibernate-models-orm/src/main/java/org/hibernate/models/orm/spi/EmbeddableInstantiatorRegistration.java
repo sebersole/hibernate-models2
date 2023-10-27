@@ -9,7 +9,10 @@ package org.hibernate.models.orm.spi;
 import org.hibernate.models.source.spi.ClassDetails;
 
 /**
+ * Registered {@linkplain org.hibernate.metamodel.spi.EmbeddableInstantiator}
+ *
  * @see org.hibernate.annotations.EmbeddableInstantiatorRegistration
+ * @see org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddableInstantiatorRegistrationImpl
  *
  * @author Steve Ebersole
  */

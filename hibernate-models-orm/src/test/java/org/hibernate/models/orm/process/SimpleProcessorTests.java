@@ -9,15 +9,17 @@ package org.hibernate.models.orm.process;
 import java.util.Iterator;
 import java.util.Map;
 
-import org.hibernate.models.orm.spi.FilterDefRegistration;
-import org.hibernate.models.orm.internal.ManagedResourcesImpl;
+import org.hibernate.boot.internal.BootstrapContextImpl;
+import org.hibernate.boot.internal.MetadataBuilderImpl;
+import org.hibernate.boot.model.process.spi.ManagedResources;
+import org.hibernate.boot.registry.StandardServiceRegistry;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.models.orm.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.spi.EntityHierarchy;
 import org.hibernate.models.orm.spi.EntityTypeMetadata;
-import org.hibernate.models.orm.spi.ManagedResources;
-import org.hibernate.models.orm.spi.ProcessResult;
-import org.hibernate.models.orm.spi.Processor;
+import org.hibernate.models.orm.spi.FilterDefRegistration;
+import org.hibernate.models.orm.spi.ManagedResourcesProcessor;
 import org.hibernate.models.source.SourceModelTestHelper;
-import org.hibernate.models.source.internal.SourceModelBuildingContextImpl;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.type.CharBooleanConverter;
 import org.hibernate.type.YesNoConverter;
@@ -75,46 +77,30 @@ public class SimpleProcessorTests {
 		// Below here is work done by hibernate-models.
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-		final SourceModelBuildingContextImpl buildingContext = SourceModelTestHelper.createBuildingContext(
-				jandexIndex,
-				SIMPLE_CLASS_LOADING
-		);
+		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
+			final MetadataBuilderImpl.MetadataBuildingOptionsImpl metadataBuildingOptions = new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry );
+			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl( serviceRegistry, metadataBuildingOptions );
+			final CategorizedDomainModel categorizedDomainModel = ManagedResourcesProcessor.processManagedResources( managedResources, bootstrapContext );
 
-		final ProcessResult processResult = Processor.process(
-				managedResources,
-				null,
-				new Processor.Options() {
-					@Override
-					public boolean areGeneratorsGlobal() {
-						return false;
-					}
+			assertThat( categorizedDomainModel.getEntityHierarchies() ).hasSize( 2 );
+			final Iterator<EntityHierarchy> hierarchies = categorizedDomainModel.getEntityHierarchies().iterator();
+			final EntityHierarchy one = hierarchies.next();
+			final EntityHierarchy two = hierarchies.next();
 
-					@Override
-					public boolean shouldIgnoreUnlistedClasses() {
-						return false;
-					}
-				},
-				buildingContext
-		);
+			assertThat( one.getRoot() ).isNotNull();
+			assertThat( one.getRoot().getClassDetails() ).isNotNull();
+			assertThat( one.getRoot().getClassDetails().getClassName() ).isNotNull();
+			if ( one.getRoot().getClassDetails().getClassName().endsWith( "Person" ) ) {
+				validatePersonHierarchy( one );
+				validateJoinedHierarchy( two );
+			}
+			else {
+				validatePersonHierarchy( two );
+				validateJoinedHierarchy( one );
+			}
 
-		assertThat( processResult.getEntityHierarchies() ).hasSize( 2 );
-		final Iterator<EntityHierarchy> hierarchies = processResult.getEntityHierarchies().iterator();
-		final EntityHierarchy one = hierarchies.next();
-		final EntityHierarchy two = hierarchies.next();
-
-		assertThat( one.getRoot() ).isNotNull();
-		assertThat( one.getRoot().getClassDetails() ).isNotNull();
-		assertThat( one.getRoot().getClassDetails().getClassName() ).isNotNull();
-		if ( one.getRoot().getClassDetails().getClassName().endsWith( "Person" ) ) {
-			validatePersonHierarchy( one );
-			validateJoinedHierarchy( two );
+			validateFilterDefs( categorizedDomainModel.getGlobalRegistrations().getFilterDefRegistrations() );
 		}
-		else {
-			validatePersonHierarchy( two );
-			validateJoinedHierarchy( one );
-		}
-
-		validateFilterDefs( processResult.getGlobalRegistrations().getFilterDefRegistrations() );
 	}
 
 	private void validatePersonHierarchy(EntityHierarchy hierarchy) {

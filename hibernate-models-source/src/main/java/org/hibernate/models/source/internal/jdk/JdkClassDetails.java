@@ -137,7 +137,7 @@ public class JdkClassDetails extends AbstractAnnotationTarget implements ClassDe
 	@Override
 	public List<FieldDetails> getFields() {
 		if ( fields == null ) {
-			final Field[] reflectionFields = managedClass.getFields();
+			final Field[] reflectionFields = managedClass.getDeclaredFields();
 			this.fields = CollectionHelper.arrayList( reflectionFields.length );
 			for ( int i = 0; i < reflectionFields.length; i++ ) {
 				final Field reflectionField = reflectionFields[i];
@@ -155,7 +155,7 @@ public class JdkClassDetails extends AbstractAnnotationTarget implements ClassDe
 	@Override
 	public List<MethodDetails> getMethods() {
 		if ( methods == null ) {
-			final Method[] reflectionMethods = managedClass.getMethods();
+			final Method[] reflectionMethods = managedClass.getDeclaredMethods();
 			this.methods = CollectionHelper.arrayList( reflectionMethods.length );
 			for ( int i = 0; i < reflectionMethods.length; i++ ) {
 				this.methods.add( buildMethodDetails( reflectionMethods[i], getBuildingContext() ) );

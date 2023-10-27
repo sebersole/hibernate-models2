@@ -12,6 +12,11 @@ import org.hibernate.metamodel.CollectionClassification;
 import org.hibernate.models.source.spi.ClassDetails;
 
 /**
+ * Registration for a {@linkplain org.hibernate.usertype.UserCollectionType}
+ *
+ * @see org.hibernate.annotations.CollectionTypeRegistration
+ * @see org.hibernate.boot.jaxb.mapping.spi.JaxbCollectionUserTypeImpl
+ *
  * @author Steve Ebersole
  */
 public class CollectionTypeRegistration {

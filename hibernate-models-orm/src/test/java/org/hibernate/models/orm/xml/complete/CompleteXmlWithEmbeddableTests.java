@@ -6,20 +6,18 @@
  */
 package org.hibernate.models.orm.xml.complete;
 
-import org.hibernate.models.orm.internal.ManagedResourcesImpl;
+import org.hibernate.boot.internal.BootstrapContextImpl;
+import org.hibernate.boot.internal.MetadataBuilderImpl;
+import org.hibernate.boot.model.process.spi.ManagedResources;
+import org.hibernate.boot.registry.StandardServiceRegistry;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.models.orm.process.ManagedResourcesImpl;
 import org.hibernate.models.orm.spi.AttributeMetadata;
+import org.hibernate.models.orm.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.spi.EntityHierarchy;
 import org.hibernate.models.orm.spi.EntityTypeMetadata;
-import org.hibernate.models.orm.spi.ManagedResources;
-import org.hibernate.models.orm.spi.ProcessResult;
-import org.hibernate.models.orm.spi.Processor;
-import org.hibernate.models.orm.xml.SimpleEntity;
-import org.hibernate.models.source.SourceModelTestHelper;
-import org.hibernate.models.source.internal.SourceModelBuildingContextImpl;
 
 import org.junit.jupiter.api.Test;
-
-import org.jboss.jandex.Index;
 
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Basic;
@@ -27,9 +25,9 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.Id;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.models.internal.SimpleClassLoading.SIMPLE_CLASS_LOADING;
 import static org.hibernate.models.orm.spi.AttributeMetadata.AttributeNature.BASIC;
 import static org.hibernate.models.orm.spi.AttributeMetadata.AttributeNature.EMBEDDED;
+import static org.hibernate.models.orm.spi.ManagedResourcesProcessor.processManagedResources;
 
 /**
  * @author Steve Ebersole
@@ -41,48 +39,32 @@ public class CompleteXmlWithEmbeddableTests {
 		managedResourcesBuilder.addXmlMappings( "mappings/complete/simple-person.xml" );
 		final ManagedResources managedResources = managedResourcesBuilder.build();
 
-		final Index jandexIndex = SourceModelTestHelper.buildJandexIndex(
-				SIMPLE_CLASS_LOADING,
-				SimplePerson.class,
-				Name.class
-		);
-		final SourceModelBuildingContextImpl buildingContext = SourceModelTestHelper.createBuildingContext(
-				jandexIndex,
-				SIMPLE_CLASS_LOADING
-		);
+		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
+			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl(
+					serviceRegistry,
+					new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry )
+			);
+			final CategorizedDomainModel categorizedDomainModel = processManagedResources(
+					managedResources,
+					bootstrapContext
+			);
 
-		final ProcessResult processResult = Processor.process(
-				managedResources,
-				null,
-				new Processor.Options() {
-					@Override
-					public boolean areGeneratorsGlobal() {
-						return false;
-					}
+			assertThat( categorizedDomainModel.getEntityHierarchies() ).hasSize( 1 );
 
-					@Override
-					public boolean shouldIgnoreUnlistedClasses() {
-						return false;
-					}
-				},
-				buildingContext
-		);
+			final EntityHierarchy hierarchy = categorizedDomainModel.getEntityHierarchies().iterator().next();
+			final EntityTypeMetadata personMetadata = hierarchy.getRoot();
+			assertThat( personMetadata.getAccessType() ).isEqualTo( AccessType.FIELD );
 
-		assertThat( processResult.getEntityHierarchies() ).hasSize( 1 );
+			assertThat( personMetadata.getAttributes() ).hasSize( 2 );
 
-		final EntityHierarchy hierarchy = processResult.getEntityHierarchies().iterator().next();
-		final EntityTypeMetadata personMetadata = hierarchy.getRoot();
-		assertThat( personMetadata.getAccessType() ).isEqualTo( AccessType.FIELD );
+			final AttributeMetadata idAttribute = personMetadata.findAttribute( "id" );
+			assertThat( idAttribute.getNature() ).isEqualTo( BASIC );
+			assertThat( idAttribute.getMember().getAnnotationUsage( Basic.class ) ).isNotNull();
+			assertThat( idAttribute.getMember().getAnnotationUsage( Id.class ) ).isNotNull();
 
-		assertThat( personMetadata.getAttributes() ).hasSize( 2 );
-
-		final AttributeMetadata idAttribute = personMetadata.findAttribute( "id" );
-		assertThat( idAttribute.getNature() ).isEqualTo( BASIC );
-		assertThat( idAttribute.getMember().getAnnotationUsage( Basic.class ) ).isNotNull();
-		assertThat( idAttribute.getMember().getAnnotationUsage( Id.class ) ).isNotNull();
-
-		final AttributeMetadata nameAttribute = personMetadata.findAttribute( "name" );
-		assertThat( nameAttribute.getNature() ).isEqualTo( EMBEDDED );
-		assertThat( nameAttribute.getMember().getAnnotationUsage( Embedded.class ) ).isNotNull();
+			final AttributeMetadata nameAttribute = personMetadata.findAttribute( "name" );
+			assertThat( nameAttribute.getNature() ).isEqualTo( EMBEDDED );
+			assertThat( nameAttribute.getMember().getAnnotationUsage( Embedded.class ) ).isNotNull();
+		}
 	}
 }

@@ -9,6 +9,10 @@ package org.hibernate.models.orm.spi;
 import org.hibernate.models.source.spi.ClassDetails;
 
 /**
+ * Registration for a {@linkplain org.hibernate.usertype.UserType}
+ *
+ * @see org.hibernate.annotations.TypeRegistration
+ *
  * @author Steve Ebersole
  */
 public class UserTypeRegistration {

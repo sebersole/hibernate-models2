@@ -10,24 +10,25 @@ import java.util.List;
 import java.util.Set;
 
 import org.hibernate.annotations.TenantId;
+import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.internal.BootstrapContextImpl;
+import org.hibernate.boot.internal.MetadataBuilderImpl;
+import org.hibernate.boot.model.process.spi.ManagedResources;
+import org.hibernate.boot.model.process.spi.MetadataBuildingProcess;
+import org.hibernate.boot.registry.StandardServiceRegistry;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.boot.spi.BootstrapContext;
 import org.hibernate.models.orm.bind.internal.HierarchyAttributeProcessor;
 import org.hibernate.models.orm.bind.internal.HierarchyAttributeProcessor.HierarchyAttributeDescriptor;
-import org.hibernate.models.orm.internal.ManagedResourcesImpl;
-import org.hibernate.models.orm.process.MyStringConverter;
-import org.hibernate.models.orm.process.MyUuidConverter;
-import org.hibernate.models.orm.process.Person;
-import org.hibernate.models.orm.process.Root;
-import org.hibernate.models.orm.process.Sub;
+import org.hibernate.models.orm.process.ManagedResourcesImpl;
+import org.hibernate.models.orm.resources.ManagedResourcesSmokeTests;
 import org.hibernate.models.orm.spi.AttributeMetadata;
+import org.hibernate.models.orm.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.spi.EntityHierarchy;
-import org.hibernate.models.orm.spi.ManagedResources;
-import org.hibernate.models.orm.spi.ProcessResult;
-import org.hibernate.models.orm.spi.Processor;
+import org.hibernate.models.orm.spi.ManagedResourcesProcessor;
 import org.hibernate.models.orm.util.OrmModelBuildingContextTesting;
 import org.hibernate.models.source.SourceModelTestHelper;
 import org.hibernate.models.source.internal.SourceModelBuildingContextImpl;
-import org.hibernate.models.source.spi.AnnotationUsage;
-import org.hibernate.models.source.spi.MemberDetails;
 
 import org.junit.jupiter.api.Test;
 
@@ -115,23 +116,27 @@ public class HierarchyAttributeProcessorSmokeTests {
 				SIMPLE_CLASS_LOADING
 		);
 
-		final ProcessResult processResult = Processor.process(
-				managedResources,
-				null,
-				new Processor.Options() { },
-				buildingContext
-		);
+		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
+			final MetadataSources metadataSources = new MetadataSources( serviceRegistry ).addAnnotatedClass( ManagedResourcesSmokeTests.Person.class );
+			final MetadataBuilderImpl.MetadataBuildingOptionsImpl metadataBuildingOptions = new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry );
+			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl( serviceRegistry, metadataBuildingOptions );
 
-		final OrmModelBuildingContextTesting ormModelBuildingContext = new OrmModelBuildingContextTesting( buildingContext );
-		final List<HierarchyAttributeDescriptor> hierarchyAttributeDescriptors = HierarchyAttributeProcessor.preBindHierarchyAttributes(
-				processResult,
-				ormModelBuildingContext
-		);
+			final CategorizedDomainModel categorizedDomainModel = ManagedResourcesProcessor.processManagedResources(
+					managedResources,
+					bootstrapContext
+			);
 
-		// at this point, `hierarchyAttributeDescriptors` contains one entry per hierarchy in the same iteration order
-		final Set<EntityHierarchy> entityHierarchies = processResult.getEntityHierarchies();
-		assertThat( hierarchyAttributeDescriptors.size() ).isEqualTo( entityHierarchies.size() );
-		return hierarchyAttributeDescriptors;
+			final OrmModelBuildingContextTesting ormModelBuildingContext = new OrmModelBuildingContextTesting( buildingContext );
+			final List<HierarchyAttributeDescriptor> hierarchyAttributeDescriptors = HierarchyAttributeProcessor.preBindHierarchyAttributes(
+					categorizedDomainModel,
+					ormModelBuildingContext
+			);
+
+			// at this point, `hierarchyAttributeDescriptors` contains one entry per hierarchy in the same iteration order
+			final Set<EntityHierarchy> entityHierarchies = categorizedDomainModel.getEntityHierarchies();
+			assertThat( hierarchyAttributeDescriptors.size() ).isEqualTo( entityHierarchies.size() );
+			return hierarchyAttributeDescriptors;
+		}
 	}
 
 }

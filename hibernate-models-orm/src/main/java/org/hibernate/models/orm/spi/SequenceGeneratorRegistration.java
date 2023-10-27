@@ -13,8 +13,6 @@ import jakarta.persistence.SequenceGenerator;
 /**
  * Global registration of a sequence generator
  *
- * @see org.hibernate.models.orm.spi.Processor.Options#areGeneratorsGlobal()
- *
  * @author Steve Ebersole
  */
 public class SequenceGeneratorRegistration {
