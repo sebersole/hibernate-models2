@@ -19,9 +19,13 @@ import org.hibernate.models.orm.process.ManagedResourcesImpl;
 import org.hibernate.models.orm.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.spi.EntityHierarchy;
 import org.hibernate.models.orm.spi.EntityTypeMetadata;
+import org.hibernate.models.source.spi.AnnotationUsage;
+import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.FieldDetails;
 
 import org.junit.jupiter.api.Test;
+
+import jakarta.persistence.IdClass;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.models.orm.spi.ManagedResourcesProcessor.processManagedResources;
@@ -100,4 +104,30 @@ public class DynamicModelTests {
 		}
 	}
 
+	@Test
+	void testIdClass() {
+		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
+				.addXmlMappings( "mappings/dynamic/dynamic-id-class.xml" )
+				.build();
+		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
+			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl(
+					serviceRegistry,
+					new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry )
+			);
+			final CategorizedDomainModel categorizedDomainModel = processManagedResources(
+					managedResources,
+					bootstrapContext
+			);
+
+			assertThat( categorizedDomainModel.getEntityHierarchies() ).hasSize( 1 );
+			final EntityHierarchy hierarchy = categorizedDomainModel.getEntityHierarchies().iterator().next();
+			final EntityTypeMetadata rootEntity = hierarchy.getRoot();
+			assertThat( rootEntity.getClassDetails().getName() ).isEqualTo( Employee.class.getName() );
+
+			final AnnotationUsage<IdClass> idClass = rootEntity.getClassDetails().getAnnotationUsage( IdClass.class );
+			assertThat( idClass ).isNotNull();
+			assertThat( idClass.<ClassDetails>getAttributeValue( "value" )
+								.getName() ).isEqualTo( EmployeePK.class.getName() );
+		}
+	}
 }
