@@ -22,6 +22,7 @@ import org.hibernate.models.orm.spi.EntityHierarchy;
 import org.hibernate.models.orm.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.xml.SimpleEntity;
 import org.hibernate.models.source.spi.AnnotationUsage;
+import org.hibernate.models.source.spi.ClassDetails;
 
 import org.junit.jupiter.api.Test;
 
@@ -87,5 +88,8 @@ public class SimpleCompleteXmlTests {
 		assertThat( aliases ).hasSize( 1 );
 		assertThat( aliases.get( 0 ).<String>getAttributeValue( "alias" ) ).isEqualTo( "t" );
 		assertThat( aliases.get( 0 ).<String>getAttributeValue( "table" ) ).isEqualTo( "SimpleEntity" );
+		assertThat( aliases.get( 0 )
+							.<ClassDetails>getAttributeValue( "entity" )
+							.getName() ).isEqualTo( SimpleEntity.class.getName() );
 	}
 }

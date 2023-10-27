@@ -23,6 +23,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityOrMappedSuperclass;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbManagedType;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbMappedSuperclassImpl;
@@ -454,7 +455,8 @@ public class ManagedTypeProcessor {
 				sourceModelBuildingContext
 		) );
 
-		// todo : id-class
+		processCommonEntityOrMappedSuperclass( jaxbEntity, classDetails, sourceModelBuildingContext );
+
 		// todo : callbacks
 		// todo : entity-listeners
 		// todo : secondary-tables
@@ -579,7 +581,8 @@ public class ManagedTypeProcessor {
 		final JaxbAttributesContainer attributes = jaxbMappedSuperclass.getAttributes();
 		processAttributes( attributes, classDetails, classAccessType, sourceModelBuildingContext );
 
-		// todo : id-class
+		processCommonEntityOrMappedSuperclass( jaxbMappedSuperclass, classDetails, sourceModelBuildingContext );
+
 		// todo : entity-listeners
 		// todo : callbacks
 	}
@@ -598,6 +601,17 @@ public class ManagedTypeProcessor {
 
 			processMappedSuperclassMetadata( jaxbMappedSuperclass, classDetails, persistenceUnitMetadata, sourceModelBuildingContext );
 		} );
+	}
+
+	private static void processCommonEntityOrMappedSuperclass(
+			JaxbEntityOrMappedSuperclass jaxbEntity,
+			MutableClassDetails classDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		XmlAnnotationHelper.applyIdClass( jaxbEntity.getIdClass(), classDetails, sourceModelBuildingContext );
+
+		// todo : entity-listeners
+		// todo : exclude default listeners (?)
+		// todo : exclude superclass listeners (?)
 	}
 
 	public static void processCompleteEmbeddable(

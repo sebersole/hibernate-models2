@@ -15,9 +15,9 @@ import java.util.List;
 import java.util.UUID;
 
 import org.hibernate.annotations.AttributeAccessor;
+import org.hibernate.annotations.CollectionType;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterJoinTable;
-import org.hibernate.annotations.CollectionType;
 import org.hibernate.annotations.Formula;
 import org.hibernate.annotations.JavaType;
 import org.hibernate.annotations.JdbcType;
@@ -44,6 +44,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntity;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbGeneratedValueImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbHbmFilterImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbIdClassImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbLobImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbNationalizedImpl;
@@ -82,6 +83,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.IdClass;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.Lob;
 import jakarta.persistence.SequenceGenerator;
@@ -800,7 +802,7 @@ public class XmlAnnotationHelper {
 		applyFilter( jaxbFilter, target, Filter.class, sourceModelBuildingContext );
 	}
 
-	static void applyJoinTableFilters(
+	static void applyJoinTableFilter(
 			JaxbHbmFilterImpl jaxbFilter,
 			MutableAnnotationTarget target,
 			SourceModelBuildingContext sourceModelBuildingContext) {
@@ -811,7 +813,7 @@ public class XmlAnnotationHelper {
 			JaxbHbmFilterImpl jaxbFilter,
 			MutableAnnotationTarget target,
 			Class<F> filterAnnotationClass,
-			SourceModelBuildingContext sourceModelBuildingContext) {
+			SourceModelBuildingContext buildingContext) {
 		// Since @Filter and @FilterJoinTable have exactly the same attributes,
 		// we can use the same method with parametrized annotation class
 		final MutableAnnotationUsage<F> filterAnn = getOrMakeNamedAnnotation(
@@ -825,15 +827,38 @@ public class XmlAnnotationHelper {
 
 		final List<JaxbHbmFilterImpl.JaxbAliasesImpl> aliases = jaxbFilter.getAliases();
 		if ( !CollectionHelper.isEmpty( aliases ) ) {
-			final List<MutableAnnotationUsage<SqlFragmentAlias>> sqlFragmentAliases = new ArrayList<>( aliases.size() );
-			for ( JaxbHbmFilterImpl.JaxbAliasesImpl alias : aliases ) {
-				final MutableAnnotationUsage<SqlFragmentAlias> aliasAnn = new DynamicAnnotationUsage<>( SqlFragmentAlias.class );
-				aliasAnn.setAttributeValue( "alias", alias.getAlias() );
-				aliasAnn.setAttributeValue( "table", alias.getTable() );
-				aliasAnn.setAttributeValue( "entity", alias.getEntity() );
-				sqlFragmentAliases.add( aliasAnn );
+			filterAnn.setAttributeValue( "aliases", getSqlFragmentAliases( aliases, buildingContext ) );
+		}
+	}
+
+	private static List<AnnotationUsage<SqlFragmentAlias>> getSqlFragmentAliases(
+			List<JaxbHbmFilterImpl.JaxbAliasesImpl> aliases,
+			SourceModelBuildingContext buildingContext) {
+		final List<AnnotationUsage<SqlFragmentAlias>> sqlFragmentAliases = new ArrayList<>( aliases.size() );
+		for ( JaxbHbmFilterImpl.JaxbAliasesImpl alias : aliases ) {
+			final MutableAnnotationUsage<SqlFragmentAlias> aliasAnn = new DynamicAnnotationUsage<>( SqlFragmentAlias.class );
+			aliasAnn.setAttributeValue( "alias", alias.getAlias() );
+			applyAttributeIfSpecified( aliasAnn, "table", alias.getTable() );
+			if ( StringHelper.isNotEmpty( alias.getEntity() ) ) {
+				aliasAnn.setAttributeValue(
+						"entity",
+						buildingContext.getClassDetailsRegistry().resolveClassDetails( alias.getEntity() )
+				);
 			}
-			filterAnn.setAttributeValue( "aliases", sqlFragmentAliases );
+			sqlFragmentAliases.add( aliasAnn );
+		}
+		return sqlFragmentAliases;
+	}
+
+	static void applyIdClass(
+			JaxbIdClassImpl jaxbIdClass,
+			MutableClassDetails target,
+			SourceModelBuildingContext buildingContext) {
+		if ( jaxbIdClass != null ) {
+			XmlProcessingHelper.makeAnnotation( IdClass.class, target ).setAttributeValue(
+					"value",
+					buildingContext.getClassDetailsRegistry().resolveClassDetails( jaxbIdClass.getClazz() )
+			);
 		}
 	}
 }
