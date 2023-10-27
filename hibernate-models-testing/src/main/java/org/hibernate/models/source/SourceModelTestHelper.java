@@ -12,7 +12,7 @@ import java.lang.annotation.Annotation;
 import org.hibernate.models.orm.internal.OrmAnnotationHelper;
 import org.hibernate.models.orm.HibernateAnnotations;
 import org.hibernate.models.orm.JpaAnnotations;
-import org.hibernate.models.source.internal.AnnotationDescriptorRegistryImpl;
+import org.hibernate.models.source.internal.AnnotationDescriptorRegistryStandard;
 import org.hibernate.models.source.internal.BaseLineJavaTypes;
 import org.hibernate.models.source.internal.SourceModelBuildingContextImpl;
 import org.hibernate.models.source.internal.jandex.JandexBuilders;
@@ -58,7 +58,7 @@ public class SourceModelTestHelper {
 				}
 		);
 		final ClassDetailsRegistry classDetailsRegistry = buildingContext.getClassDetailsRegistry();
-		final AnnotationDescriptorRegistryImpl annotationDescriptorRegistry = (AnnotationDescriptorRegistryImpl) buildingContext.getAnnotationDescriptorRegistry();
+		final AnnotationDescriptorRegistryStandard annotationDescriptorRegistry = (AnnotationDescriptorRegistryStandard) buildingContext.getAnnotationDescriptorRegistry();
 
 		for ( ClassInfo knownClass : jandexIndex.getKnownClasses() ) {
 //			if ( knownClass.simpleName().endsWith( "package-info" ) ) {

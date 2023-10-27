@@ -120,4 +120,6 @@ public interface ClassDetailsRegistry {
 	interface PackageDetailsCreator {
 		PackageDetails createPackageDetails();
 	}
+
+	ClassDetailsRegistry makeImmutableCopy();
 }

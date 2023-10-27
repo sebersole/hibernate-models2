@@ -17,7 +17,7 @@ import org.hibernate.models.source.spi.MethodDetails;
  * Represents an entity listener defined in XML
  * ({@code entity-mappings/persistence-unit-metadata/persistence-unit-defaults/entity-listeners}).
  *
- * @see jakarta.persistence.EntityListeners
+ * @see JaxbEntityListenerImpl
 
  * @author Steve Ebersole
  */

@@ -12,7 +12,8 @@ import org.hibernate.models.source.spi.AnnotationUsage;
 /**
  * Global registration of a generic generator
  *
- * @see org.hibernate.models.orm.spi.Processor.Options#areGeneratorsGlobal()
+ * @see GenericGenerator
+ * @see org.hibernate.boot.jaxb.mapping.spi.JaxbGenericIdGeneratorImpl
  *
  * @author Steve Ebersole
  */

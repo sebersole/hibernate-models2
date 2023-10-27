@@ -13,8 +13,6 @@ import jakarta.persistence.TableGenerator;
 /**
  * Global registration of a table generator
  *
- * @see org.hibernate.models.orm.spi.Processor.Options#areGeneratorsGlobal()
- *
  * @author Steve Ebersole
  */
 public class TableGeneratorRegistration {

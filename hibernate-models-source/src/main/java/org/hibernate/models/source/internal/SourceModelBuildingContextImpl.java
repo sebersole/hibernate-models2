@@ -29,8 +29,8 @@ public class SourceModelBuildingContextImpl implements SourceModelBuildingContex
 	private final ClassLoading classLoadingAccess;
 	private final IndexView jandexIndex;
 
-	private final AnnotationDescriptorRegistryImpl descriptorRegistry;
-	private final ClassDetailsRegistryImpl classDetailsRegistry;
+	private final AnnotationDescriptorRegistryStandard descriptorRegistry;
+	private final ClassDetailsRegistryStandard classDetailsRegistry;
 
 	public SourceModelBuildingContextImpl(ClassLoading classLoadingAccess, IndexView jandexIndex) {
 		this( classLoadingAccess, jandexIndex, null );
@@ -43,8 +43,8 @@ public class SourceModelBuildingContextImpl implements SourceModelBuildingContex
 		this.classLoadingAccess = classLoadingAccess;
 		this.jandexIndex = jandexIndex;
 
-		this.descriptorRegistry = new AnnotationDescriptorRegistryImpl();
-		this.classDetailsRegistry = new ClassDetailsRegistryImpl( this );
+		this.descriptorRegistry = new AnnotationDescriptorRegistryStandard();
+		this.classDetailsRegistry = new ClassDetailsRegistryStandard( this );
 
 		primeRegistries( registryPrimer );
 	}

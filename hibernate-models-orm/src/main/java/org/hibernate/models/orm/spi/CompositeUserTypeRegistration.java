@@ -9,6 +9,11 @@ package org.hibernate.models.orm.spi;
 import org.hibernate.models.source.spi.ClassDetails;
 
 /**
+ * Registration for a {@linkplain org.hibernate.usertype.CompositeUserType}
+ *
+ * @see org.hibernate.annotations.CompositeTypeRegistration
+ * @see org.hibernate.boot.jaxb.mapping.spi.JaxbCompositeUserTypeRegistrationImpl
+ *
  * @author Steve Ebersole
  */
 public class CompositeUserTypeRegistration {

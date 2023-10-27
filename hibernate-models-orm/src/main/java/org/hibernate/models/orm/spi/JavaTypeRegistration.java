@@ -9,7 +9,10 @@ package org.hibernate.models.orm.spi;
 import org.hibernate.models.source.spi.ClassDetails;
 
 /**
+ * {@linkplain org.hibernate.type.descriptor.java.JavaType} registration
+ *
  * @see org.hibernate.annotations.JavaTypeRegistration
+ * @see org.hibernate.boot.jaxb.mapping.spi.JaxbJavaTypeRegistrationImpl
  *
  * @author Steve Ebersole
  */

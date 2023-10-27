@@ -12,7 +12,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.hibernate.models.source.internal.AnnotationDescriptorRegistryImpl;
+import org.hibernate.models.source.internal.AnnotationDescriptorRegistryStandard;
 import org.hibernate.models.source.internal.TypeDescriptors;
 import org.hibernate.models.source.spi.AnnotationDescriptor;
 import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
@@ -39,6 +39,27 @@ public class JdkBuilders implements ClassDetailsBuilder {
 	}
 
 	public static JdkClassDetails buildClassDetailsStatic(String name, SourceModelBuildingContext buildingContext) {
+		if ( byte.class.getName().equals( name ) ) {
+			return buildClassDetailsStatic( byte.class, buildingContext );
+		}
+		if ( boolean.class.getName().equals( name ) ) {
+			return buildClassDetailsStatic( boolean.class, buildingContext );
+		}
+		if ( short.class.getName().equals( name ) ) {
+			return buildClassDetailsStatic( short.class, buildingContext );
+		}
+		if ( int.class.getName().equals( name ) ) {
+			return buildClassDetailsStatic( int.class, buildingContext );
+		}
+		if ( long.class.getName().equals( name ) ) {
+			return buildClassDetailsStatic( long.class, buildingContext );
+		}
+		if ( float.class.getName().equals( name ) ) {
+			return buildClassDetailsStatic( float.class, buildingContext );
+		}
+		if ( double.class.getName().equals( name ) ) {
+			return buildClassDetailsStatic( double.class, buildingContext );
+		}
 		return buildClassDetailsStatic(
 				buildingContext.getClassLoading().classForName( name ),
 				buildingContext
@@ -127,7 +148,7 @@ public class JdkBuilders implements ClassDetailsBuilder {
 		}
 		//noinspection unchecked
 		final AnnotationDescriptor<C> containerDescriptor = (AnnotationDescriptor<C>) descriptorRegistry.getDescriptor( repeatableAnnotation.value() );
-		( (AnnotationDescriptorRegistryImpl) descriptorRegistry ).register( containerDescriptor );
+		( (AnnotationDescriptorRegistryStandard) descriptorRegistry ).register( containerDescriptor );
 		return containerDescriptor;
 	}
 

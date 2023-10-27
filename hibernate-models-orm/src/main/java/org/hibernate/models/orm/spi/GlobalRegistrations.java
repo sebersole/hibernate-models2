@@ -11,6 +11,9 @@ import java.util.Map;
 
 
 /**
+ * Registrations which are considered global, collected across annotations
+ * and XML mappings.
+ *
  * @author Steve Ebersole
  */
 public interface GlobalRegistrations {

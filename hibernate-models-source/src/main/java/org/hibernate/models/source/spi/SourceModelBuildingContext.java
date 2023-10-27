@@ -18,17 +18,7 @@ import org.jboss.jandex.IndexView;
  *
  * @author Steve Ebersole
  */
-public interface SourceModelBuildingContext extends SharedNamedAnnotationScope {
-	/**
-	 * The registry of annotation descriptors
-	 */
-	AnnotationDescriptorRegistry getAnnotationDescriptorRegistry();
-
-	/**
-	 * Registry of managed-classes
-	 */
-	ClassDetailsRegistry getClassDetailsRegistry();
-
+public interface SourceModelBuildingContext extends SourceModelContext, SharedNamedAnnotationScope {
 	/**
 	 * If model processing code needs to load things from the class-loader, they should
 	 * really use this access.  At this level, accessing the class-loader at all
