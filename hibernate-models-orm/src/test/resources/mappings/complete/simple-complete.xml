@@ -10,7 +10,7 @@
                  version="3.1">
     <entity class="org.hibernate.models.orm.xml.SimpleEntity" metadata-complete="true" access="FIELD">
         <filter name="name_filter" condition="{t}.name = :name">
-            <aliases alias="t" table="SimpleEntity" />
+            <aliases alias="t" table="SimpleEntity" entity="org.hibernate.models.orm.xml.SimpleEntity"/>
          </filter>
 
         <attributes>
