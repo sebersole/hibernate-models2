@@ -1,2 +1,1 @@
 apply from: rootProject.file( "gradle/java-module.gradle" )
-
