@@ -10,12 +10,12 @@ import java.util.List;
 import java.util.Map;
 
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
-import org.hibernate.models.orm.internal.DomainModelCategorizationCollector;
-import org.hibernate.models.orm.internal.GlobalRegistrationsImpl;
-import org.hibernate.models.orm.spi.FilterDefRegistration;
-import org.hibernate.models.orm.xml.internal.XmlDocumentImpl;
-import org.hibernate.models.orm.xml.internal.XmlPreProcessingResultImpl;
-import org.hibernate.models.orm.xml.spi.PersistenceUnitMetadata;
+import org.hibernate.models.orm.categorize.internal.DomainModelCategorizationCollector;
+import org.hibernate.models.orm.categorize.internal.GlobalRegistrationsImpl;
+import org.hibernate.models.orm.categorize.spi.FilterDefRegistration;
+import org.hibernate.models.orm.categorize.xml.internal.XmlDocumentImpl;
+import org.hibernate.models.orm.categorize.xml.internal.XmlPreProcessingResultImpl;
+import org.hibernate.models.orm.categorize.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.models.source.SourceModelTestHelper;
 import org.hibernate.models.source.internal.StringTypeDescriptor;
 import org.hibernate.models.source.spi.ClassDetails;

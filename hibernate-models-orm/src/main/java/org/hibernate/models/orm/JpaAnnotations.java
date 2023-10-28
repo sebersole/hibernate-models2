@@ -9,7 +9,7 @@ package org.hibernate.models.orm;
 import java.lang.annotation.Annotation;
 import java.util.function.Consumer;
 
-import org.hibernate.models.orm.internal.OrmAnnotationHelper;
+import org.hibernate.models.orm.categorize.internal.OrmAnnotationHelper;
 import org.hibernate.models.source.spi.AnnotationDescriptor;
 
 import jakarta.persistence.Access;

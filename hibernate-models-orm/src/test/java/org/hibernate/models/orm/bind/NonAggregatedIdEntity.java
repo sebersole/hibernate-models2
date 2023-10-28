@@ -11,6 +11,7 @@ import org.hibernate.annotations.TenantId;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.IdClass;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
@@ -19,10 +20,15 @@ import jakarta.persistence.Version;
  */
 @Entity
 @Table(name = "non_agg_id_entities")
+@IdClass( NonAggregatedIdEntity.Pk.class )
 public class NonAggregatedIdEntity {
 	@Id private Integer id1;
 	@Id private Integer id2;
 	@Version private Integer version;
 	@TenantId private String tenantId;
 
+	public static class Pk {
+		private Integer id1;
+		private Integer id2;
+	}
 }

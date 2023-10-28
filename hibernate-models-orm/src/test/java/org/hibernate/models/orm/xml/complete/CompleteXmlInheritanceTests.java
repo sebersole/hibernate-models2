@@ -12,10 +12,10 @@ import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.models.orm.BootstrapContextTesting;
 import org.hibernate.models.orm.process.ManagedResourcesImpl;
-import org.hibernate.models.orm.spi.AttributeMetadata;
-import org.hibernate.models.orm.spi.CategorizedDomainModel;
-import org.hibernate.models.orm.spi.EntityHierarchy;
-import org.hibernate.models.orm.spi.EntityTypeMetadata;
+import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
+import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
+import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
+import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
 import org.hibernate.models.source.SourceModelTestHelper;
 
 import org.junit.jupiter.api.Test;
@@ -27,7 +27,7 @@ import jakarta.persistence.Id;
 import static jakarta.persistence.InheritanceType.JOINED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.models.internal.SimpleClassLoading.SIMPLE_CLASS_LOADING;
-import static org.hibernate.models.orm.spi.ManagedResourcesProcessor.processManagedResources;
+import static org.hibernate.models.orm.categorize.spi.ManagedResourcesProcessor.processManagedResources;
 
 /**
  * @author Steve Ebersole
