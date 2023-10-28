@@ -35,6 +35,9 @@ dependencyResolutionManagement {
 			def classmateVersion = version "classmate", "1.5.1"
 			library( "classmate", "com.fasterxml", "classmate" ).versionRef( classmateVersion )
 
+			def hcannVersion = version "hcann", "6.0.6.Final"
+			library( "hcann", "org.hibernate.common", "hibernate-commons-annotations" ).versionRef( hcannVersion )
+
 			def hibernateVersion = version "hibernateOrm", "6.3.0.Final"
 			// withoutVersion assuming that the platform is applied
 			library( "hibernateCore", "org.hibernate.orm", "hibernate-core" ).withoutVersion()

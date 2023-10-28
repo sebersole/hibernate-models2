@@ -31,8 +31,28 @@ public class OrmModelBuildingContextTesting implements OrmModelBuildingContext {
 			SourceModelBuildingContext sourceModelBuildingContext,
 			ClassmateContext classmateContext,
 			SharedCacheMode sharedCacheMode) {
-		classDetailsRegistry = sourceModelBuildingContext.getClassDetailsRegistry();
-		annotationDescriptorRegistry = sourceModelBuildingContext.getAnnotationDescriptorRegistry();
+		this(
+				sourceModelBuildingContext.getClassDetailsRegistry(),
+				sourceModelBuildingContext.getAnnotationDescriptorRegistry(),
+				classmateContext,
+				sharedCacheMode
+		);
+	}
+
+	public OrmModelBuildingContextTesting(
+			ClassDetailsRegistry classDetailsRegistry,
+			AnnotationDescriptorRegistry annotationDescriptorRegistry,
+			ClassmateContext classmateContext) {
+		this( classDetailsRegistry, annotationDescriptorRegistry, classmateContext, SharedCacheMode.UNSPECIFIED );
+	}
+
+	public OrmModelBuildingContextTesting(
+			ClassDetailsRegistry classDetailsRegistry,
+			AnnotationDescriptorRegistry annotationDescriptorRegistry,
+			ClassmateContext classmateContext,
+			SharedCacheMode sharedCacheMode) {
+		this.classDetailsRegistry = classDetailsRegistry;
+		this.annotationDescriptorRegistry = annotationDescriptorRegistry;
 		this.classmateContext = classmateContext;
 		this.sharedCacheMode = sharedCacheMode;
 	}

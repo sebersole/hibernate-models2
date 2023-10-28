@@ -36,6 +36,10 @@ import jakarta.persistence.AttributeConverter;
  *
  * @see org.hibernate.annotations.ConverterRegistration
  *
+ * @todo copied from RegisteredConversion because of the "early" creation of `ConverterDescriptor`
+ * 		upstream. Technically the conversion from ClassDetails to Class should be fine since
+ * 		conversions are only valid for basic types which we will never enhance.
+ *
  * @author Steve Ebersole
  */
 @Copied(RegisteredConversion.class)
