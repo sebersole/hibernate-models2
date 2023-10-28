@@ -729,6 +729,8 @@
         <xsd:attribute name="name" type="xsd:string"/>
         <xsd:attribute name="catalog" type="xsd:string"/>
         <xsd:attribute name="schema" type="xsd:string"/>
+        <xsd:attribute name="comment" type="xsd:string"/>
+        <xsd:attribute name="options" type="xsd:string"/>
     </xsd:complexType>
 
     <!-- **************************************************** -->
@@ -1265,6 +1267,10 @@
                 See `@jakarta.persistence.JoinColumn`
             </xsd:documentation>
         </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="foreign-key" type="orm:foreign-key" minOccurs="0"/>
+            <xsd:element name="check-constraint" type="orm:check-constraint" minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
         <xsd:attribute name="name" type="xsd:string"/>
         <xsd:attribute name="referenced-column-name" type="xsd:string"/>
         <xsd:attribute name="unique" type="xsd:boolean"/>
@@ -1272,7 +1278,9 @@
         <xsd:attribute name="insertable" type="xsd:boolean"/>
         <xsd:attribute name="updatable" type="xsd:boolean"/>
         <xsd:attribute name="column-definition" type="xsd:string"/>
+        <xsd:attribute name="options" type="xsd:string"/>
         <xsd:attribute name="table" type="xsd:string"/>
+        <xsd:attribute name="comment" type="xsd:string"/>
     </xsd:complexType>
 
     <!-- **************************************************** -->
@@ -1299,6 +1307,8 @@
         <xsd:attribute name="name" type="xsd:string"/>
         <xsd:attribute name="catalog" type="xsd:string"/>
         <xsd:attribute name="schema" type="xsd:string"/>
+        <xsd:attribute name="comment" type="xsd:string"/>
+        <xsd:attribute name="options" type="xsd:string"/>
     </xsd:complexType>
 
     <!-- **************************************************** -->
@@ -1481,6 +1491,9 @@
                 See `@jakarta.persistence.MapKeyJoinColumn`
             </xsd:documentation>
         </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="foreign-key" type="orm:foreign-key" minOccurs="0"/>
+        </xsd:sequence>
         <xsd:attribute name="name" type="xsd:string"/>
         <xsd:attribute name="referenced-column-name" type="xsd:string"/>
         <xsd:attribute name="unique" type="xsd:boolean"/>
@@ -2178,7 +2191,7 @@
         <xsd:sequence>
             <xsd:element name="description" type="xsd:string" minOccurs="0"/>
         </xsd:sequence>
-        <xsd:attribute name="name" type="xsd:string" use="required"/>
+        <xsd:attribute name="name" type="xsd:string"/>
         <xsd:attribute name="sequence-name" type="xsd:string"/>
         <xsd:attribute name="catalog" type="xsd:string"/>
         <xsd:attribute name="schema" type="xsd:string"/>
@@ -2239,6 +2252,8 @@
         <xsd:attribute name="name" type="xsd:string"/>
         <xsd:attribute name="catalog" type="xsd:string"/>
         <xsd:attribute name="schema" type="xsd:string"/>
+        <xsd:attribute name="comment" type="xsd:string"/>
+        <xsd:attribute name="options" type="xsd:string"/>
     </xsd:complexType>
 
     <xsd:group name="hbm-common-table-extensions">
@@ -2249,8 +2264,9 @@
             </xsd:documentation>
         </xsd:annotation>
         <xsd:sequence>
+            <xsd:element name="check" type="orm:check-constraint" minOccurs="0" />
+            <xsd:element name="options" type="xsd:string" minOccurs="0" />
             <xsd:element name="comment" type="xsd:string" minOccurs="0" />
-            <xsd:element name="check" type="xsd:string" minOccurs="0" />
         </xsd:sequence>
     </xsd:group>
 
@@ -2287,6 +2303,8 @@
         <xsd:attribute name="schema" type="xsd:string"/>
         <!-- hbm: Hibernate allows controlling whether the joined rows for this secondary table are required (inner join) or optional (outer join)-->
         <xsd:attribute name="optional" type="xsd:boolean"/>
+        <xsd:attribute name="comment" type="xsd:string"/>
+        <xsd:attribute name="options" type="xsd:string"/>
     </xsd:complexType>
 
 
@@ -2319,7 +2337,7 @@
             <xsd:element name="unique-constraint" type="orm:unique-constraint" minOccurs="0" maxOccurs="unbounded"/>
             <xsd:element name="index" type="orm:index" minOccurs="0" maxOccurs="unbounded"/>
         </xsd:sequence>
-        <xsd:attribute name="name" type="xsd:string" use="required"/>
+        <xsd:attribute name="name" type="xsd:string"/>
         <xsd:attribute name="table" type="xsd:string"/>
         <xsd:attribute name="catalog" type="xsd:string"/>
         <xsd:attribute name="schema" type="xsd:string"/>
@@ -2328,6 +2346,8 @@
         <xsd:attribute name="pk-column-value" type="xsd:string"/>
         <xsd:attribute name="initial-value" type="xsd:int"/>
         <xsd:attribute name="allocation-size" type="xsd:int"/>
+        <xsd:attribute name="comment" type="xsd:string"/>
+        <xsd:attribute name="options" type="xsd:string"/>
     </xsd:complexType>
 
     <!-- **************************************************** -->
@@ -2558,8 +2578,8 @@
         <xsd:sequence>
             <xsd:element name="parameter" type="orm:configuration-parameter" minOccurs="0" maxOccurs="unbounded" />
         </xsd:sequence>
-        <xsd:attribute name="name" use="required" type="xsd:string"/>
-        <xsd:attribute name="class" use="required" type="xsd:string"/>
+        <xsd:attribute name="name" type="xsd:string"/>
+        <xsd:attribute name="class" type="xsd:string" use="required" />
     </xsd:complexType>
 
 
@@ -2909,10 +2929,10 @@
             </xsd:documentation>
         </xsd:annotation>
         <xsd:sequence>
+            <!-- hbm: Check constraint -->
+            <xsd:element name="check" type="orm:check-constraint" minOccurs="0" />
             <!-- hbm: SQL comment to be applied to the column on export -->
             <xsd:element name="comment" type="xsd:string" minOccurs="0" />
-            <!-- hbm: Check constraint -->
-            <xsd:element name="check" type="xsd:string" minOccurs="0" />
             <!-- hbm: Column default -->
             <xsd:element name="default" type="xsd:string" minOccurs="0" />
             <!-- hbm: Read fragment -->
@@ -2926,10 +2946,30 @@
         <xsd:attribute name="insertable" type="xsd:boolean"/>
         <xsd:attribute name="updatable" type="xsd:boolean"/>
         <xsd:attribute name="column-definition" type="xsd:string"/>
+        <xsd:attribute name="options" type="xsd:string"/>
         <xsd:attribute name="table" type="xsd:string"/>
         <xsd:attribute name="length" type="xsd:int"/>
         <xsd:attribute name="precision" type="xsd:int"/>
         <xsd:attribute name="scale" type="xsd:int"/>
+    </xsd:complexType>
+
+
+    <!-- **************************************************** -->
+
+    <xsd:complexType name="check-constraint">
+        <xsd:annotation>
+            <xsd:documentation>
+                @Target({}) @Retention(RUNTIME)
+                public @interface CheckConstraint {
+                    String name() default "";
+                    String constraint();
+                    String options() default "";
+                }
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:attribute name="name" type="xsd:string"/>
+        <xsd:attribute name="constraint" type="xsd:string" use="required"/>
+        <xsd:attribute name="options" type="xsd:string"/>
     </xsd:complexType>
 
 
@@ -3076,6 +3116,6 @@
                 See `@org.hibernate.annotations.UuidGenerator`
             </xsd:documentation>
         </xsd:annotation>
-        <xsd:attribute name="style" type="orm:uuid-generator-style" use="required"/>
+        <xsd:attribute name="style" type="orm:uuid-generator-style" default="auto"/>
     </xsd:complexType>
 </xsd:schema>

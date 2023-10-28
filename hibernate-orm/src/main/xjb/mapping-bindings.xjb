@@ -381,21 +381,55 @@
                 <property name="caching"/>
             </bindings>
         </bindings>
+        <bindings node="//xsd:complexType[@name='table']">
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbTableMapping</inheritance:implements>
+            <bindings node=".//xsd:attribute[@name='options']">
+                <property name="optionsAttribute"/>
+            </bindings>
+            <bindings node=".//xsd:attribute[@name='comment']">
+                <property name="commentAttribute"/>
+            </bindings>
+        </bindings>
+
+        <bindings node="//xsd:complexType[@name='check-constraint']">
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbCheckConstraint</inheritance:implements>
+        </bindings>
 
         <bindings node="//xsd:complexType[@name='secondary-table']">
-            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbSchemaAware</inheritance:implements>
-        </bindings>
-        <bindings node="//xsd:complexType[@name='table']">
-            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbSchemaAware</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbTableMapping</inheritance:implements>
+            <bindings node=".//xsd:attribute[@name='options']">
+                <property name="optionsAttribute"/>
+            </bindings>
+            <bindings node=".//xsd:attribute[@name='comment']">
+                <property name="commentAttribute"/>
+            </bindings>
         </bindings>
         <bindings node="//xsd:complexType[@name='join-table']">
-            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbSchemaAware</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbTableMapping</inheritance:implements>
+            <bindings node=".//xsd:attribute[@name='options']">
+                <property name="optionsAttribute"/>
+            </bindings>
+            <bindings node=".//xsd:attribute[@name='comment']">
+                <property name="commentAttribute"/>
+            </bindings>
         </bindings>
         <bindings node="//xsd:complexType[@name='collection-table']">
-            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbSchemaAware</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbTableMapping</inheritance:implements>
+            <bindings node=".//xsd:attribute[@name='options']">
+                <property name="optionsAttribute"/>
+            </bindings>
+            <bindings node=".//xsd:attribute[@name='comment']">
+                <property name="commentAttribute"/>
+            </bindings>
         </bindings>
         <bindings node="//xsd:complexType[@name='table-generator']">
-            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbSchemaAware</inheritance:implements>
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbTableMapping</inheritance:implements>
+            <bindings node=".//xsd:attribute[@name='options']">
+                <property name="optionsAttribute"/>
+            </bindings>
+            <bindings node=".//xsd:attribute[@name='comment']">
+                <property name="commentAttribute"/>
+            </bindings>
         </bindings>
         <bindings node="//xsd:complexType[@name='sequence-generator']">
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbSchemaAware</inheritance:implements>
