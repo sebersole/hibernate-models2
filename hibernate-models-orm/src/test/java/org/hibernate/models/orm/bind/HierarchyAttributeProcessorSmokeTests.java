@@ -10,36 +10,27 @@ import java.util.List;
 import java.util.Set;
 
 import org.hibernate.annotations.TenantId;
-import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.internal.BootstrapContextImpl;
 import org.hibernate.boot.internal.MetadataBuilderImpl;
 import org.hibernate.boot.model.process.spi.ManagedResources;
-import org.hibernate.boot.model.process.spi.MetadataBuildingProcess;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.boot.spi.BootstrapContext;
 import org.hibernate.models.orm.bind.internal.HierarchyAttributeProcessor;
 import org.hibernate.models.orm.bind.internal.HierarchyAttributeProcessor.HierarchyAttributeDescriptor;
 import org.hibernate.models.orm.process.ManagedResourcesImpl;
-import org.hibernate.models.orm.resources.ManagedResourcesSmokeTests;
 import org.hibernate.models.orm.spi.AttributeMetadata;
 import org.hibernate.models.orm.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.spi.EntityHierarchy;
 import org.hibernate.models.orm.spi.ManagedResourcesProcessor;
 import org.hibernate.models.orm.util.OrmModelBuildingContextTesting;
-import org.hibernate.models.source.SourceModelTestHelper;
-import org.hibernate.models.source.internal.SourceModelBuildingContextImpl;
 
 import org.junit.jupiter.api.Test;
-
-import org.jboss.jandex.Index;
 
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Id;
 import jakarta.persistence.Version;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.models.internal.SimpleClassLoading.SIMPLE_CLASS_LOADING;
 
 /**
  * @author Steve Ebersole
@@ -110,14 +101,7 @@ public class HierarchyAttributeProcessorSmokeTests {
 				.addLoadedClasses(classes)
 				.build();
 
-		final Index jandexIndex = SourceModelTestHelper.buildJandexIndex(classes);
-		final SourceModelBuildingContextImpl buildingContext = SourceModelTestHelper.createBuildingContext(
-				jandexIndex,
-				SIMPLE_CLASS_LOADING
-		);
-
 		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
-			final MetadataSources metadataSources = new MetadataSources( serviceRegistry ).addAnnotatedClass( ManagedResourcesSmokeTests.Person.class );
 			final MetadataBuilderImpl.MetadataBuildingOptionsImpl metadataBuildingOptions = new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry );
 			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl( serviceRegistry, metadataBuildingOptions );
 
@@ -126,7 +110,11 @@ public class HierarchyAttributeProcessorSmokeTests {
 					bootstrapContext
 			);
 
-			final OrmModelBuildingContextTesting ormModelBuildingContext = new OrmModelBuildingContextTesting( buildingContext );
+			final OrmModelBuildingContextTesting ormModelBuildingContext = new OrmModelBuildingContextTesting(
+					categorizedDomainModel.getClassDetailsRegistry(),
+					categorizedDomainModel.getAnnotationDescriptorRegistry(),
+					bootstrapContext.getClassmateContext()
+			);
 			final List<HierarchyAttributeDescriptor> hierarchyAttributeDescriptors = HierarchyAttributeProcessor.preBindHierarchyAttributes(
 					categorizedDomainModel,
 					ormModelBuildingContext

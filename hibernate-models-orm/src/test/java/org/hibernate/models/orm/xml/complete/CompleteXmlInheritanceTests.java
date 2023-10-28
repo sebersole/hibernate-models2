@@ -6,18 +6,16 @@
  */
 package org.hibernate.models.orm.xml.complete;
 
-import org.hibernate.boot.internal.BootstrapContextImpl;
-import org.hibernate.boot.internal.MetadataBuilderImpl;
 import org.hibernate.boot.internal.MetadataBuilderImpl.MetadataBuildingOptionsImpl;
 import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.models.orm.BootstrapContextTesting;
 import org.hibernate.models.orm.process.ManagedResourcesImpl;
 import org.hibernate.models.orm.spi.AttributeMetadata;
 import org.hibernate.models.orm.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.spi.EntityHierarchy;
 import org.hibernate.models.orm.spi.EntityTypeMetadata;
-import org.hibernate.models.orm.spi.ManagedResourcesProcessor;
 import org.hibernate.models.source.SourceModelTestHelper;
 
 import org.junit.jupiter.api.Test;
@@ -49,7 +47,8 @@ public class CompleteXmlInheritanceTests {
 		);
 
 		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
-			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl(
+			final BootstrapContextTesting bootstrapContext = new BootstrapContextTesting(
+					jandexIndex,
 					serviceRegistry,
 					new MetadataBuildingOptionsImpl( serviceRegistry )
 			);
