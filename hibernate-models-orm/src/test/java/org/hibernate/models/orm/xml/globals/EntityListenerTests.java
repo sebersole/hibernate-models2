@@ -14,14 +14,14 @@ import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.models.orm.process.ManagedResourcesImpl;
-import org.hibernate.models.orm.spi.CategorizedDomainModel;
-import org.hibernate.models.orm.spi.EntityListenerRegistration;
+import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
+import org.hibernate.models.orm.categorize.spi.EntityListenerRegistration;
 import org.hibernate.models.source.spi.MethodDetails;
 
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.models.orm.spi.ManagedResourcesProcessor.processManagedResources;
+import static org.hibernate.models.orm.categorize.spi.ManagedResourcesProcessor.processManagedResources;
 
 /**
  * @author Steve Ebersole

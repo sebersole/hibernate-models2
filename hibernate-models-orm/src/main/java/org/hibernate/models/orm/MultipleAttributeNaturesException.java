@@ -9,7 +9,7 @@ package org.hibernate.models.orm;
 import java.util.EnumSet;
 
 import org.hibernate.MappingException;
-import org.hibernate.models.orm.spi.AttributeMetadata;
+import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 
 /**
  * Condition where an attribute indicates multiple {@linkplain AttributeMetadata.AttributeNature natures}

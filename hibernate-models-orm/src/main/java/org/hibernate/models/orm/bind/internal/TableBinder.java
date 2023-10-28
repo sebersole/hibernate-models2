@@ -11,7 +11,7 @@ import java.util.function.Supplier;
 import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.mapping.Table;
-import org.hibernate.models.orm.spi.OrmModelBuildingContext;
+import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
 import org.hibernate.models.source.spi.AnnotationUsage;
 
 import static org.hibernate.internal.util.NullnessHelper.nullif;
@@ -25,7 +25,7 @@ public class TableBinder {
 			Supplier<String> implicitTableNameSupplier,
 			boolean isAbstract,
 			MetadataBuildingContext metadataBuildingContext,
-			OrmModelBuildingContext modelBuildingContext) {
+			ModelCategorizationContext modelBuildingContext) {
 		final InFlightMetadataCollector metadataCollector = metadataBuildingContext.getMetadataCollector();
 		return metadataCollector.addTable(
 				schemaName( tableAnnotation, metadataBuildingContext, modelBuildingContext ),
@@ -40,7 +40,7 @@ public class TableBinder {
 	public static String catalogName(
 			AnnotationUsage<?> tableAnnotation,
 			MetadataBuildingContext metadataBuildingContext,
-			OrmModelBuildingContext modelBuildingContext) {
+			ModelCategorizationContext modelBuildingContext) {
 		if ( tableAnnotation != null ) {
 			return tableAnnotation.getString( "catalog", metadataBuildingContext.getMappingDefaults().getImplicitCatalogName() );
 		}
@@ -51,7 +51,7 @@ public class TableBinder {
 	public static String schemaName(
 			AnnotationUsage<?> tableAnnotation,
 			MetadataBuildingContext metadataBuildingContext,
-			OrmModelBuildingContext modelBuildingContext) {
+			ModelCategorizationContext modelBuildingContext) {
 		if ( tableAnnotation != null ) {
 			return tableAnnotation.getString( "schema", metadataBuildingContext.getMappingDefaults().getImplicitSchemaName() );
 		}

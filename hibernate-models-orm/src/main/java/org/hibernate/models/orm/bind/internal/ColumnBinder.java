@@ -9,7 +9,7 @@ package org.hibernate.models.orm.bind.internal;
 import java.util.function.Supplier;
 
 import org.hibernate.mapping.Column;
-import org.hibernate.models.orm.spi.OrmModelBuildingContext;
+import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
 import org.hibernate.models.source.spi.AnnotationUsage;
 
 import static org.hibernate.internal.util.NullnessHelper.nullif;
@@ -21,7 +21,7 @@ public class ColumnBinder {
 	public static Column bindColumn(
 			AnnotationUsage<?> annotationUsage,
 			Supplier<String> defaultNameSupplier,
-			OrmModelBuildingContext modelBuildingContext) {
+			ModelCategorizationContext modelBuildingContext) {
 		return bindColumn(
 				annotationUsage,
 				defaultNameSupplier,
@@ -42,7 +42,7 @@ public class ColumnBinder {
 			long lengthByDefault,
 			int precisionByDefault,
 			int scaleByDefault,
-			OrmModelBuildingContext modelBuildingContext) {
+			ModelCategorizationContext modelBuildingContext) {
 		final Column result = new Column();
 		result.setName( columnName( annotationUsage, defaultNameSupplier, modelBuildingContext ) );
 
@@ -59,7 +59,7 @@ public class ColumnBinder {
 	private static String columnName(
 			AnnotationUsage<?> columnAnnotation,
 			Supplier<String> defaultNameSupplier,
-			OrmModelBuildingContext modelBuildingContext) {
+			ModelCategorizationContext modelBuildingContext) {
 		return nullif( columnAnnotation.getAttributeValue( "name" ), defaultNameSupplier );
 	}
 

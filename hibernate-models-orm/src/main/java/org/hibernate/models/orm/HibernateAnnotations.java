@@ -14,7 +14,7 @@ import org.hibernate.boot.internal.Abstract;
 import org.hibernate.boot.internal.CollectionClassification;
 import org.hibernate.boot.internal.Extends;
 import org.hibernate.boot.internal.Target;
-import org.hibernate.models.orm.internal.OrmAnnotationHelper;
+import org.hibernate.models.orm.categorize.internal.OrmAnnotationHelper;
 import org.hibernate.models.source.spi.AnnotationDescriptor;
 
 import static org.hibernate.models.source.internal.AnnotationHelper.createOrmDescriptor;

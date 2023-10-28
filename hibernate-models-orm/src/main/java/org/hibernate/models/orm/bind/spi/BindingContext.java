@@ -6,7 +6,11 @@
  */
 package org.hibernate.models.orm.bind.spi;
 
-import org.hibernate.models.orm.spi.OrmModelBuildingContext;
+import org.hibernate.boot.internal.ClassmateContext;
+import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
+import org.hibernate.models.source.spi.ClassDetailsRegistry;
+
+import jakarta.persistence.SharedCacheMode;
 
 /**
  * Contextual information used while {@linkplain BindingCoordinator binding}
@@ -15,5 +19,12 @@ import org.hibernate.models.orm.spi.OrmModelBuildingContext;
  *
  * @author Steve Ebersole
  */
-public interface BindingContext extends OrmModelBuildingContext {
+public interface BindingContext {
+	ClassDetailsRegistry getClassDetailsRegistry();
+
+	AnnotationDescriptorRegistry getAnnotationDescriptorRegistry();
+
+	ClassmateContext getClassmateContext();
+
+	SharedCacheMode getSharedCacheMode();
 }

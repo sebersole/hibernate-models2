@@ -17,13 +17,14 @@ import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.model.process.spi.MetadataBuildingProcess;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.models.orm.bind.internal.HierarchyAttributeProcessor;
-import org.hibernate.models.orm.internal.OrmModelBuildingContextImpl;
-import org.hibernate.models.orm.spi.AttributeMetadata;
-import org.hibernate.models.orm.spi.CategorizedDomainModel;
-import org.hibernate.models.orm.spi.EntityHierarchy;
-import org.hibernate.models.orm.spi.EntityTypeMetadata;
-import org.hibernate.models.orm.spi.ManagedResourcesProcessor;
+import org.hibernate.models.orm.bind.internal.BindingContextImpl;
+import org.hibernate.models.orm.bind.internal.HierarchyMetadataProcessor;
+import org.hibernate.models.orm.bind.spi.HierarchyMetadata;
+import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
+import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
+import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
+import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
+import org.hibernate.models.orm.categorize.spi.ManagedResourcesProcessor;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.FieldDetails;
 
@@ -35,7 +36,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.spi.PersistenceUnitInfo;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.models.orm.internal.EntityHierarchyBuilder.createEntityHierarchies;
+import static org.hibernate.models.orm.categorize.internal.EntityHierarchyBuilder.createEntityHierarchies;
 
 /**
  * {@linkplain MetadataBuildingProcess#prepare} produces a {@linkplain ManagedResources} which
@@ -85,20 +86,16 @@ public class ManagedResourcesSmokeTests {
 
 
 
-			final OrmModelBuildingContextImpl mappingBuildingContext = new OrmModelBuildingContextImpl(
-					categorizedDomainModel.getClassDetailsRegistry(),
-					categorizedDomainModel.getAnnotationDescriptorRegistry(),
-					bootstrapContext.getClassmateContext()
-			);
+			final BindingContextImpl mappingBuildingContext = new BindingContextImpl( categorizedDomainModel, bootstrapContext );
 
-			final List<HierarchyAttributeProcessor.HierarchyAttributeDescriptor> hierarchyAttributeDescriptors = HierarchyAttributeProcessor.preBindHierarchyAttributes(
+			final List<HierarchyMetadata> hierarchyMetadata = HierarchyMetadataProcessor.preBindHierarchyAttributes(
 					categorizedDomainModel,
 					mappingBuildingContext
 			);
 
-			assertThat( hierarchyAttributeDescriptors ).hasSize( 1 );
-			assertThat( hierarchyAttributeDescriptors.get( 0 ).getCollectedIdAttributes() ).isInstanceOf( AttributeMetadata.class );
-			final AttributeMetadata idAttr = (AttributeMetadata) hierarchyAttributeDescriptors.get( 0 ).getCollectedIdAttributes();
+			assertThat( hierarchyMetadata ).hasSize( 1 );
+			assertThat( hierarchyMetadata.get( 0 ).getCollectedIdAttributes() ).isInstanceOf( AttributeMetadata.class );
+			final AttributeMetadata idAttr = (AttributeMetadata) hierarchyMetadata.get( 0 ).getCollectedIdAttributes();
 			assertThat( idAttr.getName() ).isEqualTo( "id" );
 			assertThat( idAttr.getMember() ).isInstanceOf( FieldDetails.class );
 		}
