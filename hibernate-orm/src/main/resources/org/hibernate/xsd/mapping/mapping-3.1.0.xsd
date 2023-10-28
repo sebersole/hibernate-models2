@@ -1358,37 +1358,6 @@
         <xsd:sequence>
             <xsd:group ref="collection-structure-group"/>
 
-<!--            <xsd:element name="collection-id" type="orm:collection-id" minOccurs="0"/>-->
-
-<!--            <xsd:choice>-->
-<!--                <xsd:element name="order-by" type="orm:order-by" minOccurs="0"/>-->
-<!--                <xsd:element name="order-column" type="orm:order-column" minOccurs="0"/>-->
-<!--                <xsd:element name="sort" type="xsd:string" minOccurs="0" />-->
-<!--                <xsd:element name="sort-natural">-->
-<!--                    <xsd:complexType/>-->
-<!--                </xsd:element>-->
-<!--            </xsd:choice>-->
-<!--            <xsd:choice>-->
-<!--                <xsd:element name="map-key" type="orm:map-key" minOccurs="0"/>-->
-<!--                <xsd:sequence>-->
-<!--                    <xsd:element name="map-key-class" type="orm:map-key-class" minOccurs="0"/>-->
-<!--                    <xsd:choice>-->
-<!--                        <xsd:element name="map-key-temporal" type="orm:temporal" minOccurs="0"/>-->
-<!--                        <xsd:element name="map-key-enumerated" type="orm:enumerated" minOccurs="0"/>-->
-<!--                        <xsd:sequence>-->
-<!--                            <xsd:element name="map-key-attribute-override" type="orm:attribute-override" minOccurs="0" maxOccurs="unbounded"/>-->
-<!--                            <xsd:element name="map-key-convert" type="orm:convert" minOccurs="0" maxOccurs="unbounded"/>-->
-<!--                        </xsd:sequence>-->
-<!--                    </xsd:choice>-->
-<!--                    <xsd:choice>-->
-<!--                        <xsd:element name="map-key-column" type="orm:map-key-column" minOccurs="0"/>-->
-<!--                        <xsd:sequence>-->
-<!--                            <xsd:element name="map-key-join-column" type="orm:map-key-join-column" minOccurs="0" maxOccurs="unbounded"/>-->
-<!--                            <xsd:element name="map-key-foreign-key" type="orm:foreign-key" minOccurs="0"/>-->
-<!--                        </xsd:sequence>-->
-<!--                    </xsd:choice>-->
-<!--                </xsd:sequence>-->
-<!--            </xsd:choice>-->
             <xsd:element name="join-table" type="orm:join-table" minOccurs="0"/>
             <xsd:element name="cascade" type="orm:cascade-type" minOccurs="0"/>
             <xsd:element name="filter" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
@@ -1863,37 +1832,6 @@
         <xsd:sequence>
             <xsd:group ref="collection-structure-group"/>
 
-<!--            <xsd:element name="collection-id" type="orm:collection-id" minOccurs="0"/>-->
-
-<!--            <xsd:choice>-->
-<!--                <xsd:element name="order-by" type="orm:order-by" minOccurs="0"/>-->
-<!--                <xsd:element name="order-column" type="orm:order-column" minOccurs="0"/>-->
-<!--                <xsd:element name="sort" type="xsd:string" minOccurs="0" />-->
-<!--                <xsd:element name="sort-natural">-->
-<!--                    <xsd:complexType/>-->
-<!--                </xsd:element>-->
-<!--            </xsd:choice>-->
-<!--            <xsd:choice>-->
-<!--                <xsd:element name="map-key" type="orm:map-key" minOccurs="0"/>-->
-<!--                <xsd:sequence>-->
-<!--                    <xsd:element name="map-key-class" type="orm:map-key-class" minOccurs="0"/>-->
-<!--                    <xsd:choice>-->
-<!--                        <xsd:element name="map-key-temporal" type="orm:temporal" minOccurs="0"/>-->
-<!--                        <xsd:element name="map-key-enumerated" type="orm:enumerated" minOccurs="0"/>-->
-<!--                        <xsd:sequence>-->
-<!--                            <xsd:element name="map-key-attribute-override" type="orm:attribute-override" minOccurs="0" maxOccurs="unbounded"/>-->
-<!--                            <xsd:element name="map-key-convert" type="orm:convert" minOccurs="0" maxOccurs="unbounded"/>-->
-<!--                        </xsd:sequence>-->
-<!--                    </xsd:choice>-->
-<!--                    <xsd:choice>-->
-<!--                        <xsd:element name="map-key-column" type="orm:map-key-column" minOccurs="0"/>-->
-<!--                        <xsd:sequence>-->
-<!--                            <xsd:element name="map-key-join-column" type="orm:map-key-join-column" minOccurs="0" maxOccurs="unbounded"/>-->
-<!--                            <xsd:element name="map-key-foreign-key" type="orm:foreign-key" minOccurs="0"/>-->
-<!--                        </xsd:sequence>-->
-<!--                    </xsd:choice>-->
-<!--                </xsd:sequence>-->
-<!--            </xsd:choice>-->
             <xsd:choice>
                 <xsd:sequence>
                     <xsd:element name="join-table" type="orm:join-table" minOccurs="0"/>
@@ -2866,15 +2804,6 @@
 
         <xsd:sequence>
             <xsd:group ref="collection-structure-group"/>
-
-<!--            <xsd:element name="collection-id" type="orm:collection-id" minOccurs="0"/>-->
-
-<!--            <xsd:element name="order-by" type="orm:order-by" minOccurs="0"/>-->
-<!--            <xsd:element name="order-column" type="orm:order-column" minOccurs="0"/>-->
-<!--            <xsd:element name="sort" type="xsd:string" minOccurs="0" />-->
-<!--            <xsd:element name="sort-natural">-->
-<!--                <xsd:complexType/>-->
-<!--            </xsd:element>-->
 
             <xsd:element name="discriminator" type="orm:hbm-any-discriminator"/>
             <xsd:element name="key" type="orm:hbm-any-key"/>
