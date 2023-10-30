@@ -361,7 +361,7 @@ public class EntityTypeMetadataImpl
 		}
 
 		final String sql = customSqlAnnotation.getAttributeValue( "sql" );
-		final boolean isCallable = customSqlAnnotation.getAttributeValue( "value" );
+		final boolean isCallable = customSqlAnnotation.getAttributeValue( "callable" );
 
 		final ResultCheckStyle checkValue = customSqlAnnotation.getAttributeValue( "check" );
 		final ExecuteUpdateResultCheckStyle checkStyle;

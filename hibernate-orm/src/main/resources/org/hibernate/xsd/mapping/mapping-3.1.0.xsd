@@ -870,6 +870,11 @@
             </xsd:choice>
             <xsd:element name="collection-table" type="orm:collection-table" minOccurs="0"/>
             <xsd:element name="sql-restriction" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="sql-insert" type="orm:custom-sql" minOccurs="0"/>
+            <xsd:element name="sql-update" type="orm:custom-sql" minOccurs="0"/>
+            <!-- todo : sql-delete is currently ignored in ORM for element collections, should we leave it? -->
+            <xsd:element name="sql-delete" type="orm:custom-sql" minOccurs="0"/>
+            <xsd:element name="sql-delete-all" type="orm:custom-sql" minOccurs="0"/>
             <xsd:element name="filter" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
         </xsd:sequence>
         <xsd:attribute name="name" type="xsd:string" use="required"/>
@@ -1359,12 +1364,20 @@
         <xsd:sequence>
             <xsd:group ref="collection-structure-group"/>
 
-            <xsd:element name="join-table" type="orm:join-table" minOccurs="0"/>
+            <xsd:choice>
+                <xsd:sequence>
+                    <xsd:element name="join-table" type="orm:join-table" minOccurs="0"/>
+                    <xsd:element name="sql-join-table-restriction" type="xsd:string" minOccurs="0"/>
+                    <xsd:element name="filter-join-table" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
+                </xsd:sequence>
+            </xsd:choice>
             <xsd:element name="cascade" type="orm:cascade-type" minOccurs="0"/>
             <xsd:element name="sql-restriction" type="xsd:string" minOccurs="0"/>
-            <xsd:element name="sql-join-table-restriction" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="sql-insert" type="orm:custom-sql" minOccurs="0"/>
+            <xsd:element name="sql-update" type="orm:custom-sql" minOccurs="0"/>
+            <xsd:element name="sql-delete" type="orm:custom-sql" minOccurs="0"/>
+            <xsd:element name="sql-delete-all" type="orm:custom-sql" minOccurs="0"/>
             <xsd:element name="filter" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
-            <xsd:element name="filter-join-table" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
         </xsd:sequence>
         <xsd:attribute name="name" type="xsd:string" use="required"/>
         <xsd:attribute name="target-entity" type="xsd:string"/>
@@ -1849,6 +1862,10 @@
             <xsd:element name="cascade" type="orm:cascade-type" minOccurs="0"/>
             <xsd:element name="on-delete" type="orm:on-delete-type" minOccurs="0"/>
             <xsd:element name="sql-restriction" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="sql-insert" type="orm:custom-sql" minOccurs="0"/>
+            <xsd:element name="sql-update" type="orm:custom-sql" minOccurs="0"/>
+            <xsd:element name="sql-delete" type="orm:custom-sql" minOccurs="0"/>
+            <xsd:element name="sql-delete-all" type="orm:custom-sql" minOccurs="0"/>
             <xsd:element name="filter" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
         </xsd:sequence>
         <xsd:attribute name="name" type="xsd:string" use="required"/>
@@ -2629,6 +2646,7 @@
             <xsd:extension base="xsd:string">
                 <xsd:attribute name="callable" type="xsd:boolean" default="false" />
                 <xsd:attribute name="check" type="orm:custom-sql-check-type"/>
+                <xsd:attribute name="table" type="xsd:string"/>
             </xsd:extension>
         </xsd:simpleContent>
     </xsd:complexType>
@@ -2814,6 +2832,10 @@
             <xsd:element name="key" type="orm:hbm-any-key"/>
             <xsd:element name="cascade" type="orm:cascade-type" minOccurs="0"/>
             <xsd:element name="sql-restriction" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="sql-insert" type="orm:custom-sql" minOccurs="0"/>
+            <xsd:element name="sql-update" type="orm:custom-sql" minOccurs="0"/>
+            <xsd:element name="sql-delete" type="orm:custom-sql" minOccurs="0"/>
+            <xsd:element name="sql-delete-all" type="orm:custom-sql" minOccurs="0"/>
             <xsd:element name="filter" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
         </xsd:sequence>
 
