@@ -455,6 +455,8 @@ public class ManagedTypeProcessor {
 				sourceModelBuildingContext
 		) );
 
+		XmlAnnotationHelper.applySqlRestriction( jaxbEntity.getSqlRestriction(), classDetails, sourceModelBuildingContext );
+
 		processEntityOrMappedSuperclass( jaxbEntity, classDetails, sourceModelBuildingContext );
 
 		XmlAnnotationHelper.applyRowId( jaxbEntity.getRowid(), classDetails, sourceModelBuildingContext );

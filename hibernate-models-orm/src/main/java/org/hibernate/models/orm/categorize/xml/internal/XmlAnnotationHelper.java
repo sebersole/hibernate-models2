@@ -28,6 +28,8 @@ import org.hibernate.annotations.NaturalIdCache;
 import org.hibernate.annotations.OptimisticLock;
 import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.RowId;
+import org.hibernate.annotations.SQLJoinTableRestriction;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.SqlFragmentAlias;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UuidGenerator;
@@ -108,7 +110,7 @@ import jakarta.persistence.TemporalType;
 import static jakarta.persistence.FetchType.EAGER;
 import static java.util.Collections.emptyList;
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
-import static org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper.getOrMakeNamedAnnotation;
+import static org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper.getOrMakeAnnotation;
 
 /**
  * Helper for creating annotation from equivalent JAXB
@@ -859,6 +861,31 @@ public class XmlAnnotationHelper {
 			sqlFragmentAliases.add( aliasAnn );
 		}
 		return sqlFragmentAliases;
+	}
+
+	static void applySqlRestriction(
+			String sqlRestriction,
+			MutableAnnotationTarget target,
+			SourceModelBuildingContext buildingContext) {
+		applySqlRestriction( sqlRestriction, target, SQLRestriction.class, buildingContext );
+	}
+
+	static void applySqlJoinTableRestriction(
+			String sqlJoinTableRestriction,
+			MutableAnnotationTarget target,
+			SourceModelBuildingContext buildingContext) {
+		applySqlRestriction( sqlJoinTableRestriction, target, SQLJoinTableRestriction.class, buildingContext );
+	}
+
+	private static <A extends Annotation> void applySqlRestriction(
+			String sqlRestriction,
+			MutableAnnotationTarget target,
+			Class<A> annotationType,
+			SourceModelBuildingContext buildingContext) {
+		if ( StringHelper.isNotEmpty( sqlRestriction ) ) {
+			final MutableAnnotationUsage<A> annotation = getOrMakeAnnotation( annotationType, target );
+			annotation.setAttributeValue( "value", sqlRestriction );
+		}
 	}
 
 	static void applyIdClass(

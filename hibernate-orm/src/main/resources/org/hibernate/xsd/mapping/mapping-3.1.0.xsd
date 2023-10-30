@@ -395,8 +395,8 @@
 
             <!-- hbm : the database specific way to reference a rowid -->
             <xsd:element name="rowid" type="xsd:string" minOccurs="0"/>
-            <!-- hbm : declare a SQL fragment to append to SELECT queries as a filter for this entity : @Where  -->
-            <xsd:element name="where" type="xsd:string" minOccurs="0"/>
+            <!-- hbm : declare a SQL fragment to append to SELECT queries as a filter for this entity : @SQLRestriction  -->
+            <xsd:element name="sql-restriction" type="xsd:string" minOccurs="0"/>
 
             <xsd:element name="loader" type="orm:custom-loader" minOccurs="0"/>
             <xsd:element name="sql-insert" type="orm:custom-sql" minOccurs="0"/>
@@ -869,6 +869,7 @@
                 </xsd:sequence>
             </xsd:choice>
             <xsd:element name="collection-table" type="orm:collection-table" minOccurs="0"/>
+            <xsd:element name="sql-restriction" type="xsd:string" minOccurs="0"/>
             <xsd:element name="filter" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
         </xsd:sequence>
         <xsd:attribute name="name" type="xsd:string" use="required"/>
@@ -1360,6 +1361,8 @@
 
             <xsd:element name="join-table" type="orm:join-table" minOccurs="0"/>
             <xsd:element name="cascade" type="orm:cascade-type" minOccurs="0"/>
+            <xsd:element name="sql-restriction" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="sql-join-table-restriction" type="xsd:string" minOccurs="0"/>
             <xsd:element name="filter" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
             <xsd:element name="filter-join-table" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
         </xsd:sequence>
@@ -1835,6 +1838,7 @@
             <xsd:choice>
                 <xsd:sequence>
                     <xsd:element name="join-table" type="orm:join-table" minOccurs="0"/>
+                    <xsd:element name="sql-join-table-restriction" type="xsd:string" minOccurs="0"/>
                     <xsd:element name="filter-join-table" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
                 </xsd:sequence>
                 <xsd:sequence>
@@ -1844,6 +1848,7 @@
             </xsd:choice>
             <xsd:element name="cascade" type="orm:cascade-type" minOccurs="0"/>
             <xsd:element name="on-delete" type="orm:on-delete-type" minOccurs="0"/>
+            <xsd:element name="sql-restriction" type="xsd:string" minOccurs="0"/>
             <xsd:element name="filter" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
         </xsd:sequence>
         <xsd:attribute name="name" type="xsd:string" use="required"/>
@@ -2808,6 +2813,7 @@
             <xsd:element name="discriminator" type="orm:hbm-any-discriminator"/>
             <xsd:element name="key" type="orm:hbm-any-key"/>
             <xsd:element name="cascade" type="orm:cascade-type" minOccurs="0"/>
+            <xsd:element name="sql-restriction" type="xsd:string" minOccurs="0"/>
             <xsd:element name="filter" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
         </xsd:sequence>
 
