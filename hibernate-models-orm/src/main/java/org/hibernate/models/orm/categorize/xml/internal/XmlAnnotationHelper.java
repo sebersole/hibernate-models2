@@ -27,6 +27,7 @@ import org.hibernate.annotations.NaturalId;
 import org.hibernate.annotations.NaturalIdCache;
 import org.hibernate.annotations.OptimisticLock;
 import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.ResultCheckStyle;
 import org.hibernate.annotations.RowId;
 import org.hibernate.annotations.SQLJoinTableRestriction;
 import org.hibernate.annotations.SQLRestriction;
@@ -43,6 +44,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbCollectionUserTypeImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbColumnImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbConfigurationParameterImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbConvertImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbCustomSqlImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntity;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityListenerImpl;
@@ -60,6 +62,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbTableGeneratorImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbTableImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbUserTypeImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbUuidGeneratorImpl;
+import org.hibernate.engine.spi.ExecuteUpdateResultCheckStyle;
 import org.hibernate.models.ModelsException;
 import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.StringHelper;
@@ -888,12 +891,41 @@ public class XmlAnnotationHelper {
 		}
 	}
 
+	static <A extends Annotation> void applyCustomSql(
+			JaxbCustomSqlImpl jaxbCustomSql,
+			MutableAnnotationTarget target,
+			Class<A> annotationType,
+			SourceModelBuildingContext buildingContext) {
+		if ( jaxbCustomSql != null ) {
+			final MutableAnnotationUsage<A> annotation = getOrMakeAnnotation( annotationType, target );
+			annotation.setAttributeValue( "sql", jaxbCustomSql.getValue() );
+			annotation.setAttributeValue( "callable", jaxbCustomSql.isCallable() );
+			applyAttributeIfSpecified( annotation, "table", jaxbCustomSql.getTable() );
+			if ( jaxbCustomSql.getCheck() != null ) {
+				annotation.setAttributeValue( "check", getResultCheckStyle( jaxbCustomSql.getCheck() ) );
+			}
+		}
+	}
+
+	private static ResultCheckStyle getResultCheckStyle(ExecuteUpdateResultCheckStyle style) {
+		switch ( style ) {
+			case NONE:
+				return ResultCheckStyle.NONE;
+			case COUNT:
+				return ResultCheckStyle.COUNT;
+			case PARAM:
+				return ResultCheckStyle.PARAM;
+			default:
+				return null;
+		}
+	}
+
 	static void applyIdClass(
 			JaxbIdClassImpl jaxbIdClass,
 			MutableClassDetails target,
 			SourceModelBuildingContext buildingContext) {
 		if ( jaxbIdClass != null ) {
-			XmlProcessingHelper.makeAnnotation( IdClass.class, target ).setAttributeValue(
+			getOrMakeAnnotation( IdClass.class, target ).setAttributeValue(
 					"value",
 					buildingContext.getClassDetailsRegistry().resolveClassDetails( jaxbIdClass.getClazz() )
 			);
@@ -933,9 +965,9 @@ public class XmlAnnotationHelper {
 		applyLifecycleCallback( lifecycleCallbackContainer.getPostLoad(), PostLoad.class, classDetails );
 	}
 
-	private static void applyLifecycleCallback(
+	private static <A extends Annotation> void applyLifecycleCallback(
 			JaxbLifecycleCallback lifecycleCallback,
-			Class<? extends Annotation> lifecycleAnnotation,
+			Class<A> lifecycleAnnotation,
 			MutableClassDetails classDetails) {
 		if ( lifecycleCallback != null ) {
 			final MethodDetails method = classDetails.findMethodByName( lifecycleCallback.getMethodName() );

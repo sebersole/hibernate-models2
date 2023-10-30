@@ -11,6 +11,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLInsert;
+import org.hibernate.annotations.SQLUpdate;
 import org.hibernate.boot.internal.Abstract;
 import org.hibernate.boot.internal.Extends;
 import org.hibernate.boot.internal.LimitedCollectionClassification;
@@ -456,6 +459,10 @@ public class ManagedTypeProcessor {
 		) );
 
 		XmlAnnotationHelper.applySqlRestriction( jaxbEntity.getSqlRestriction(), classDetails, sourceModelBuildingContext );
+
+		XmlAnnotationHelper.applyCustomSql( jaxbEntity.getSqlInsert(), classDetails, SQLInsert.class, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyCustomSql( jaxbEntity.getSqlUpdate(), classDetails, SQLUpdate.class, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyCustomSql( jaxbEntity.getSqlDelete(), classDetails, SQLDelete.class, sourceModelBuildingContext );
 
 		processEntityOrMappedSuperclass( jaxbEntity, classDetails, sourceModelBuildingContext );
 
