@@ -35,8 +35,8 @@ public interface JaxbEntity extends JaxbEntityOrMappedSuperclass {
 	String getRowid();
 	void setRowid(String value);
 
-	String getWhere();
-	void setWhere(String value);
+	String getSqlRestriction();
+	void setSqlRestriction(String value);
 
 	JaxbCustomLoaderImpl getLoader();
 	void setLoader(JaxbCustomLoaderImpl value);

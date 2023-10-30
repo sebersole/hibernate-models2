@@ -570,6 +570,8 @@ public class AttributeProcessor {
 				sourceModelBuildingContext
 		) );
 
+		XmlAnnotationHelper.applySqlRestriction( jaxbElementCollection.getSqlRestriction(), memberDetails, sourceModelBuildingContext );
+
 		// todo : attribute-override
 		// todo : association-override
 
