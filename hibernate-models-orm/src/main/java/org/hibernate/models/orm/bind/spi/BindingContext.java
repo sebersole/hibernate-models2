@@ -7,6 +7,7 @@
 package org.hibernate.models.orm.bind.spi;
 
 import org.hibernate.boot.internal.ClassmateContext;
+import org.hibernate.models.orm.categorize.spi.GlobalRegistrations;
 import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
 import org.hibernate.models.source.spi.ClassDetailsRegistry;
 
@@ -23,6 +24,8 @@ public interface BindingContext {
 	ClassDetailsRegistry getClassDetailsRegistry();
 
 	AnnotationDescriptorRegistry getAnnotationDescriptorRegistry();
+
+	GlobalRegistrations getGlobalRegistrations();
 
 	ClassmateContext getClassmateContext();
 

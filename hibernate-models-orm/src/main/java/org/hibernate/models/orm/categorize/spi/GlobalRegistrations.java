@@ -17,7 +17,7 @@ import java.util.Map;
  * @author Steve Ebersole
  */
 public interface GlobalRegistrations {
-	List<EntityListenerRegistration> getEntityListenerRegistrations();
+	List<JpaEventListener> getEntityListenerRegistrations();
 
 	List<ConversionRegistration> getConverterRegistrations();
 

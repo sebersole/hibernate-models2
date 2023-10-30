@@ -23,10 +23,10 @@ public interface ModelCategorizationContext {
 
 	AnnotationDescriptorRegistry getAnnotationDescriptorRegistry();
 
+	SharedCacheMode getSharedCacheMode();
+
 	default PersistentAttributeMemberResolver getPersistentAttributeMemberResolver() {
 		return StandardPersistentAttributeMemberResolver.INSTANCE;
 	}
-
-	SharedCacheMode getSharedCacheMode();
 
 }

@@ -10,6 +10,7 @@ import org.hibernate.boot.internal.ClassmateContext;
 import org.hibernate.boot.spi.BootstrapContext;
 import org.hibernate.models.orm.bind.spi.BindingContext;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
+import org.hibernate.models.orm.categorize.spi.GlobalRegistrations;
 import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
 import org.hibernate.models.source.spi.ClassDetailsRegistry;
 
@@ -21,6 +22,7 @@ import jakarta.persistence.SharedCacheMode;
 public class BindingContextImpl implements BindingContext {
 	private final ClassDetailsRegistry classDetailsRegistry;
 	private final AnnotationDescriptorRegistry annotationDescriptorRegistry;
+	private final GlobalRegistrations globalRegistrations;
 	private final ClassmateContext classmateContext;
 	private final SharedCacheMode sharedCacheMode;
 
@@ -28,6 +30,7 @@ public class BindingContextImpl implements BindingContext {
 		this(
 				categorizedDomainModel.getClassDetailsRegistry(),
 				categorizedDomainModel.getAnnotationDescriptorRegistry(),
+				categorizedDomainModel.getGlobalRegistrations(),
 				bootstrapContext.getClassmateContext(),
 				bootstrapContext.getMetadataBuildingOptions().getSharedCacheMode()
 		);
@@ -36,17 +39,20 @@ public class BindingContextImpl implements BindingContext {
 	public BindingContextImpl(
 			ClassDetailsRegistry classDetailsRegistry,
 			AnnotationDescriptorRegistry annotationDescriptorRegistry,
+			GlobalRegistrations globalRegistrations,
 			ClassmateContext classmateContext) {
-		this( classDetailsRegistry, annotationDescriptorRegistry, classmateContext, SharedCacheMode.UNSPECIFIED );
+		this( classDetailsRegistry, annotationDescriptorRegistry, globalRegistrations, classmateContext, SharedCacheMode.UNSPECIFIED );
 	}
 
 	public BindingContextImpl(
 			ClassDetailsRegistry classDetailsRegistry,
 			AnnotationDescriptorRegistry annotationDescriptorRegistry,
+			GlobalRegistrations globalRegistrations,
 			ClassmateContext classmateContext,
 			SharedCacheMode sharedCacheMode) {
 		this.classDetailsRegistry = classDetailsRegistry;
 		this.annotationDescriptorRegistry = annotationDescriptorRegistry;
+		this.globalRegistrations = globalRegistrations;
 		this.classmateContext = classmateContext;
 		this.sharedCacheMode = sharedCacheMode;
 	}
@@ -59,6 +65,11 @@ public class BindingContextImpl implements BindingContext {
 	@Override
 	public AnnotationDescriptorRegistry getAnnotationDescriptorRegistry() {
 		return annotationDescriptorRegistry;
+	}
+
+	@Override
+	public GlobalRegistrations getGlobalRegistrations() {
+		return globalRegistrations;
 	}
 
 	@Override

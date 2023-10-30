@@ -8,12 +8,14 @@ package org.hibernate.models.orm.bind;
 
 import org.hibernate.annotations.TenantId;
 
+import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Version;
 
 /**
  * @author Steve Ebersole
  */
+@Entity
 public class SimpleIdEntity {
 	@Id
 	private Integer id;

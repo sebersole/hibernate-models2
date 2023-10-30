@@ -4,19 +4,22 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright: Red Hat Inc. and Hibernate Authors
  */
-package org.hibernate.models.orm.bind.spi;
+package org.hibernate.models.orm.categorize.spi;
 
 import org.hibernate.models.source.spi.ClassDetails;
 
 /**
  * @author Steve Ebersole
  */
-public interface NonAggregatedIdMapping extends CompositeIdMapping {
-	ClassDetails getIdClassType();
+public interface SingleAttributeIdMapping extends IdMapping {
+	AttributeMetadata getAttribute();
+
+	default String getAttributeName() {
+		return getAttribute().getName();
+	}
 
 	@Override
 	default ClassDetails getIdType() {
-		// todo : whether this is correct depends on how it will be used
-		return getIdClassType();
+		return getAttribute().getMember().getType();
 	}
 }

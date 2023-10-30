@@ -6,6 +6,7 @@
  */
 package org.hibernate.models.orm.categorize.internal;
 
+import org.hibernate.models.orm.categorize.spi.GlobalRegistrations;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
 import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
 import org.hibernate.models.source.spi.ClassDetailsRegistry;
@@ -19,27 +20,24 @@ import jakarta.persistence.SharedCacheMode;
 public class ModelCategorizationContextImpl implements ModelCategorizationContext {
 	private final ClassDetailsRegistry classDetailsRegistry;
 	private final AnnotationDescriptorRegistry annotationDescriptorRegistry;
+	private final GlobalRegistrations globalRegistrations;
 	private final SharedCacheMode sharedCacheMode;
-
-	public ModelCategorizationContextImpl(SourceModelContext sourceModelContext) {
-		this(
-				sourceModelContext.getClassDetailsRegistry(),
-				sourceModelContext.getAnnotationDescriptorRegistry()
-		);
-	}
 
 	public ModelCategorizationContextImpl(
 			ClassDetailsRegistry classDetailsRegistry,
-			AnnotationDescriptorRegistry annotationDescriptorRegistry) {
-		this( classDetailsRegistry, annotationDescriptorRegistry, SharedCacheMode.UNSPECIFIED );
+			AnnotationDescriptorRegistry annotationDescriptorRegistry,
+			GlobalRegistrations globalRegistrations) {
+		this( classDetailsRegistry, annotationDescriptorRegistry, globalRegistrations, SharedCacheMode.UNSPECIFIED );
 	}
 
 	public ModelCategorizationContextImpl(
 			ClassDetailsRegistry classDetailsRegistry,
 			AnnotationDescriptorRegistry annotationDescriptorRegistry,
+			GlobalRegistrations globalRegistrations,
 			SharedCacheMode sharedCacheMode) {
 		this.classDetailsRegistry = classDetailsRegistry;
 		this.annotationDescriptorRegistry = annotationDescriptorRegistry;
+		this.globalRegistrations = globalRegistrations;
 		this.sharedCacheMode = sharedCacheMode;
 	}
 
@@ -51,6 +49,10 @@ public class ModelCategorizationContextImpl implements ModelCategorizationContex
 	@Override
 	public AnnotationDescriptorRegistry getAnnotationDescriptorRegistry() {
 		return annotationDescriptorRegistry;
+	}
+
+	public GlobalRegistrations getGlobalRegistrations() {
+		return globalRegistrations;
 	}
 
 	@Override

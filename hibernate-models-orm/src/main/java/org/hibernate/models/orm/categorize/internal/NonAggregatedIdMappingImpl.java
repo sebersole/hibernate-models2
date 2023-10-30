@@ -4,11 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright: Red Hat Inc. and Hibernate Authors
  */
-package org.hibernate.models.orm.bind.internal;
+package org.hibernate.models.orm.categorize.internal;
 
 import java.util.List;
 
-import org.hibernate.models.orm.bind.spi.NonAggregatedIdMapping;
+import org.hibernate.models.orm.categorize.spi.NonAggregatedIdMapping;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 import org.hibernate.models.source.spi.ClassDetails;
 
@@ -24,6 +24,7 @@ public class NonAggregatedIdMappingImpl implements NonAggregatedIdMapping {
 		this.idClassType = idClassType;
 	}
 
+	@Override
 	public List<AttributeMetadata> getIdAttributes() {
 		return idAttributes;
 	}
@@ -31,11 +32,5 @@ public class NonAggregatedIdMappingImpl implements NonAggregatedIdMapping {
 	@Override
 	public ClassDetails getIdClassType() {
 		return idClassType;
-	}
-
-	@Override
-	public ClassDetails getIdType() {
-		// todo : whether this is correct depends on how it will be used
-		return getIdClassType();
 	}
 }
