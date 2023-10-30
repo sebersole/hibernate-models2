@@ -150,7 +150,8 @@ public class ManagedResourcesProcessor {
 		// Collect the entity hierarchies based on the set of `rootEntities`
 		final ModelCategorizationContextImpl mappingBuildingContext = new ModelCategorizationContextImpl(
 				classDetailsRegistryImmutable,
-				annotationDescriptorRegistryImmutable
+				annotationDescriptorRegistryImmutable,
+				modelCategorizationCollector.getGlobalRegistrations()
 		);
 
 		final Set<EntityHierarchy> entityHierarchies;

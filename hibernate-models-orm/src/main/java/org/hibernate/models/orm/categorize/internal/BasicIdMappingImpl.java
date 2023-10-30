@@ -4,18 +4,18 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright: Red Hat Inc. and Hibernate Authors
  */
-package org.hibernate.models.orm.bind.internal;
+package org.hibernate.models.orm.categorize.internal;
 
-import org.hibernate.models.orm.bind.spi.SingleAttributeIdMapping;
+import org.hibernate.models.orm.categorize.spi.BasicIdMapping;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 
 /**
  * @author Steve Ebersole
  */
-public class BasicIdMapping implements SingleAttributeIdMapping {
+public class BasicIdMappingImpl implements BasicIdMapping {
 	private final AttributeMetadata attribute;
 
-	public BasicIdMapping(AttributeMetadata attribute) {
+	public BasicIdMappingImpl(AttributeMetadata attribute) {
 		this.attribute = attribute;
 	}
 

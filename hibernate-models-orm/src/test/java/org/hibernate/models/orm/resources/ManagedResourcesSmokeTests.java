@@ -7,7 +7,6 @@
 package org.hibernate.models.orm.resources;
 
 import java.util.Iterator;
-import java.util.List;
 import java.util.Set;
 
 import org.hibernate.boot.MetadataSources;
@@ -17,10 +16,8 @@ import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.model.process.spi.MetadataBuildingProcess;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.models.orm.bind.internal.BindingContextImpl;
-import org.hibernate.models.orm.bind.internal.HierarchyMetadataProcessor;
-import org.hibernate.models.orm.bind.spi.HierarchyMetadata;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
+import org.hibernate.models.orm.categorize.spi.BasicIdMapping;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
@@ -36,7 +33,6 @@ import jakarta.persistence.Table;
 import jakarta.persistence.spi.PersistenceUnitInfo;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.models.orm.categorize.internal.EntityHierarchyBuilder.createEntityHierarchies;
 
 /**
  * {@linkplain MetadataBuildingProcess#prepare} produces a {@linkplain ManagedResources} which
@@ -58,7 +54,7 @@ import static org.hibernate.models.orm.categorize.internal.EntityHierarchyBuilde
  */
 public class ManagedResourcesSmokeTests {
 	@Test
-	void testProcessor() {
+	void testCategorization() {
 		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
 			final MetadataSources metadataSources = new MetadataSources( serviceRegistry ).addAnnotatedClass( Person.class );
 			final MetadataBuilderImpl.MetadataBuildingOptionsImpl metadataBuildingOptions = new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry );
@@ -72,7 +68,8 @@ public class ManagedResourcesSmokeTests {
 
 			final Set<EntityHierarchy> entityHierarchies = categorizedDomainModel.getEntityHierarchies();
 			assertThat( entityHierarchies ).hasSize( 1 );
-			final EntityTypeMetadata entityDescriptor = entityHierarchies.iterator().next().getRoot();
+			final EntityHierarchy entityHierarchy = entityHierarchies.iterator().next();
+			final EntityTypeMetadata entityDescriptor = entityHierarchy.getRoot();
 			final ClassDetails entityClassDetails = entityDescriptor.getClassDetails();
 			assertThat( entityClassDetails.getClassName() ).isEqualTo( Person.class.getName() );
 			assertThat( entityDescriptor.getAttributes() ).hasSize( 2 );
@@ -84,20 +81,11 @@ public class ManagedResourcesSmokeTests {
 			assertThat( firstAttribute.getMember() ).isInstanceOf( FieldDetails.class );
 			assertThat( secondAttribute.getMember() ).isInstanceOf( FieldDetails.class );
 
-
-
-			final BindingContextImpl mappingBuildingContext = new BindingContextImpl( categorizedDomainModel, bootstrapContext );
-
-			final List<HierarchyMetadata> hierarchyMetadata = HierarchyMetadataProcessor.preBindHierarchyAttributes(
-					categorizedDomainModel,
-					mappingBuildingContext
-			);
-
-			assertThat( hierarchyMetadata ).hasSize( 1 );
-			assertThat( hierarchyMetadata.get( 0 ).getCollectedIdAttributes() ).isInstanceOf( AttributeMetadata.class );
-			final AttributeMetadata idAttr = (AttributeMetadata) hierarchyMetadata.get( 0 ).getCollectedIdAttributes();
-			assertThat( idAttr.getName() ).isEqualTo( "id" );
-			assertThat( idAttr.getMember() ).isInstanceOf( FieldDetails.class );
+			assertThat( entityHierarchy.getIdMapping() ).isInstanceOf( BasicIdMapping.class );
+			final BasicIdMapping idMapping = (BasicIdMapping) entityHierarchy.getIdMapping();
+			final AttributeMetadata idAttribute = idMapping.getAttribute();
+			assertThat( idAttribute.getName() ).isEqualTo( "id" );
+			assertThat( idAttribute.getMember() ).isInstanceOf( FieldDetails.class );
 		}
 	}
 

@@ -55,4 +55,9 @@ public class JdkAnnotationUsage<A extends Annotation> implements MutableAnnotati
 		//noinspection unchecked
 		return (V) ( (Map<String,Object>) valueMap ).put( name, value );
 	}
+
+	@Override
+	public String toString() {
+		return "JdkAnnotationUsage(" + annotationType + ")";
+	}
 }

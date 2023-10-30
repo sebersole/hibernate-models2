@@ -15,7 +15,7 @@ import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.models.orm.process.ManagedResourcesImpl;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
-import org.hibernate.models.orm.categorize.spi.EntityListenerRegistration;
+import org.hibernate.models.orm.categorize.spi.JpaEventListener;
 import org.hibernate.models.source.spi.MethodDetails;
 
 import org.junit.jupiter.api.Test;
@@ -26,7 +26,7 @@ import static org.hibernate.models.orm.categorize.spi.ManagedResourcesProcessor.
 /**
  * @author Steve Ebersole
  */
-public class EntityListenerTests {
+public class JpaEventListenerTests {
 	@Test
 	void testGlobalRegistration() {
 		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
@@ -42,11 +42,11 @@ public class EntityListenerTests {
 					managedResources,
 					bootstrapContext
 			);
-			final List<EntityListenerRegistration> registrations = categorizedDomainModel
+			final List<JpaEventListener> registrations = categorizedDomainModel
 					.getGlobalRegistrations()
 					.getEntityListenerRegistrations();
 			assertThat( registrations ).hasSize( 1 );
-			final EntityListenerRegistration registration = registrations.get( 0 );
+			final JpaEventListener registration = registrations.get( 0 );
 			final MethodDetails postPersistMethod = registration.getPostPersistMethod();
 			assertThat( postPersistMethod ).isNotNull();
 			assertThat( postPersistMethod.getReturnType() ).isNull();

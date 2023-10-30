@@ -15,12 +15,14 @@ import org.hibernate.annotations.OptimisticLocking;
 import org.hibernate.cache.spi.access.AccessType;
 import org.hibernate.engine.OptimisticLockStyle;
 import org.hibernate.models.orm.JpaAnnotations;
+import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 import org.hibernate.models.orm.categorize.spi.CacheRegion;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
+import org.hibernate.models.orm.categorize.spi.IdMapping;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
-import org.hibernate.models.orm.categorize.spi.NaturalIdCacheRegion;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
+import org.hibernate.models.orm.categorize.spi.NaturalIdCacheRegion;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
 
@@ -30,6 +32,7 @@ import jakarta.persistence.InheritanceType;
 import static org.hibernate.models.orm.categorize.ModelCategorizationLogging.MODEL_CATEGORIZATION_LOGGER;
 
 /**
+ *
  * @author Steve Ebersole
  */
 public class EntityHierarchyImpl implements EntityHierarchy {
@@ -37,6 +40,10 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 
 	private final InheritanceType inheritanceType;
 	private final OptimisticLockStyle optimisticLockStyle;
+
+	private final IdMapping idMapping;
+	private final AttributeMetadata versionAttribute;
+	private final AttributeMetadata tenantIdAttribute;
 
 	private final CacheRegion cacheRegion;
 	private final NaturalIdCacheRegion naturalIdCacheRegion;
@@ -47,21 +54,28 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 			AccessType defaultCacheAccessType,
 			Consumer<IdentifiableTypeMetadata> typeConsumer,
 			ModelCategorizationContext modelBuildingContext) {
+		// NOTE : because the super-type consumer is "walked up" the
+		//		inheritance tree, we want to collect the first usages
+		//		which would be the "closest" usage
+		final HierarchyMetadataCollector metadataCollector = new HierarchyMetadataCollector( this, modelBuildingContext );
 		this.rootEntityTypeMetadata = new EntityTypeMetadataImpl(
 				rootEntityClassDetails,
 				this,
 				defaultAccessType,
+				metadataCollector,
 				typeConsumer,
 				modelBuildingContext
 		);
 
-		this.inheritanceType = determineInheritanceType( rootEntityTypeMetadata );
-		this.optimisticLockStyle = determineOptimisticLockStyle( rootEntityTypeMetadata );
+		this.inheritanceType = determineInheritanceType( metadataCollector );
+		this.optimisticLockStyle = determineOptimisticLockStyle( metadataCollector );
 
-		final AnnotationUsage<Cache> cacheAnnotation = rootEntityClassDetails.getAnnotationUsage( Cache.class );
-		final AnnotationUsage<NaturalIdCache> naturalIdCacheAnnotation = rootEntityClassDetails.getAnnotationUsage( NaturalIdCache.class );
-		cacheRegion = new CacheRegion( cacheAnnotation, defaultCacheAccessType, rootEntityClassDetails.getName() );
-		naturalIdCacheRegion = new NaturalIdCacheRegion( naturalIdCacheAnnotation, cacheRegion );
+		this.idMapping = metadataCollector.getIdMapping();
+		this.versionAttribute = metadataCollector.getVersionAttribute();
+		this.tenantIdAttribute = metadataCollector.getTenantIdAttribute();
+
+		this.cacheRegion = determineCacheRegion( metadataCollector, defaultCacheAccessType );
+		this.naturalIdCacheRegion = determineNaturalIdCacheRegion( metadataCollector, cacheRegion );
 	}
 
 	@Override
@@ -72,6 +86,21 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 	@Override
 	public InheritanceType getInheritanceType() {
 		return inheritanceType;
+	}
+
+	@Override
+	public IdMapping getIdMapping() {
+		return idMapping;
+	}
+
+	@Override
+	public AttributeMetadata getVersionAttribute() {
+		return versionAttribute;
+	}
+
+	@Override
+	public AttributeMetadata getTenantIdAttribute() {
+		return tenantIdAttribute;
 	}
 
 	@Override
@@ -102,33 +131,40 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 
 	private static final OptimisticLockStyle DEFAULT_LOCKING_STRATEGY = OptimisticLockStyle.VERSION;
 
-	private OptimisticLockStyle determineOptimisticLockStyle(EntityTypeMetadata rootEntityTypeMetadata) {
-		final AnnotationUsage<OptimisticLocking> lockStrategyAnn = rootEntityTypeMetadata
-				.getClassDetails()
-				.getAnnotationUsage( OptimisticLocking.class );
-		if ( lockStrategyAnn == null ) {
-			return DEFAULT_LOCKING_STRATEGY;
-		}
-		return lockStrategyAnn.getEnum( "type", DEFAULT_LOCKING_STRATEGY );
-	}
-
-	private InheritanceType determineInheritanceType(EntityTypeMetadata root) {
+	private InheritanceType determineInheritanceType(HierarchyMetadataCollector metadataCollector) {
 		if ( MODEL_CATEGORIZATION_LOGGER.isDebugEnabled() ) {
 			// Validate that there is no @Inheritance annotation further down the hierarchy
-			ensureNoInheritanceAnnotationsOnSubclasses( root );
+			ensureNoInheritanceAnnotationsOnSubclasses( rootEntityTypeMetadata );
 		}
 
-		IdentifiableTypeMetadata current = root;
-		while ( current != null ) {
-			final InheritanceType inheritanceType = getLocallyDefinedInheritanceType( current.getClassDetails() );
-			if ( inheritanceType != null ) {
-				return inheritanceType;
-			}
-
-			current = current.getSuperType();
+		final AnnotationUsage<Inheritance> inheritanceAnnotation = metadataCollector.getInheritanceAnnotation();
+		if ( inheritanceAnnotation != null ) {
+			return inheritanceAnnotation.getAttributeValue( "strategy" );
 		}
 
 		return InheritanceType.SINGLE_TABLE;
+	}
+
+	private OptimisticLockStyle determineOptimisticLockStyle(HierarchyMetadataCollector metadataCollector) {
+		final AnnotationUsage<OptimisticLocking> optimisticLockingAnnotation = metadataCollector.getOptimisticLockingAnnotation();
+		if ( optimisticLockingAnnotation != null ) {
+			optimisticLockingAnnotation.getEnum( "type", DEFAULT_LOCKING_STRATEGY );
+		}
+		return DEFAULT_LOCKING_STRATEGY;
+	}
+
+	private CacheRegion determineCacheRegion(
+			HierarchyMetadataCollector metadataCollector,
+			AccessType defaultCacheAccessType) {
+		final AnnotationUsage<Cache> cacheAnnotation = metadataCollector.getCacheAnnotation();
+		return new CacheRegion( cacheAnnotation, defaultCacheAccessType, rootEntityTypeMetadata.getEntityName() );
+	}
+
+	private NaturalIdCacheRegion determineNaturalIdCacheRegion(
+			HierarchyMetadataCollector metadataCollector,
+			CacheRegion cacheRegion) {
+		final AnnotationUsage<NaturalIdCache> naturalIdCacheAnnotation = metadataCollector.getNaturalIdCacheAnnotation();
+		return new NaturalIdCacheRegion( naturalIdCacheAnnotation, cacheRegion );
 	}
 
 	/**

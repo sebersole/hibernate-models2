@@ -7,9 +7,11 @@
 package org.hibernate.models.orm.categorize.spi;
 
 import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.boot.CacheRegionDefinition;
 import org.hibernate.cache.spi.access.AccessType;
 import org.hibernate.internal.util.StringHelper;
+import org.hibernate.models.ModelsException;
 import org.hibernate.models.source.spi.AnnotationUsage;
 
 /**
@@ -36,7 +38,7 @@ public class CacheRegion {
 			final String explicitRegionName = cacheAnnotation.getString( "region" );
 			regionName = StringHelper.isEmpty( explicitRegionName ) ? implicitRegionName : explicitRegionName;
 
-			accessType = cacheAnnotation.getAttributeValue( "usage" );
+			accessType = interpretAccessStrategy( cacheAnnotation.getAttributeValue( "usage" ) );
 
 			final Boolean explicitIncludeLazy = cacheAnnotation.getBoolean( "includeLazy" );
 			if ( explicitIncludeLazy != null ) {
@@ -46,6 +48,32 @@ public class CacheRegion {
 				final String include = cacheAnnotation.getAttributeValue( "include" );
 				assert "all".equals( include ) || "non-lazy".equals( include );
 				cacheLazyProperties = include.equals( "all" );
+			}
+		}
+	}
+
+	private AccessType interpretAccessStrategy(CacheConcurrencyStrategy usage) {
+		if ( usage == null ) {
+			return null;
+		}
+		switch ( usage ) {
+			case NONE: {
+				return null;
+			}
+			case READ_ONLY: {
+				return AccessType.READ_ONLY;
+			}
+			case READ_WRITE: {
+				return AccessType.READ_WRITE;
+			}
+			case NONSTRICT_READ_WRITE: {
+				return AccessType.NONSTRICT_READ_WRITE;
+			}
+			case TRANSACTIONAL: {
+				return AccessType.TRANSACTIONAL;
+			}
+			default: {
+				throw new ModelsException( "Unexpected cache concurrency strategy specified - " + usage );
 			}
 		}
 	}

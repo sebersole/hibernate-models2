@@ -52,6 +52,7 @@ public class EntityTypeMetadataImpl
 	private final String entityName;
 	private final String jpaEntityName;
 
+	private final AbstractIdentifiableTypeMetadata superType;
 	private final List<AttributeMetadata> attributeList;
 
 	private final boolean mutable;
@@ -75,9 +76,10 @@ public class EntityTypeMetadataImpl
 			ClassDetails classDetails,
 			EntityHierarchy hierarchy,
 			AccessType defaultAccessType,
+			RootEntityAndSuperTypeConsumer superTypeConsumer,
 			Consumer<IdentifiableTypeMetadata> typeConsumer,
 			ModelCategorizationContext modelContext) {
-		super( classDetails, hierarchy, true, defaultAccessType, typeConsumer, modelContext );
+		super( classDetails, hierarchy, true, defaultAccessType, superTypeConsumer, typeConsumer, modelContext );
 
 		this.hierarchy = hierarchy;
 
@@ -90,6 +92,10 @@ public class EntityTypeMetadataImpl
 		this.jpaEntityName = determineJpaEntityName( entityAnnotation, entityName );
 
 		this.attributeList = resolveAttributes();
+		superTypeConsumer.acceptTypeOrSuperType( this );
+
+		// walk up
+		this.superType = walkRootSuperclasses( classDetails, getAccessType(), superTypeConsumer, typeConsumer );
 
 		this.mutable = determineMutability( classDetails, modelContext );
 		this.cacheable = determineCacheability( classDetails, modelContext );
@@ -157,6 +163,7 @@ public class EntityTypeMetadataImpl
 		final AnnotationUsage<Entity> entityAnnotation = classDetails.getAnnotationUsage( JpaAnnotations.ENTITY );
 		this.jpaEntityName = determineJpaEntityName( entityAnnotation, entityName );
 
+		this.superType = superType;
 		this.attributeList = resolveAttributes();
 
 		this.mutable = determineMutability( classDetails, modelContext );
@@ -202,6 +209,11 @@ public class EntityTypeMetadataImpl
 		else {
 			this.discriminatorMatchValue = null;
 		}
+	}
+
+	@Override
+	public IdentifiableTypeMetadata getSuperType() {
+		return superType;
 	}
 
 	@Override

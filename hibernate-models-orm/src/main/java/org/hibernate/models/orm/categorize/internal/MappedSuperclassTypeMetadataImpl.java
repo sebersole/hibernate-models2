@@ -25,17 +25,23 @@ public class MappedSuperclassTypeMetadataImpl
 		extends AbstractIdentifiableTypeMetadata
 		implements MappedSuperclassTypeMetadata {
 
+	private final AbstractIdentifiableTypeMetadata superType;
 	private final List<AttributeMetadata> attributeList;
 
 	public MappedSuperclassTypeMetadataImpl(
 			ClassDetails classDetails,
 			EntityHierarchy hierarchy,
 			AccessType defaultAccessType,
+			RootEntityAndSuperTypeConsumer superTypeConsumer,
 			Consumer<IdentifiableTypeMetadata> typeConsumer,
 			ModelCategorizationContext modelContext) {
-		super( classDetails, hierarchy, false, defaultAccessType, typeConsumer, modelContext );
+		super( classDetails, hierarchy, false, defaultAccessType, superTypeConsumer, typeConsumer, modelContext );
 
 		this.attributeList = resolveAttributes();
+		superTypeConsumer.acceptTypeOrSuperType( this );
+
+		// walk up
+		this.superType = walkRootSuperclasses( classDetails, getAccessType(), superTypeConsumer, typeConsumer );
 	}
 
 	public MappedSuperclassTypeMetadataImpl(
@@ -46,7 +52,13 @@ public class MappedSuperclassTypeMetadataImpl
 			ModelCategorizationContext modelContext) {
 		super( classDetails, hierarchy, superType, typeConsumer, modelContext );
 
+		this.superType = superType;
 		this.attributeList = resolveAttributes();
+	}
+
+	@Override
+	public IdentifiableTypeMetadata getSuperType() {
+		return superType;
 	}
 
 	@Override
