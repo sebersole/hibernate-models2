@@ -9,6 +9,7 @@
                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                  version="3.1">
     <entity class="org.hibernate.models.orm.xml.SimpleEntity" metadata-complete="true" access="FIELD">
+        <sql-restriction>name is not null</sql-restriction>
         <filter name="name_filter" condition="{t}.name = :name">
             <aliases alias="t" table="SimpleEntity" entity="org.hibernate.models.orm.xml.SimpleEntity"/>
          </filter>

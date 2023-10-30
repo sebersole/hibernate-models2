@@ -9,6 +9,7 @@ package org.hibernate.models.orm.xml.complete;
 import java.util.List;
 
 import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.SqlFragmentAlias;
 import org.hibernate.boot.internal.BootstrapContextImpl;
 import org.hibernate.boot.internal.MetadataBuilderImpl;
@@ -75,6 +76,10 @@ public class SimpleCompleteXmlTests {
 			final AnnotationUsage<Column> nameColumnAnn = nameAttribute.getMember().getAnnotationUsage( Column.class );
 			assertThat( nameColumnAnn ).isNotNull();
 			assertThat( nameColumnAnn.<String>getAttributeValue( "name" ) ).isEqualTo( "description" );
+
+			final AnnotationUsage<SQLRestriction> sqlRestriction = root.getClassDetails().getAnnotationUsage( SQLRestriction.class );
+			assertThat( sqlRestriction ).isNotNull();
+			assertThat( sqlRestriction.<String>getAttributeValue( "value" ) ).isEqualTo( "name is not null" );
 
 			validateFilterUsage( root.getClassDetails().getAnnotationUsage( Filter.class ) );
 		}
