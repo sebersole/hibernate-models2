@@ -6,8 +6,17 @@
  */
 package org.hibernate.models.orm.bind.spi;
 
-import org.hibernate.models.orm.bind.internal.HierarchyMetadataProcessor;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
+import org.hibernate.models.orm.categorize.spi.GlobalRegistrations;
+import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
+import org.hibernate.models.orm.categorize.spi.JpaEventListener;
+import org.hibernate.models.source.spi.ClassDetails;
+
+import jakarta.persistence.ExcludeDefaultListeners;
+import jakarta.persistence.ExcludeSuperclassListeners;
 
 /**
  * Responsible for processing {@linkplain org.hibernate.boot.model.process.spi.ManagedResources managed-resources}
@@ -27,7 +36,6 @@ public class BindingCoordinator {
 			CategorizedDomainModel categorizedDomainModel,
 			BindingOptions options,
 			BindingContext bindingContext) {
-		HierarchyMetadataProcessor.preBindHierarchyAttributes( categorizedDomainModel, bindingContext );
 //		Processor.process( managedResources, bindingContext, options );
 	}
 }

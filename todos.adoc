@@ -1,5 +1,20 @@
 = Stuff
 
+== Cached member annotations
+
+Annotations targeting members to cache and make accessible from declaring class -
+
+* @Id
+* @EmbeddedId
+* @Version
+* @TenantId
+* @PrePersist, @PostPersist, ...
+* @
+* @
+* @
+* @
+
+
 == Open Questions
 
 * Hierarchical packages?  E.g. should things defined on the `com.acme` package apply to things in the `com.acme.model` package?  Should `PackageDetails` have reference to its "parent" `PackageDetails`?

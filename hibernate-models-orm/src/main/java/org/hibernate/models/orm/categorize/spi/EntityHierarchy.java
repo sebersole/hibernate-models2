@@ -27,6 +27,12 @@ public interface EntityHierarchy {
 	 */
 	InheritanceType getInheritanceType();
 
+	IdMapping getIdMapping();
+
+	AttributeMetadata getVersionAttribute();
+
+	AttributeMetadata getTenantIdAttribute();
+
 	/**
 	 * Style of optimistic locking for the hierarchy.
 	 */

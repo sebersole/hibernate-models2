@@ -12,9 +12,9 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import org.hibernate.MappingException;
+import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
-import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
@@ -31,7 +31,6 @@ public abstract class AbstractIdentifiableTypeMetadata
 		extends AbstractManagedTypeMetadata
 		implements IdentifiableTypeMetadata {
 	private final EntityHierarchy hierarchy;
-	private final AbstractIdentifiableTypeMetadata superType;
 	private final Set<IdentifiableTypeMetadata> subTypes = new HashSet<>();
 
 	private final AccessType accessType;
@@ -53,6 +52,7 @@ public abstract class AbstractIdentifiableTypeMetadata
 			EntityHierarchy hierarchy,
 			boolean isRootEntity,
 			AccessType accessType,
+			RootEntityAndSuperTypeConsumer superTypeConsumer,
 			Consumer<IdentifiableTypeMetadata> typeConsumer,
 			ModelCategorizationContext processingContext) {
 		super( classDetails, processingContext );
@@ -61,9 +61,6 @@ public abstract class AbstractIdentifiableTypeMetadata
 
 		this.hierarchy = hierarchy;
 		this.accessType = determineAccessType( accessType );
-
-		// walk up
-		this.superType = walkRootSuperclasses( classDetails, accessType, typeConsumer );
 
 		if ( isRootEntity ) {
 			// walk down
@@ -106,7 +103,6 @@ public abstract class AbstractIdentifiableTypeMetadata
 		typeConsumer.accept( this );
 
 		this.hierarchy = hierarchy;
-		this.superType = superType;
 		this.accessType = determineAccessType( superType.getAccessType() );
 
 		// the idea here is to collect up class-level annotations and to apply
@@ -116,9 +112,10 @@ public abstract class AbstractIdentifiableTypeMetadata
 		collectAssociationOverrides();
 	}
 
-	private AbstractIdentifiableTypeMetadata walkRootSuperclasses(
+	protected AbstractIdentifiableTypeMetadata walkRootSuperclasses(
 			ClassDetails classDetails,
 			AccessType hierarchyAccessType,
+			RootEntityAndSuperTypeConsumer superTypeConsumer,
 			Consumer<IdentifiableTypeMetadata> typeConsumer) {
 		final ClassDetails superTypeClassDetails = classDetails.getSuperType();
 		if ( superTypeClassDetails == null ) {
@@ -140,6 +137,7 @@ public abstract class AbstractIdentifiableTypeMetadata
 					superTypeClassDetails,
 					getHierarchy(),
 					hierarchyAccessType,
+					superTypeConsumer,
 					typeConsumer,
 					getModelContext()
 			);
@@ -149,7 +147,7 @@ public abstract class AbstractIdentifiableTypeMetadata
 		else {
 			// otherwise, we might have an "intermediate" subclass
 			if ( superTypeClassDetails.getSuperType() != null ) {
-				return walkRootSuperclasses( superTypeClassDetails, hierarchyAccessType, typeConsumer );
+				return walkRootSuperclasses( superTypeClassDetails, hierarchyAccessType, superTypeConsumer, typeConsumer );
 			}
 			else {
 				return null;
@@ -213,11 +211,6 @@ public abstract class AbstractIdentifiableTypeMetadata
 	@Override
 	public boolean isAbstract() {
 		return getClassDetails().isAbstract();
-	}
-
-	@Override
-	public IdentifiableTypeMetadata getSuperType() {
-		return superType;
 	}
 
 	@Override

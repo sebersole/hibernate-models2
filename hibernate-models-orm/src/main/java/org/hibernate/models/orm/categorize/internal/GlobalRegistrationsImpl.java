@@ -39,12 +39,13 @@ import org.hibernate.models.orm.categorize.spi.CollectionTypeRegistration;
 import org.hibernate.models.orm.categorize.spi.CompositeUserTypeRegistration;
 import org.hibernate.models.orm.categorize.spi.ConversionRegistration;
 import org.hibernate.models.orm.categorize.spi.EmbeddableInstantiatorRegistration;
-import org.hibernate.models.orm.categorize.spi.EntityListenerRegistration;
 import org.hibernate.models.orm.categorize.spi.FilterDefRegistration;
 import org.hibernate.models.orm.categorize.spi.GenericGeneratorRegistration;
 import org.hibernate.models.orm.categorize.spi.GlobalRegistrations;
 import org.hibernate.models.orm.categorize.spi.JavaTypeRegistration;
 import org.hibernate.models.orm.categorize.spi.JdbcTypeRegistration;
+import org.hibernate.models.orm.categorize.spi.JpaEventListener;
+import org.hibernate.models.orm.categorize.spi.JpaEventListenerStyle;
 import org.hibernate.models.orm.categorize.spi.SequenceGeneratorRegistration;
 import org.hibernate.models.orm.categorize.spi.TableGeneratorRegistration;
 import org.hibernate.models.orm.categorize.spi.UserTypeRegistration;
@@ -77,7 +78,7 @@ import static org.hibernate.models.orm.HibernateAnnotations.TYPE_REG;
 public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	private final ClassDetailsRegistry classDetailsRegistry;
 
-	private List<EntityListenerRegistration> entityListenerRegistrations;
+	private List<JpaEventListener> jpaEventListeners;
 	private List<ConversionRegistration> converterRegistrations;
 	private List<JavaTypeRegistration> javaTypeRegistrations;
 	private List<JdbcTypeRegistration> jdbcTypeRegistrations;
@@ -100,8 +101,8 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	}
 
 	@Override
-	public List<EntityListenerRegistration> getEntityListenerRegistrations() {
-		return entityListenerRegistrations == null ? emptyList() : entityListenerRegistrations;
+	public List<JpaEventListener> getEntityListenerRegistrations() {
+		return jpaEventListeners == null ? emptyList() : jpaEventListeners;
 	}
 
 	@Override
@@ -480,18 +481,23 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 			return;
 		}
 
-		if ( entityListenerRegistrations == null ) {
-			entityListenerRegistrations = new ArrayList<>();
+		listeners.forEach( (jaxbEntityListener) -> {
+			final ClassDetails classDetails = classDetailsRegistry.resolveClassDetails( jaxbEntityListener.getClazz() );
+			final JpaEventListener listener = JpaEventListener.from(
+					JpaEventListenerStyle.LISTENER,
+					classDetails,
+					jaxbEntityListener
+			);
+			addJpaEventListener( listener );
+		} );
+	}
+
+	public void addJpaEventListener(JpaEventListener listener) {
+		if ( jpaEventListeners == null ) {
+			jpaEventListeners = new ArrayList<>();
 		}
 
-		listeners.forEach( (listener) -> {
-			final EntityListenerRegistration listenerRegistration = EntityListenerRegistration.from(
-					EntityListenerRegistration.CallbackType.LISTENER,
-					listener,
-					classDetailsRegistry
-			);
-			entityListenerRegistrations.add( listenerRegistration );
-		} );
+		jpaEventListeners.add( listener );
 	}
 
 
