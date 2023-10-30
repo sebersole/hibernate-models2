@@ -9,6 +9,8 @@ package org.hibernate.models.orm.xml.complete;
 import java.util.List;
 
 import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.ResultCheckStyle;
+import org.hibernate.annotations.SQLInsert;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.SqlFragmentAlias;
 import org.hibernate.boot.internal.BootstrapContextImpl;
@@ -81,6 +83,8 @@ public class SimpleCompleteXmlTests {
 			assertThat( sqlRestriction ).isNotNull();
 			assertThat( sqlRestriction.<String>getAttributeValue( "value" ) ).isEqualTo( "name is not null" );
 
+			validateSqlInsert( root.getClassDetails().getAnnotationUsage( SQLInsert.class ));
+
 			validateFilterUsage( root.getClassDetails().getAnnotationUsage( Filter.class ) );
 		}
 	}
@@ -96,5 +100,13 @@ public class SimpleCompleteXmlTests {
 		assertThat( aliases.get( 0 )
 							.<ClassDetails>getAttributeValue( "entity" )
 							.getName() ).isEqualTo( SimpleEntity.class.getName() );
+	}
+
+	private void validateSqlInsert(AnnotationUsage<SQLInsert> sqlInsert) {
+		assertThat( sqlInsert ).isNotNull();
+		assertThat( sqlInsert.<String>getAttributeValue( "sql" ) ).isEqualTo( "insert into SimpleEntity(name) values(?)" );
+		assertThat( sqlInsert.<Boolean>getAttributeValue( "callable" ) ).isTrue();
+		assertThat( sqlInsert.<ResultCheckStyle>getAttributeValue( "check" ) ).isEqualTo( ResultCheckStyle.COUNT );
+		assertThat( sqlInsert.<String>getAttributeValue( "table" ) ).isEqualTo( "SimpleEntity" );
 	}
 }
