@@ -10,19 +10,19 @@ package org.hibernate.models.orm.xml.lifecycle;
  * @author Marco Belladelli
  */
 public class SimpleEntityListener {
-	public void postPersist() {
+	public void postPersist(Object entity) {
 		// used by hibernate lifecycle callbacks
 	}
 
-	public void postRemove() {
+	public void postRemove(Object entity) {
 		// used by hibernate lifecycle callbacks
 	}
 
-	public void postUpdate() {
+	public void postUpdate(Object entity) {
 		// used by hibernate lifecycle callbacks
 	}
 
-	public void postLoad() {
+	public void postLoad(Object entity) {
 		// used by hibernate lifecycle callbacks
 	}
 }

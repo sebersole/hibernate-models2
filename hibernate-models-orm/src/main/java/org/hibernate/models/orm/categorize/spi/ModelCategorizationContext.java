@@ -6,6 +6,8 @@
  */
 package org.hibernate.models.orm.categorize.spi;
 
+import java.util.List;
+
 import org.hibernate.boot.internal.ClassmateContext;
 import org.hibernate.models.orm.categorize.internal.StandardPersistentAttributeMemberResolver;
 import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
@@ -29,4 +31,5 @@ public interface ModelCategorizationContext {
 		return StandardPersistentAttributeMemberResolver.INSTANCE;
 	}
 
+	List<JpaEventListener> getDefaultEventListeners();
 }

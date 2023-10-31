@@ -6,7 +6,10 @@
  */
 package org.hibernate.models.orm.categorize.internal;
 
+import java.util.List;
+
 import org.hibernate.models.orm.categorize.spi.GlobalRegistrations;
+import org.hibernate.models.orm.categorize.spi.JpaEventListener;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
 import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
 import org.hibernate.models.source.spi.ClassDetailsRegistry;
@@ -58,5 +61,10 @@ public class ModelCategorizationContextImpl implements ModelCategorizationContex
 	@Override
 	public SharedCacheMode getSharedCacheMode() {
 		return sharedCacheMode;
+	}
+
+	@Override
+	public List<JpaEventListener> getDefaultEventListeners() {
+		return getGlobalRegistrations().getEntityListenerRegistrations();
 	}
 }

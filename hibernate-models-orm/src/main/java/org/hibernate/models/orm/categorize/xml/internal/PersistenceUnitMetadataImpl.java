@@ -7,11 +7,8 @@
 package org.hibernate.models.orm.categorize.xml.internal;
 
 import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.Set;
 
 import org.hibernate.annotations.CascadeType;
-import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityListenerImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitDefaultsImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitMetadataImpl;
 import org.hibernate.models.orm.categorize.ModelCategorizationLogging;
@@ -39,7 +36,6 @@ public final class PersistenceUnitMetadataImpl implements PersistenceUnitMetadat
 	private String defaultAccessStrategy;
 
 	private final EnumSet<CascadeType> defaultCascadeTypes = EnumSet.noneOf( CascadeType.class );
-	private final Set<JaxbEntityListenerImpl> globalEntityListeners = new HashSet<>();
 
 	@Override
 	public boolean areXmlMappingsComplete() {
@@ -74,11 +70,6 @@ public final class PersistenceUnitMetadataImpl implements PersistenceUnitMetadat
 	@Override
 	public boolean useQuotedIdentifiers() {
 		return quoteIdentifiers;
-	}
-
-	@Override
-	public Set<JaxbEntityListenerImpl> getEntityListeners() {
-		return globalEntityListeners;
 	}
 
 	public void apply(JaxbPersistenceUnitMetadataImpl metadata) {
