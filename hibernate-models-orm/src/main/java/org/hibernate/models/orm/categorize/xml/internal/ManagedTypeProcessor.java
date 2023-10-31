@@ -36,6 +36,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAttribute;
 import org.hibernate.models.ModelsException;
 import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.StringHelper;
+import org.hibernate.models.orm.categorize.spi.JpaEventListenerStyle;
 import org.hibernate.models.orm.categorize.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.models.orm.categorize.xml.spi.XmlProcessingResult;
 import org.hibernate.models.source.internal.MutableClassDetails;
@@ -615,7 +616,12 @@ public class ManagedTypeProcessor {
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		XmlAnnotationHelper.applyIdClass( jaxbEntity.getIdClass(), classDetails, sourceModelBuildingContext );
 
-		XmlAnnotationHelper.applyLifecycleCallbacks( jaxbEntity, classDetails, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyLifecycleCallbacks(
+				jaxbEntity,
+				JpaEventListenerStyle.CALLBACK,
+				classDetails,
+				sourceModelBuildingContext
+		);
 
 		if ( jaxbEntity.getEntityListeners() != null ) {
 			jaxbEntity.getEntityListeners().getEntityListener().forEach( ( jaxbEntityListener -> {

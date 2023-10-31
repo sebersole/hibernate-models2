@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.hibernate.AnnotationException;
 import org.hibernate.annotations.AttributeAccessor;
 import org.hibernate.annotations.CollectionType;
 import org.hibernate.annotations.Filter;
@@ -66,6 +67,8 @@ import org.hibernate.engine.spi.ExecuteUpdateResultCheckStyle;
 import org.hibernate.models.ModelsException;
 import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.StringHelper;
+import org.hibernate.models.orm.categorize.spi.JpaEventListener;
+import org.hibernate.models.orm.categorize.spi.JpaEventListenerStyle;
 import org.hibernate.models.orm.categorize.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.models.source.internal.MutableAnnotationTarget;
 import org.hibernate.models.source.internal.MutableAnnotationUsage;
@@ -942,7 +945,12 @@ public class XmlAnnotationHelper {
 		);
 		final MutableClassDetails entityListenerClass = (MutableClassDetails) buildingContext.getClassDetailsRegistry()
 				.resolveClassDetails( jaxbEntityListener.getClazz() );
-		applyLifecycleCallbacks( jaxbEntityListener, entityListenerClass, buildingContext );
+		applyLifecycleCallbacks(
+				jaxbEntityListener,
+				JpaEventListenerStyle.LISTENER,
+				entityListenerClass,
+				buildingContext
+		);
 		final List<ClassDetails> values = entityListeners.getAttributeValue( "value" );
 		if ( values != null ) {
 			values.add( entityListenerClass );
@@ -954,25 +962,50 @@ public class XmlAnnotationHelper {
 	
 	static void applyLifecycleCallbacks(
 			JaxbLifecycleCallbackContainer lifecycleCallbackContainer,
+			JpaEventListenerStyle callbackType,
 			MutableClassDetails classDetails,
 			SourceModelBuildingContext buildingContext) {
-		applyLifecycleCallback( lifecycleCallbackContainer.getPrePersist(), PrePersist.class, classDetails );
-		applyLifecycleCallback( lifecycleCallbackContainer.getPostPersist(), PostPersist.class, classDetails );
-		applyLifecycleCallback( lifecycleCallbackContainer.getPreRemove(), PreRemove.class, classDetails );
-		applyLifecycleCallback( lifecycleCallbackContainer.getPostRemove(), PostRemove.class, classDetails );
-		applyLifecycleCallback( lifecycleCallbackContainer.getPreUpdate(), PreUpdate.class, classDetails );
-		applyLifecycleCallback( lifecycleCallbackContainer.getPostUpdate(), PostUpdate.class, classDetails );
-		applyLifecycleCallback( lifecycleCallbackContainer.getPostLoad(), PostLoad.class, classDetails );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPrePersist(), callbackType, PrePersist.class, classDetails );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPostPersist(), callbackType, PostPersist.class, classDetails );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPreRemove(), callbackType, PreRemove.class, classDetails );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPostRemove(), callbackType, PostRemove.class, classDetails );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPreUpdate(), callbackType, PreUpdate.class, classDetails );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPostUpdate(), callbackType, PostUpdate.class, classDetails );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPostLoad(), callbackType, PostLoad.class, classDetails );
 	}
 
 	private static <A extends Annotation> void applyLifecycleCallback(
 			JaxbLifecycleCallback lifecycleCallback,
+			JpaEventListenerStyle callbackType,
 			Class<A> lifecycleAnnotation,
 			MutableClassDetails classDetails) {
 		if ( lifecycleCallback != null ) {
-			final MethodDetails method = classDetails.findMethodByName( lifecycleCallback.getMethodName() );
-			XmlProcessingHelper.makeAnnotation( lifecycleAnnotation, (MutableMemberDetails) method );
+			final MethodDetails methodDetails = getCallbackMethodDetails(
+					lifecycleCallback.getMethodName(),
+					callbackType,
+					classDetails
+			);
+			if ( methodDetails == null ) {
+				throw new AnnotationException( String.format(
+						"Lifecycle callback method not found - %s (%s)",
+						lifecycleCallback.getMethodName(),
+						classDetails.getName()
+				) );
+			}
+			XmlProcessingHelper.makeAnnotation( lifecycleAnnotation, (MutableMemberDetails) methodDetails );
 		}
+	}
+
+	private static MethodDetails getCallbackMethodDetails(
+			String name,
+			JpaEventListenerStyle callbackType,
+			ClassDetails classDetails) {
+		for ( MethodDetails method : classDetails.getMethods() ) {
+			if ( method.getName().equals( name ) && JpaEventListener.matchesSignature( callbackType, method ) ) {
+				return method;
+			}
+		}
+		return null;
 	}
 
 	static void applyRowId(
