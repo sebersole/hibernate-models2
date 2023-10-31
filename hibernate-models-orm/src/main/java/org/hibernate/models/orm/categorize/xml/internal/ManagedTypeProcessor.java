@@ -457,6 +457,8 @@ public class ManagedTypeProcessor {
 
 		processEntityOrMappedSuperclass( jaxbEntity, classDetails, sourceModelBuildingContext );
 
+		XmlAnnotationHelper.applyRowId( jaxbEntity.getRowid(), classDetails, sourceModelBuildingContext );
+
 		// todo : secondary-tables
 	}
 
