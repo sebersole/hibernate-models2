@@ -64,10 +64,4 @@ public interface PersistenceUnitMetadata {
 	 * See {@code entity-mappings/persistence-unit-metadata/persistence-unit-defaults/delimited-identifiers}
 	 */
 	boolean useQuotedIdentifiers();
-
-	/**
-	 * Entity listeners in effect for the entire persistence unit
-	 * See {@code entity-mappings/persistence-unit-metadata/persistence-unit-defaults/entity-listeners}
-	 */
-	Set<JaxbEntityListenerImpl> getEntityListeners();
 }

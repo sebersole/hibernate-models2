@@ -50,7 +50,7 @@ public class JpaEventListener {
 
 	private final MethodDetails postLoadMethod;
 
-	private JpaEventListener(
+	public JpaEventListener(
 			JpaEventListenerStyle consumerType,
 			ClassDetails listenerClass,
 			MethodDetails prePersistMethod,
@@ -75,7 +75,7 @@ public class JpaEventListener {
 		return consumerType;
 	}
 
-	public ClassDetails getConsumerClass() {
+	public ClassDetails getCallbackClass() {
 		return listenerClass;
 	}
 
@@ -257,7 +257,7 @@ public class JpaEventListener {
 		}
 	}
 
-	private static boolean matchesSignature(JpaEventListenerStyle callbackType, MethodDetails methodDetails) {
+	public static boolean matchesSignature(JpaEventListenerStyle callbackType, MethodDetails methodDetails) {
 		if ( callbackType == JpaEventListenerStyle.CALLBACK ) {
 			// should have no arguments.  and technically (spec) have a void return
 			return methodDetails.getArgumentTypes().isEmpty()

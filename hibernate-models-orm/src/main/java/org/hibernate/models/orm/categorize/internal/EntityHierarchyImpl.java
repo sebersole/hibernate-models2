@@ -25,10 +25,8 @@ import org.hibernate.models.orm.categorize.spi.NaturalIdCacheRegion;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
 
-import jakarta.persistence.Entity;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
-import jakarta.persistence.MappedSuperclass;
 
 import static org.hibernate.models.orm.categorize.ModelCategorizationLogging.MODEL_CATEGORIZATION_LOGGER;
 
@@ -37,7 +35,7 @@ import static org.hibernate.models.orm.categorize.ModelCategorizationLogging.MOD
  * @author Steve Ebersole
  */
 public class EntityHierarchyImpl implements EntityHierarchy {
-	private final IdentifiableTypeMetadata rootRootTypeMetadata;
+	private final IdentifiableTypeMetadata absoluteRootTypeMetadata;
 	private final EntityTypeMetadata rootEntityTypeMetadata;
 
 	private final InheritanceType inheritanceType;
@@ -56,12 +54,12 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 			AccessType defaultCacheAccessType,
 			HierarchyTypeConsumer typeConsumer,
 			ModelCategorizationContext modelBuildingContext) {
-		final ClassDetails rootRoot = findRootRoot( rootEntityClassDetails );
+		final ClassDetails absoluteRootClassDetails = findRootRoot( rootEntityClassDetails );
 		final HierarchyMetadataCollector metadataCollector = new HierarchyMetadataCollector( this, rootEntityClassDetails, typeConsumer );
 
-		if ( CategorizationHelper.isEntity( rootRoot ) ) {
-			this.rootRootTypeMetadata = new EntityTypeMetadataImpl(
-					rootRoot,
+		if ( CategorizationHelper.isEntity( absoluteRootClassDetails ) ) {
+			this.absoluteRootTypeMetadata = new EntityTypeMetadataImpl(
+					absoluteRootClassDetails,
 					this,
 					defaultAccessType,
 					metadataCollector,
@@ -69,9 +67,9 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 			);
 		}
 		else {
-			assert CategorizationHelper.isMappedSuperclass( rootRoot );
-			this.rootRootTypeMetadata = new MappedSuperclassTypeMetadataImpl(
-					rootRoot,
+			assert CategorizationHelper.isMappedSuperclass( absoluteRootClassDetails );
+			this.absoluteRootTypeMetadata = new MappedSuperclassTypeMetadataImpl(
+					absoluteRootClassDetails,
 					this,
 					defaultAccessType,
 					metadataCollector,
@@ -126,8 +124,8 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 	}
 
 	@Override
-	public IdentifiableTypeMetadata getRootRoot() {
-		return rootRootTypeMetadata;
+	public IdentifiableTypeMetadata getAbsoluteRoot() {
+		return absoluteRootTypeMetadata;
 	}
 
 	@Override

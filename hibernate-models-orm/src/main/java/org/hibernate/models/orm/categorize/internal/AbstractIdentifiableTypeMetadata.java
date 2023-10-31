@@ -6,13 +6,18 @@
  */
 package org.hibernate.models.orm.categorize.internal;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
+import org.hibernate.models.orm.categorize.spi.JpaEventListener;
+import org.hibernate.models.orm.categorize.spi.JpaEventListenerStyle;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
@@ -20,6 +25,9 @@ import org.hibernate.models.source.spi.ClassDetailsRegistry;
 
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
+import jakarta.persistence.EntityListeners;
+import jakarta.persistence.ExcludeDefaultListeners;
+import jakarta.persistence.ExcludeSuperclassListeners;
 
 
 /**
@@ -31,7 +39,6 @@ public abstract class AbstractIdentifiableTypeMetadata
 	private final EntityHierarchy hierarchy;
 	private final AbstractIdentifiableTypeMetadata superType;
 	private final Set<IdentifiableTypeMetadata> subTypes = new HashSet<>();
-
 	private final AccessType accessType;
 
 	/**
@@ -183,5 +190,56 @@ public abstract class AbstractIdentifiableTypeMetadata
 
 	protected void collectAssociationOverrides() {
 		// we only need to do this on root
+	}
+
+	protected List<JpaEventListener> collectHierarchyEventListeners(JpaEventListener localCallback) {
+		final ClassDetails classDetails = getClassDetails();
+
+		final List<JpaEventListener> combined = new ArrayList<>();
+
+		if ( classDetails.getAnnotationUsage( ExcludeSuperclassListeners.class ) == null ) {
+			final IdentifiableTypeMetadata superType = getSuperType();
+			if ( superType != null ) {
+				combined.addAll( superType.getHierarchyJpaEventListeners() );
+			}
+		}
+
+		applyLocalEventListeners( combined::add );
+
+		if ( localCallback != null ) {
+			combined.add( localCallback );
+		}
+
+		return combined;
+	}
+
+	private void applyLocalEventListeners(Consumer<JpaEventListener> consumer) {
+		final ClassDetails classDetails = getClassDetails();
+
+		final AnnotationUsage<EntityListeners> entityListenersAnnotation = classDetails.getAnnotationUsage( EntityListeners.class );
+		if ( entityListenersAnnotation == null ) {
+			return;
+		}
+
+		final List<ClassDetails> entityListenerClasses = entityListenersAnnotation.getAttributeValue( "value" );
+		if ( CollectionHelper.isEmpty( entityListenerClasses ) ) {
+			return;
+		}
+
+		entityListenerClasses.forEach( (listenerClass) -> {
+			consumer.accept( JpaEventListener.from( JpaEventListenerStyle.LISTENER, listenerClass ) );
+		} );
+	}
+
+	protected List<JpaEventListener> collectCompleteEventListeners(ModelCategorizationContext modelContext) {
+		final ClassDetails classDetails = getClassDetails();
+		if ( classDetails.getAnnotationUsage( ExcludeDefaultListeners.class ) != null ) {
+			return getHierarchyJpaEventListeners();
+		}
+
+		final List<JpaEventListener> combined = new ArrayList<>();
+		combined.addAll( modelContext.getDefaultEventListeners() );
+		combined.addAll( getHierarchyJpaEventListeners() );
+		return combined;
 	}
 }

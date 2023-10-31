@@ -6,6 +6,10 @@
  */
 package org.hibernate.models.orm.util;
 
+import java.util.Collections;
+import java.util.List;
+
+import org.hibernate.models.orm.categorize.spi.JpaEventListener;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
 import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
 import org.hibernate.models.source.spi.ClassDetailsRegistry;
@@ -63,5 +67,10 @@ public class ModelCategorizationContextTesting implements ModelCategorizationCon
 	@Override
 	public SharedCacheMode getSharedCacheMode() {
 		return sharedCacheMode;
+	}
+
+	@Override
+	public List<JpaEventListener> getDefaultEventListeners() {
+		return Collections.emptyList();
 	}
 }

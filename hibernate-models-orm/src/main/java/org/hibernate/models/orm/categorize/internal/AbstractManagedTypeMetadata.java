@@ -20,6 +20,7 @@ import org.hibernate.models.internal.IndexedConsumer;
 import org.hibernate.models.orm.HibernateAnnotations;
 import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.orm.MultipleAttributeNaturesException;
+import org.hibernate.models.orm.categorize.spi.AllMemberConsumer;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 import org.hibernate.models.orm.categorize.spi.ManagedTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
@@ -147,10 +148,10 @@ public abstract class AbstractManagedTypeMetadata implements ManagedTypeMetadata
 		}
 	}
 
-	protected List<AttributeMetadata> resolveAttributes() {
+	protected List<AttributeMetadata> resolveAttributes(AllMemberConsumer memberConsumer) {
 		final List<MemberDetails> backingMembers = getModelContext()
 				.getPersistentAttributeMemberResolver()
-				.resolveAttributesMembers( classDetails, getAccessType(), modelContext );
+				.resolveAttributesMembers( classDetails, getAccessType(), memberConsumer, modelContext );
 
 		final List<AttributeMetadata> attributeList = arrayList( backingMembers.size() );
 

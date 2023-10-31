@@ -26,7 +26,7 @@ import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
-import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
+import org.hibernate.models.orm.categorize.spi.JpaEventListener;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
@@ -65,6 +65,9 @@ public class EntityTypeMetadataImpl
 	private final CustomSql customDelete;
 	private final String[] synchronizedTableNames;
 
+	private List<JpaEventListener> hierarchyEventListeners;
+	private List<JpaEventListener> completeEventListeners;
+
 	public EntityTypeMetadataImpl(
 			ClassDetails classDetails,
 			EntityHierarchy hierarchy,
@@ -81,7 +84,10 @@ public class EntityTypeMetadataImpl
 		final AnnotationUsage<Entity> entityAnnotation = classDetails.getAnnotationUsage( JpaAnnotations.ENTITY );
 		this.jpaEntityName = determineJpaEntityName( entityAnnotation, entityName );
 
-		this.attributeList = resolveAttributes();
+		final LifecycleCallbackCollector lifecycleCallbackCollector = new LifecycleCallbackCollector( classDetails, modelContext );
+		this.attributeList = resolveAttributes( lifecycleCallbackCollector );
+		this.hierarchyEventListeners = collectHierarchyEventListeners( lifecycleCallbackCollector.resolve() );
+		this.completeEventListeners = collectCompleteEventListeners( modelContext );
 
 		this.mutable = determineMutability( classDetails, modelContext );
 		this.cacheable = determineCacheability( classDetails, modelContext );
@@ -146,7 +152,10 @@ public class EntityTypeMetadataImpl
 		final AnnotationUsage<Entity> entityAnnotation = classDetails.getAnnotationUsage( JpaAnnotations.ENTITY );
 		this.jpaEntityName = determineJpaEntityName( entityAnnotation, entityName );
 
-		this.attributeList = resolveAttributes();
+		final LifecycleCallbackCollector lifecycleCallbackCollector = new LifecycleCallbackCollector( classDetails, modelContext );
+		this.attributeList = resolveAttributes( lifecycleCallbackCollector );
+		this.hierarchyEventListeners = collectHierarchyEventListeners( lifecycleCallbackCollector.resolve() );
+		this.completeEventListeners = collectCompleteEventListeners( modelContext );
 
 		this.mutable = determineMutability( classDetails, modelContext );
 		this.cacheable = determineCacheability( classDetails, modelContext );
@@ -275,6 +284,16 @@ public class EntityTypeMetadataImpl
 
 	public String getProxy() {
 		return proxy;
+	}
+
+	@Override
+	public List<JpaEventListener> getHierarchyJpaEventListeners() {
+		return hierarchyEventListeners;
+	}
+
+	@Override
+	public List<JpaEventListener> getCompleteJpaEventListeners() {
+		return completeEventListeners;
 	}
 
 
