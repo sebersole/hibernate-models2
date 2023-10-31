@@ -7,7 +7,6 @@
 package org.hibernate.models.orm.categorize.internal;
 
 import java.util.Locale;
-import java.util.function.Consumer;
 
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.NaturalIdCache;
@@ -26,8 +25,10 @@ import org.hibernate.models.orm.categorize.spi.NaturalIdCacheRegion;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
 
+import jakarta.persistence.Entity;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
+import jakarta.persistence.MappedSuperclass;
 
 import static org.hibernate.models.orm.categorize.ModelCategorizationLogging.MODEL_CATEGORIZATION_LOGGER;
 
@@ -36,6 +37,7 @@ import static org.hibernate.models.orm.categorize.ModelCategorizationLogging.MOD
  * @author Steve Ebersole
  */
 public class EntityHierarchyImpl implements EntityHierarchy {
+	private final IdentifiableTypeMetadata rootRootTypeMetadata;
 	private final EntityTypeMetadata rootEntityTypeMetadata;
 
 	private final InheritanceType inheritanceType;
@@ -52,20 +54,33 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 			ClassDetails rootEntityClassDetails,
 			jakarta.persistence.AccessType defaultAccessType,
 			AccessType defaultCacheAccessType,
-			Consumer<IdentifiableTypeMetadata> typeConsumer,
+			HierarchyTypeConsumer typeConsumer,
 			ModelCategorizationContext modelBuildingContext) {
-		// NOTE : because the super-type consumer is "walked up" the
-		//		inheritance tree, we want to collect the first usages
-		//		which would be the "closest" usage
-		final HierarchyMetadataCollector metadataCollector = new HierarchyMetadataCollector( this, modelBuildingContext );
-		this.rootEntityTypeMetadata = new EntityTypeMetadataImpl(
-				rootEntityClassDetails,
-				this,
-				defaultAccessType,
-				metadataCollector,
-				typeConsumer,
-				modelBuildingContext
-		);
+		final ClassDetails rootRoot = findRootRoot( rootEntityClassDetails );
+		final HierarchyMetadataCollector metadataCollector = new HierarchyMetadataCollector( this, rootEntityClassDetails, typeConsumer );
+
+		if ( CategorizationHelper.isEntity( rootRoot ) ) {
+			this.rootRootTypeMetadata = new EntityTypeMetadataImpl(
+					rootRoot,
+					this,
+					defaultAccessType,
+					metadataCollector,
+					modelBuildingContext
+			);
+		}
+		else {
+			assert CategorizationHelper.isMappedSuperclass( rootRoot );
+			this.rootRootTypeMetadata = new MappedSuperclassTypeMetadataImpl(
+					rootRoot,
+					this,
+					defaultAccessType,
+					metadataCollector,
+					modelBuildingContext
+			);
+		}
+
+		this.rootEntityTypeMetadata = metadataCollector.getRootEntityMetadata();
+		assert rootEntityTypeMetadata != null;
 
 		this.inheritanceType = determineInheritanceType( metadataCollector );
 		this.optimisticLockStyle = determineOptimisticLockStyle( metadataCollector );
@@ -78,9 +93,41 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 		this.naturalIdCacheRegion = determineNaturalIdCacheRegion( metadataCollector, cacheRegion );
 	}
 
+	private ClassDetails findRootRoot(ClassDetails rootEntityClassDetails) {
+		if ( rootEntityClassDetails.getSuperType() != null ) {
+			final ClassDetails match = walkSupers( rootEntityClassDetails.getSuperType() );
+			if ( match != null ) {
+				return match;
+			}
+		}
+		return rootEntityClassDetails;
+	}
+
+	private ClassDetails walkSupers(ClassDetails type) {
+		assert type != null;
+
+		if ( type.getSuperType() != null ) {
+			final ClassDetails match = walkSupers( type.getSuperType() );
+			if ( match != null ) {
+				return match;
+			}
+		}
+
+		if ( CategorizationHelper.isIdentifiable( type ) ) {
+			return type;
+		}
+
+		return null;
+	}
+
 	@Override
 	public EntityTypeMetadata getRoot() {
 		return rootEntityTypeMetadata;
+	}
+
+	@Override
+	public IdentifiableTypeMetadata getRootRoot() {
+		return rootRootTypeMetadata;
 	}
 
 	@Override

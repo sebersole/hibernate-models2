@@ -7,11 +7,9 @@
 package org.hibernate.models.orm.categorize.internal;
 
 import java.util.HashSet;
-import java.util.Locale;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import org.hibernate.MappingException;
 import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
@@ -31,47 +29,92 @@ public abstract class AbstractIdentifiableTypeMetadata
 		extends AbstractManagedTypeMetadata
 		implements IdentifiableTypeMetadata {
 	private final EntityHierarchy hierarchy;
+	private final AbstractIdentifiableTypeMetadata superType;
 	private final Set<IdentifiableTypeMetadata> subTypes = new HashSet<>();
 
 	private final AccessType accessType;
 
-
 	/**
-	 * This form is intended for construction of root Entity, and any of
-	 * its MappedSuperclasses
+	 * Used when creating the hierarchy root-root
 	 *
-	 * @param classDetails The Entity/MappedSuperclass class descriptor
-	 * @param hierarchy Details about the hierarchy
-	 * @param isRootEntity Whether this descriptor is for the root entity itself, or
-	 * one of its mapped-superclasses.
-	 * @param accessType The default AccessType for the hierarchy
-	 * @param processingContext The context
+	 * @param accessType This is the hierarchy default
 	 */
 	public AbstractIdentifiableTypeMetadata(
 			ClassDetails classDetails,
 			EntityHierarchy hierarchy,
-			boolean isRootEntity,
 			AccessType accessType,
-			RootEntityAndSuperTypeConsumer superTypeConsumer,
-			Consumer<IdentifiableTypeMetadata> typeConsumer,
 			ModelCategorizationContext processingContext) {
 		super( classDetails, processingContext );
 
-		typeConsumer.accept( this );
+		this.hierarchy = hierarchy;
+		this.superType = null;
+
+		this.accessType = determineAccessType( accessType );
+	}
+
+
+	public AbstractIdentifiableTypeMetadata(
+			ClassDetails classDetails,
+			EntityHierarchy hierarchy,
+			AbstractIdentifiableTypeMetadata superType,
+			ModelCategorizationContext processingContext) {
+		super( classDetails, processingContext );
+
+		assert superType != null;
 
 		this.hierarchy = hierarchy;
-		this.accessType = determineAccessType( accessType );
+		this.superType = superType;
 
-		if ( isRootEntity ) {
-			// walk down
-			walkSubclasses( classDetails, this, this.accessType, typeConsumer );
-		}
+		this.accessType = determineAccessType( superType.getAccessType() );
+	}
+
+	protected void postInstantiate(HierarchyTypeConsumer typeConsumer) {
+		typeConsumer.acceptType( this );
+
+		// now we can effectively walk subs
+		walkSubclasses( typeConsumer );
 
 		// the idea here is to collect up class-level annotations and to apply
 		// the maps from supers
 		collectConversionInfo();
 		collectAttributeOverrides();
 		collectAssociationOverrides();
+	}
+
+	private void walkSubclasses(HierarchyTypeConsumer typeConsumer) {
+		walkSubclasses( getClassDetails(), typeConsumer );
+	}
+
+	private void walkSubclasses(ClassDetails base, HierarchyTypeConsumer typeConsumer) {
+		final ClassDetailsRegistry classDetailsRegistry = getModelContext().getClassDetailsRegistry();
+		classDetailsRegistry.forEachDirectSubType( base.getName(), (subClassDetails) -> {
+			final AbstractIdentifiableTypeMetadata subTypeMetadata;
+			if ( CategorizationHelper.isEntity( subClassDetails ) ) {
+				subTypeMetadata = new EntityTypeMetadataImpl(
+						subClassDetails,
+						getHierarchy(),
+						this,
+						typeConsumer,
+						getModelContext()
+				);
+				addSubclass( subTypeMetadata );
+			}
+			else if ( CategorizationHelper.isMappedSuperclass( subClassDetails ) ) {
+				subTypeMetadata = new MappedSuperclassTypeMetadataImpl(
+						subClassDetails,
+						getHierarchy(),
+						this,
+						typeConsumer,
+						getModelContext()
+				);
+				addSubclass( subTypeMetadata );
+			}
+			else {
+				// skip over "intermediate" sub-types
+				walkSubclasses( subClassDetails, typeConsumer );
+			}
+		} );
+
 	}
 
 	private AccessType determineAccessType(AccessType defaultAccessType) {
@@ -83,129 +126,18 @@ public abstract class AbstractIdentifiableTypeMetadata
 		return defaultAccessType;
 	}
 
-	/**
-	 * This form is intended for cases where the entity/mapped-superclass
-	 * is part of the root subclass tree.
-	 *
-	 * @param classDetails The entity/mapped-superclass class descriptor
-	 * @param hierarchy The hierarchy
-	 * @param superType The metadata for the super type.
-	 * @param processingContext The binding context
-	 */
-	public AbstractIdentifiableTypeMetadata(
-			ClassDetails classDetails,
-			EntityHierarchy hierarchy,
-			AbstractIdentifiableTypeMetadata superType,
-			Consumer<IdentifiableTypeMetadata> typeConsumer,
-			ModelCategorizationContext processingContext) {
-		super( classDetails, processingContext );
-
-		typeConsumer.accept( this );
-
-		this.hierarchy = hierarchy;
-		this.accessType = determineAccessType( superType.getAccessType() );
-
-		// the idea here is to collect up class-level annotations and to apply
-		// the maps from supers
-		collectConversionInfo();
-		collectAttributeOverrides();
-		collectAssociationOverrides();
-	}
-
-	protected AbstractIdentifiableTypeMetadata walkRootSuperclasses(
-			ClassDetails classDetails,
-			AccessType hierarchyAccessType,
-			RootEntityAndSuperTypeConsumer superTypeConsumer,
-			Consumer<IdentifiableTypeMetadata> typeConsumer) {
-		final ClassDetails superTypeClassDetails = classDetails.getSuperType();
-		if ( superTypeClassDetails == null ) {
-			return null;
-		}
-
-		// make triple sure there is no @Entity annotation
-		if ( isEntity( superTypeClassDetails ) ) {
-			throw new MappingException(
-					String.format(
-							Locale.ENGLISH,
-							"Unexpected @Entity [%s] as MappedSuperclass of entity hierarchy",
-							superTypeClassDetails.getName()
-					)
-			);
-		}
-		else if ( isMappedSuperclass( superTypeClassDetails ) ) {
-			final MappedSuperclassTypeMetadataImpl superType = new MappedSuperclassTypeMetadataImpl(
-					superTypeClassDetails,
-					getHierarchy(),
-					hierarchyAccessType,
-					superTypeConsumer,
-					typeConsumer,
-					getModelContext()
-			);
-			superType.addSubclass( this );
-			return superType;
-		}
-		else {
-			// otherwise, we might have an "intermediate" subclass
-			if ( superTypeClassDetails.getSuperType() != null ) {
-				return walkRootSuperclasses( superTypeClassDetails, hierarchyAccessType, superTypeConsumer, typeConsumer );
-			}
-			else {
-				return null;
-			}
-		}
-	}
-
-	protected void addSubclass(IdentifiableTypeMetadata subclass) {
+	private void addSubclass(IdentifiableTypeMetadata subclass) {
 		subTypes.add( subclass );
-	}
-
-	protected boolean isMappedSuperclass(ClassDetails classDetails) {
-		return classDetails.getAnnotationUsage( JpaAnnotations.MAPPED_SUPERCLASS ) != null;
-	}
-
-	protected boolean isEntity(ClassDetails classDetails) {
-		return classDetails.getAnnotationUsage( JpaAnnotations.ENTITY ) != null;
-	}
-
-	private void walkSubclasses(
-			ClassDetails classDetails,
-			AbstractIdentifiableTypeMetadata superType,
-			AccessType defaultAccessType,
-			Consumer<IdentifiableTypeMetadata> typeConsumer) {
-		final ClassDetailsRegistry classDetailsRegistry = getModelContext().getClassDetailsRegistry();
-		classDetailsRegistry.forEachDirectSubType( classDetails.getName(), (subTypeManagedClass) -> {
-			final AbstractIdentifiableTypeMetadata subTypeMetadata;
-			if ( isEntity( subTypeManagedClass ) ) {
-				subTypeMetadata = new EntityTypeMetadataImpl(
-						subTypeManagedClass,
-						getHierarchy(),
-						superType,
-						typeConsumer,
-						getModelContext()
-				);
-				superType.addSubclass( subTypeMetadata );
-			}
-			else if ( isMappedSuperclass( subTypeManagedClass ) ) {
-				subTypeMetadata = new MappedSuperclassTypeMetadataImpl(
-						subTypeManagedClass,
-						getHierarchy(),
-						superType,
-						typeConsumer,
-						getModelContext()
-				);
-				superType.addSubclass( subTypeMetadata );
-			}
-			else {
-				subTypeMetadata = superType;
-			}
-
-			walkSubclasses( subTypeManagedClass, subTypeMetadata, defaultAccessType, typeConsumer );
-		} );
 	}
 
 	@Override
 	public EntityHierarchy getHierarchy() {
 		return hierarchy;
+	}
+
+	@Override
+	public IdentifiableTypeMetadata getSuperType() {
+		return superType;
 	}
 
 	@Override
