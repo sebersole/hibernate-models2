@@ -13,6 +13,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
+import jakarta.persistence.PostLoad;
 
 /**
  * @author Steve Ebersole
@@ -22,5 +23,6 @@ import jakarta.persistence.InheritanceType;
 @Inheritance(strategy = InheritanceType.JOINED)
 @EntityListeners(Listener2.class)
 public class HierarchyRoot extends HierarchySuper {
-
+	@PostLoad
+	public void wasLoaded() {}
 }

@@ -6,6 +6,7 @@
  */
 package org.hibernate.models.orm.categorize.spi;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 /**
@@ -52,7 +53,19 @@ public interface IdentifiableTypeMetadata extends ManagedTypeMetadata {
 	 */
 	void forEachSubType(Consumer<IdentifiableTypeMetadata> consumer);
 
+	/**
+	 * Event listeners in effect for this type, minus
+	 * {@linkplain jakarta.persistence.ExcludeDefaultListeners default listeners}.
+	 *
+	 * @apiNote Kept separate from {@linkplain #getCompleteJpaEventListeners()}
+	 * to facilitate types building their complete set with their
+	 * {@linkplain jakarta.persistence.ExcludeSuperclassListeners superclass listeners}.
+	 */
+	List<JpaEventListener> getHierarchyJpaEventListeners();
 
-//	List<CallbacksMetadata> getJpaCallbacks();
-//	void forEachJpaCallback(Consumer<CallbacksMetadata> consumer);
+	/**
+	 * Event listeners in effect for this type, including
+	 * {@linkplain jakarta.persistence.ExcludeDefaultListeners default listeners}
+	 */
+	List<JpaEventListener> getCompleteJpaEventListeners();
 }

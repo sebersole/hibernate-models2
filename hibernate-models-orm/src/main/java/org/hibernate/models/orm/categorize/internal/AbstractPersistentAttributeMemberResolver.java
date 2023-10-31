@@ -13,6 +13,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.hibernate.models.orm.JpaAnnotations;
+import org.hibernate.models.orm.categorize.spi.AllMemberConsumer;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
 import org.hibernate.models.orm.categorize.spi.PersistentAttributeMemberResolver;
 import org.hibernate.models.source.spi.ClassDetails;
@@ -57,6 +58,7 @@ public abstract class AbstractPersistentAttributeMemberResolver implements Persi
 	public List<MemberDetails> resolveAttributesMembers(
 			ClassDetails classDetails,
 			AccessType classLevelAccessType,
+			AllMemberConsumer memberConsumer,
 			ModelCategorizationContext processingContext) {
 
 		final Set<FieldDetails> transientFields = new HashSet<>();
@@ -65,6 +67,7 @@ public abstract class AbstractPersistentAttributeMemberResolver implements Persi
 				transientFields::add,
 				transientMethods::add,
 				classDetails,
+				memberConsumer,
 				processingContext
 		);
 
@@ -81,10 +84,12 @@ public abstract class AbstractPersistentAttributeMemberResolver implements Persi
 			final Consumer<FieldDetails> transientFieldConsumer,
 			final Consumer<MethodDetails> transientMethodConsumer,
 			ClassDetails classDetails,
+			AllMemberConsumer memberConsumer,
 			@SuppressWarnings("unused") ModelCategorizationContext processingContext) {
 		final List<FieldDetails> fields = classDetails.getFields();
 		for ( int i = 0; i < fields.size(); i++ ) {
 			final FieldDetails fieldDetails = fields.get( i );
+			memberConsumer.acceptMember( fieldDetails );
 			if ( fieldDetails.getAnnotationUsage( JpaAnnotations.TRANSIENT ) != null ) {
 				transientFieldConsumer.accept( fieldDetails );
 			}
@@ -93,6 +98,7 @@ public abstract class AbstractPersistentAttributeMemberResolver implements Persi
 		final List<MethodDetails> methods = classDetails.getMethods();
 		for ( int i = 0; i < methods.size(); i++ ) {
 			final MethodDetails methodDetails = methods.get( i );
+			memberConsumer.acceptMember( methodDetails );
 			if ( methodDetails.getAnnotationUsage( JpaAnnotations.TRANSIENT ) != null ) {
 				transientMethodConsumer.accept( methodDetails );
 			}

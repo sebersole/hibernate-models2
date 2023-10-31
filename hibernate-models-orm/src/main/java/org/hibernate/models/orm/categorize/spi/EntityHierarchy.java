@@ -26,7 +26,7 @@ public interface EntityHierarchy {
 	 * The absolute root of the hierarchy, which might be a mapped-superclass
 	 * above the {@linkplain #getRoot() root entity}
 	 */
-	IdentifiableTypeMetadata getRootRoot();
+	IdentifiableTypeMetadata getAbsoluteRoot();
 
 	/**
 	 * The inheritance strategy for the hierarchy.

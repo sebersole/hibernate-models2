@@ -10,6 +10,7 @@ import java.util.List;
 
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
+import org.hibernate.models.orm.categorize.spi.JpaEventListener;
 import org.hibernate.models.orm.categorize.spi.MappedSuperclassTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
 import org.hibernate.models.source.spi.ClassDetails;
@@ -24,6 +25,8 @@ public class MappedSuperclassTypeMetadataImpl
 		implements MappedSuperclassTypeMetadata {
 
 	private final List<AttributeMetadata> attributeList;
+	private final List<JpaEventListener> hierarchyEventListeners;
+	private final List<JpaEventListener> completeEventListeners;
 
 	public MappedSuperclassTypeMetadataImpl(
 			ClassDetails classDetails,
@@ -33,7 +36,11 @@ public class MappedSuperclassTypeMetadataImpl
 			ModelCategorizationContext modelContext) {
 		super( classDetails, hierarchy, defaultAccessType, modelContext );
 
-		this.attributeList = resolveAttributes();
+		final LifecycleCallbackCollector lifecycleCallbackCollector = new LifecycleCallbackCollector( classDetails, modelContext );
+		this.attributeList = resolveAttributes( lifecycleCallbackCollector );
+		this.hierarchyEventListeners = collectHierarchyEventListeners( lifecycleCallbackCollector.resolve() );
+		this.completeEventListeners = collectCompleteEventListeners( modelContext );
+
 		postInstantiate( typeConsumer );
 	}
 
@@ -45,12 +52,26 @@ public class MappedSuperclassTypeMetadataImpl
 			ModelCategorizationContext modelContext) {
 		super( classDetails, hierarchy, superType, modelContext );
 
-		this.attributeList = resolveAttributes();
+		final LifecycleCallbackCollector lifecycleCallbackCollector = new LifecycleCallbackCollector( classDetails, modelContext );
+		this.attributeList = resolveAttributes( lifecycleCallbackCollector );
+		this.hierarchyEventListeners = collectHierarchyEventListeners( lifecycleCallbackCollector.resolve() );
+		this.completeEventListeners = collectCompleteEventListeners( modelContext );
+
 		postInstantiate( typeConsumer );
 	}
 
 	@Override
 	protected List<AttributeMetadata> attributeList() {
 		return attributeList;
+	}
+
+	@Override
+	public List<JpaEventListener> getHierarchyJpaEventListeners() {
+		return hierarchyEventListeners;
+	}
+
+	@Override
+	public List<JpaEventListener> getCompleteJpaEventListeners() {
+		return completeEventListeners;
 	}
 }

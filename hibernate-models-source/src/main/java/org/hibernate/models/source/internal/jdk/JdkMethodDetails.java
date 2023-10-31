@@ -9,6 +9,7 @@ package org.hibernate.models.source.internal.jdk;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.hibernate.models.source.internal.MutableMemberDetails;
 import org.hibernate.models.source.spi.ClassDetails;
@@ -92,5 +93,15 @@ public class JdkMethodDetails extends AbstractAnnotationTarget implements Method
 		}
 
 		return isPersistableMethod( method.getModifiers() );
+	}
+
+	@Override
+	public String toString() {
+		return String.format(
+				Locale.ROOT,
+				"JdkMethodDetails( [%s] %s )",
+				methodKind.name(),
+				method.toString()
+		);
 	}
 }
