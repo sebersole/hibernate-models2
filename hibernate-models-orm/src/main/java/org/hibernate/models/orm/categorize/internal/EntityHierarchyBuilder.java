@@ -9,13 +9,12 @@ package org.hibernate.models.orm.categorize.internal;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
 
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.models.orm.AccessTypeDeterminationException;
+import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
-import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
 import org.hibernate.models.source.spi.AnnotationTarget;
 import org.hibernate.models.source.spi.AnnotationUsage;
@@ -46,7 +45,7 @@ public class EntityHierarchyBuilder {
 	 */
 	public static Set<EntityHierarchy> createEntityHierarchies(
 			Set<ClassDetails> rootEntities,
-			Consumer<IdentifiableTypeMetadata> typeConsumer,
+			HierarchyTypeConsumer typeConsumer,
 			ModelCategorizationContext buildingContext) {
 		return new EntityHierarchyBuilder( buildingContext ).process( rootEntities, typeConsumer );
 	}
@@ -61,7 +60,7 @@ public class EntityHierarchyBuilder {
 	 * @return a set of {@code EntityHierarchySource} instances.
 	 */
 	public static Set<EntityHierarchy> createEntityHierarchies(
-			Consumer<IdentifiableTypeMetadata> typeConsumer,
+			HierarchyTypeConsumer typeConsumer,
 			ModelCategorizationContext buildingContext) {
 		return createEntityHierarchies(
 				collectRootEntityTypes( buildingContext.getClassDetailsRegistry() ),
@@ -78,7 +77,7 @@ public class EntityHierarchyBuilder {
 
 	private Set<EntityHierarchy> process(
 			Set<ClassDetails> rootEntities,
-			Consumer<IdentifiableTypeMetadata> typeConsumer) {
+			HierarchyTypeConsumer typeConsumer) {
 		final Set<EntityHierarchy> hierarchies = CollectionHelper.setOfSize( rootEntities.size() );
 
 		rootEntities.forEach( (rootEntity) -> {
