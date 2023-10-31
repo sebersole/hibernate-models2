@@ -7,7 +7,6 @@
 package org.hibernate.models.orm.categorize.internal;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.DynamicInsert;
@@ -47,12 +46,9 @@ import static org.hibernate.models.internal.StringHelper.unqualify;
 public class EntityTypeMetadataImpl
 		extends AbstractIdentifiableTypeMetadata
 		implements EntityTypeMetadata, EntityNaming {
-	private final EntityHierarchy hierarchy;
-
 	private final String entityName;
 	private final String jpaEntityName;
 
-	private final AbstractIdentifiableTypeMetadata superType;
 	private final List<AttributeMetadata> attributeList;
 
 	private final boolean mutable;
@@ -69,33 +65,23 @@ public class EntityTypeMetadataImpl
 	private final CustomSql customDelete;
 	private final String[] synchronizedTableNames;
 
-	/**
-	 * This form is intended for construction of root Entity.
-	 */
 	public EntityTypeMetadataImpl(
 			ClassDetails classDetails,
 			EntityHierarchy hierarchy,
 			AccessType defaultAccessType,
-			RootEntityAndSuperTypeConsumer superTypeConsumer,
-			Consumer<IdentifiableTypeMetadata> typeConsumer,
+			HierarchyTypeConsumer typeConsumer,
 			ModelCategorizationContext modelContext) {
-		super( classDetails, hierarchy, true, defaultAccessType, superTypeConsumer, typeConsumer, modelContext );
+		super( classDetails, hierarchy, defaultAccessType, modelContext );
 
-		this.hierarchy = hierarchy;
-
-		// NOTE: there is no annotation for `entity-name`; it comes exclusively from
-		// XML mappings.  by default, the `entityName` is simply the entity class name.
-		// all of which `ClassDetails#getName` already handles for us
+		// NOTE: There is no annotation for `entity-name` - it comes exclusively from XML
+		// 		mappings.  By default, the `entityName` is simply the entity class name.
+		// 		`ClassDetails#getName` already handles this all for us
 		this.entityName = getClassDetails().getName();
 
 		final AnnotationUsage<Entity> entityAnnotation = classDetails.getAnnotationUsage( JpaAnnotations.ENTITY );
 		this.jpaEntityName = determineJpaEntityName( entityAnnotation, entityName );
 
 		this.attributeList = resolveAttributes();
-		superTypeConsumer.acceptTypeOrSuperType( this );
-
-		// walk up
-		this.superType = walkRootSuperclasses( classDetails, getAccessType(), superTypeConsumer, typeConsumer );
 
 		this.mutable = determineMutability( classDetails, modelContext );
 		this.cacheable = determineCacheability( classDetails, modelContext );
@@ -140,30 +126,26 @@ public class EntityTypeMetadataImpl
 		else {
 			this.discriminatorMatchValue = null;
 		}
+
+		postInstantiate( typeConsumer );
 	}
 
-
-	/**
-	 * This form is intended for construction of non-root Entity.
-	 */
 	public EntityTypeMetadataImpl(
 			ClassDetails classDetails,
 			EntityHierarchy hierarchy,
 			AbstractIdentifiableTypeMetadata superType,
-			Consumer<IdentifiableTypeMetadata> typeConsumer,
+			HierarchyTypeConsumer typeConsumer,
 			ModelCategorizationContext modelContext) {
-		super( classDetails, hierarchy, superType, typeConsumer, modelContext );
-		this.hierarchy = hierarchy;
+		super( classDetails, hierarchy, superType, modelContext );
 
-		// NOTE: this is no annotation for `entity-name`.  it comes exclusively from
-		// XML mappings.  by default, the `entityName` is simply the entity class name.
-		// all of which `ClassDetails#getName` already handles for us
+		// NOTE: There is no annotation for `entity-name` - it comes exclusively from XML
+		// 		mappings.  By default, the `entityName` is simply the entity class name.
+		// 		`ClassDetails#getName` already handles this all for us
 		this.entityName = getClassDetails().getName();
 
 		final AnnotationUsage<Entity> entityAnnotation = classDetails.getAnnotationUsage( JpaAnnotations.ENTITY );
 		this.jpaEntityName = determineJpaEntityName( entityAnnotation, entityName );
 
-		this.superType = superType;
 		this.attributeList = resolveAttributes();
 
 		this.mutable = determineMutability( classDetails, modelContext );
@@ -209,21 +191,13 @@ public class EntityTypeMetadataImpl
 		else {
 			this.discriminatorMatchValue = null;
 		}
-	}
 
-	@Override
-	public IdentifiableTypeMetadata getSuperType() {
-		return superType;
+		postInstantiate( typeConsumer );
 	}
 
 	@Override
 	protected List<AttributeMetadata> attributeList() {
 		return attributeList;
-	}
-
-	@Override
-	public EntityHierarchy getHierarchy() {
-		return hierarchy;
 	}
 
 	@Override

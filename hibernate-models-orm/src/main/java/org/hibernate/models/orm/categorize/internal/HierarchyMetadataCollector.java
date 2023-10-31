@@ -16,11 +16,11 @@ import org.hibernate.annotations.NaturalIdCache;
 import org.hibernate.annotations.OptimisticLocking;
 import org.hibernate.annotations.TenantId;
 import org.hibernate.models.ModelsException;
-import org.hibernate.models.orm.categorize.spi.IdMapping;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
+import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
+import org.hibernate.models.orm.categorize.spi.IdMapping;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
-import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.MemberDetails;
@@ -36,12 +36,19 @@ import static org.hibernate.models.orm.categorize.ModelCategorizationLogging.MOD
 /**
  * Used to collect useful details about a hierarchy as we build its metadata
  *
+ * @implNote The HierarchyTypeConsumer is called from root down.  We make use
+ * of that detail in a number of places here in the code.
+ *
  * @author Steve Ebersole
  */
-public class HierarchyMetadataCollector implements RootEntityAndSuperTypeConsumer {
+public class HierarchyMetadataCollector implements HierarchyTypeConsumer {
 	private final EntityHierarchy entityHierarchy;
-	private final ModelCategorizationContext context;
+	private final ClassDetails rootEntityClassDetails;
+	private final HierarchyTypeConsumer delegateConsumer;
 
+	private boolean belowRootEntity;
+
+	private EntityTypeMetadata rootEntityMetadata;
 	private AnnotationUsage<Inheritance> inheritanceAnnotation;
 	private AnnotationUsage<OptimisticLocking> optimisticLockingAnnotation;
 	private AnnotationUsage<Cache> cacheAnnotation;
@@ -54,9 +61,17 @@ public class HierarchyMetadataCollector implements RootEntityAndSuperTypeConsume
 	private AnnotationUsage<IdClass> idClassAnnotation;
 	private Object collectedIdAttributes;
 
-	public HierarchyMetadataCollector(EntityHierarchy entityHierarchy, ModelCategorizationContext context) {
+	public HierarchyMetadataCollector(
+			EntityHierarchy entityHierarchy,
+			ClassDetails rootEntityClassDetails,
+			HierarchyTypeConsumer delegateConsumer) {
 		this.entityHierarchy = entityHierarchy;
-		this.context = context;
+		this.rootEntityClassDetails = rootEntityClassDetails;
+		this.delegateConsumer = delegateConsumer;
+	}
+
+	public EntityTypeMetadata getRootEntityMetadata() {
+		return rootEntityMetadata;
 	}
 
 	public IdMapping getIdMapping() {
@@ -71,6 +86,14 @@ public class HierarchyMetadataCollector implements RootEntityAndSuperTypeConsume
 		return inheritanceAnnotation;
 	}
 
+	public AttributeMetadata getVersionAttribute() {
+		return versionAttribute;
+	}
+
+	public AttributeMetadata getTenantIdAttribute() {
+		return tenantIdAttribute;
+	}
+
 	public AnnotationUsage<OptimisticLocking> getOptimisticLockingAnnotation() {
 		return optimisticLockingAnnotation;
 	}
@@ -81,10 +104,6 @@ public class HierarchyMetadataCollector implements RootEntityAndSuperTypeConsume
 
 	public AnnotationUsage<NaturalIdCache> getNaturalIdCacheAnnotation() {
 		return naturalIdCacheAnnotation;
-	}
-
-	public Object getCollectedIdAttributes() {
-		return collectedIdAttributes;
 	}
 
 	private IdMapping buildIdMapping() {
@@ -121,19 +140,22 @@ public class HierarchyMetadataCollector implements RootEntityAndSuperTypeConsume
 		);
 	}
 
-	public AttributeMetadata getVersionAttribute() {
-		return versionAttribute;
-	}
-
-	public AttributeMetadata getTenantIdAttribute() {
-		return tenantIdAttribute;
-	}
-
 	@Override
-	public void acceptTypeOrSuperType(IdentifiableTypeMetadata typeMetadata) {
-		assert idMapping == null;
+	public void acceptType(IdentifiableTypeMetadata typeMetadata) {
+		if ( delegateConsumer != null ) {
+			delegateConsumer.acceptType( typeMetadata );
+		}
+
+		if ( belowRootEntity ) {
+			return;
+		}
 
 		final ClassDetails classDetails = typeMetadata.getClassDetails();
+
+		if ( classDetails == rootEntityClassDetails ) {
+			rootEntityMetadata = (EntityTypeMetadata) typeMetadata;
+			belowRootEntity = true;
+		}
 
 		inheritanceAnnotation = applyLocalAnnotation( Inheritance.class, classDetails, inheritanceAnnotation );
 		optimisticLockingAnnotation = applyLocalAnnotation( OptimisticLocking.class, classDetails, optimisticLockingAnnotation );
@@ -185,9 +207,9 @@ public class HierarchyMetadataCollector implements RootEntityAndSuperTypeConsume
 						currentValue.getAnnotationTarget().getName()
 				);
 			}
-			else {
-				return localInheritanceAnnotation;
-			}
+
+			// the one "closest" to the root-entity should win
+			return localInheritanceAnnotation;
 		}
 
 		return currentValue;
