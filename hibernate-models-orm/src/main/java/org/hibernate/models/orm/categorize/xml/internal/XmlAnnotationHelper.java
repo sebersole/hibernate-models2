@@ -27,6 +27,7 @@ import org.hibernate.annotations.NaturalId;
 import org.hibernate.annotations.NaturalIdCache;
 import org.hibernate.annotations.OptimisticLock;
 import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.RowId;
 import org.hibernate.annotations.SqlFragmentAlias;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UuidGenerator;
@@ -912,6 +913,16 @@ public class XmlAnnotationHelper {
 		if ( lifecycleCallback != null ) {
 			final MethodDetails method = classDetails.findMethodByName( lifecycleCallback.getMethodName() );
 			XmlProcessingHelper.makeAnnotation( lifecycleAnnotation, (MutableMemberDetails) method );
+		}
+	}
+
+	static void applyRowId(
+			String rowId,
+			MutableClassDetails target,
+			SourceModelBuildingContext buildingContext) {
+		if ( rowId != null ) {
+			final MutableAnnotationUsage<RowId> rowIdAnn = XmlProcessingHelper.getOrMakeAnnotation( RowId.class, target );
+			applyAttributeIfSpecified( rowIdAnn, "value", rowId );
 		}
 	}
 }
