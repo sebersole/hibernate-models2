@@ -109,28 +109,6 @@ public interface ClassDetails extends AnnotationTarget {
 	List<MethodDetails> getMethods();
 
 	/**
-	 * Find a method by check
-	 */
-	default MethodDetails findMethod(Predicate<MethodDetails> check) {
-		final List<MethodDetails> methods = getMethods();
-		for ( int i = 0; i < methods.size(); i++ ) {
-			final MethodDetails methodDetails = methods.get( i );
-			if ( check.test( methodDetails ) ) {
-				return methodDetails;
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * Find a method by name
-	 */
-	default MethodDetails findMethodByName(String name) {
-		assert name != null;
-		return findMethod( methodDetails -> name.equals( methodDetails.getName() ) );
-	}
-
-	/**
 	 * Visit each method
 	 */
 	void forEachMethod(IndexedConsumer<MethodDetails> consumer);
