@@ -7,18 +7,20 @@
 package org.hibernate.models.orm.xml.lifecycle;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.hibernate.boot.internal.BootstrapContextImpl;
 import org.hibernate.boot.internal.MetadataBuilderImpl;
 import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.models.orm.process.ManagedResourcesImpl;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
+import org.hibernate.models.orm.process.ManagedResourcesImpl;
 import org.hibernate.models.orm.xml.SimpleEntity;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.source.spi.MethodDetails;
 
 import org.junit.jupiter.api.Test;
 
@@ -62,9 +64,17 @@ public class EntityLifecycleTests {
 			assertThat( classDetails.getName() ).isEqualTo( SimpleEntity.class.getName() );
 
 			// lifecycle callback methods
-			assertThat( classDetails.findMethodByName( "prePersist" ).getAnnotationUsage( PrePersist.class ) ).isNotNull();
-			assertThat( classDetails.findMethodByName( "preRemove" ).getAnnotationUsage( PreRemove.class ) ).isNotNull();
-			assertThat( classDetails.findMethodByName( "preUpdate" ).getAnnotationUsage( PreUpdate.class ) ).isNotNull();
+			getMethodDetails( classDetails, "prePersist" ).forEach( method -> {
+				final AnnotationUsage<PrePersist> prePersist = method.getAnnotationUsage( PrePersist.class );
+				if ( !method.getArgumentTypes().isEmpty() ) {
+					assertThat( prePersist ).isNull();
+				}
+				else {
+					assertThat( prePersist ).isNotNull();
+				}
+			} );
+			assertThat( getMethodDetails( classDetails, "preRemove" ).get( 0 ).getAnnotationUsage( PreRemove.class ) ).isNotNull();
+			assertThat( getMethodDetails( classDetails, "preUpdate" ).get( 0 ).getAnnotationUsage( PreUpdate.class ) ).isNotNull();
 
 			// entity listeners
 			final AnnotationUsage<EntityListeners> entityListenersAnn = classDetails.getAnnotationUsage( EntityListeners.class );
@@ -73,10 +83,25 @@ public class EntityLifecycleTests {
 			assertThat( entityListeners ).hasSize( 1 );
 			final ClassDetails listener = entityListeners.get( 0 );
 			assertThat( listener.getName() ).isEqualTo( SimpleEntityListener.class.getName() );
-			assertThat( listener.findMethodByName( "postPersist" ).getAnnotationUsage( PostPersist.class ) ).isNotNull();
-			assertThat( listener.findMethodByName( "postRemove" ).getAnnotationUsage( PostRemove.class ) ).isNotNull();
-			assertThat( listener.findMethodByName( "postUpdate" ).getAnnotationUsage( PostUpdate.class ) ).isNotNull();
-			assertThat( listener.findMethodByName( "postLoad" ).getAnnotationUsage( PostLoad.class ) ).isNotNull();
+			getMethodDetails( classDetails, "postPersist" ).forEach( method -> {
+				final AnnotationUsage<PostPersist> prePersist = method.getAnnotationUsage( PostPersist.class );
+				if ( method.getArgumentTypes().size() != 1 ) {
+					assertThat( prePersist ).isNull();
+				}
+				else {
+					assertThat( prePersist ).isNotNull();
+				}
+			} );
+			assertThat( getMethodDetails( listener, "postRemove" ).get( 0 ).getAnnotationUsage( PostRemove.class ) ).isNotNull();
+			assertThat( getMethodDetails( listener, "postUpdate" ).get( 0 ).getAnnotationUsage( PostUpdate.class ) ).isNotNull();
+			assertThat( getMethodDetails( listener, "postLoad" ).get( 0 ).getAnnotationUsage( PostLoad.class ) ).isNotNull();
 		}
+	}
+
+	private List<MethodDetails> getMethodDetails(ClassDetails classDetails, String name) {
+		return classDetails.getMethods()
+				.stream()
+				.filter( m -> m.getName().equals( name ) )
+				.collect( Collectors.toList() );
 	}
 }

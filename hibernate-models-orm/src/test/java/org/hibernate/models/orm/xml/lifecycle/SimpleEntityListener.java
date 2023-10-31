@@ -14,6 +14,14 @@ public class SimpleEntityListener {
 		// used by hibernate lifecycle callbacks
 	}
 
+	public void postPersist() {
+		// should not be used by hibernate lifecycle callbacks
+	}
+
+	public void postPersist(Object arg1, Object arg2) {
+		// should not be used by hibernate lifecycle callbacks
+	}
+
 	public void postRemove(Object entity) {
 		// used by hibernate lifecycle callbacks
 	}
