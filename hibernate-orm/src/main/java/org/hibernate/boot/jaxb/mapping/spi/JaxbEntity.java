@@ -116,9 +116,6 @@ public interface JaxbEntity extends JaxbEntityOrMappedSuperclass {
 
 	List<JaxbFetchProfileImpl> getFetchProfiles();
 
-	JaxbTenantIdImpl getTenantId();
-	void setTenantId(JaxbTenantIdImpl value);
-
 	JaxbAttributesContainerImpl getAttributes();
 	void setAttributes(JaxbAttributesContainerImpl value);
 

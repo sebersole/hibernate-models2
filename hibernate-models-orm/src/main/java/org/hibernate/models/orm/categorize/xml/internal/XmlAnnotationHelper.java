@@ -33,6 +33,7 @@ import org.hibernate.annotations.RowId;
 import org.hibernate.annotations.SQLJoinTableRestriction;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.SqlFragmentAlias;
+import org.hibernate.annotations.TenantId;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.boot.internal.Target;
@@ -61,6 +62,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbNaturalId;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbSequenceGeneratorImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbTableGeneratorImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbTableImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbTenantIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbUserTypeImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbUuidGeneratorImpl;
 import org.hibernate.engine.spi.ExecuteUpdateResultCheckStyle;
@@ -159,6 +161,19 @@ public class XmlAnnotationHelper {
 		}
 		if ( jaxbBasic.isOptional() != null ) {
 			basicAnn.setAttributeValue( "optional", jaxbBasic.isOptional() );
+		}
+	}
+
+	public static void applyBasic(
+			JaxbTenantIdImpl jaxbTenantId,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		final MutableAnnotationUsage<Basic> basicAnn = XmlProcessingHelper.getOrMakeAnnotation( Basic.class, memberDetails );
+		if ( jaxbTenantId.getFetch() != null ) {
+			basicAnn.setAttributeValue( "fetch", jaxbTenantId.getFetch() );
+		}
+		if ( jaxbTenantId.isOptional() != null ) {
+			basicAnn.setAttributeValue( "optional", jaxbTenantId.isOptional() );
 		}
 	}
 
@@ -1011,10 +1026,34 @@ public class XmlAnnotationHelper {
 	static void applyRowId(
 			String rowId,
 			MutableClassDetails target,
-			SourceModelBuildingContext buildingContext) {
+			SourceModelBuildingContext sourceModelBuildingContext) {
 		if ( rowId != null ) {
 			final MutableAnnotationUsage<RowId> rowIdAnn = XmlProcessingHelper.getOrMakeAnnotation( RowId.class, target );
 			applyAttributeIfSpecified( rowIdAnn, "value", rowId );
+		}
+	}
+
+	static void applyTenantId(
+			JaxbTenantIdImpl jaxbTenantIdClass,
+			MutableClassDetails target,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( jaxbTenantIdClass != null ) {
+			final MutableAnnotationUsage<TenantId> tenantIdAnn = XmlProcessingHelper.getOrMakeAnnotation(
+					TenantId.class,
+					target
+			);
+			applyAttributeIfSpecified( tenantIdAnn, "name", jaxbTenantIdClass.getName() );
+			// todo : `bind-as-param` attribute
+		}
+	}
+
+	static void applyTemporal(TemporalType temporal, MutableMemberDetails memberDetails) {
+		if ( temporal != null ) {
+			final MutableAnnotationUsage<Temporal> temporalAnn = getOrMakeAnnotation(
+					Temporal.class,
+					memberDetails
+			);
+			temporalAnn.setAttributeValue( "value", temporal );
 		}
 	}
 }

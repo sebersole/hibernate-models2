@@ -33,6 +33,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbMappedSuperclassImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbOneToOneImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistentAttribute;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAttribute;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbTenantIdImpl;
 import org.hibernate.models.ModelsException;
 import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.internal.StringHelper;
@@ -56,8 +57,6 @@ import jakarta.persistence.MappedSuperclass;
 
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
 import static org.hibernate.internal.util.NullnessHelper.nullif;
-import static org.hibernate.models.orm.categorize.xml.internal.AttributeProcessor.processAttributes;
-import static org.hibernate.models.orm.categorize.xml.internal.AttributeProcessor.processNaturalId;
 
 /**
  * Helper for handling managed types defined in mapping XML, in either
@@ -166,6 +165,17 @@ public class ManagedTypeProcessor {
 				final MapModeFieldDetails member = new MapModeFieldDetails(
 						embeddedId.getName(),
 						attributeJavaType,
+						sourceModelBuildingContext
+				);
+				classDetails.addField( member );
+			}
+
+			// <tenant-id/>
+			final JaxbTenantIdImpl tenantId = attributes.getTenantId();
+			if ( tenantId != null ) {
+				final MapModeFieldDetails member = new MapModeFieldDetails(
+						tenantId.getName(),
+						determineDynamicAttributeJavaType( tenantId, sourceModelBuildingContext ),
 						sourceModelBuildingContext
 				);
 				classDetails.addField( member );
@@ -337,6 +347,11 @@ public class ManagedTypeProcessor {
 			return XmlAnnotationHelper.resolveJavaType( jaxbBasic.getTarget(), sourceModelBuildingContext );
 		}
 
+		if ( jaxbPersistentAttribute instanceof JaxbTenantIdImpl ) {
+			final JaxbTenantIdImpl jaxbTenantId = (JaxbTenantIdImpl) jaxbPersistentAttribute;
+			return XmlAnnotationHelper.resolveJavaType( jaxbTenantId.getTarget(), sourceModelBuildingContext );
+		}
+
 		if ( jaxbPersistentAttribute instanceof JaxbEmbeddedImpl ) {
 			final JaxbEmbeddedImpl jaxbEmbedded = (JaxbEmbeddedImpl) jaxbPersistentAttribute;
 			final String target = jaxbEmbedded.getTarget();
@@ -469,6 +484,13 @@ public class ManagedTypeProcessor {
 
 		XmlAnnotationHelper.applyRowId( jaxbEntity.getRowid(), classDetails, sourceModelBuildingContext );
 
+//		AttributeProcessor.processTenantId	(
+//				jaxbEntity.getTenantId(),
+//				classDetails,
+//				classAccessType,
+//				sourceModelBuildingContext
+//		);
+
 		// todo : secondary-tables
 	}
 
@@ -588,8 +610,7 @@ public class ManagedTypeProcessor {
 		);
 		classDetails.addAnnotationUsage( XmlAnnotationHelper.createAccessAnnotation( classAccessType, classDetails ) );
 
-		final JaxbAttributesContainer attributes = jaxbMappedSuperclass.getAttributes();
-		AttributeProcessor.processAttributes( attributes, classDetails, classAccessType, sourceModelBuildingContext );
+		AttributeProcessor.processAttributes( jaxbMappedSuperclass.getAttributes(), classDetails, classAccessType, sourceModelBuildingContext );
 
 		processEntityOrMappedSuperclass( jaxbMappedSuperclass, classDetails, sourceModelBuildingContext );
 	}

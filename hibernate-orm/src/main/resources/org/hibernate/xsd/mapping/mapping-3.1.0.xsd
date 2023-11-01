@@ -472,9 +472,6 @@
 
             <xsd:element name="fetch-profile" type="orm:fetch-profile" minOccurs="0" maxOccurs="unbounded" />
 
-            <!-- hbm: multi-tenancy tenant-id mapping : @TenantId -->
-            <xsd:element name="tenant-id" type="orm:tenant-id" minOccurs="0" />
-
             <!-- hbm: Used with dynamic models -->
             <xsd:element name="abstract" type="xsd:boolean" minOccurs="0">
                 <xsd:annotation>
@@ -583,6 +580,8 @@
             <xsd:element name="any" type="orm:hbm-any-mapping" minOccurs="0" maxOccurs="unbounded" />
             <!-- hbm: plural discriminated association mapping -->
             <xsd:element name="many-to-any" type="orm:hbm-many-to-any" minOccurs="0" maxOccurs="unbounded" />
+            <!-- hbm: multi-tenancy tenant-id mapping : @TenantId -->
+            <xsd:element name="tenant-id" type="orm:tenant-id" minOccurs="0" />
         </xsd:sequence>
     </xsd:complexType>
 

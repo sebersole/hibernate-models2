@@ -21,11 +21,13 @@ import org.hibernate.boot.internal.LimitedCollectionClassification;
 import org.hibernate.boot.internal.Target;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbAnyMappingImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbAttributesContainer;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbAttributesContainerImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBaseAttributesContainer;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbCollectionIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbColumnImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbElementCollectionImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddableAttributesContainerImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbGeneratedValueImpl;
@@ -37,6 +39,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbOneToManyImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbOneToOneImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistentAttribute;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAnyMappingImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbTenantIdImpl;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.models.source.internal.MutableAnnotationUsage;
 import org.hibernate.models.source.internal.MutableClassDetails;
@@ -46,6 +49,7 @@ import org.hibernate.models.source.spi.ClassDetailsRegistry;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
 import jakarta.persistence.AccessType;
+import jakarta.persistence.Basic;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embedded;
@@ -53,7 +57,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Lob;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.OrderColumn;
-import jakarta.persistence.Temporal;
 
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
 import static org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper.getOrMakeAnnotation;
@@ -153,7 +156,7 @@ public class AttributeProcessor {
 	}
 
 	public static void processAttributes(
-			JaxbAttributesContainer attributesContainer,
+			JaxbAttributesContainerImpl attributesContainer,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
 			SourceModelBuildingContext sourceModelBuildingContext) {
@@ -161,6 +164,42 @@ public class AttributeProcessor {
 	}
 
 	public static void processAttributes(
+			JaxbAttributesContainerImpl attributesContainer,
+			MutableClassDetails mutableClassDetails,
+			AccessType classAccessType,
+			MemberAdjuster memberAdjuster,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		processAttributeContainer(
+				attributesContainer,
+				mutableClassDetails,
+				classAccessType,
+				memberAdjuster,
+				sourceModelBuildingContext
+		);
+		processTenantId(
+				attributesContainer.getTenantId(),
+				mutableClassDetails,
+				classAccessType,
+				sourceModelBuildingContext
+		);
+	}
+
+	public static void processAttributes(
+			JaxbEmbeddableAttributesContainerImpl attributesContainer,
+			MutableClassDetails mutableClassDetails,
+			AccessType classAccessType,
+			MemberAdjuster memberAdjuster,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		processAttributeContainer(
+				attributesContainer,
+				mutableClassDetails,
+				classAccessType,
+				memberAdjuster,
+				sourceModelBuildingContext
+		);
+	}
+
+	private static void processAttributeContainer(
 			JaxbAttributesContainer attributesContainer,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
@@ -550,13 +589,7 @@ public class AttributeProcessor {
 			getOrMakeAnnotation( Nationalized.class, memberDetails );
 		}
 
-		if ( jaxbElementCollection.getTemporal() != null ) {
-			final MutableAnnotationUsage<Temporal> temporalAnn = getOrMakeAnnotation(
-					Temporal.class,
-					memberDetails
-			);
-			temporalAnn.setAttributeValue( "value", jaxbElementCollection.getTemporal() );
-		}
+		XmlAnnotationHelper.applyTemporal( jaxbElementCollection.getTemporal(), memberDetails );
 
 		XmlAnnotationHelper.applyBasicTypeComposition( jaxbElementCollection, memberDetails, sourceModelBuildingContext );
 		if ( StringHelper.isNotEmpty( jaxbElementCollection.getTargetClass() ) ) {
@@ -616,5 +649,17 @@ public class AttributeProcessor {
 			AccessType classAccessType,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		throw new UnsupportedOperationException( "Support for many-to-any attributes not yet implemented" );
+	}
+
+	public static void processTenantId(
+			JaxbTenantIdImpl jaxbTenantId,
+			MutableClassDetails declarer,
+			AccessType accessType,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( jaxbTenantId != null ) {
+			XmlAnnotationHelper.applyTenantId( jaxbTenantId, declarer, sourceModelBuildingContext );
+
+			processBasicAttribute( jaxbTenantId, declarer, accessType, sourceModelBuildingContext );
+		}
 	}
 }

@@ -31,4 +31,5 @@ public interface JaxbAttributesContainer extends JaxbBaseAttributesContainer{
 	List<JaxbPluralAnyMappingImpl> getPluralAnyMappingAttributes();
 
 	List<JaxbTransientImpl> getTransients();
+
 }
