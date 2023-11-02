@@ -6,6 +6,7 @@
  */
 package org.hibernate.models.orm.bind;
 
+import org.hibernate.annotations.NaturalId;
 import org.hibernate.annotations.TenantId;
 
 import jakarta.persistence.Entity;
@@ -23,4 +24,7 @@ public class SimpleIdEntity {
 	private Integer version;
 	@TenantId
 	private String tenantId;
+	@NaturalId
+	private String naturalId;
+
 }

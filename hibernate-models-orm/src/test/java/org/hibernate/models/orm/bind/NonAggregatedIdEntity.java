@@ -8,6 +8,7 @@ package org.hibernate.models.orm.bind;
 
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.annotations.NaturalId;
 import org.hibernate.annotations.RowId;
 import org.hibernate.annotations.TenantId;
 
@@ -32,6 +33,8 @@ public class NonAggregatedIdEntity {
 	@Id private Integer id2;
 	@Version private Integer version;
 	@TenantId private String tenantId;
+	@NaturalId private Integer naturalKey1;
+	@NaturalId private Integer naturalKey2;
 
 	public static class Pk {
 		private Integer id1;

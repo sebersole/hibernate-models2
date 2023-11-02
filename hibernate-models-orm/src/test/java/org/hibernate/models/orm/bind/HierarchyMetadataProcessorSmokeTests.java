@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.hibernate.annotations.NaturalId;
 import org.hibernate.annotations.TenantId;
 import org.hibernate.boot.internal.BootstrapContextImpl;
 import org.hibernate.boot.internal.MetadataBuilderImpl;
@@ -52,6 +53,12 @@ public class HierarchyMetadataProcessorSmokeTests {
 		assertThat( idMapping.getAttribute().getMember().getAnnotationUsage( Id.class ) ).isNotNull();
 		assertThat( idMapping.getAttribute().getMember().getAnnotationUsage( EmbeddedId.class ) ).isNull();
 
+		assertThat( entityHierarchy.getNaturalIdMapping() ).isNotNull();
+		final BasicKeyMapping naturalIdMapping = (BasicKeyMapping) entityHierarchy.getNaturalIdMapping();
+		assertThat( naturalIdMapping.getAttribute().getMember().getAnnotationUsage( NaturalId.class ) ).isNotNull();
+		assertThat( naturalIdMapping.getAttribute().getMember().getAnnotationUsage( Id.class ) ).isNull();
+		assertThat( naturalIdMapping.getAttribute().getMember().getAnnotationUsage( EmbeddedId.class ) ).isNull();
+
 		assertThat( entityHierarchy.getVersionAttribute() ).isNotNull();
 		assertThat( entityHierarchy.getVersionAttribute().getMember().getAnnotationUsage( Version.class ) ).isNotNull();
 
@@ -70,11 +77,48 @@ public class HierarchyMetadataProcessorSmokeTests {
 		assertThat( idMapping.getAttribute().getMember().getAnnotationUsage( Id.class ) ).isNull();
 		assertThat( idMapping.getAttribute().getMember().getAnnotationUsage( EmbeddedId.class ) ).isNotNull();
 
+		assertThat( entityHierarchy.getNaturalIdMapping() ).isNotNull();
+		assertThat( entityHierarchy.getNaturalIdMapping() ).isInstanceOf( AggregatedKeyMapping.class );
+		final AggregatedKeyMapping naturalIdMapping = (AggregatedKeyMapping) entityHierarchy.getNaturalIdMapping();
+		assertThat( naturalIdMapping.getAttribute().getMember().getAnnotationUsage( Id.class ) ).isNull();
+		assertThat( naturalIdMapping.getAttribute().getMember().getAnnotationUsage( EmbeddedId.class ) ).isNull();
+		assertThat( naturalIdMapping.getAttribute().getMember().getAnnotationUsage( NaturalId.class ) ).isNotNull();
+
 		assertThat( entityHierarchy.getVersionAttribute() ).isNotNull();
 		assertThat( entityHierarchy.getVersionAttribute().getMember().getAnnotationUsage( Version.class ) ).isNotNull();
 
 		assertThat( entityHierarchy.getTenantIdAttribute() ).isNotNull();
 		assertThat( entityHierarchy.getTenantIdAttribute().getMember().getAnnotationUsage( TenantId.class ) ).isNotNull();
+	}
+
+	@Test
+	void testNonAggregatedId() {
+		final Set<EntityHierarchy> entityHierarchies = buildHierarchyMetadata( NonAggregatedIdEntity.class );
+		assertThat( entityHierarchies ).hasSize( 1 );
+		final EntityHierarchy entityHierarchy = entityHierarchies.iterator().next();
+
+		assertThat( entityHierarchy.getIdMapping() ).isNotNull();
+		final NonAggregatedKeyMapping idMapping = (NonAggregatedKeyMapping) entityHierarchy.getIdMapping();
+		assertThat( idMapping.getIdAttributes() ).hasSize( 2 );
+		assertThat( idMapping.getIdAttributes().stream().map( AttributeMetadata::getName ) ).containsExactly( "id1", "id2" );
+		assertThat( idMapping.getIdClassType().getClassName() ).isEqualTo( NonAggregatedIdEntity.Pk.class.getName() );
+
+		assertThat( entityHierarchy.getNaturalIdMapping() ).isNotNull();
+		final NonAggregatedKeyMapping naturalIdMapping = (NonAggregatedKeyMapping) entityHierarchy.getNaturalIdMapping();
+		assertThat( naturalIdMapping.getIdAttributes() ).hasSize( 2 );
+		assertThat( naturalIdMapping.getIdAttributes().stream().map( AttributeMetadata::getName ) ).containsExactly( "naturalKey1", "naturalKey2" );
+
+		assertThat( entityHierarchy.getVersionAttribute() ).isNotNull();
+		assertThat( entityHierarchy.getVersionAttribute().getMember().getAnnotationUsage( Version.class ) ).isNotNull();
+
+		assertThat( entityHierarchy.getTenantIdAttribute() ).isNotNull();
+		assertThat( entityHierarchy.getTenantIdAttribute().getMember().getAnnotationUsage( TenantId.class ) ).isNotNull();
+
+		assertThat( entityHierarchy.getCacheRegion() ).isNotNull();
+		assertThat( entityHierarchy.getCacheRegion().getAccessType() ).isEqualTo( AccessType.TRANSACTIONAL );
+
+		assertThat( entityHierarchy.getInheritanceType() ).isNotNull();
+		assertThat( entityHierarchy.getInheritanceType() ).isEqualTo( InheritanceType.TABLE_PER_CLASS );
 	}
 
 	@Test
@@ -99,31 +143,6 @@ public class HierarchyMetadataProcessorSmokeTests {
 
 		assertThat( entityHierarchy.getInheritanceType() ).isNotNull();
 		assertThat( entityHierarchy.getInheritanceType() ).isEqualTo( InheritanceType.JOINED );
-	}
-
-	@Test
-	void testNonAggregatedId() {
-		final Set<EntityHierarchy> entityHierarchies = buildHierarchyMetadata( NonAggregatedIdEntity.class );
-		assertThat( entityHierarchies ).hasSize( 1 );
-		final EntityHierarchy entityHierarchy = entityHierarchies.iterator().next();
-
-		assertThat( entityHierarchy.getIdMapping() ).isNotNull();
-		final NonAggregatedKeyMapping idMapping = (NonAggregatedKeyMapping) entityHierarchy.getIdMapping();
-		assertThat( idMapping.getIdAttributes() ).hasSize( 2 );
-		assertThat( idMapping.getIdAttributes().stream().map( AttributeMetadata::getName ) ).containsExactly( "id1", "id2" );
-		assertThat( idMapping.getIdClassType().getClassName() ).isEqualTo( NonAggregatedIdEntity.Pk.class.getName() );
-
-		assertThat( entityHierarchy.getVersionAttribute() ).isNotNull();
-		assertThat( entityHierarchy.getVersionAttribute().getMember().getAnnotationUsage( Version.class ) ).isNotNull();
-
-		assertThat( entityHierarchy.getTenantIdAttribute() ).isNotNull();
-		assertThat( entityHierarchy.getTenantIdAttribute().getMember().getAnnotationUsage( TenantId.class ) ).isNotNull();
-
-		assertThat( entityHierarchy.getCacheRegion() ).isNotNull();
-		assertThat( entityHierarchy.getCacheRegion().getAccessType() ).isEqualTo( AccessType.TRANSACTIONAL );
-
-		assertThat( entityHierarchy.getInheritanceType() ).isNotNull();
-		assertThat( entityHierarchy.getInheritanceType() ).isEqualTo( InheritanceType.TABLE_PER_CLASS );
 	}
 
 	private static Set<EntityHierarchy> buildHierarchyMetadata(Class<?>... classes) {
