@@ -7,8 +7,11 @@
 package org.hibernate.models.orm.bind.spi;
 
 import java.lang.annotation.Annotation;
+import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.annotations.Any;
+import org.hibernate.annotations.ManyToAny;
 import org.hibernate.annotations.SecondaryRow;
 import org.hibernate.annotations.Subselect;
 import org.hibernate.boot.model.naming.EntityNaming;
@@ -22,6 +25,8 @@ import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.orm.AnnotationPlacementException;
+import org.hibernate.models.orm.bind.internal.InLineView;
+import org.hibernate.models.orm.bind.internal.PhysicalTable;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
@@ -31,6 +36,12 @@ import org.hibernate.models.orm.categorize.spi.ManagedTypeMetadata;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
 
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.SecondaryTable;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
@@ -103,14 +114,10 @@ public class BindingCoordinator {
 		bindingCoordinator.processFilterDefinitions( categorizedDomainModel.getGlobalRegistrations() );
 
 		categorizedDomainModel.forEachEntityHierarchy( (typeIndex, hierarchy) -> {
-			// hierarchy bindings
-			hierarchy.getIdMapping().forEachAttribute( (attributeIndex, attribute) -> {
-				bindingCoordinator.processLocalGenerators( attribute );
-			} );
-
 			hierarchy.forEachType( (type) -> {
 				// type bindings
 				bindingCoordinator.processTables( type );
+				bindingCoordinator.processGenerators( type );
 
 				type.forEachAttribute( (attributeIndex, attribute) -> {
 					// attribute bindings
@@ -120,6 +127,7 @@ public class BindingCoordinator {
 		} );
 	}
 
+
 	private void processGenerators(GlobalRegistrations globalRegistrations) {
 		// todo : process these
 		globalRegistrations.getSequenceGeneratorRegistrations();
@@ -128,6 +136,7 @@ public class BindingCoordinator {
 	}
 
 	private void processConverters(GlobalRegistrations globalRegistrations) {
+
 		// todo : process these
 		globalRegistrations.getConverterRegistrations();
 	}
@@ -160,16 +169,69 @@ public class BindingCoordinator {
 	}
 
 	private void processFilterDefinitions(GlobalRegistrations globalRegistrations) {
+		globalRegistrations.getFilterDefRegistrations().forEach( (s, filterDefRegistration) -> {
+			state.apply( filterDefRegistration );
+		} );
 
 	}
 
-	private void processLocalGenerators(AttributeMetadata idAttribute) {
-
+	@FunctionalInterface
+	interface TableSecondPass {
+		void processTable();
 	}
+
+	private final List<TableSecondPass> tableSecondPasses = new ArrayList<>();
 
 	private void processTables(AttributeMetadata attribute) {
-		// join tables
-		// collection tables
+		final AnnotationUsage<JoinTable> joinTableAnn = attribute.getMember().getAnnotationUsage( JoinTable.class );
+		final AnnotationUsage<CollectionTable> collectionTableAnn = attribute.getMember().getAnnotationUsage( CollectionTable.class );
+
+		final AnnotationUsage<OneToOne> oneToOneAnn = attribute.getMember().getAnnotationUsage( OneToOne.class );
+		final AnnotationUsage<ManyToOne> manyToOneAnn = attribute.getMember().getAnnotationUsage( ManyToOne.class );
+		final AnnotationUsage<ElementCollection> elementCollectionAnn = attribute.getMember().getAnnotationUsage( ElementCollection.class );
+		final AnnotationUsage<OneToMany> oneToManyAnn = attribute.getMember().getAnnotationUsage( OneToMany.class );
+		final AnnotationUsage<Any> anyAnn = attribute.getMember().getAnnotationUsage( Any.class );
+		final AnnotationUsage<ManyToAny> manyToAnyAnn = attribute.getMember().getAnnotationUsage( ManyToAny.class );
+
+		final boolean hasAnyTableAnnotations = joinTableAnn != null
+				|| collectionTableAnn != null;
+
+		final boolean hasAnyAssociationAnnotations = oneToOneAnn != null
+				|| manyToOneAnn != null
+				|| elementCollectionAnn != null
+				|| oneToManyAnn != null
+				|| anyAnn != null
+				|| manyToAnyAnn != null;
+
+		if ( !hasAnyAssociationAnnotations ) {
+			if ( hasAnyTableAnnotations ) {
+				throw new AnnotationPlacementException(
+						"@JoinTable or @CollectionTable used on non-association attribute - " + attribute.getMember()
+				);
+			}
+		}
+
+		if ( elementCollectionAnn != null ) {
+			if ( joinTableAnn != null ) {
+				throw new AnnotationPlacementException(
+						"@JoinTable should not be used with @ElementCollection; use @CollectionTable instead - " + attribute.getMember()
+				);
+			}
+
+			// an element-collection "owns" the collection table, so create it right away
+
+		}
+
+		// ^^ accounting for owning v. "inverse" side
+		//
+		// on the owning side we get/create the reference and configure it
+		//
+		// on the inverse side we just get the reference.
+		//
+		// a cool idea here for "smarter second-pass"... on the inverse side -
+		// 		TableReference mappedTable = bindingState.
+		//
+
 	}
 
 	private void processGenerators(IdentifiableTypeMetadata type) {
@@ -219,19 +281,19 @@ public class BindingCoordinator {
 	}
 
 	private void processPhysicalTable(EntityTypeMetadata type, AnnotationUsage<Table> tableAnn) {
-		final TableBinding tableBinding;
+		final PhysicalTable physicalTable;
 
 		if ( tableAnn != null ) {
-			tableBinding = createExplicitPhysicalTable( type, tableAnn );
+			physicalTable = createExplicitPhysicalTable( type, tableAnn );
 		}
 		else {
-			tableBinding = createImplicitPhysicalTable( type );
+			physicalTable = createImplicitPhysicalTable( type );
 		}
 
-		state.addTableBinding( tableBinding );
+		state.addPhysicalTable( physicalTable );
 	}
 
-	private TableBinding createImplicitPhysicalTable(EntityTypeMetadata type) {
+	private PhysicalTable createImplicitPhysicalTable(EntityTypeMetadata type) {
 		final Identifier logicalName = implicitNamingStrategy.determinePrimaryTableName(
 				new ImplicitEntityNameSource() {
 					@Override
@@ -246,7 +308,7 @@ public class BindingCoordinator {
 				}
 		);
 
-		return new TableBinding(
+		return new PhysicalTable(
 				logicalName,
 				physicalNamingStrategy.toPhysicalTableName( logicalName, jdbcEnvironment ),
 				resolveDatabaseIdentifier(
@@ -263,14 +325,17 @@ public class BindingCoordinator {
 						options.getDefaultSchemaName(),
 						SCHEMA_NAME
 				),
+				type.isAbstract(),
 				null,
 				null
 		);
 	}
 
-	private TableBinding createExplicitPhysicalTable(EntityTypeMetadata type, AnnotationUsage<Table> tableAnn) {
+	private PhysicalTable createExplicitPhysicalTable(EntityTypeMetadata type, AnnotationUsage<Table> tableAnn) {
 		final String name = StringHelper.nullIfEmpty( tableAnn.getString( "name" ) );
 		final Identifier logicalName;
+
+
 
 		if ( name == null ) {
 			logicalName = implicitNamingStrategy.determinePrimaryTableName(
@@ -291,15 +356,14 @@ public class BindingCoordinator {
 			logicalName = BindingHelper.toIdentifier( name, TABLE_NAME, options, jdbcEnvironment );
 		}
 
-		return new TableBinding(
+		return new PhysicalTable(
 				logicalName,
 				physicalNamingStrategy.toPhysicalTableName( logicalName, jdbcEnvironment ),
 				resolveDatabaseIdentifier( tableAnn, "catalog", Table.class, options.getDefaultCatalogName(), CATALOG_NAME ),
 				resolveDatabaseIdentifier( tableAnn, "schema", Table.class, options.getDefaultSchemaName(), SCHEMA_NAME ),
-//				BindingHelper.getString( tableAnn, "comment", Table.class, bindingContext ),
-//				BindingHelper.getString( tableAnn, "options", Table.class, bindingContext )
-				null,
-				null
+				false,
+				BindingHelper.getString( tableAnn, "comment", Table.class, bindingContext ),
+				BindingHelper.getString( tableAnn, "options", Table.class, bindingContext )
 		);
 	}
 
@@ -317,7 +381,7 @@ public class BindingCoordinator {
 					}
 				}
 		);
-		final VirtualTableBinding binding = new VirtualTableBinding(
+		final InLineView binding = new InLineView(
 				logicalName,
 				BindingHelper.getString( subselectAnn, "value", Subselect.class, bindingContext )
 		);

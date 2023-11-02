@@ -7,7 +7,7 @@
 package org.hibernate.models.orm.bind.internal;
 
 import org.hibernate.boot.internal.ClassmateContext;
-import org.hibernate.boot.spi.MetadataBuildingContext;
+import org.hibernate.boot.spi.BootstrapContext;
 import org.hibernate.models.orm.bind.spi.BindingContext;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.categorize.spi.GlobalRegistrations;
@@ -28,17 +28,15 @@ public class BindingContextImpl implements BindingContext {
 	private final SharedCacheMode sharedCacheMode;
 	private final ClassmateContext classmateContext;
 	private final ServiceRegistry serviceRegistry;
-	private final MetadataBuildingContext metadataBuildingContext;
 
-	public BindingContextImpl(CategorizedDomainModel categorizedDomainModel, MetadataBuildingContext metadataBuildingContext) {
+	public BindingContextImpl(CategorizedDomainModel categorizedDomainModel, BootstrapContext bootstrapContext) {
 		this(
 				categorizedDomainModel.getClassDetailsRegistry(),
 				categorizedDomainModel.getAnnotationDescriptorRegistry(),
 				categorizedDomainModel.getGlobalRegistrations(),
-				metadataBuildingContext.getBootstrapContext().getMetadataBuildingOptions().getSharedCacheMode(),
-				metadataBuildingContext.getBootstrapContext().getClassmateContext(),
-				metadataBuildingContext.getBootstrapContext().getServiceRegistry(),
-				metadataBuildingContext
+				bootstrapContext.getMetadataBuildingOptions().getSharedCacheMode(),
+				bootstrapContext.getClassmateContext(),
+				bootstrapContext.getServiceRegistry()
 		);
 	}
 
@@ -48,15 +46,13 @@ public class BindingContextImpl implements BindingContext {
 			GlobalRegistrations globalRegistrations,
 			SharedCacheMode sharedCacheMode,
 			ClassmateContext classmateContext,
-			ServiceRegistry serviceRegistry,
-			MetadataBuildingContext metadataBuildingContext) {
+			ServiceRegistry serviceRegistry) {
 		this.classDetailsRegistry = classDetailsRegistry;
 		this.annotationDescriptorRegistry = annotationDescriptorRegistry;
 		this.serviceRegistry = serviceRegistry;
 		this.globalRegistrations = globalRegistrations;
 		this.classmateContext = classmateContext;
 		this.sharedCacheMode = sharedCacheMode;
-		this.metadataBuildingContext = metadataBuildingContext;
 	}
 
 	@Override
