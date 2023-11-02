@@ -6,6 +6,10 @@
  */
 package org.hibernate.models.orm.xml.dynamic;
 
+import java.util.List;
+
+import org.hibernate.models.orm.xml.SimpleEntity;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 
@@ -15,4 +19,6 @@ public class Employee {
 	private String name;
 	@Id
 	private int number;
+
+	private List<SimpleEntity> oneToMany;
 }

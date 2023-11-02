@@ -296,13 +296,16 @@
             <class name="JaxbAnyMappingKeyImpl"/>
         </bindings>
 
+        <bindings node="//xsd:group[@name='collection-structure-group']">
+            <bindings node=".//xsd:element[@name='filter']">
+                <property name="filters"/>
+            </bindings>
+        </bindings>
+
         <bindings node="//xsd:complexType[@name='element-collection']">
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbFetchableAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbBasicMapping</inheritance:implements>
-            <bindings node=".//xsd:element[@name='filter']">
-            	<property name="filters"/>
-			</bindings>
         </bindings>
 
         <bindings node="//xsd:complexType[@name='one-to-many']">
@@ -310,9 +313,6 @@
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbFetchableAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbAssociationAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbNotFoundCapable</inheritance:implements>
-            <bindings node=".//xsd:element[@name='filter']">
-            	<property name="filters"/>
-			</bindings>
 			<bindings node=".//xsd:element[@name='filter-join-table']">
             	<property name="joinTableFilters"/>
             </bindings>
@@ -323,9 +323,6 @@
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbFetchableAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbAssociationAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbNotFoundCapable</inheritance:implements>
-            <bindings node=".//xsd:element[@name='filter']">
-            	<property name="filters"/>
-			</bindings>
 			<bindings node=".//xsd:element[@name='filter-join-table']">
             	<property name="joinTableFilters"/>
 			</bindings>
@@ -335,9 +332,6 @@
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbFetchableAttribute</inheritance:implements>
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbAnyMapping</inheritance:implements>
-            <bindings node=".//xsd:element[@name='filter']">
-            	<property name="filters"/>
-			</bindings>
             <class name="JaxbPluralAnyMappingImpl"/>
         </bindings>
 
@@ -381,6 +375,7 @@
                 <property name="caching"/>
             </bindings>
         </bindings>
+
         <bindings node="//xsd:complexType[@name='table']">
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbTableMapping</inheritance:implements>
             <bindings node=".//xsd:attribute[@name='options']">
@@ -389,6 +384,10 @@
             <bindings node=".//xsd:attribute[@name='comment']">
                 <property name="commentAttribute"/>
             </bindings>
+        </bindings>
+
+        <bindings node="//xsd:complexType[@name='column']">
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbTableColumn</inheritance:implements>
         </bindings>
 
         <bindings node="//xsd:complexType[@name='check-constraint']">
@@ -404,6 +403,7 @@
                 <property name="commentAttribute"/>
             </bindings>
         </bindings>
+
         <bindings node="//xsd:complexType[@name='join-table']">
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbTableMapping</inheritance:implements>
             <bindings node=".//xsd:attribute[@name='options']">
@@ -413,6 +413,19 @@
                 <property name="commentAttribute"/>
             </bindings>
         </bindings>
+
+        <bindings node="//xsd:complexType[@name='join-column']">
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbJoinColumn</inheritance:implements>
+        </bindings>
+
+        <bindings node="//xsd:complexType[@name='map-key-column']">
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbTableColumn</inheritance:implements>
+        </bindings>
+
+        <bindings node="//xsd:complexType[@name='map-key-join-column']">
+            <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbJoinColumn</inheritance:implements>
+        </bindings>
+
         <bindings node="//xsd:complexType[@name='collection-table']">
             <inheritance:implements>org.hibernate.boot.jaxb.mapping.spi.JaxbTableMapping</inheritance:implements>
             <bindings node=".//xsd:attribute[@name='options']">
@@ -582,6 +595,12 @@
 					parseMethod="org.hibernate.boot.jaxb.mapping.internal.OnDeleteActionMarshalling.fromXml"
 					printMethod="org.hibernate.boot.jaxb.mapping.internal.OnDeleteActionMarshalling.toXml" />
 		</bindings>
+
+		<bindings node="//xsd:simpleType[@name='not-found-type']">
+            <javaType name="org.hibernate.annotations.NotFoundAction"
+                    parseMethod="org.hibernate.boot.jaxb.mapping.internal.NotFoundActionMarshalling.fromXml"
+                    printMethod="org.hibernate.boot.jaxb.mapping.internal.NotFoundActionMarshalling.toXml" />
+        </bindings>
 
 		<bindings node="//xsd:simpleType[@name='polymorphism-type']">
 			<javaType name="org.hibernate.annotations.PolymorphismType"

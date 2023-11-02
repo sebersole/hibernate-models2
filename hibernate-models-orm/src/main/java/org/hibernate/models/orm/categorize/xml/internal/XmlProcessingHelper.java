@@ -124,9 +124,11 @@ public class XmlProcessingHelper {
 	public static <A extends Annotation> MutableAnnotationUsage<A> getOrMakeAnnotation(
 			Class<A> annotationType,
 			MutableAnnotationTarget target) {
-		final AnnotationUsage<A> existing = target.getAnnotationUsage( annotationType );
-		if ( existing != null ) {
-			return (MutableAnnotationUsage<A>) existing;
+		if ( target != null ) {
+			final AnnotationUsage<A> existing = target.getAnnotationUsage( annotationType );
+			if ( existing != null ) {
+				return (MutableAnnotationUsage<A>) existing;
+			}
 		}
 
 		return makeAnnotation( annotationType, target );
@@ -141,7 +143,9 @@ public class XmlProcessingHelper {
 			Class<A> annotationType,
 			MutableAnnotationTarget target) {
 		final DynamicAnnotationUsage<A> created = new DynamicAnnotationUsage<>( annotationType, target );
-		target.addAnnotationUsage( created );
+		if ( target != null) {
+			target.addAnnotationUsage( created );
+		}
 		return created;
 	}
 

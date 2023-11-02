@@ -72,5 +72,15 @@ public interface JaxbPluralAttribute extends JaxbPersistentAttribute {
 
 	void setMapKeyForeignKey(JaxbForeignKeyImpl value);
 
+	String getSqlRestriction();
+
+	JaxbCustomSqlImpl getSqlInsert();
+
+	JaxbCustomSqlImpl getSqlUpdate();
+
+	JaxbCustomSqlImpl getSqlDelete();
+
+	JaxbCustomSqlImpl getSqlDeleteAll();
+
 	List<JaxbHbmFilterImpl> getFilters();
 }

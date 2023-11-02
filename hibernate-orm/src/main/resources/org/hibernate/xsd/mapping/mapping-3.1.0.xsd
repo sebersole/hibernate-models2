@@ -869,13 +869,6 @@
                 </xsd:sequence>
             </xsd:choice>
             <xsd:element name="collection-table" type="orm:collection-table" minOccurs="0"/>
-            <xsd:element name="sql-restriction" type="xsd:string" minOccurs="0"/>
-            <xsd:element name="sql-insert" type="orm:custom-sql" minOccurs="0"/>
-            <xsd:element name="sql-update" type="orm:custom-sql" minOccurs="0"/>
-            <!-- todo : sql-delete is currently ignored in ORM for element collections, should we leave it? -->
-            <xsd:element name="sql-delete" type="orm:custom-sql" minOccurs="0"/>
-            <xsd:element name="sql-delete-all" type="orm:custom-sql" minOccurs="0"/>
-            <xsd:element name="filter" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
         </xsd:sequence>
         <xsd:attribute name="name" type="xsd:string" use="required"/>
         <xsd:attribute name="target-class" type="xsd:string"/>
@@ -930,7 +923,12 @@
         </xsd:restriction>
     </xsd:simpleType>
 
-    <xsd:simpleType name="not-found-enum">
+    <xsd:simpleType name="not-found-type">
+        <xsd:annotation>
+            <xsd:documentation>
+                See `org.hibernate.annotations.NotFoundAction enum
+            </xsd:documentation>
+        </xsd:annotation>
         <xsd:restriction base="xsd:token">
             <xsd:enumeration value="EXCEPTION"/>
             <xsd:enumeration value="IGNORE"/>
@@ -1372,12 +1370,6 @@
                 </xsd:sequence>
             </xsd:choice>
             <xsd:element name="cascade" type="orm:cascade-type" minOccurs="0"/>
-            <xsd:element name="sql-restriction" type="xsd:string" minOccurs="0"/>
-            <xsd:element name="sql-insert" type="orm:custom-sql" minOccurs="0"/>
-            <xsd:element name="sql-update" type="orm:custom-sql" minOccurs="0"/>
-            <xsd:element name="sql-delete" type="orm:custom-sql" minOccurs="0"/>
-            <xsd:element name="sql-delete-all" type="orm:custom-sql" minOccurs="0"/>
-            <xsd:element name="filter" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
         </xsd:sequence>
         <xsd:attribute name="name" type="xsd:string" use="required"/>
         <xsd:attribute name="target-entity" type="xsd:string"/>
@@ -1388,7 +1380,7 @@
         <xsd:attribute name="mapped-by" type="xsd:string"/>
         <xsd:attribute name="orphan-removal" type="xsd:boolean"/>
         <xsd:attribute name="classification" type="orm:limited-collection-classification-enum" />
-        <xsd:attribute name="not-found" default="EXCEPTION" type="orm:not-found-enum"/>
+        <xsd:attribute name="not-found" default="EXCEPTION" type="orm:not-found-type"/>
     </xsd:complexType>
 
     <!-- **************************************************** -->
@@ -1423,7 +1415,7 @@
         <xsd:attribute name="optimistic-lock" type="xsd:boolean" default="true" />
         <xsd:attribute name="maps-id" type="xsd:string"/>
         <xsd:attribute name="id" type="xsd:boolean"/>
-        <xsd:attribute name="not-found" default="EXCEPTION" type="orm:not-found-enum"/>
+        <xsd:attribute name="not-found" default="EXCEPTION" type="orm:not-found-type"/>
     </xsd:complexType>
 
     <!-- **************************************************** -->
@@ -1462,6 +1454,7 @@
         <xsd:attribute name="insertable" type="xsd:boolean"/>
         <xsd:attribute name="updatable" type="xsd:boolean"/>
         <xsd:attribute name="column-definition" type="xsd:string"/>
+        <xsd:attribute name="options" type="xsd:string"/>
         <xsd:attribute name="table" type="xsd:string"/>
         <xsd:attribute name="length" type="xsd:int"/>
         <xsd:attribute name="precision" type="xsd:int"/>
@@ -1486,6 +1479,7 @@
         <xsd:attribute name="insertable" type="xsd:boolean"/>
         <xsd:attribute name="updatable" type="xsd:boolean"/>
         <xsd:attribute name="column-definition" type="xsd:string"/>
+        <xsd:attribute name="options" type="xsd:string"/>
         <xsd:attribute name="table" type="xsd:string"/>
     </xsd:complexType>
 
@@ -1828,6 +1822,15 @@
                     </xsd:choice>
                 </xsd:sequence>
             </xsd:choice>
+
+            <xsd:element name="sql-restriction" type="xsd:string" minOccurs="0"/>
+
+            <xsd:element name="sql-insert" type="orm:custom-sql" minOccurs="0"/>
+            <xsd:element name="sql-update" type="orm:custom-sql" minOccurs="0"/>
+            <xsd:element name="sql-delete" type="orm:custom-sql" minOccurs="0"/>
+            <xsd:element name="sql-delete-all" type="orm:custom-sql" minOccurs="0"/>
+
+            <xsd:element name="filter" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
         </xsd:sequence>
     </xsd:group>
 
@@ -1861,12 +1864,6 @@
             </xsd:choice>
             <xsd:element name="cascade" type="orm:cascade-type" minOccurs="0"/>
             <xsd:element name="on-delete" type="orm:on-delete-type" minOccurs="0"/>
-            <xsd:element name="sql-restriction" type="xsd:string" minOccurs="0"/>
-            <xsd:element name="sql-insert" type="orm:custom-sql" minOccurs="0"/>
-            <xsd:element name="sql-update" type="orm:custom-sql" minOccurs="0"/>
-            <xsd:element name="sql-delete" type="orm:custom-sql" minOccurs="0"/>
-            <xsd:element name="sql-delete-all" type="orm:custom-sql" minOccurs="0"/>
-            <xsd:element name="filter" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
         </xsd:sequence>
         <xsd:attribute name="name" type="xsd:string" use="required"/>
         <xsd:attribute name="target-entity" type="xsd:string"/>
@@ -1877,7 +1874,7 @@
         <xsd:attribute name="mapped-by" type="xsd:string"/>
         <xsd:attribute name="orphan-removal" type="xsd:boolean"/>
         <xsd:attribute name="classification" type="orm:limited-collection-classification-enum" />
-        <xsd:attribute name="not-found" default="EXCEPTION" type="orm:not-found-enum"/>
+        <xsd:attribute name="not-found" default="EXCEPTION" type="orm:not-found-type"/>
     </xsd:complexType>
 
     <!-- **************************************************** -->
@@ -2224,7 +2221,7 @@
             </xsd:documentation>
         </xsd:annotation>
         <xsd:sequence>
-            <xsd:element name="check" type="orm:check-constraint" minOccurs="0" />
+            <xsd:element name="check" type="orm:check-constraint" minOccurs="0" maxOccurs="unbounded" />
             <xsd:element name="options" type="xsd:string" minOccurs="0" />
             <xsd:element name="comment" type="xsd:string" minOccurs="0" />
         </xsd:sequence>
@@ -2831,12 +2828,6 @@
             <xsd:element name="discriminator" type="orm:hbm-any-discriminator"/>
             <xsd:element name="key" type="orm:hbm-any-key"/>
             <xsd:element name="cascade" type="orm:cascade-type" minOccurs="0"/>
-            <xsd:element name="sql-restriction" type="xsd:string" minOccurs="0"/>
-            <xsd:element name="sql-insert" type="orm:custom-sql" minOccurs="0"/>
-            <xsd:element name="sql-update" type="orm:custom-sql" minOccurs="0"/>
-            <xsd:element name="sql-delete" type="orm:custom-sql" minOccurs="0"/>
-            <xsd:element name="sql-delete-all" type="orm:custom-sql" minOccurs="0"/>
-            <xsd:element name="filter" type="orm:hbm-filter" minOccurs="0" maxOccurs="unbounded" />
         </xsd:sequence>
 
         <xsd:attribute name="name" use="required" type="xsd:string"/>
@@ -2887,7 +2878,7 @@
         </xsd:annotation>
         <xsd:sequence>
             <!-- hbm: Check constraint -->
-            <xsd:element name="check" type="orm:check-constraint" minOccurs="0" />
+            <xsd:element name="check" type="orm:check-constraint" minOccurs="0" maxOccurs="unbounded"/>
             <!-- hbm: SQL comment to be applied to the column on export -->
             <xsd:element name="comment" type="xsd:string" minOccurs="0" />
             <!-- hbm: Column default -->

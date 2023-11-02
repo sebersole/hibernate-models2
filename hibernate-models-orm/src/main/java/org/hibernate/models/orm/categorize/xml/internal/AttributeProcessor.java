@@ -6,11 +6,11 @@
  */
 package org.hibernate.models.orm.categorize.xml.internal;
 
-import javax.crypto.spec.PSource;
-
 import org.hibernate.annotations.Bag;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.Nationalized;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLDeleteAll;
 import org.hibernate.annotations.SQLInsert;
@@ -54,6 +54,7 @@ import jakarta.persistence.MapKey;
 import jakarta.persistence.MapKeyClass;
 import jakarta.persistence.MapKeyEnumerated;
 import jakarta.persistence.MapKeyTemporal;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Temporal;
@@ -530,9 +531,28 @@ public class AttributeProcessor {
 			XmlAnnotationHelper.applyConvert( jaxbConvert, memberDetails, "key", buildingContext );
 		} );
 
-		// todo : map-key-column
-		// todo : map-key-join-column
-		// todo : map-key-foreign-key
+
+		XmlAnnotationHelper.applyMapKeyColumn( jaxbPluralAttribute.getMapKeyColumn(), memberDetails, buildingContext );
+
+		jaxbPluralAttribute.getMapKeyJoinColumn().forEach( jaxbMapKeyJoinColumn -> {
+			XmlAnnotationHelper.applyMapKeyJoinColumn( jaxbMapKeyJoinColumn, memberDetails, buildingContext );
+		} );
+
+		XmlAnnotationHelper.applyForeignKey( jaxbPluralAttribute.getMapKeyForeignKey(), memberDetails, buildingContext );
+
+		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		// filters and custom sql
+
+		jaxbPluralAttribute.getFilters().forEach( (jaxbFilter) -> {
+			XmlAnnotationHelper.applyFilter( jaxbFilter, memberDetails, buildingContext );
+		} );
+
+		XmlAnnotationHelper.applySqlRestriction( jaxbPluralAttribute.getSqlRestriction(), memberDetails, buildingContext );
+
+		XmlAnnotationHelper.applyCustomSql( jaxbPluralAttribute.getSqlInsert(), memberDetails, SQLInsert.class, buildingContext );
+		XmlAnnotationHelper.applyCustomSql( jaxbPluralAttribute.getSqlUpdate(), memberDetails, SQLUpdate.class, buildingContext );
+		XmlAnnotationHelper.applyCustomSql( jaxbPluralAttribute.getSqlDelete(), memberDetails, SQLDelete.class, buildingContext );
+		XmlAnnotationHelper.applyCustomSql( jaxbPluralAttribute.getSqlDeleteAll(), memberDetails, SQLDeleteAll.class, buildingContext );
 	}
 
 	public static MutableMemberDetails processElementCollectionAttribute(
@@ -552,12 +572,19 @@ public class AttributeProcessor {
 				ElementCollection.class,
 				memberDetails
 		);
-		setIf( jaxbElementCollection.getTargetClass(), "targetClass", elementCollectionAnn );
 		setIf( jaxbElementCollection.getFetch(), "fetch", elementCollectionAnn );
+		if ( StringHelper.isNotEmpty( jaxbElementCollection.getTargetClass() ) ) {
+			elementCollectionAnn.setAttributeValue(
+					"targetClass",
+					XmlAnnotationHelper.resolveJavaType( jaxbElementCollection.getTargetClass(), sourceModelBuildingContext )
+			);
+		}
 
 		processCommonAttributeAnnotations( jaxbElementCollection, memberDetails, accessType, sourceModelBuildingContext );
 
 		processPluralAttribute( jaxbElementCollection, memberDetails, sourceModelBuildingContext );
+
+		XmlAnnotationHelper.applyCollectionTable( jaxbElementCollection.getCollectionTable(), memberDetails, sourceModelBuildingContext );
 
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// elements
@@ -587,27 +614,10 @@ public class AttributeProcessor {
 		}
 
 		XmlAnnotationHelper.applyBasicTypeComposition( jaxbElementCollection, memberDetails, sourceModelBuildingContext );
-		if ( StringHelper.isNotEmpty( jaxbElementCollection.getTargetClass() ) ) {
-			final MutableAnnotationUsage<Target> targetAnn = getOrMakeAnnotation( Target.class, memberDetails );
-			targetAnn.setAttributeValue( "value", jaxbElementCollection.getTargetClass() );
-		}
 
 		jaxbElementCollection.getConvert().forEach( (jaxbConvert) -> {
 			XmlAnnotationHelper.applyConvert( jaxbConvert, memberDetails, sourceModelBuildingContext );
 		} );
-
-		jaxbElementCollection.getFilters().forEach( (jaxbFilter) -> XmlAnnotationHelper.applyFilter(
-				jaxbFilter,
-				memberDetails,
-				sourceModelBuildingContext
-		) );
-
-		XmlAnnotationHelper.applySqlRestriction( jaxbElementCollection.getSqlRestriction(), memberDetails, sourceModelBuildingContext );
-
-		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlInsert(), memberDetails, SQLInsert.class, sourceModelBuildingContext );
-		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlUpdate(), memberDetails, SQLUpdate.class, sourceModelBuildingContext );
-		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlDelete(), memberDetails, SQLDelete.class, sourceModelBuildingContext );
-		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlDeleteAll(), memberDetails, SQLDeleteAll.class, sourceModelBuildingContext );
 
 		XmlAnnotationHelper.applyAttributeOverrides(
 				jaxbElementCollection.getAttributeOverride(),
@@ -629,10 +639,63 @@ public class AttributeProcessor {
 	@SuppressWarnings("UnusedReturnValue")
 	public static MutableMemberDetails processOneToManyAttribute(
 			JaxbOneToManyImpl jaxbOneToMany,
-			MutableClassDetails mutableClassDetails,
+			MutableClassDetails declarer,
 			AccessType classAccessType,
-			SourceModelBuildingContext sourceModelBuildingContext) {
-		throw new UnsupportedOperationException( "Support for one-to-many attributes not yet implemented" );
+			SourceModelBuildingContext buildingContext) {
+		final AccessType accessType = coalesce( jaxbOneToMany.getAccess(), classAccessType );
+		final MutableMemberDetails memberDetails = XmlProcessingHelper.getAttributeMember(
+				jaxbOneToMany.getName(),
+				accessType,
+				declarer,
+				buildingContext
+		);
+
+		final MutableAnnotationUsage<OneToMany> oneToManyAnn = XmlProcessingHelper.getOrMakeAnnotation(
+				OneToMany.class,
+				memberDetails
+		);
+		setIf( jaxbOneToMany.getFetch(), "fetch", oneToManyAnn );
+		setIf( jaxbOneToMany.getMappedBy(), "mappedBy", oneToManyAnn );
+		setIf( jaxbOneToMany.isOrphanRemoval(), "orphanRemoval", oneToManyAnn );
+		XmlAnnotationHelper.applyCascade( jaxbOneToMany.getCascade(), memberDetails, buildingContext );
+		final String targetEntity = jaxbOneToMany.getTargetEntity();
+		if ( StringHelper.isNotEmpty( targetEntity ) ) {
+			oneToManyAnn.setAttributeValue( "targetEntity", buildingContext.getClassDetailsRegistry().resolveClassDetails( targetEntity ) );
+		}
+
+		processCommonAttributeAnnotations( jaxbOneToMany, memberDetails, accessType, buildingContext );
+
+		processPluralAttribute( jaxbOneToMany, memberDetails, buildingContext );
+
+		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		// join-table
+
+		XmlAnnotationHelper.applyJoinTable( jaxbOneToMany.getJoinTable(), memberDetails, buildingContext );
+
+		XmlAnnotationHelper.applySqlJoinTableRestriction( jaxbOneToMany.getSqlJoinTableRestriction(), memberDetails, buildingContext );
+
+		jaxbOneToMany.getJoinTableFilters().forEach( (jaxbFilter) -> {
+			XmlAnnotationHelper.applyJoinTableFilter( jaxbFilter, memberDetails, buildingContext );
+		} );
+
+		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		// other properties
+
+		jaxbOneToMany.getJoinColumn().forEach( jaxbJoinColumn -> {
+			XmlAnnotationHelper.applyJoinColumn( jaxbJoinColumn, memberDetails, buildingContext );
+		} );
+
+		XmlAnnotationHelper.applyForeignKey( jaxbOneToMany.getForeignKey(), memberDetails, buildingContext );
+
+		if ( jaxbOneToMany.getOnDelete() != null ) {
+			getOrMakeAnnotation( OnDelete.class, memberDetails ).setAttributeValue( "action", jaxbOneToMany.getOnDelete() );
+		}
+
+		if ( jaxbOneToMany.getNotFound() != null ) {
+			getOrMakeAnnotation( NotFound.class, memberDetails ).setAttributeValue( "action", jaxbOneToMany.getNotFound() );
+		}
+
+		return memberDetails;
 	}
 
 	@SuppressWarnings("UnusedReturnValue")

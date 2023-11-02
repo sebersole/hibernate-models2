@@ -6,11 +6,13 @@
  */
 package org.hibernate.boot.jaxb.mapping.spi;
 
+import java.util.List;
+
 /**
  * @author Steve Ebersole
  */
 public interface JaxbTableMapping extends JaxbSchemaAware {
-	JaxbCheckConstraint getCheck();
+	List<JaxbCheckConstraintImpl> getCheck();
 	String getComment();
 	String getOptions();
 
