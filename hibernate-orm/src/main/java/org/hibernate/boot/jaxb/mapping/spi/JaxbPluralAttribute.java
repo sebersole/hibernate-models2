@@ -22,6 +22,9 @@ public interface JaxbPluralAttribute extends JaxbPersistentAttribute {
 	JaxbPluralFetchModeImpl getFetchMode();
 	void setFetchMode(JaxbPluralFetchModeImpl mode);
 
+	JaxbCollectionUserTypeImpl getCollectionType();
+	void setCollectionType(JaxbCollectionUserTypeImpl value);
+
 	JaxbCollectionIdImpl getCollectionId();
 	void setCollectionId(JaxbCollectionIdImpl id);
 
@@ -37,6 +40,9 @@ public interface JaxbPluralAttribute extends JaxbPersistentAttribute {
 
 	String getSort();
 	void setSort(String value);
+
+	JaxbPluralAnyMappingImpl.JaxbSortNaturalImpl getSortNatural();
+	void setSortNatural(JaxbPluralAnyMappingImpl.JaxbSortNaturalImpl value);
 
 	JaxbMapKeyImpl getMapKey();
 	void setMapKey(JaxbMapKeyImpl value);

@@ -16,6 +16,7 @@ import java.util.UUID;
 
 import org.hibernate.AnnotationException;
 import org.hibernate.annotations.AttributeAccessor;
+import org.hibernate.annotations.CollectionId;
 import org.hibernate.annotations.CollectionType;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterJoinTable;
@@ -41,6 +42,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbAttributeOverrideImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicMapping;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbCachingImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbCollectionIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbCollectionUserTypeImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbColumnImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbConfigurationParameterImpl;
@@ -117,6 +119,7 @@ import static jakarta.persistence.FetchType.EAGER;
 import static java.util.Collections.emptyList;
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
 import static org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper.getOrMakeAnnotation;
+import static org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper.setIf;
 
 /**
  * Helper for creating annotation from equivalent JAXB
@@ -324,6 +327,41 @@ public class XmlAnnotationHelper {
 		typeAnn.setAttributeValue( "parameters", collectParameters( jaxbType.getParameters(), memberDetails ) );
 	}
 
+	public static void applyCollectionId(
+			JaxbCollectionIdImpl jaxbCollectionId,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext buildingContext) {
+		if ( jaxbCollectionId == null ) {
+			return;
+		}
+
+		final MutableAnnotationUsage<CollectionId> collectionIdAnn = XmlProcessingHelper.getOrMakeAnnotation(
+				CollectionId.class,
+				memberDetails
+		);
+
+		final JaxbColumnImpl jaxbColumn = jaxbCollectionId.getColumn();
+		final MutableAnnotationUsage<Column> columnAnn = XmlProcessingHelper.getOrMakeAnnotation(
+				Column.class,
+				memberDetails
+		);
+		collectionIdAnn.setAttributeValue( "column", columnAnn );
+		setIf( jaxbColumn.getName(), "name", columnAnn );
+		columnAnn.setAttributeValue( "nullable", false );
+		columnAnn.setAttributeValue( "unique", false );
+		columnAnn.setAttributeValue( "updatable", false );
+		setIf( jaxbColumn.getLength(), "length", columnAnn );
+		setIf( jaxbColumn.getPrecision(), "precision", columnAnn );
+		setIf( jaxbColumn.getScale(), "scale", columnAnn );
+		setIf( jaxbColumn.getTable(), "table", columnAnn );
+		setIf( jaxbColumn.getColumnDefinition(), "columnDefinition", columnAnn );
+
+		final JaxbGeneratedValueImpl generator = jaxbCollectionId.getGenerator();
+		if ( generator != null ) {
+			setIf( generator.getGenerator(), "generator", collectionIdAnn );
+		}
+	}
+
 	public static void applyTargetClass(
 			String name,
 			MutableMemberDetails memberDetails,
@@ -468,6 +506,14 @@ public class XmlAnnotationHelper {
 			List<JaxbAttributeOverrideImpl> jaxbOverrides,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
+		applyAttributeOverrides( jaxbOverrides, memberDetails, null, sourceModelBuildingContext );
+	}
+
+	public static void applyAttributeOverrides(
+			List<JaxbAttributeOverrideImpl> jaxbOverrides,
+			MutableMemberDetails memberDetails,
+			String namePrefix,
+			SourceModelBuildingContext sourceModelBuildingContext) {
 		if ( CollectionHelper.isEmpty( jaxbOverrides ) ) {
 			return;
 		}
@@ -478,7 +524,7 @@ public class XmlAnnotationHelper {
 					memberDetails
 			);
 			memberDetails.addAnnotationUsage( annotationUsage );
-			annotationUsage.setAttributeValue( "name", jaxbOverride.getName() );
+			annotationUsage.setAttributeValue( "name", StringHelper.qualifyConditionally( jaxbOverride.getName(), namePrefix ) );
 			annotationUsage.setAttributeValue( "column", createColumnAnnotation( jaxbOverride.getColumn(), memberDetails ) );
 		} );
 	}
@@ -486,6 +532,14 @@ public class XmlAnnotationHelper {
 	public static void applyAssociationOverrides(
 			List<JaxbAssociationOverrideImpl> jaxbOverrides,
 			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		applyAssociationOverrides( jaxbOverrides, memberDetails, null, sourceModelBuildingContext );
+	}
+
+	public static void applyAssociationOverrides(
+			List<JaxbAssociationOverrideImpl> jaxbOverrides,
+			MutableMemberDetails memberDetails,
+			String namePrefix,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		if ( CollectionHelper.isEmpty( jaxbOverrides ) ) {
 			return;
@@ -497,7 +551,7 @@ public class XmlAnnotationHelper {
 					memberDetails
 			);
 			memberDetails.addAnnotationUsage( annotationUsage );
-			annotationUsage.setAttributeValue( "name", jaxbOverride.getName() );
+			annotationUsage.setAttributeValue( "name", StringHelper.qualifyConditionally( jaxbOverride.getName(), namePrefix ) );
 			// todo : join columns
 			// todo : join table
 			// todo : foreign key
@@ -520,6 +574,14 @@ public class XmlAnnotationHelper {
 			JaxbConvertImpl jaxbConvert,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
+		applyConvert( jaxbConvert, memberDetails, null, sourceModelBuildingContext );
+	}
+
+	public static void applyConvert(
+			JaxbConvertImpl jaxbConvert,
+			MutableMemberDetails memberDetails,
+			String namePrefix,
+			SourceModelBuildingContext sourceModelBuildingContext) {
 		if ( jaxbConvert == null ) {
 			return;
 		}
@@ -533,7 +595,7 @@ public class XmlAnnotationHelper {
 		final ClassDetailsRegistry classDetailsRegistry = sourceModelBuildingContext.getClassDetailsRegistry();
 		final ClassDetails converter = classDetailsRegistry.resolveClassDetails( jaxbConvert.getConverter() );
 		annotationUsage.setAttributeValue( "converter", converter );
-		annotationUsage.setAttributeValue( "attributeName", jaxbConvert.getAttributeName() );
+		annotationUsage.setAttributeValue( "attributeName", StringHelper.qualifyConditionally( jaxbConvert.getAttributeName(), namePrefix ) );
 		annotationUsage.setAttributeValue( "disableConversion", jaxbConvert.isDisableConversion() );
 	}
 

@@ -57,4 +57,15 @@ public class StringHelper {
 		int loc = qualifiedName.lastIndexOf( '.' );
 		return ( loc < 0 ) ? "" : qualifiedName.substring( 0, loc );
 	}
+
+	public static String qualifyConditionally(String name, String qualifier) {
+		assert isNotEmpty( name );
+		if ( isEmpty( qualifier ) ) {
+			return name;
+		}
+
+		int loc = name.indexOf( '.' );
+		final String firstQualifier = loc < 0 ? name : name.substring( 0, loc );
+		return firstQualifier.equals( qualifier ) ? name : qualifier + "." + name;
+	}
 }

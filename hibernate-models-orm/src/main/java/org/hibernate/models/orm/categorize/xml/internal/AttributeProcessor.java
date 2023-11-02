@@ -6,8 +6,9 @@
  */
 package org.hibernate.models.orm.categorize.xml.internal;
 
+import javax.crypto.spec.PSource;
+
 import org.hibernate.annotations.Bag;
-import org.hibernate.annotations.CollectionId;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.Nationalized;
 import org.hibernate.annotations.SQLDelete;
@@ -23,20 +24,19 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbAnyMappingImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbAttributesContainer;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBaseAttributesContainer;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicImpl;
-import org.hibernate.boot.jaxb.mapping.spi.JaxbCollectionIdImpl;
-import org.hibernate.boot.jaxb.mapping.spi.JaxbColumnImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbElementCollectionImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedImpl;
-import org.hibernate.boot.jaxb.mapping.spi.JaxbGeneratedValueImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbManyToManyImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbManyToOneImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbNaturalId;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbOneToManyImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbOneToOneImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbOrderColumnImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistentAttribute;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAnyMappingImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAttribute;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.models.source.internal.MutableAnnotationUsage;
 import org.hibernate.models.source.internal.MutableClassDetails;
@@ -46,11 +46,14 @@ import org.hibernate.models.source.spi.ClassDetailsRegistry;
 import org.hibernate.models.source.spi.SourceModelBuildingContext;
 
 import jakarta.persistence.AccessType;
-import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Lob;
+import jakarta.persistence.MapKey;
+import jakarta.persistence.MapKeyClass;
+import jakarta.persistence.MapKeyEnumerated;
+import jakarta.persistence.MapKeyTemporal;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Temporal;
@@ -426,14 +429,117 @@ public class AttributeProcessor {
 		throw new UnsupportedOperationException( "Support for any attributes not yet implemented" );
 	}
 
-	@SuppressWarnings("UnusedReturnValue")
+	private static void processPluralAttribute(
+			JaxbPluralAttribute jaxbPluralAttribute,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext buildingContext) {
+		final ClassDetailsRegistry classDetailsRegistry = buildingContext.getClassDetailsRegistry();
+
+		if ( jaxbPluralAttribute.getFetchMode() != null ) {
+			final MutableAnnotationUsage<Fetch> fetchAnn = getOrMakeAnnotation( Fetch.class, memberDetails );
+			fetchAnn.setAttributeValue( "value", jaxbPluralAttribute.getFetchMode() );
+		}
+
+		if ( jaxbPluralAttribute.getClassification() != null ) {
+			final MutableAnnotationUsage<CollectionClassification> collectionClassificationAnn = getOrMakeAnnotation(
+					CollectionClassification.class,
+					memberDetails
+			);
+			setIf( jaxbPluralAttribute.getClassification(), "value", collectionClassificationAnn );
+			if ( jaxbPluralAttribute.getClassification() == LimitedCollectionClassification.BAG ) {
+				getOrMakeAnnotation( Bag.class, memberDetails );
+			}
+		}
+
+		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		// collection-structure
+
+		XmlAnnotationHelper.applyCollectionUserType( jaxbPluralAttribute.getCollectionType(), memberDetails, buildingContext );
+
+		XmlAnnotationHelper.applyCollectionId( jaxbPluralAttribute.getCollectionId(), memberDetails, buildingContext );
+
+		if ( StringHelper.isNotEmpty( jaxbPluralAttribute.getOrderBy() ) ) {
+			final MutableAnnotationUsage<OrderBy> orderByAnn = getOrMakeAnnotation(
+					OrderBy.class,
+					memberDetails
+			);
+			orderByAnn.setAttributeValue( "value", jaxbPluralAttribute.getOrderBy() );
+		}
+
+		final JaxbOrderColumnImpl orderColumn = jaxbPluralAttribute.getOrderColumn();
+		if ( orderColumn != null ) {
+			final MutableAnnotationUsage<OrderColumn> orderByAnn = getOrMakeAnnotation(
+					OrderColumn.class,
+					memberDetails
+			);
+			setIf( orderColumn.getName(), "name", orderByAnn );
+			setIf( orderColumn.isNullable(), "nullable", orderByAnn );
+			setIf( orderColumn.isInsertable(), "insertable", orderByAnn );
+			setIf( orderColumn.isUpdatable(), "updatable", orderByAnn );
+			setIf( orderColumn.getColumnDefinition(), "columnDefinition", orderByAnn );
+		}
+
+		if ( StringHelper.isNotEmpty( jaxbPluralAttribute.getSort() ) ) {
+			final MutableAnnotationUsage<SortComparator> sortAnn = getOrMakeAnnotation(
+					SortComparator.class,
+					memberDetails
+			);
+			final ClassDetails comparatorClassDetails = classDetailsRegistry.resolveClassDetails( jaxbPluralAttribute.getSort() );
+			sortAnn.setAttributeValue( "value", comparatorClassDetails );
+		}
+
+		if ( jaxbPluralAttribute.getSortNatural() != null ) {
+			getOrMakeAnnotation( SortNatural.class, memberDetails );
+		}
+
+		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		// map-key
+
+		if ( jaxbPluralAttribute.getMapKey() != null ) {
+			final MutableAnnotationUsage<MapKey> mapKeyAnn = getOrMakeAnnotation( MapKey.class, memberDetails );
+			setIf( jaxbPluralAttribute.getMapKey().getName(), "name", mapKeyAnn );
+		}
+
+		if ( jaxbPluralAttribute.getMapKeyClass() != null ) {
+			final ClassDetails mapKeyClass = classDetailsRegistry.resolveClassDetails( jaxbPluralAttribute.getMapKeyClass().getClazz() );
+			getOrMakeAnnotation( MapKeyClass.class, memberDetails ).setAttributeValue( "value", mapKeyClass );
+		}
+
+		if ( jaxbPluralAttribute.getMapKeyTemporal() != null ) {
+			getOrMakeAnnotation( MapKeyTemporal.class, memberDetails ).setAttributeValue(
+					"value",
+					jaxbPluralAttribute.getMapKeyTemporal()
+			);
+		}
+
+		if ( jaxbPluralAttribute.getMapKeyEnumerated() != null ) {
+			getOrMakeAnnotation( MapKeyEnumerated.class, memberDetails ).setAttributeValue(
+					"value",
+					jaxbPluralAttribute.getMapKeyEnumerated()
+			);
+		}
+
+		XmlAnnotationHelper.applyAttributeOverrides(
+				jaxbPluralAttribute.getMapKeyAttributeOverride(),
+				memberDetails,
+				"key",
+				buildingContext
+		);
+
+		jaxbPluralAttribute.getMapKeyConvert().forEach( (jaxbConvert) -> {
+			XmlAnnotationHelper.applyConvert( jaxbConvert, memberDetails, "key", buildingContext );
+		} );
+
+		// todo : map-key-column
+		// todo : map-key-join-column
+		// todo : map-key-foreign-key
+	}
+
 	public static MutableMemberDetails processElementCollectionAttribute(
 			JaxbElementCollectionImpl jaxbElementCollection,
 			MutableClassDetails declarer,
 			AccessType classAccessType,
 			SourceModelBuildingContext sourceModelBuildingContext) {
-		final ClassDetailsRegistry classDetailsRegistry = sourceModelBuildingContext.getClassDetailsRegistry();
-
 		final AccessType accessType = coalesce( jaxbElementCollection.getAccess(), classAccessType );
 		final MutableMemberDetails memberDetails = XmlProcessingHelper.getAttributeMember(
 				jaxbElementCollection.getName(),
@@ -451,85 +557,7 @@ public class AttributeProcessor {
 
 		processCommonAttributeAnnotations( jaxbElementCollection, memberDetails, accessType, sourceModelBuildingContext );
 
-		if ( jaxbElementCollection.getFetchMode() != null ) {
-			final MutableAnnotationUsage<Fetch> fetchAnn = getOrMakeAnnotation( Fetch.class, memberDetails );
-			fetchAnn.setAttributeValue( "value", jaxbElementCollection.getFetchMode() );
-		}
-
-		final JaxbCollectionIdImpl jaxbCollectionId = jaxbElementCollection.getCollectionId();
-		if ( jaxbCollectionId != null ) {
-			final MutableAnnotationUsage<CollectionId> collectionIdAnn = XmlProcessingHelper.getOrMakeAnnotation(
-					CollectionId.class,
-					memberDetails
-			);
-
-			final JaxbColumnImpl jaxbColumn = jaxbCollectionId.getColumn();
-			final MutableAnnotationUsage<Column> columnAnn = XmlProcessingHelper.getOrMakeAnnotation(
-					Column.class,
-					memberDetails
-			);
-			collectionIdAnn.setAttributeValue( "column", columnAnn );
-			setIf( jaxbColumn.getName(), "name", columnAnn );
-			columnAnn.setAttributeValue( "nullable", false );
-			columnAnn.setAttributeValue( "unique", false );
-			columnAnn.setAttributeValue( "updatable", false );
-			setIf( jaxbColumn.getLength(), "length", columnAnn );
-			setIf( jaxbColumn.getPrecision(), "precision", columnAnn );
-			setIf( jaxbColumn.getScale(), "scale", columnAnn );
-			setIf( jaxbColumn.getTable(), "table", columnAnn );
-			setIf( jaxbColumn.getColumnDefinition(), "columnDefinition", columnAnn );
-
-			final JaxbGeneratedValueImpl generator = jaxbCollectionId.getGenerator();
-			if ( generator != null ) {
-				setIf( generator.getGenerator(), "generator", collectionIdAnn );
-			}
-		}
-
-		if ( jaxbElementCollection.getClassification() != null ) {
-			final MutableAnnotationUsage<CollectionClassification> collectionClassificationAnn = getOrMakeAnnotation(
-					CollectionClassification.class,
-					memberDetails
-			);
-			setIf( jaxbElementCollection.getClassification(), "value", collectionClassificationAnn );
-			if ( jaxbElementCollection.getClassification() == LimitedCollectionClassification.BAG ) {
-				getOrMakeAnnotation( Bag.class, memberDetails );
-			}
-		}
-
-		XmlAnnotationHelper.applyCollectionUserType( jaxbElementCollection.getCollectionType(), memberDetails, sourceModelBuildingContext );
-
-		if ( StringHelper.isNotEmpty( jaxbElementCollection.getSort() ) ) {
-			final MutableAnnotationUsage<SortComparator> sortAnn = getOrMakeAnnotation(
-					SortComparator.class,
-					memberDetails
-			);
-			final ClassDetails comparatorClassDetails = classDetailsRegistry.resolveClassDetails( jaxbElementCollection.getSort() );
-			sortAnn.setAttributeValue( "value", comparatorClassDetails );
-		}
-
-		if ( jaxbElementCollection.getSortNatural() != null ) {
-			getOrMakeAnnotation( SortNatural.class, memberDetails );
-		}
-
-		if ( StringHelper.isNotEmpty( jaxbElementCollection.getOrderBy() ) ) {
-			final MutableAnnotationUsage<OrderBy> orderByAnn = getOrMakeAnnotation(
-					OrderBy.class,
-					memberDetails
-			);
-			orderByAnn.setAttributeValue( "value", jaxbElementCollection.getOrderBy() );
-		}
-
-		if ( jaxbElementCollection.getOrderColumn() != null ) {
-			final MutableAnnotationUsage<OrderColumn> orderByAnn = getOrMakeAnnotation(
-					OrderColumn.class,
-					memberDetails
-			);
-			setIf( jaxbElementCollection.getOrderColumn().getName(), "name", orderByAnn );
-			setIf( jaxbElementCollection.getOrderColumn().isNullable(), "nullable", orderByAnn );
-			setIf( jaxbElementCollection.getOrderColumn().isInsertable(), "insertable", orderByAnn );
-			setIf( jaxbElementCollection.getOrderColumn().isUpdatable(), "updatable", orderByAnn );
-			setIf( jaxbElementCollection.getOrderColumn().getColumnDefinition(), "columnDefinition", orderByAnn );
-		}
+		processPluralAttribute( jaxbElementCollection, memberDetails, sourceModelBuildingContext );
 
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// elements
@@ -581,12 +609,19 @@ public class AttributeProcessor {
 		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlDelete(), memberDetails, SQLDelete.class, sourceModelBuildingContext );
 		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlDeleteAll(), memberDetails, SQLDeleteAll.class, sourceModelBuildingContext );
 
-		// todo : attribute-override
-		// todo : association-override
+		XmlAnnotationHelper.applyAttributeOverrides(
+				jaxbElementCollection.getAttributeOverride(),
+				memberDetails,
+				"value",
+				sourceModelBuildingContext
+		);
 
-		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		// map-key
-
+		XmlAnnotationHelper.applyAssociationOverrides(
+				jaxbElementCollection.getAssociationOverride(),
+				memberDetails,
+				"value",
+				sourceModelBuildingContext
+		);
 
 		return memberDetails;
 	}
