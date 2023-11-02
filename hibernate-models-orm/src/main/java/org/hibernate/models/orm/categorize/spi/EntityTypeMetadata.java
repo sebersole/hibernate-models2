@@ -7,13 +7,19 @@
 package org.hibernate.models.orm.categorize.spi;
 
 import org.hibernate.boot.model.CustomSql;
+import org.hibernate.boot.model.naming.EntityNaming;
 
 /**
  * Metadata about an {@linkplain jakarta.persistence.metamodel.EntityType entity type}
  *
  * @author Steve Ebersole
  */
-public interface EntityTypeMetadata extends IdentifiableTypeMetadata {
+public interface EntityTypeMetadata extends IdentifiableTypeMetadata, EntityNaming {
+	@Override
+	default Kind getManagedTypeKind() {
+		return Kind.ENTITY;
+	}
+
 	/**
 	 * The Hibernate notion of entity-name, used for dynamic models
 	 */

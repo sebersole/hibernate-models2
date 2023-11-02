@@ -24,4 +24,5 @@ dependencies {
     testCompileOnly libs.hcann
 
     testRuntimeOnly testLibs.log4j
+    testRuntimeOnly testLibs.h2
 }

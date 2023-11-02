@@ -8,6 +8,7 @@ package org.hibernate.models.orm.categorize.internal;
 
 import java.util.List;
 
+import org.hibernate.models.orm.categorize.spi.AttributeConsumer;
 import org.hibernate.models.orm.categorize.spi.NonAggregatedKeyMapping;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 import org.hibernate.models.source.spi.ClassDetails;
@@ -37,5 +38,12 @@ public class NonAggregatedKeyMappingImpl implements NonAggregatedKeyMapping {
 	@Override
 	public ClassDetails getKeyType() {
 		return idClassType;
+	}
+
+	@Override
+	public void forEachAttribute(AttributeConsumer consumer) {
+		for ( int i = 0; i < idAttributes.size(); i++ ) {
+			consumer.accept( i, idAttributes.get( i ) );
+		}
 	}
 }

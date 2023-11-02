@@ -12,4 +12,8 @@ package org.hibernate.models.orm.categorize.spi;
  * @author Steve Ebersole
  */
 public interface MappedSuperclassTypeMetadata extends IdentifiableTypeMetadata {
+	@Override
+	default Kind getManagedTypeKind() {
+		return Kind.MAPPED_SUPER;
+	}
 }

@@ -7,6 +7,7 @@
 package org.hibernate.models.orm.categorize.internal;
 
 import java.util.Locale;
+import java.util.function.Consumer;
 
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.NaturalIdCache;
@@ -168,6 +169,16 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 	@Override
 	public NaturalIdCacheRegion getNaturalIdCacheRegion() {
 		return naturalIdCacheRegion;
+	}
+
+	@Override
+	public void forEachType(Consumer<IdentifiableTypeMetadata> typeConsumer) {
+		forEachType( getAbsoluteRoot(), typeConsumer );
+	}
+
+	private void forEachType(IdentifiableTypeMetadata start, Consumer<IdentifiableTypeMetadata> typeConsumer) {
+		typeConsumer.accept( getAbsoluteRoot() );
+		start.forEachSubType( typeMetadata -> forEachType( typeMetadata, typeConsumer ) );
 	}
 
 	@Override

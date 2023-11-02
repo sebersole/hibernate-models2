@@ -7,9 +7,10 @@
 package org.hibernate.models.orm.bind.spi;
 
 import org.hibernate.boot.internal.ClassmateContext;
+import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.models.orm.categorize.spi.GlobalRegistrations;
-import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
-import org.hibernate.models.source.spi.ClassDetailsRegistry;
+import org.hibernate.models.source.spi.SourceModelContext;
+import org.hibernate.service.ServiceRegistry;
 
 import jakarta.persistence.SharedCacheMode;
 
@@ -20,14 +21,13 @@ import jakarta.persistence.SharedCacheMode;
  *
  * @author Steve Ebersole
  */
-public interface BindingContext {
-	ClassDetailsRegistry getClassDetailsRegistry();
-
-	AnnotationDescriptorRegistry getAnnotationDescriptorRegistry();
+public interface BindingContext extends SourceModelContext {
 
 	GlobalRegistrations getGlobalRegistrations();
 
 	ClassmateContext getClassmateContext();
 
 	SharedCacheMode getSharedCacheMode();
+
+	ServiceRegistry getServiceRegistry();
 }
