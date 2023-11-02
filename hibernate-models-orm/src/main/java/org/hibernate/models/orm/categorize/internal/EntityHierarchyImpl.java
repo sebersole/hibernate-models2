@@ -18,8 +18,8 @@ import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 import org.hibernate.models.orm.categorize.spi.CacheRegion;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
-import org.hibernate.models.orm.categorize.spi.IdMapping;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
+import org.hibernate.models.orm.categorize.spi.KeyMapping;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
 import org.hibernate.models.orm.categorize.spi.NaturalIdCacheRegion;
 import org.hibernate.models.source.spi.AnnotationUsage;
@@ -41,7 +41,8 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 	private final InheritanceType inheritanceType;
 	private final OptimisticLockStyle optimisticLockStyle;
 
-	private final IdMapping idMapping;
+	private final KeyMapping idMapping;
+	private final KeyMapping naturalIdMapping;
 	private final AttributeMetadata versionAttribute;
 	private final AttributeMetadata tenantIdAttribute;
 
@@ -84,6 +85,7 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 		this.optimisticLockStyle = determineOptimisticLockStyle( metadataCollector );
 
 		this.idMapping = metadataCollector.getIdMapping();
+		this.naturalIdMapping = metadataCollector.getNaturalIdMapping();
 		this.versionAttribute = metadataCollector.getVersionAttribute();
 		this.tenantIdAttribute = metadataCollector.getTenantIdAttribute();
 
@@ -134,8 +136,13 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 	}
 
 	@Override
-	public IdMapping getIdMapping() {
+	public KeyMapping getIdMapping() {
 		return idMapping;
+	}
+
+	@Override
+	public KeyMapping getNaturalIdMapping() {
+		return naturalIdMapping;
 	}
 
 	@Override

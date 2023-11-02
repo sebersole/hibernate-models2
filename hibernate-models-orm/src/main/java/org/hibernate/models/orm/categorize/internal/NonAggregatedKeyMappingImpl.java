@@ -8,18 +8,18 @@ package org.hibernate.models.orm.categorize.internal;
 
 import java.util.List;
 
-import org.hibernate.models.orm.categorize.spi.NonAggregatedIdMapping;
+import org.hibernate.models.orm.categorize.spi.NonAggregatedKeyMapping;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 import org.hibernate.models.source.spi.ClassDetails;
 
 /**
  * @author Steve Ebersole
  */
-public class NonAggregatedIdMappingImpl implements NonAggregatedIdMapping {
+public class NonAggregatedKeyMappingImpl implements NonAggregatedKeyMapping {
 	private final List<AttributeMetadata> idAttributes;
 	private final ClassDetails idClassType;
 
-	public NonAggregatedIdMappingImpl(List<AttributeMetadata> idAttributes, ClassDetails idClassType) {
+	public NonAggregatedKeyMappingImpl(List<AttributeMetadata> idAttributes, ClassDetails idClassType) {
 		this.idAttributes = idAttributes;
 		this.idClassType = idClassType;
 	}
@@ -31,6 +31,11 @@ public class NonAggregatedIdMappingImpl implements NonAggregatedIdMapping {
 
 	@Override
 	public ClassDetails getIdClassType() {
+		return idClassType;
+	}
+
+	@Override
+	public ClassDetails getKeyType() {
 		return idClassType;
 	}
 }

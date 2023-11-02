@@ -7,10 +7,7 @@
 package org.hibernate.models.orm.categorize.spi;
 
 /**
- * Id-mapping which is embeddable - either {@linkplain AggregatedIdMapping physically}
- * or {@linkplain NonAggregatedIdMapping virtually}.
- *
  * @author Steve Ebersole
  */
-public interface CompositeIdMapping extends IdMapping {
+public interface BasicKeyMapping extends SingleAttributeKeyMapping {
 }

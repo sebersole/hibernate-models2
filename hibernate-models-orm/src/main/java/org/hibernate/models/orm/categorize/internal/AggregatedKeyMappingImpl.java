@@ -6,16 +6,16 @@
  */
 package org.hibernate.models.orm.categorize.internal;
 
-import org.hibernate.models.orm.categorize.spi.AggregatedIdMapping;
+import org.hibernate.models.orm.categorize.spi.AggregatedKeyMapping;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 
 /**
  * @author Steve Ebersole
  */
-public class AggregatedIdMappingImpl implements AggregatedIdMapping {
+public class AggregatedKeyMappingImpl implements AggregatedKeyMapping {
 	private final AttributeMetadata attribute;
 
-	public AggregatedIdMappingImpl(AttributeMetadata attribute) {
+	public AggregatedKeyMappingImpl(AttributeMetadata attribute) {
 		this.attribute = attribute;
 	}
 
@@ -23,4 +23,6 @@ public class AggregatedIdMappingImpl implements AggregatedIdMapping {
 	public AttributeMetadata getAttribute() {
 		return attribute;
 	}
+
+
 }

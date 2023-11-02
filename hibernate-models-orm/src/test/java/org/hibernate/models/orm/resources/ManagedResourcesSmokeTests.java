@@ -17,7 +17,7 @@ import org.hibernate.boot.model.process.spi.MetadataBuildingProcess;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
-import org.hibernate.models.orm.categorize.spi.BasicIdMapping;
+import org.hibernate.models.orm.categorize.spi.BasicKeyMapping;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
@@ -81,8 +81,8 @@ public class ManagedResourcesSmokeTests {
 			assertThat( firstAttribute.getMember() ).isInstanceOf( FieldDetails.class );
 			assertThat( secondAttribute.getMember() ).isInstanceOf( FieldDetails.class );
 
-			assertThat( entityHierarchy.getIdMapping() ).isInstanceOf( BasicIdMapping.class );
-			final BasicIdMapping idMapping = (BasicIdMapping) entityHierarchy.getIdMapping();
+			assertThat( entityHierarchy.getIdMapping() ).isInstanceOf( BasicKeyMapping.class );
+			final BasicKeyMapping idMapping = (BasicKeyMapping) entityHierarchy.getIdMapping();
 			final AttributeMetadata idAttribute = idMapping.getAttribute();
 			assertThat( idAttribute.getName() ).isEqualTo( "id" );
 			assertThat( idAttribute.getMember() ).isInstanceOf( FieldDetails.class );
