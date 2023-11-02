@@ -7,19 +7,25 @@
 package org.hibernate.models.orm.bind.spi;
 
 import org.hibernate.internal.util.NamedConsumer;
+import org.hibernate.models.orm.bind.internal.InLineView;
+import org.hibernate.models.orm.bind.internal.PhysicalTable;
+import org.hibernate.models.orm.categorize.spi.FilterDefRegistration;
 
 /**
  * @author Steve Ebersole
  */
 public interface BindingState {
-	int getNumberOfTableBindings();
-	void forEachTableBinding(NamedConsumer<TableBinding> consumer);
-	TableBinding getTableBindingByName(String name);
-	TableBinding getTableBindingByPhysicalName(String name);
-	void addTableBinding(TableBinding tableBinding);
+	int getPhysicalTableCount();
+	void forEachPhysicalTable(NamedConsumer<PhysicalTable> consumer);
+	PhysicalTable getPhysicalTableByName(String name);
+	PhysicalTable getPhysicalTableByPhysicalName(String name);
+	void addPhysicalTable(PhysicalTable physicalTable);
+
 
 	int getNumberOfVirtualTableBindings();
-	void forEachVirtualTableBinding(NamedConsumer<VirtualTableBinding> consumer);
-	VirtualTableBinding getVirtualTableBindingByName(String name);
-	void addVirtualTableBinding(VirtualTableBinding binding);
+	void forEachVirtualTableBinding(NamedConsumer<InLineView> consumer);
+	InLineView getVirtualTableBindingByName(String name);
+	void addVirtualTableBinding(InLineView binding);
+
+	void apply(FilterDefRegistration registration);
 }

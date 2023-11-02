@@ -9,6 +9,8 @@ package org.hibernate.models.orm.resources;
 import java.util.Iterator;
 import java.util.Set;
 
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.ParamDef;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.internal.BootstrapContextImpl;
 import org.hibernate.boot.internal.InFlightMetadataCollectorImpl;
@@ -17,13 +19,17 @@ import org.hibernate.boot.internal.MetadataBuildingContextRootImpl;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.model.process.spi.MetadataBuildingProcess;
+import org.hibernate.boot.model.relational.Database;
+import org.hibernate.boot.model.relational.Namespace;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.engine.spi.FilterDefinition;
+import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.models.orm.bind.internal.BindingContextImpl;
 import org.hibernate.models.orm.bind.internal.BindingOptionsImpl;
 import org.hibernate.models.orm.bind.internal.BindingStateImpl;
 import org.hibernate.models.orm.bind.spi.BindingCoordinator;
-import org.hibernate.models.orm.bind.spi.TableBinding;
+import org.hibernate.models.orm.bind.internal.PhysicalTable;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 import org.hibernate.models.orm.categorize.spi.BasicKeyMapping;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
@@ -118,12 +124,6 @@ public class ManagedResourcesSmokeTests {
 					bootstrapContext,
 					metadataBuildingOptions
 			);
-			final MetadataBuildingContextRootImpl metadataBuildingContext = new MetadataBuildingContextRootImpl(
-					"models",
-					bootstrapContext,
-					metadataBuildingOptions,
-					inFlightMetadataCollector
-			);
 
 			final CategorizedDomainModel categorizedDomainModel = ManagedResourcesProcessor.processManagedResources(
 					managedResources,
@@ -132,12 +132,15 @@ public class ManagedResourcesSmokeTests {
 
 			{
 				// no default namespace
-				final BindingStateImpl bindingState = new BindingStateImpl();
-				final BindingOptionsImpl bindingOptions = new BindingOptionsImpl( null, null );
-				final BindingContextImpl bindingContext = new BindingContextImpl(
-						categorizedDomainModel,
-						metadataBuildingContext
+				final MetadataBuildingContextRootImpl metadataBuildingContext = new MetadataBuildingContextRootImpl(
+						"models",
+						bootstrapContext,
+						metadataBuildingOptions,
+						inFlightMetadataCollector
 				);
+				final BindingStateImpl bindingState = new BindingStateImpl( metadataBuildingContext );
+				final BindingOptionsImpl bindingOptions = new BindingOptionsImpl( null, null );
+				final BindingContextImpl bindingContext = new BindingContextImpl( categorizedDomainModel, bootstrapContext );
 
 				BindingCoordinator.coordinateBinding(
 						categorizedDomainModel,
@@ -146,25 +149,45 @@ public class ManagedResourcesSmokeTests {
 						bindingContext
 				);
 
-				assertThat( bindingState.getNumberOfTableBindings() ).isEqualTo( 1 );
-				final TableBinding personsTable = bindingState.getTableBindingByName( "persons" );
-				assertThat( personsTable.getLogicalName().getCanonicalName() ).isEqualTo( "persons" );
-				assertThat( personsTable.getPhysicalName().getCanonicalName() ).isEqualTo( "persons" );
-				assertThat( personsTable.getCatalog() ).isNull();
-				assertThat( personsTable.getSchema() ).isNull();
+				assertThat( bindingState.getPhysicalTableCount() ).isEqualTo( 1 );
+				final PhysicalTable personsTable = bindingState.getPhysicalTableByName( "persons" );
+				assertThat( personsTable.logicalName().getCanonicalName() ).isEqualTo( "persons" );
+				assertThat( personsTable.physicalName().getCanonicalName() ).isEqualTo( "persons" );
+				assertThat( personsTable.catalog() ).isNull();
+				assertThat( personsTable.schema() ).isNull();
 
+				final Database database = inFlightMetadataCollector.getDatabase();
+				final Iterator<Namespace> namespaceItr = database.getNamespaces().iterator();
+				assertThat( namespaceItr.hasNext() ).isTrue();
+				final Namespace namespace = namespaceItr.next();
+				assertThat( namespaceItr.hasNext() ).isFalse();
+				assertThat( namespace.getTables() ).hasSize( 1 );
+
+				final FilterDefinition filterDefinition = inFlightMetadataCollector.getFilterDefinition( "name" );
+				assertThat( filterDefinition ).isNotNull();
+				assertThat( filterDefinition.getDefaultFilterCondition() ).isEqualTo( "name = :name" );
+				assertThat( filterDefinition.getParameterNames() ).hasSize( 1 );
+				final JdbcMapping nameParamJdbcMapping = filterDefinition.getParameterJdbcMapping( "name" );
+				assertThat( nameParamJdbcMapping ).isNotNull();
+				assertThat( nameParamJdbcMapping.getJdbcJavaType().getJavaType() ).isEqualTo( String.class );
 			}
 
 			{
 				// default namespace
-				final BindingStateImpl bindingState = new BindingStateImpl();
+				final MetadataBuildingContextRootImpl metadataBuildingContext = new MetadataBuildingContextRootImpl(
+						"models",
+						bootstrapContext,
+						metadataBuildingOptions,
+						inFlightMetadataCollector
+				);
+				final BindingStateImpl bindingState = new BindingStateImpl( metadataBuildingContext );
 				final BindingOptionsImpl bindingOptions = new BindingOptionsImpl(
 						Identifier.toIdentifier( "the_catalog" ),
 						Identifier.toIdentifier( "the_schema" )
 				);
 				final BindingContextImpl bindingContext = new BindingContextImpl(
 						categorizedDomainModel,
-						metadataBuildingContext
+						bootstrapContext
 				);
 
 				BindingCoordinator.coordinateBinding(
@@ -174,19 +197,21 @@ public class ManagedResourcesSmokeTests {
 						bindingContext
 				);
 
-				assertThat( bindingState.getNumberOfTableBindings() ).isEqualTo( 1 );
-				final TableBinding personsTable = bindingState.getTableBindingByName( "persons" );
-				assertThat( personsTable.getLogicalName().getCanonicalName() ).isEqualTo( "persons" );
-				assertThat( personsTable.getPhysicalName().getCanonicalName() ).isEqualTo( "persons" );
-				assertThat( personsTable.getCatalog() ).isEqualTo( Identifier.toIdentifier( "the_catalog" ) );
-				assertThat( personsTable.getSchema() ).isEqualTo( Identifier.toIdentifier( "the_schema" ) );
+				assertThat( bindingState.getPhysicalTableCount() ).isEqualTo( 1 );
+				final PhysicalTable personsTable = bindingState.getPhysicalTableByName( "persons" );
+				assertThat( personsTable.logicalName().getCanonicalName() ).isEqualTo( "persons" );
+				assertThat( personsTable.physicalName().getCanonicalName() ).isEqualTo( "persons" );
+				assertThat( personsTable.catalog() ).isEqualTo( Identifier.toIdentifier( "the_catalog" ) );
+				assertThat( personsTable.schema() ).isEqualTo( Identifier.toIdentifier( "the_schema" ) );
+				assertThat( personsTable.comment() ).isEqualTo( "We store stuff here" );
 			}
 		}
 
 	}
 
 	@Entity(name="Person")
-	@Table(name="persons")
+	@Table(name="persons", comment = "We store stuff here")
+	@FilterDef( name = "name", defaultCondition = "name = :name", parameters = @ParamDef( name = "name", type = String.class ) )
 	public static class Person {
 		@Id
 		private Integer id;
