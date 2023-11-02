@@ -17,15 +17,15 @@ import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cache.spi.access.AccessType;
-import org.hibernate.models.orm.categorize.spi.AggregatedIdMapping;
+import org.hibernate.models.orm.categorize.spi.AggregatedKeyMapping;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
-import org.hibernate.models.orm.categorize.spi.BasicIdMapping;
+import org.hibernate.models.orm.categorize.spi.BasicKeyMapping;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.ManagedResourcesProcessor;
-import org.hibernate.models.orm.categorize.spi.NonAggregatedIdMapping;
+import org.hibernate.models.orm.categorize.spi.NonAggregatedKeyMapping;
 import org.hibernate.models.orm.process.ManagedResourcesImpl;
 
 import org.junit.jupiter.api.Test;
@@ -48,7 +48,7 @@ public class HierarchyMetadataProcessorSmokeTests {
 		final EntityHierarchy entityHierarchy = entityHierarchies.iterator().next();
 
 		assertThat( entityHierarchy.getIdMapping() ).isNotNull();
-		final BasicIdMapping idMapping = (BasicIdMapping) entityHierarchy.getIdMapping();
+		final BasicKeyMapping idMapping = (BasicKeyMapping) entityHierarchy.getIdMapping();
 		assertThat( idMapping.getAttribute().getMember().getAnnotationUsage( Id.class ) ).isNotNull();
 		assertThat( idMapping.getAttribute().getMember().getAnnotationUsage( EmbeddedId.class ) ).isNull();
 
@@ -66,7 +66,7 @@ public class HierarchyMetadataProcessorSmokeTests {
 		final EntityHierarchy entityHierarchy = entityHierarchies.iterator().next();
 
 		assertThat( entityHierarchy.getIdMapping() ).isNotNull();
-		final AggregatedIdMapping idMapping = (AggregatedIdMapping) entityHierarchy.getIdMapping();
+		final AggregatedKeyMapping idMapping = (AggregatedKeyMapping) entityHierarchy.getIdMapping();
 		assertThat( idMapping.getAttribute().getMember().getAnnotationUsage( Id.class ) ).isNull();
 		assertThat( idMapping.getAttribute().getMember().getAnnotationUsage( EmbeddedId.class ) ).isNotNull();
 
@@ -84,7 +84,7 @@ public class HierarchyMetadataProcessorSmokeTests {
 		final EntityHierarchy entityHierarchy = entityHierarchies.iterator().next();
 
 		assertThat( entityHierarchy.getIdMapping() ).isNotNull();
-		final BasicIdMapping idMapping = (BasicIdMapping) entityHierarchy.getIdMapping();
+		final BasicKeyMapping idMapping = (BasicKeyMapping) entityHierarchy.getIdMapping();
 		assertThat( idMapping.getAttribute().getMember().getAnnotationUsage( Id.class ) ).isNotNull();
 		assertThat( idMapping.getAttribute().getMember().getAnnotationUsage( EmbeddedId.class ) ).isNull();
 
@@ -108,7 +108,7 @@ public class HierarchyMetadataProcessorSmokeTests {
 		final EntityHierarchy entityHierarchy = entityHierarchies.iterator().next();
 
 		assertThat( entityHierarchy.getIdMapping() ).isNotNull();
-		final NonAggregatedIdMapping idMapping = (NonAggregatedIdMapping) entityHierarchy.getIdMapping();
+		final NonAggregatedKeyMapping idMapping = (NonAggregatedKeyMapping) entityHierarchy.getIdMapping();
 		assertThat( idMapping.getIdAttributes() ).hasSize( 2 );
 		assertThat( idMapping.getIdAttributes().stream().map( AttributeMetadata::getName ) ).containsExactly( "id1", "id2" );
 		assertThat( idMapping.getIdClassType().getClassName() ).isEqualTo( NonAggregatedIdEntity.Pk.class.getName() );

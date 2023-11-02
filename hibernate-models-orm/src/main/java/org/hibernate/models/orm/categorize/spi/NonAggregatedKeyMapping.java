@@ -21,7 +21,7 @@ import org.hibernate.models.source.spi.ClassDetails;
  *
  * @author Steve Ebersole
  */
-public interface NonAggregatedIdMapping extends CompositeIdMapping {
+public interface NonAggregatedKeyMapping extends CompositeKeyMapping {
 	/**
 	 * The attributes making up the composition.
 	 */
@@ -33,10 +33,4 @@ public interface NonAggregatedIdMapping extends CompositeIdMapping {
 	 * @see jakarta.persistence.IdClass
 	 */
 	ClassDetails getIdClassType();
-
-	@Override
-	default ClassDetails getIdType() {
-		// todo : whether this is correct depends on how (if) it will be used
-		return getIdClassType();
-	}
 }

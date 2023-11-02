@@ -6,13 +6,11 @@
  */
 package org.hibernate.models.orm.categorize.spi;
 
+import org.hibernate.models.source.spi.ClassDetails;
+
 /**
- * Simple, single-valued id-mapping
- *
- * @see jakarta.persistence.Basic
- * @see jakarta.persistence.Id
- *
  * @author Steve Ebersole
  */
-public interface BasicIdMapping extends SingleAttributeIdMapping {
+public interface KeyMapping {
+	ClassDetails getKeyType();
 }

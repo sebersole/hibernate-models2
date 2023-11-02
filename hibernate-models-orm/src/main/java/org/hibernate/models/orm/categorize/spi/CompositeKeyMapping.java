@@ -7,11 +7,10 @@
 package org.hibernate.models.orm.categorize.spi;
 
 /**
- * CompositeIdMapping which is physically an embeddable and represented by a single attribute.
- *
- * @see jakarta.persistence.EmbeddedId
+ * Id-mapping which is embeddable - either {@linkplain AggregatedKeyMapping physically}
+ * or {@linkplain NonAggregatedKeyMapping virtually}.
  *
  * @author Steve Ebersole
  */
-public interface AggregatedIdMapping extends CompositeIdMapping, SingleAttributeIdMapping {
+public interface CompositeKeyMapping extends KeyMapping {
 }

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 
 import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.NaturalId;
 import org.hibernate.annotations.NaturalIdCache;
 import org.hibernate.annotations.OptimisticLocking;
 import org.hibernate.annotations.TenantId;
@@ -19,8 +20,8 @@ import org.hibernate.models.ModelsException;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
-import org.hibernate.models.orm.categorize.spi.IdMapping;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
+import org.hibernate.models.orm.categorize.spi.KeyMapping;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.models.source.spi.MemberDetails;
@@ -54,12 +55,13 @@ public class HierarchyMetadataCollector implements HierarchyTypeConsumer {
 	private AnnotationUsage<Cache> cacheAnnotation;
 	private AnnotationUsage<NaturalIdCache> naturalIdCacheAnnotation;
 
-	private IdMapping idMapping;
+	private KeyMapping idMapping;
 	private AttributeMetadata versionAttribute;
 	private AttributeMetadata tenantIdAttribute;
 
 	private AnnotationUsage<IdClass> idClassAnnotation;
 	private Object collectedIdAttributes;
+	private Object collectedNaturalIdAttributes;
 
 	public HierarchyMetadataCollector(
 			EntityHierarchy entityHierarchy,
@@ -74,7 +76,7 @@ public class HierarchyMetadataCollector implements HierarchyTypeConsumer {
 		return rootEntityMetadata;
 	}
 
-	public IdMapping getIdMapping() {
+	public KeyMapping getIdMapping() {
 		if ( idMapping == null ) {
 			idMapping = buildIdMapping();
 		}
@@ -106,7 +108,7 @@ public class HierarchyMetadataCollector implements HierarchyTypeConsumer {
 		return naturalIdCacheAnnotation;
 	}
 
-	private IdMapping buildIdMapping() {
+	private KeyMapping buildIdMapping() {
 		if ( collectedIdAttributes instanceof List ) {
 			//noinspection unchecked
 			final List<AttributeMetadata> idAttributes = (List<AttributeMetadata>) collectedIdAttributes;
@@ -117,17 +119,17 @@ public class HierarchyMetadataCollector implements HierarchyTypeConsumer {
 			else {
 				idClassDetails = idClassAnnotation.getAttributeValue( "value" );
 			}
-			return new NonAggregatedIdMappingImpl( idAttributes, idClassDetails );
+			return new NonAggregatedKeyMappingImpl( idAttributes, idClassDetails );
 		}
 
 		final AttributeMetadata idAttribute = (AttributeMetadata) collectedIdAttributes;
 
 		if ( idAttribute.getNature() == AttributeMetadata.AttributeNature.BASIC ) {
-			return new BasicIdMappingImpl( idAttribute );
+			return new BasicKeyMappingImpl( idAttribute );
 		}
 
 		if ( idAttribute.getNature() == AttributeMetadata.AttributeNature.EMBEDDED ) {
-			return new AggregatedIdMappingImpl( idAttribute );
+			return new AggregatedKeyMappingImpl( idAttribute );
 		}
 
 		throw new ModelsException(
@@ -135,6 +137,37 @@ public class HierarchyMetadataCollector implements HierarchyTypeConsumer {
 						Locale.ROOT,
 						"Unexpected attribute nature [%s] - %s",
 						idAttribute.getNature(),
+						entityHierarchy.getRoot().getEntityName()
+				)
+		);
+	}
+
+	public KeyMapping getNaturalIdMapping() {
+		if ( collectedNaturalIdAttributes == null ) {
+			return null;
+		}
+
+		if ( collectedNaturalIdAttributes instanceof List ) {
+			//noinspection unchecked
+			final List<AttributeMetadata> attributes = (List<AttributeMetadata>) collectedNaturalIdAttributes;
+			return new NonAggregatedKeyMappingImpl( attributes, null );
+		}
+
+		final AttributeMetadata attribute = (AttributeMetadata) collectedNaturalIdAttributes;
+
+		if ( attribute.getNature() == AttributeMetadata.AttributeNature.BASIC ) {
+			return new BasicKeyMappingImpl( attribute );
+		}
+
+		if ( attribute.getNature() == AttributeMetadata.AttributeNature.EMBEDDED ) {
+			return new AggregatedKeyMappingImpl( attribute );
+		}
+
+		throw new ModelsException(
+				String.format(
+						Locale.ROOT,
+						"Unexpected attribute nature [%s] - %s",
+						attribute.getNature(),
 						entityHierarchy.getRoot().getEntityName()
 				)
 		);
@@ -179,6 +212,10 @@ public class HierarchyMetadataCollector implements HierarchyTypeConsumer {
 					if ( idAnn != null ) {
 						collectIdAttribute( attributeMetadata );
 					}
+				}
+
+				if ( attributeMember.getAnnotationUsage( NaturalId.class ) != null ) {
+					collectNaturalIdAttribute( attributeMetadata );
 				}
 
 				if ( versionAttribute == null ) {
@@ -231,6 +268,25 @@ public class HierarchyMetadataCollector implements HierarchyTypeConsumer {
 			combined.add( (AttributeMetadata) collectedIdAttributes );
 			combined.add( member );
 			collectedIdAttributes = combined;
+		}
+	}
+
+	public void collectNaturalIdAttribute(AttributeMetadata member) {
+		assert member != null;
+
+		if ( collectedNaturalIdAttributes == null ) {
+			collectedNaturalIdAttributes = member;
+		}
+		else if ( collectedNaturalIdAttributes instanceof List ) {
+			//noinspection unchecked,rawtypes
+			final List<AttributeMetadata> membersList = (List) collectedNaturalIdAttributes;
+			membersList.add( member );
+		}
+		else if ( collectedNaturalIdAttributes instanceof AttributeMetadata ) {
+			final ArrayList<AttributeMetadata> combined = new ArrayList<>();
+			combined.add( (AttributeMetadata) collectedNaturalIdAttributes );
+			combined.add( member );
+			collectedNaturalIdAttributes = combined;
 		}
 	}
 }

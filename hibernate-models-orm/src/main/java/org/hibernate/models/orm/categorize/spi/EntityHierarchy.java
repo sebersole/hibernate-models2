@@ -33,7 +33,9 @@ public interface EntityHierarchy {
 	 */
 	InheritanceType getInheritanceType();
 
-	IdMapping getIdMapping();
+	KeyMapping getIdMapping();
+
+	KeyMapping getNaturalIdMapping();
 
 	AttributeMetadata getVersionAttribute();
 
