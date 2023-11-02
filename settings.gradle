@@ -40,8 +40,7 @@ dependencyResolutionManagement {
 
 			def hibernateVersion = version "hibernateOrm", "6.3.0.Final"
 			// withoutVersion assuming that the platform is applied
-			library( "hibernateCore", "org.hibernate.orm", "hibernate-core" ).withoutVersion()
-			library( "hibernatePlatform", "org.hibernate.orm", "hibernate-platform" ).versionRef( hibernateVersion )
+			library( "hibernateCore", "org.hibernate.orm", "hibernate-core" ).versionRef( hibernateVersion )
 
 			def jacksonVersion = version "jackson", "2.14.1"
 			library( "jackson", "com.fasterxml.jackson.core", "jackson-databind" ).versionRef( jacksonVersion )
