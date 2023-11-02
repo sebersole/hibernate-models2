@@ -5,6 +5,7 @@ plugins {
 apply from: rootProject.file( "gradle/java-module.gradle" )
 
 dependencies {
+    api platform( libs.hibernatePlatform )
     api libs.hibernateCore
 
     implementation project( ":hibernate-models-source" )
