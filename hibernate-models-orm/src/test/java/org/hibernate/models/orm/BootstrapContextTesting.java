@@ -18,7 +18,6 @@ import org.hibernate.boot.archive.scan.internal.StandardScanOptions;
 import org.hibernate.boot.archive.scan.spi.ScanEnvironment;
 import org.hibernate.boot.archive.scan.spi.ScanOptions;
 import org.hibernate.boot.archive.spi.ArchiveDescriptorFactory;
-import org.hibernate.boot.internal.BootstrapContextImpl;
 import org.hibernate.boot.internal.ClassLoaderAccessImpl;
 import org.hibernate.boot.internal.ClassmateContext;
 import org.hibernate.boot.model.TypeBeanInstanceProducer;
@@ -39,6 +38,7 @@ import org.hibernate.metamodel.spi.ManagedTypeRepresentationResolver;
 import org.hibernate.query.sqm.function.SqmFunctionDescriptor;
 import org.hibernate.query.sqm.function.SqmFunctionRegistry;
 import org.hibernate.resource.beans.spi.BeanInstanceProducer;
+import org.hibernate.type.BasicType;
 import org.hibernate.type.internal.BasicTypeImpl;
 import org.hibernate.type.spi.TypeConfiguration;
 
@@ -223,8 +223,8 @@ public class BootstrapContextTesting implements BootstrapContext {
 	private final Map<String, BasicTypeImpl<?>> adHocBasicTypeRegistrations = new HashMap<>();
 
 	@Override
-	public void registerAdHocBasicType(BasicTypeImpl<?> basicType) {
-		adHocBasicTypeRegistrations.put( basicType.getName(), basicType );
+	public void registerAdHocBasicType(BasicType<?> basicType) {
+		adHocBasicTypeRegistrations.put( basicType.getName(), (BasicTypeImpl<?>) basicType );
 	}
 
 	@Override
