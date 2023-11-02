@@ -11,11 +11,19 @@ import java.util.Set;
 
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.internal.BootstrapContextImpl;
+import org.hibernate.boot.internal.InFlightMetadataCollectorImpl;
 import org.hibernate.boot.internal.MetadataBuilderImpl;
+import org.hibernate.boot.internal.MetadataBuildingContextRootImpl;
+import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.model.process.spi.MetadataBuildingProcess;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.models.orm.bind.internal.BindingContextImpl;
+import org.hibernate.models.orm.bind.internal.BindingOptionsImpl;
+import org.hibernate.models.orm.bind.internal.BindingStateImpl;
+import org.hibernate.models.orm.bind.spi.BindingCoordinator;
+import org.hibernate.models.orm.bind.spi.TableBinding;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 import org.hibernate.models.orm.categorize.spi.BasicKeyMapping;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
@@ -87,6 +95,94 @@ public class ManagedResourcesSmokeTests {
 			assertThat( idAttribute.getName() ).isEqualTo( "id" );
 			assertThat( idAttribute.getMember() ).isInstanceOf( FieldDetails.class );
 		}
+	}
+
+	@Test
+	void bindingCoordinatorSmokeTest() {
+		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
+			final MetadataSources metadataSources = new MetadataSources( serviceRegistry ).addAnnotatedClass( Person.class );
+
+			final MetadataBuilderImpl.MetadataBuildingOptionsImpl metadataBuildingOptions = new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry );
+			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl(
+					serviceRegistry,
+					metadataBuildingOptions
+			);
+			metadataBuildingOptions.setBootstrapContext( bootstrapContext );
+
+			final ManagedResources managedResources = MetadataBuildingProcess.prepare(
+					metadataSources,
+					bootstrapContext
+			);
+
+			final InFlightMetadataCollectorImpl inFlightMetadataCollector = new InFlightMetadataCollectorImpl(
+					bootstrapContext,
+					metadataBuildingOptions
+			);
+			final MetadataBuildingContextRootImpl metadataBuildingContext = new MetadataBuildingContextRootImpl(
+					"models",
+					bootstrapContext,
+					metadataBuildingOptions,
+					inFlightMetadataCollector
+			);
+
+			final CategorizedDomainModel categorizedDomainModel = ManagedResourcesProcessor.processManagedResources(
+					managedResources,
+					bootstrapContext
+			);
+
+			{
+				// no default namespace
+				final BindingStateImpl bindingState = new BindingStateImpl();
+				final BindingOptionsImpl bindingOptions = new BindingOptionsImpl( null, null );
+				final BindingContextImpl bindingContext = new BindingContextImpl(
+						categorizedDomainModel,
+						metadataBuildingContext
+				);
+
+				BindingCoordinator.coordinateBinding(
+						categorizedDomainModel,
+						bindingState,
+						bindingOptions,
+						bindingContext
+				);
+
+				assertThat( bindingState.getNumberOfTableBindings() ).isEqualTo( 1 );
+				final TableBinding personsTable = bindingState.getTableBindingByName( "persons" );
+				assertThat( personsTable.getLogicalName().getCanonicalName() ).isEqualTo( "persons" );
+				assertThat( personsTable.getPhysicalName().getCanonicalName() ).isEqualTo( "persons" );
+				assertThat( personsTable.getCatalog() ).isNull();
+				assertThat( personsTable.getSchema() ).isNull();
+
+			}
+
+			{
+				// default namespace
+				final BindingStateImpl bindingState = new BindingStateImpl();
+				final BindingOptionsImpl bindingOptions = new BindingOptionsImpl(
+						Identifier.toIdentifier( "the_catalog" ),
+						Identifier.toIdentifier( "the_schema" )
+				);
+				final BindingContextImpl bindingContext = new BindingContextImpl(
+						categorizedDomainModel,
+						metadataBuildingContext
+				);
+
+				BindingCoordinator.coordinateBinding(
+						categorizedDomainModel,
+						bindingState,
+						bindingOptions,
+						bindingContext
+				);
+
+				assertThat( bindingState.getNumberOfTableBindings() ).isEqualTo( 1 );
+				final TableBinding personsTable = bindingState.getTableBindingByName( "persons" );
+				assertThat( personsTable.getLogicalName().getCanonicalName() ).isEqualTo( "persons" );
+				assertThat( personsTable.getPhysicalName().getCanonicalName() ).isEqualTo( "persons" );
+				assertThat( personsTable.getCatalog() ).isEqualTo( Identifier.toIdentifier( "the_catalog" ) );
+				assertThat( personsTable.getSchema() ).isEqualTo( Identifier.toIdentifier( "the_schema" ) );
+			}
+		}
+
 	}
 
 	@Entity(name="Person")

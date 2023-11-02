@@ -21,4 +21,9 @@ public interface SingleAttributeKeyMapping extends KeyMapping {
 	default ClassDetails getKeyType() {
 		return getAttribute().getMember().getType();
 	}
+
+	@Override
+	default void forEachAttribute(AttributeConsumer consumer) {
+		consumer.accept( 0, getAttribute() );
+	}
 }

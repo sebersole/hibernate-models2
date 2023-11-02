@@ -6,8 +6,16 @@
  */
 package org.hibernate.models.orm.bind.spi;
 
+import java.util.EnumSet;
+
+import org.hibernate.boot.model.naming.Identifier;
+
 /**
  * @author Steve Ebersole
  */
 public interface BindingOptions {
+	Identifier getDefaultCatalogName();
+	Identifier getDefaultSchemaName();
+
+	EnumSet<QuotedIdentifierTarget> getGloballyQuotedIdentifierTargets();
 }

@@ -6,13 +6,12 @@
  */
 package org.hibernate.models.orm.categorize.spi;
 
-import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.internal.IndexedConsumer;
 
 /**
  * @author Steve Ebersole
  */
-public interface KeyMapping {
-	ClassDetails getKeyType();
+@FunctionalInterface
+public interface AttributeConsumer extends IndexedConsumer<AttributeMetadata> {
 
-	void forEachAttribute(AttributeConsumer consumer);
 }

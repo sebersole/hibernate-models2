@@ -6,6 +6,8 @@
  */
 package org.hibernate.models.orm.categorize.spi;
 
+import java.util.function.Consumer;
+
 import org.hibernate.engine.OptimisticLockStyle;
 
 import jakarta.persistence.InheritanceType;
@@ -55,4 +57,6 @@ public interface EntityHierarchy {
 	 * The caching configuration for this hierarchy's {@linkplain org.hibernate.annotations.NaturalId natural-id}
 	 */
 	NaturalIdCacheRegion getNaturalIdCacheRegion();
+
+	void forEachType(Consumer<IdentifiableTypeMetadata> typeConsumer);
 }
