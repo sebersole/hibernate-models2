@@ -8,7 +8,6 @@ package org.hibernate.models.source;
 
 import java.util.List;
 
-import org.hibernate.internal.util.MutableInteger;
 import org.hibernate.models.source.internal.jandex.JandexClassDetails;
 import org.hibernate.models.source.spi.AnnotationDescriptor;
 import org.hibernate.models.source.spi.AnnotationUsage;
@@ -24,7 +23,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
-import org.assertj.core.api.Assertions;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -85,9 +83,7 @@ public class SourceModelTestHelperSmokeTests {
 		final AnnotationUsage<NamedQuery> queryTwo = classDetails.getNamedAnnotationUsage( NamedQuery.class, "two", "name" );
 		assertThat( queryTwo ).isNotNull();
 
-		final MutableInteger counter = new MutableInteger();
-		classDetails.forEachAnnotationUsage( NamedQuery.class, (usage) -> counter.incrementAndGet() );
-		Assertions.assertThat( counter.get() ).isEqualTo( 2 );
+		assertThat( classDetails.getRepeatedAnnotationUsages( NamedQuery.class ) ).hasSize( 2 );
 	}
 
 	@Entity(name="AnEntity")

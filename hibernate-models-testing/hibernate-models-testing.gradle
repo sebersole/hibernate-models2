@@ -6,7 +6,7 @@ dependencies {
     implementation project( ":hibernate-models-orm" )
     implementation libs.jandex
 
-    testImplementation platform( libs.hibernatePlatform )
     testImplementation libs.hibernateCore
+
     testRuntimeOnly testLibs.log4j
 }
