@@ -7,21 +7,21 @@
 package org.hibernate.models.orm.bind.internal;
 
 import org.hibernate.boot.model.naming.Identifier;
-import org.hibernate.models.orm.bind.spi.TableReference;
+import org.hibernate.models.orm.bind.spi.PersistentTableReference;
 
 /**
  * @see org.hibernate.annotations.View
  *
  * @author Steve Ebersole
  */
-public record PhysicalView(Identifier logicalName, String query) implements TableReference {
+public record PhysicalView(Identifier logicalName, String query) implements PersistentTableReference {
 	@Override
 	public Identifier getLogicalName() {
-		return null;
+		return logicalName;
 	}
 
 	@Override
 	public boolean isExportable() {
-		return false;
+		return true;
 	}
 }

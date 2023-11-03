@@ -7,7 +7,7 @@
 package org.hibernate.models.orm.bind.internal;
 
 import org.hibernate.boot.model.naming.Identifier;
-import org.hibernate.models.orm.bind.spi.TableReference;
+import org.hibernate.models.orm.bind.spi.PhysicalTableReference;
 
 /**
  * @see jakarta.persistence.SecondaryTable
@@ -23,7 +23,7 @@ public record SecondaryTable(
 		String comment,
 		String options,
 		boolean owned,
-		boolean optional) implements TableReference {
+		boolean optional) implements PhysicalTableReference {
 	@Override
 	public Identifier getLogicalName() {
 		return logicalName;
@@ -32,5 +32,20 @@ public record SecondaryTable(
 	@Override
 	public boolean isExportable() {
 		return !isAbstract;
+	}
+
+	@Override
+	public Identifier getSchemaName() {
+		return schema;
+	}
+
+	@Override
+	public Identifier getCatalogName() {
+		return catalog;
+	}
+
+	@Override
+	public Identifier getTableName() {
+		return physicalName;
 	}
 }
