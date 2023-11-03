@@ -55,9 +55,9 @@ public class SimpleBindingCoordinatorTests {
 					assertThat( nameParamJdbcMapping ).isNotNull();
 					assertThat( nameParamJdbcMapping.getJdbcJavaType().getJavaType() ).isEqualTo( String.class );
 
-					assertThat( bindingState.getPhysicalTableCount() ).isEqualTo( 2 );
+					assertThat( bindingState.getTableCount() ).isEqualTo( 2 );
 
-					final PhysicalTable simpletonsTable = bindingState.getPhysicalTableByName( "simpletons" );
+					final PhysicalTable simpletonsTable = bindingState.getTableByName( "simpletons" );
 					assertThat( simpletonsTable.logicalName().render() ).isEqualTo( "simpletons" );
 					assertThat( simpletonsTable.physicalName().render() ).isEqualTo( "simpletons" );
 					assertThat( simpletonsTable.logicalName().getCanonicalName() ).isEqualTo( "simpletons" );
@@ -66,7 +66,7 @@ public class SimpleBindingCoordinatorTests {
 					assertThat( simpletonsTable.schema() ).isNull();
 					assertThat( simpletonsTable.comment() ).isEqualTo( "Stupid is as stupid does" );
 
-					final PhysicalTable simpleStuffTable = bindingState.getPhysicalTableByName( "simple_stuff" );
+					final PhysicalTable simpleStuffTable = bindingState.getTableByName( "simple_stuff" );
 					assertThat( simpleStuffTable.logicalName().render() ).isEqualTo( "simple_stuff" );
 					assertThat( simpleStuffTable.physicalName().render() ).isEqualTo( "simple_stuff" );
 					assertThat( simpleStuffTable.logicalName().getCanonicalName() ).isEqualTo( "simple_stuff" );

@@ -21,6 +21,7 @@ import org.hibernate.mapping.Table;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.orm.bind.spi.BindingState;
+import org.hibernate.models.orm.bind.spi.TableReference;
 import org.hibernate.models.orm.categorize.spi.FilterDefRegistration;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.type.spi.TypeConfiguration;
@@ -31,7 +32,7 @@ import org.hibernate.type.spi.TypeConfiguration;
 public class BindingStateImpl implements BindingState {
 	private final MetadataBuildingContext metadataBuildingContext;
 
-	private Map<String, PhysicalTable> physicalTableMap;
+	private Map<String, TableReference> tableMap;
 	private Map<String, InLineView> virtualTableBindingMap;
 
 	public BindingStateImpl(MetadataBuildingContext metadataBuildingContext) {
@@ -47,60 +48,73 @@ public class BindingStateImpl implements BindingState {
 		return getMetadataBuildingContext().getMetadataCollector().getDatabase();
 	}
 
+	@Override
+	public int getTableCount() {
+		return tableMap == null ? 0 : tableMap.size();
+	}
+
+	@Override
+	public void forEachTable(NamedConsumer<TableReference> consumer) {
+		if ( tableMap != null ) {
+			//noinspection unchecked
+			tableMap.forEach( (BiConsumer<? super String, ? super TableReference>) consumer );
+		}
+	}
+
+	@Override
+	public <T extends TableReference> T getTableByName(String name) {
+		if ( tableMap == null ) {
+			return null;
+		}
+		//noinspection unchecked
+		return (T) tableMap.get( name );
+	}
+
+	@Override
+	public void addTable(TableReference table) {
+		if ( tableMap == null ) {
+			tableMap = new HashMap<>();
+		}
+		tableMap.put( table.getLogicalName().getCanonicalName(), table );
+
+		if ( table instanceof PhysicalTable physicalTable ) {
+			final Table addedTable = metadataBuildingContext.getMetadataCollector().addTable(
+					resolveSchemaName( physicalTable.schema() ),
+					resolveCatalogName( physicalTable.catalog() ),
+					physicalTable.logicalName().getCanonicalName(),
+					null,
+					!table.isExportable(),
+					metadataBuildingContext
+			);
+			addedTable.setComment( physicalTable.comment() );
+		}
+		else if ( table instanceof PhysicalView physicalView ) {
+			final Table addedTable = metadataBuildingContext.getMetadataCollector().addTable(
+					null,
+					null,
+					null,
+					null,
+					!physicalView.isExportable(),
+					metadataBuildingContext
+			);
+			addedTable.setViewQuery( physicalView.query() );
+		}
+		else if ( table instanceof SecondaryTable secondaryTable ) {
+			final Table addedTable = metadataBuildingContext.getMetadataCollector().addTable(
+					resolveSchemaName( secondaryTable.schema() ),
+					resolveCatalogName( secondaryTable.catalog() ),
+					secondaryTable.logicalName().getCanonicalName(),
+					null,
+					!table.isExportable(),
+					metadataBuildingContext
+			);
+			addedTable.setComment( secondaryTable.comment() );
+		}
+	}
+
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// PhysicalTable
-
-	@Override
-	public int getPhysicalTableCount() {
-		return physicalTableMap == null ? 0 : physicalTableMap.size();
-	}
-
-	@Override
-	public void forEachPhysicalTable(NamedConsumer<PhysicalTable> consumer) {
-		if ( physicalTableMap != null ) {
-			//noinspection unchecked
-			physicalTableMap.forEach( (BiConsumer<? super String, ? super PhysicalTable>) consumer );
-		}
-	}
-
-	@Override
-	public PhysicalTable getPhysicalTableByName(String name) {
-		if ( physicalTableMap == null ) {
-			return null;
-		}
-		return physicalTableMap.get( name );
-	}
-
-	@Override
-	public PhysicalTable getPhysicalTableByPhysicalName(String name) {
-		if ( physicalTableMap != null ) {
-			for ( Map.Entry<String, PhysicalTable> entry : physicalTableMap.entrySet() ) {
-				if ( entry.getValue().physicalName().matches( name ) ) {
-					return entry.getValue();
-				}
-			}
-		}
-		return null;
-	}
-
-	@Override
-	public void addPhysicalTable(PhysicalTable physicalTable) {
-		if ( physicalTableMap == null ) {
-			physicalTableMap = new HashMap<>();
-		}
-		physicalTableMap.put( physicalTable.logicalName().getCanonicalName(), physicalTable );
-
-		final Table addedTable = metadataBuildingContext.getMetadataCollector().addTable(
-				resolveSchemaName( physicalTable.schema() ),
-				resolveCatalogName( physicalTable.catalog() ),
-				physicalTable.logicalName().getCanonicalName(),
-				null,
-				!physicalTable.isExportable(),
-				metadataBuildingContext
-		);
-		addedTable.setComment( physicalTable.comment() );
-	}
 
 	private String resolveSchemaName(Identifier explicit) {
 		if ( explicit != null ) {
@@ -141,36 +155,6 @@ public class BindingStateImpl implements BindingState {
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// VirtualTableBinding
-
-	@Override
-	public int getNumberOfVirtualTableBindings() {
-		return virtualTableBindingMap == null ? 0 : virtualTableBindingMap.size();
-	}
-
-	@Override
-	public void forEachVirtualTableBinding(NamedConsumer<InLineView> consumer) {
-		if ( virtualTableBindingMap != null ) {
-			//noinspection unchecked
-			virtualTableBindingMap.forEach( (BiConsumer<? super String, ? super InLineView>) consumer );
-		}
-	}
-
-	@Override
-	public InLineView getVirtualTableBindingByName(String name) {
-		if ( virtualTableBindingMap == null ) {
-			return null;
-		}
-		return virtualTableBindingMap.get( name );
-	}
-
-
-	@Override
-	public void addVirtualTableBinding(InLineView binding) {
-		if ( virtualTableBindingMap == null ) {
-			virtualTableBindingMap = new HashMap<>();
-		}
-		virtualTableBindingMap.put( binding.logicalName().getCanonicalName(), binding );
-	}
 
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

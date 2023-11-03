@@ -7,7 +7,7 @@
 package org.hibernate.models.orm.bind.internal;
 
 import org.hibernate.boot.model.naming.Identifier;
-import org.hibernate.models.orm.bind.spi.TableReference;
+import org.hibernate.models.orm.bind.spi.PhysicalTableReference;
 
 /**
  * Models a physical table from the underlying database schema
@@ -25,7 +25,7 @@ public record PhysicalTable(
 		Identifier schema,
 		boolean isAbstract,
 		String comment,
-		String options) implements TableReference {
+		String options) implements PhysicalTableReference {
 
 	@Override
 	public Identifier getLogicalName() {
@@ -37,5 +37,18 @@ public record PhysicalTable(
 		return !isAbstract;
 	}
 
+	@Override
+	public Identifier getTableName() {
+		return physicalName;
+	}
 
+	@Override
+	public Identifier getSchemaName() {
+		return schema;
+	}
+
+	@Override
+	public Identifier getCatalogName() {
+		return catalog;
+	}
 }

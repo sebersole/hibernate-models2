@@ -145,7 +145,7 @@ public class TableBinder {
 				logicalName,
 				BindingHelper.getString( subselectAnn, "value", Subselect.class, bindingContext )
 		);
-		bindingState.addVirtualTableBinding( binding );
+		bindingState.addTable( binding );
 	}
 
 	private void processPhysicalTable(EntityTypeMetadata type, AnnotationUsage<jakarta.persistence.Table> tableAnn) {
@@ -158,7 +158,7 @@ public class TableBinder {
 			physicalTable = createImplicitPhysicalTable( type );
 		}
 
-		bindingState.addPhysicalTable( physicalTable );
+		bindingState.addTable( physicalTable );
 	}
 
 	private PhysicalTable createImplicitPhysicalTable(EntityTypeMetadata type) {
@@ -300,7 +300,7 @@ public class TableBinder {
 				BindingHelper.getString( secondaryTableAnn, "options", SecondaryTable.class, bindingContext )
 		);
 
-		bindingState.addPhysicalTable( physicalTable );
+		bindingState.addTable( physicalTable );
 	}
 
 }
