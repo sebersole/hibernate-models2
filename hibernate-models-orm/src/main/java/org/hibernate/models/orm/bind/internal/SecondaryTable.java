@@ -10,13 +10,20 @@ import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.models.orm.bind.spi.TableReference;
 
 /**
- * Models a from-clause sub-query.
- *
- * @see org.hibernate.annotations.Subselect
+ * @see jakarta.persistence.SecondaryTable
  *
  * @author Steve Ebersole
  */
-public record InLineView(Identifier logicalName, String query) implements TableReference {
+public record SecondaryTable(
+		Identifier logicalName,
+		Identifier physicalName,
+		Identifier catalog,
+		Identifier schema,
+		boolean isAbstract,
+		String comment,
+		String options,
+		boolean owned,
+		boolean optional) implements TableReference {
 	@Override
 	public Identifier getLogicalName() {
 		return logicalName;
@@ -24,6 +31,6 @@ public record InLineView(Identifier logicalName, String query) implements TableR
 
 	@Override
 	public boolean isExportable() {
-		return false;
+		return !isAbstract;
 	}
 }

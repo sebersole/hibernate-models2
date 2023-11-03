@@ -6,33 +6,21 @@
  */
 package org.hibernate.models.orm.bind.spi;
 
-import java.lang.annotation.Annotation;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.hibernate.annotations.Any;
 import org.hibernate.annotations.ManyToAny;
-import org.hibernate.annotations.SecondaryRow;
-import org.hibernate.annotations.Subselect;
-import org.hibernate.boot.model.naming.EntityNaming;
-import org.hibernate.boot.model.naming.Identifier;
-import org.hibernate.boot.model.naming.ImplicitEntityNameSource;
 import org.hibernate.boot.model.naming.ImplicitNamingStrategy;
 import org.hibernate.boot.model.naming.ImplicitNamingStrategyComponentPathImpl;
 import org.hibernate.boot.model.naming.PhysicalNamingStrategy;
 import org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl;
-import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
-import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.orm.AnnotationPlacementException;
-import org.hibernate.models.orm.bind.internal.InLineView;
-import org.hibernate.models.orm.bind.internal.PhysicalTable;
+import org.hibernate.models.orm.bind.internal.TableBinder;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
-import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.GlobalRegistrations;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
-import org.hibernate.models.orm.categorize.spi.ManagedTypeMetadata;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
 
@@ -42,14 +30,8 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
-import jakarta.persistence.SecondaryTable;
 import jakarta.persistence.SequenceGenerator;
-import jakarta.persistence.Table;
 import jakarta.persistence.TableGenerator;
-
-import static org.hibernate.models.orm.bind.spi.QuotedIdentifierTarget.CATALOG_NAME;
-import static org.hibernate.models.orm.bind.spi.QuotedIdentifierTarget.SCHEMA_NAME;
-import static org.hibernate.models.orm.bind.spi.QuotedIdentifierTarget.TABLE_NAME;
 
 /**
  * Responsible for processing {@linkplain org.hibernate.boot.model.process.spi.ManagedResources managed-resources}
@@ -63,9 +45,7 @@ public class BindingCoordinator {
 	private final BindingOptions options;
 	private final BindingContext bindingContext;
 
-	private final ImplicitNamingStrategy implicitNamingStrategy;
-	private final PhysicalNamingStrategy physicalNamingStrategy;
-	private final JdbcEnvironment jdbcEnvironment;
+	private final TableBinder tableBinder;
 
 	public BindingCoordinator(
 			CategorizedDomainModel categorizedDomainModel,
@@ -77,9 +57,7 @@ public class BindingCoordinator {
 		this.state = state;
 		this.bindingContext = bindingContext;
 
-		this.implicitNamingStrategy = new ImplicitNamingStrategyComponentPathImpl();
-		this.physicalNamingStrategy = new PhysicalNamingStrategyStandardImpl();
-		this.jdbcEnvironment = bindingContext.getServiceRegistry().getService( JdbcEnvironment.class );
+		this.tableBinder = new TableBinder( state, options, bindingContext );
 	}
 
 	/**
@@ -125,6 +103,12 @@ public class BindingCoordinator {
 				} );
 			} );
 		} );
+
+		bindingCoordinator.processQueues();
+	}
+
+	private void processQueues() {
+		tableBinder.processQueue();
 	}
 
 
@@ -174,13 +158,6 @@ public class BindingCoordinator {
 		} );
 
 	}
-
-	@FunctionalInterface
-	interface TableSecondPass {
-		void processTable();
-	}
-
-	private final List<TableSecondPass> tableSecondPasses = new ArrayList<>();
 
 	private void processTables(AttributeMetadata attribute) {
 		final AnnotationUsage<JoinTable> joinTableAnn = attribute.getMember().getAnnotationUsage( JoinTable.class );
@@ -250,176 +227,7 @@ public class BindingCoordinator {
 	}
 
 	private void processTables(IdentifiableTypeMetadata type) {
-		if ( type.getManagedTypeKind() != ManagedTypeMetadata.Kind.ENTITY ) {
-			// tables are only valid on entity, not mapped-super
-			return;
-		}
-
-		final ClassDetails typeClassDetails = type.getClassDetails();
-		final AnnotationUsage<Table> tableAnn = typeClassDetails.getAnnotationUsage( Table.class );
-		final AnnotationUsage<Subselect> subselectAnn = typeClassDetails.getAnnotationUsage( Subselect.class );
-
-		if ( subselectAnn != null ) {
-			if ( tableAnn != null ) {
-				throw new AnnotationPlacementException( "Illegal combination of @Table and @Subselect on " + typeClassDetails.getName() );
-			}
-			processVirtualTable( (EntityTypeMetadata) type, subselectAnn );
-		}
-		else {
-			// either an explicit or implicit @Table
-			processPhysicalTable( (EntityTypeMetadata) type, tableAnn );
-		}
-
-		final List<AnnotationUsage<SecondaryTable>> secondaryTableAnns = typeClassDetails.getRepeatedAnnotationUsages( SecondaryTable.class );
-		secondaryTableAnns.forEach( (secondaryTableAnnotation) -> {
-			final AnnotationUsage<SecondaryRow> secondaryRowAnn = typeClassDetails.getNamedAnnotationUsage(
-					SecondaryRow.class,
-					secondaryTableAnnotation.getString( "name" ),
-					"table"
-			);
-		} );
+		tableBinder.processTables( type );
 	}
 
-	private void processPhysicalTable(EntityTypeMetadata type, AnnotationUsage<Table> tableAnn) {
-		final PhysicalTable physicalTable;
-
-		if ( tableAnn != null ) {
-			physicalTable = createExplicitPhysicalTable( type, tableAnn );
-		}
-		else {
-			physicalTable = createImplicitPhysicalTable( type );
-		}
-
-		state.addPhysicalTable( physicalTable );
-	}
-
-	private PhysicalTable createImplicitPhysicalTable(EntityTypeMetadata type) {
-		final Identifier logicalName = implicitNamingStrategy.determinePrimaryTableName(
-				new ImplicitEntityNameSource() {
-					@Override
-					public EntityNaming getEntityNaming() {
-						return type;
-					}
-
-					@Override
-					public MetadataBuildingContext getBuildingContext() {
-						throw new UnsupportedOperationException( "Not (yet) implemented" );
-					}
-				}
-		);
-
-		return new PhysicalTable(
-				logicalName,
-				physicalNamingStrategy.toPhysicalTableName( logicalName, jdbcEnvironment ),
-				resolveDatabaseIdentifier(
-						null,
-						"catalog",
-						Table.class,
-						options.getDefaultCatalogName(),
-						CATALOG_NAME
-				),
-				resolveDatabaseIdentifier(
-						null,
-						"schema",
-						Table.class,
-						options.getDefaultSchemaName(),
-						SCHEMA_NAME
-				),
-				type.isAbstract(),
-				null,
-				null
-		);
-	}
-
-	private PhysicalTable createExplicitPhysicalTable(EntityTypeMetadata type, AnnotationUsage<Table> tableAnn) {
-		final String name = StringHelper.nullIfEmpty( tableAnn.getString( "name" ) );
-		final Identifier logicalName;
-
-
-
-		if ( name == null ) {
-			logicalName = implicitNamingStrategy.determinePrimaryTableName(
-					new ImplicitEntityNameSource() {
-						@Override
-						public EntityNaming getEntityNaming() {
-							return type;
-						}
-
-						@Override
-						public MetadataBuildingContext getBuildingContext() {
-							throw new UnsupportedOperationException( "Not (yet) implemented" );
-						}
-					}
-			);
-		}
-		else {
-			logicalName = BindingHelper.toIdentifier( name, TABLE_NAME, options, jdbcEnvironment );
-		}
-
-		return new PhysicalTable(
-				logicalName,
-				physicalNamingStrategy.toPhysicalTableName( logicalName, jdbcEnvironment ),
-				resolveDatabaseIdentifier( tableAnn, "catalog", Table.class, options.getDefaultCatalogName(), CATALOG_NAME ),
-				resolveDatabaseIdentifier( tableAnn, "schema", Table.class, options.getDefaultSchemaName(), SCHEMA_NAME ),
-				false,
-				BindingHelper.getString( tableAnn, "comment", Table.class, bindingContext ),
-				BindingHelper.getString( tableAnn, "options", Table.class, bindingContext )
-		);
-	}
-
-	private void processVirtualTable(EntityTypeMetadata type, AnnotationUsage<Subselect> subselectAnn) {
-		final Identifier logicalName = implicitNamingStrategy.determinePrimaryTableName(
-				new ImplicitEntityNameSource() {
-					@Override
-					public EntityNaming getEntityNaming() {
-						return type;
-					}
-
-					@Override
-					public MetadataBuildingContext getBuildingContext() {
-						throw new UnsupportedOperationException( "Not (yet) implemented" );
-					}
-				}
-		);
-		final InLineView binding = new InLineView(
-				logicalName,
-				BindingHelper.getString( subselectAnn, "value", Subselect.class, bindingContext )
-		);
-		state.addVirtualTableBinding( binding );
-	}
-
-	private <A extends Annotation> Identifier getDatabaseIdentifier(
-			AnnotationUsage<A> annotationUsage,
-			String attributeName,
-			Class<A> annotationType,
-			QuotedIdentifierTarget target) {
-		return BindingHelper.getIdentifier(
-				annotationUsage,
-				attributeName,
-				annotationType,
-				target,
-				options,
-				jdbcEnvironment,
-				bindingContext
-		);
-	}
-
-	private <A extends Annotation> Identifier resolveDatabaseIdentifier(
-			AnnotationUsage<A> annotationUsage,
-			String attributeName,
-			Class<A> annotationType,
-			Identifier fallback,
-			QuotedIdentifierTarget target) {
-		final String explicit = BindingHelper.getStringOrNull( annotationUsage, attributeName );
-		if ( StringHelper.isNotEmpty( explicit ) ) {
-			return BindingHelper.toIdentifier( explicit, target, options, jdbcEnvironment );
-		}
-
-		if ( fallback != null ) {
-			return fallback;
-		}
-
-		final String defaultValue = BindingHelper.getDefaultValue( attributeName, annotationType, bindingContext );
-		return BindingHelper.toIdentifier(defaultValue, target, options, jdbcEnvironment );
-	}
 }

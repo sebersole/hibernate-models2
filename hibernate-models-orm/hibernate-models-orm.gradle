@@ -18,7 +18,7 @@ dependencies {
 
     testImplementation platform( libs.hibernatePlatform )
     testImplementation project( ":hibernate-models-testing" )
-    testImplementation jakartaLibs.jpa
+    testImplementation libs.hibernateTesting
 
     // for compile access to ReflectionManager for testing impl of BootstrapContext
     testCompileOnly libs.hcann

@@ -7,6 +7,7 @@
 package org.hibernate.models.orm.bind.spi;
 
 import org.hibernate.boot.internal.ClassmateContext;
+import org.hibernate.boot.spi.BootstrapContext;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.models.orm.categorize.spi.GlobalRegistrations;
 import org.hibernate.models.source.spi.SourceModelContext;
@@ -29,5 +30,9 @@ public interface BindingContext extends SourceModelContext {
 
 	SharedCacheMode getSharedCacheMode();
 
-	ServiceRegistry getServiceRegistry();
+	BootstrapContext getBootstrapContext();
+
+	default ServiceRegistry getServiceRegistry() {
+		return getBootstrapContext().getServiceRegistry();
+	}
 }
