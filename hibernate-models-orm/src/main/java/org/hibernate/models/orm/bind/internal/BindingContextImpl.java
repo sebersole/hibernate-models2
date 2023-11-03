@@ -27,7 +27,7 @@ public class BindingContextImpl implements BindingContext {
 
 	private final SharedCacheMode sharedCacheMode;
 	private final ClassmateContext classmateContext;
-	private final ServiceRegistry serviceRegistry;
+	private final BootstrapContext bootstrapContext;
 
 	public BindingContextImpl(CategorizedDomainModel categorizedDomainModel, BootstrapContext bootstrapContext) {
 		this(
@@ -36,7 +36,7 @@ public class BindingContextImpl implements BindingContext {
 				categorizedDomainModel.getGlobalRegistrations(),
 				bootstrapContext.getMetadataBuildingOptions().getSharedCacheMode(),
 				bootstrapContext.getClassmateContext(),
-				bootstrapContext.getServiceRegistry()
+				bootstrapContext
 		);
 	}
 
@@ -46,10 +46,10 @@ public class BindingContextImpl implements BindingContext {
 			GlobalRegistrations globalRegistrations,
 			SharedCacheMode sharedCacheMode,
 			ClassmateContext classmateContext,
-			ServiceRegistry serviceRegistry) {
+			BootstrapContext bootstrapContext) {
 		this.classDetailsRegistry = classDetailsRegistry;
 		this.annotationDescriptorRegistry = annotationDescriptorRegistry;
-		this.serviceRegistry = serviceRegistry;
+		this.bootstrapContext = bootstrapContext;
 		this.globalRegistrations = globalRegistrations;
 		this.classmateContext = classmateContext;
 		this.sharedCacheMode = sharedCacheMode;
@@ -66,8 +66,8 @@ public class BindingContextImpl implements BindingContext {
 	}
 
 	@Override
-	public ServiceRegistry getServiceRegistry() {
-		return serviceRegistry;
+	public BootstrapContext getBootstrapContext() {
+		return bootstrapContext;
 	}
 
 	@Override

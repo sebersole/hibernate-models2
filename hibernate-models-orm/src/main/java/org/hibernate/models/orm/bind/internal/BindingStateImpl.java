@@ -12,8 +12,8 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 
 import org.hibernate.boot.model.naming.Identifier;
+import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.model.relational.Namespace;
-import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.engine.spi.FilterDefinition;
 import org.hibernate.internal.util.NamedConsumer;
@@ -30,18 +30,21 @@ import org.hibernate.type.spi.TypeConfiguration;
  */
 public class BindingStateImpl implements BindingState {
 	private final MetadataBuildingContext metadataBuildingContext;
-	private final InFlightMetadataCollector metadataCollector;
 
 	private Map<String, PhysicalTable> physicalTableMap;
 	private Map<String, InLineView> virtualTableBindingMap;
 
 	public BindingStateImpl(MetadataBuildingContext metadataBuildingContext) {
 		this.metadataBuildingContext = metadataBuildingContext;
-		this.metadataCollector = metadataBuildingContext.getMetadataCollector();
 	}
 
 	public MetadataBuildingContext getMetadataBuildingContext() {
 		return metadataBuildingContext;
+	}
+
+	@Override
+	public Database getDatabase() {
+		return getMetadataBuildingContext().getMetadataCollector().getDatabase();
 	}
 
 
@@ -86,12 +89,12 @@ public class BindingStateImpl implements BindingState {
 		if ( physicalTableMap == null ) {
 			physicalTableMap = new HashMap<>();
 		}
-		physicalTableMap.put( physicalTable.logicalName().render(), physicalTable );
+		physicalTableMap.put( physicalTable.logicalName().getCanonicalName(), physicalTable );
 
 		final Table addedTable = metadataBuildingContext.getMetadataCollector().addTable(
 				resolveSchemaName( physicalTable.schema() ),
 				resolveCatalogName( physicalTable.catalog() ),
-				physicalTable.logicalName().render(),
+				physicalTable.logicalName().getCanonicalName(),
 				null,
 				!physicalTable.isExportable(),
 				metadataBuildingContext
@@ -101,7 +104,7 @@ public class BindingStateImpl implements BindingState {
 
 	private String resolveSchemaName(Identifier explicit) {
 		if ( explicit != null ) {
-			return explicit.render();
+			return explicit.getCanonicalName();
 		}
 
 		final Namespace defaultNamespace = metadataBuildingContext.getMetadataCollector()
@@ -110,7 +113,7 @@ public class BindingStateImpl implements BindingState {
 		if ( defaultNamespace != null ) {
 			final Identifier defaultSchemaName = defaultNamespace.getName().getSchema();
 			if ( defaultSchemaName != null ) {
-				return defaultSchemaName.render();
+				return defaultSchemaName.getCanonicalName();
 			}
 		}
 		return null;
@@ -119,7 +122,7 @@ public class BindingStateImpl implements BindingState {
 
 	private String resolveCatalogName(Identifier explicit) {
 		if ( explicit != null ) {
-			return explicit.render();
+			return explicit.getCanonicalName();
 		}
 
 		final Namespace defaultNamespace = metadataBuildingContext.getMetadataCollector()
@@ -128,7 +131,7 @@ public class BindingStateImpl implements BindingState {
 		if ( defaultNamespace != null ) {
 			final Identifier defaultCatalogName = defaultNamespace.getName().getCatalog();
 			if ( defaultCatalogName != null ) {
-				return defaultCatalogName.render();
+				return defaultCatalogName.getCanonicalName();
 			}
 		}
 		return null;

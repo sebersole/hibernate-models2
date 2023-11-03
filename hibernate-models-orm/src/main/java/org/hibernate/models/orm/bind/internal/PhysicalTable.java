@@ -12,6 +12,10 @@ import org.hibernate.models.orm.bind.spi.TableReference;
 /**
  * Models a physical table from the underlying database schema
  *
+ * @see jakarta.persistence.Table
+ * @see jakarta.persistence.CollectionTable
+ * @see jakarta.persistence.JoinTable
+ *
  * @author Steve Ebersole
  */
 public record PhysicalTable(
