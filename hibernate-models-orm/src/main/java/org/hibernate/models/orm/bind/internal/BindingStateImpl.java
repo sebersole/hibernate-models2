@@ -13,11 +13,9 @@ import java.util.function.BiConsumer;
 
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.relational.Database;
-import org.hibernate.boot.model.relational.Namespace;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.engine.spi.FilterDefinition;
 import org.hibernate.internal.util.NamedConsumer;
-import org.hibernate.mapping.Table;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.orm.bind.spi.BindingState;
@@ -33,7 +31,6 @@ public class BindingStateImpl implements BindingState {
 	private final MetadataBuildingContext metadataBuildingContext;
 
 	private Map<String, TableReference> tableMap;
-	private Map<String, InLineView> virtualTableBindingMap;
 
 	public BindingStateImpl(MetadataBuildingContext metadataBuildingContext) {
 		this.metadataBuildingContext = metadataBuildingContext;
@@ -78,7 +75,7 @@ public class BindingStateImpl implements BindingState {
 		tableMap.put( table.getLogicalName().getCanonicalName(), table );
 
 		if ( table instanceof PhysicalTable physicalTable ) {
-			final Table addedTable = metadataBuildingContext.getMetadataCollector().addTable(
+			var addedTable = metadataBuildingContext.getMetadataCollector().addTable(
 					resolveSchemaName( physicalTable.schema() ),
 					resolveCatalogName( physicalTable.catalog() ),
 					physicalTable.logicalName().getCanonicalName(),
@@ -89,7 +86,7 @@ public class BindingStateImpl implements BindingState {
 			addedTable.setComment( physicalTable.comment() );
 		}
 		else if ( table instanceof PhysicalView physicalView ) {
-			final Table addedTable = metadataBuildingContext.getMetadataCollector().addTable(
+			var addedTable = metadataBuildingContext.getMetadataCollector().addTable(
 					null,
 					null,
 					null,
@@ -100,7 +97,7 @@ public class BindingStateImpl implements BindingState {
 			addedTable.setViewQuery( physicalView.query() );
 		}
 		else if ( table instanceof SecondaryTable secondaryTable ) {
-			final Table addedTable = metadataBuildingContext.getMetadataCollector().addTable(
+			var addedTable = metadataBuildingContext.getMetadataCollector().addTable(
 					resolveSchemaName( secondaryTable.schema() ),
 					resolveCatalogName( secondaryTable.catalog() ),
 					secondaryTable.logicalName().getCanonicalName(),
@@ -121,7 +118,7 @@ public class BindingStateImpl implements BindingState {
 			return explicit.getCanonicalName();
 		}
 
-		final Namespace defaultNamespace = metadataBuildingContext.getMetadataCollector()
+		var defaultNamespace = metadataBuildingContext.getMetadataCollector()
 				.getDatabase()
 				.getDefaultNamespace();
 		if ( defaultNamespace != null ) {
@@ -131,7 +128,6 @@ public class BindingStateImpl implements BindingState {
 			}
 		}
 		return null;
-
 	}
 
 	private String resolveCatalogName(Identifier explicit) {
@@ -139,7 +135,7 @@ public class BindingStateImpl implements BindingState {
 			return explicit.getCanonicalName();
 		}
 
-		final Namespace defaultNamespace = metadataBuildingContext.getMetadataCollector()
+		var defaultNamespace = metadataBuildingContext.getMetadataCollector()
 				.getDatabase()
 				.getDefaultNamespace();
 		if ( defaultNamespace != null ) {
