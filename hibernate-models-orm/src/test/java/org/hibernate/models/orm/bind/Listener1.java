@@ -13,5 +13,5 @@ import jakarta.persistence.PostLoad;
  */
 public class Listener1 {
 	@PostLoad
-	public void wasLoaded(Object entity) {}
+	public void wasLoaded(HierarchySuper entity) {}
 }
