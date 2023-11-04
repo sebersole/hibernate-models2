@@ -102,11 +102,12 @@ public class BindingStateImpl implements BindingState {
 		if ( binder instanceof EntityTypeBinder entityTypeBinder ) {
 			metadataBuildingContext.getMetadataCollector().addEntityBinding( entityTypeBinder.getTypeBinding() );
 		}
-		else if ( binder instanceof MappedSuperTypeBinder mappedSuperBinder )
-		metadataBuildingContext.getMetadataCollector().addMappedSuperclass(
-				mappedSuperBinder.getManagedType().getClassDetails().toJavaClass(),
-				mappedSuperBinder.getTypeBinding()
-		);
+		else if ( binder instanceof MappedSuperTypeBinder mappedSuperBinder ) {
+			metadataBuildingContext.getMetadataCollector().addMappedSuperclass(
+					mappedSuperBinder.getManagedType().getClassDetails().toJavaClass(),
+					mappedSuperBinder.getTypeBinding()
+			);
+		}
 	}
 
 	@Override
