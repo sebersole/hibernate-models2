@@ -9,6 +9,7 @@ package org.hibernate.models.orm.bind.internal.binders;
 import java.util.List;
 import java.util.Map;
 
+import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.OptimisticLockType;
 import org.hibernate.annotations.OptimisticLocking;
 import org.hibernate.annotations.SoftDelete;
@@ -28,23 +29,26 @@ import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.RootClass;
 import org.hibernate.mapping.SingleTableSubclass;
-import org.hibernate.mapping.SoftDeletable;
+import org.hibernate.mapping.Subclass;
 import org.hibernate.mapping.Table;
 import org.hibernate.mapping.TableOwner;
 import org.hibernate.mapping.UnionSubclass;
 import org.hibernate.models.ModelsException;
+import org.hibernate.models.internal.CollectionHelper;
+import org.hibernate.models.orm.bind.internal.BindingHelper;
 import org.hibernate.models.orm.bind.internal.SecondaryTable;
 import org.hibernate.models.orm.bind.spi.BindingContext;
-import org.hibernate.models.orm.bind.internal.BindingHelper;
 import org.hibernate.models.orm.bind.spi.BindingOptions;
 import org.hibernate.models.orm.bind.spi.BindingState;
-import org.hibernate.models.orm.bind.spi.TableReference;
+import org.hibernate.models.orm.categorize.spi.CacheRegion;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
+import org.hibernate.models.orm.categorize.spi.NaturalIdCacheRegion;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
 
+import jakarta.persistence.Cacheable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.InheritanceType;
 
@@ -58,9 +62,7 @@ import static org.hibernate.internal.util.StringHelper.coalesce;
 public class EntityTypeBinder extends IdentifiableTypeBinder {
 	private final PersistentClass binding;
 
-	private final TableReference primaryTable;
 	private final DelegateBinders delegateBinders;
-	private Map<String,SecondaryTable> secondaryTableMap;
 
 	public EntityTypeBinder(
 			EntityTypeMetadata type,
@@ -101,29 +103,43 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		binding.setEntityName( entityName );
 		binding.setJpaEntityName( jpaEntityName );
 
+		state.registerTypeBinder( type, this );
 		state.getMetadataBuildingContext().getMetadataCollector().addImport( importName, entityName );
 
-
-		this.primaryTable = delegateBinders.getTableBinder().processPrimaryTable( getManagedType() );
+		final var primaryTable = delegateBinders.getTableBinder().processPrimaryTable( getManagedType() );
 		final var table = primaryTable.getBinding();
 		( (TableOwner) binding ).setTable( table );
 
-		final List<SecondaryTable> secondaryTables = delegateBinders.getTableBinder().processSecondaryTables( getManagedType() );
-		secondaryTables.forEach( (secondaryTable) -> {
-			final Join join = new Join();
-			join.setTable( secondaryTable.binding() );
-			join.setPersistentClass( binding );
-			join.setOptional( secondaryTable.optional() );
-			join.setInverse( !secondaryTable.owned() );
-		} );
+		final var secondaryTables = delegateBinders.getTableBinder().processSecondaryTables( getManagedType() );
+		secondaryTables.forEach( this::processSecondaryTable );
 
-		if ( binding instanceof RootClass ) {
-			processSoftDelete( primaryTable.getBinding(), classDetails, state, context );
-			processOptimisticLocking( primaryTable.getBinding(), classDetails, state, context );
-			processCacheRegions( classDetails, state, context );
+		final IdentifiableTypeBinder superTypeBinder = getSuperTypeBinder();
+		final EntityTypeBinder superEntityBinder = getSuperEntityBinder();
+		if ( binding instanceof RootClass rootClass ) {
+			processSoftDelete( primaryTable.getBinding(), rootClass, classDetails, state, context );
+			processOptimisticLocking( primaryTable.getBinding(), rootClass, classDetails, state, context );
+			processCacheRegions( getManagedType(), rootClass, classDetails, state, context );
+
+			assert superEntityBinder == null;
+
+			if ( superTypeBinder != null ) {
+				rootClass.setSuperMappedSuperclass( (MappedSuperclass) superTypeBinder.getTypeBinding() );
+			}
+		}
+		else {
+			final Subclass subclass = (Subclass) binding;
+
+			if ( (superTypeBinder == superEntityBinder && superTypeBinder != null) ) {
+				// the super is an entity
+				subclass.setSuperclass( superEntityBinder.getTypeBinding() );
+			}
+			else if ( superTypeBinder != null ) {
+				subclass.setSuperMappedSuperclass( (MappedSuperclass) superTypeBinder.getTypeBinding() );
+			}
 		}
 
 		processCaching( classDetails, state, context );
+		processFilters( classDetails, state, context );
 
 		prepareBinding( delegateBinders );
 	}
@@ -252,6 +268,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 
 	private void processSoftDelete(
 			Table primaryTable,
+			RootClass rootClass,
 			ClassDetails classDetails,
 			BindingState state,
 			BindingContext context) {
@@ -270,7 +287,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 				context
 		);
 		primaryTable.addColumn( softDeleteIndicatorColumn );
-		( (SoftDeletable) primaryTable ).enableSoftDelete( softDeleteIndicatorColumn );
+		rootClass.enableSoftDelete( softDeleteIndicatorColumn );
 	}
 
 	private static BasicValue createSoftDeleteIndicatorValue(
@@ -332,27 +349,87 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		softDeleteColumn.setName( physicalColumnName.render( database.getDialect() ) );
 	}
 
-	private void processOptimisticLocking(Table binding, ClassDetails classDetails, BindingState state, BindingContext context) {
+	private static void processOptimisticLocking(
+			Table binding,
+			RootClass rootEntity,
+			ClassDetails classDetails,
+			BindingState state,
+			BindingContext context) {
 		final var optimisticLocking = classDetails.getAnnotationUsage( OptimisticLocking.class );
 
 		if ( optimisticLocking != null ) {
 			final var optimisticLockingType = optimisticLocking.getEnum( "type", OptimisticLockType.VERSION );
-			final var rootEntity = (RootClass) getTypeBinding();
 			rootEntity.setOptimisticLockStyle( OptimisticLockStyle.valueOf( optimisticLockingType.name() ) );
 		}
 	}
 
-	private void processCacheRegions(ClassDetails classDetails, BindingState state, BindingContext context) {
+	private static void processCacheRegions(
+			EntityTypeMetadata source,
+			RootClass rootClass,
+			ClassDetails classDetails,
+			BindingState state,
+			BindingContext context) {
+		final EntityHierarchy hierarchy = source.getHierarchy();
+		final CacheRegion cacheRegion = hierarchy.getCacheRegion();
+		final NaturalIdCacheRegion naturalIdCacheRegion = hierarchy.getNaturalIdCacheRegion();
 
+		if ( cacheRegion != null ) {
+			rootClass.setCacheRegionName( cacheRegion.getRegionName() );
+			rootClass.setCacheConcurrencyStrategy( cacheRegion.getAccessType().getExternalName() );
+			rootClass.setLazyPropertiesCacheable( cacheRegion.isCacheLazyProperties() );
+		}
+
+		if ( naturalIdCacheRegion != null ) {
+			rootClass.setNaturalIdCacheRegionName( naturalIdCacheRegion.getRegionName() );
+		}
 	}
 
 	private void processCaching(ClassDetails classDetails, BindingState state, BindingContext context) {
+		final var cacheableAnn = classDetails.getAnnotationUsage( Cacheable.class );
+		if ( cacheableAnn == null ) {
+			return;
+		}
 
+		final boolean cacheable = cacheableAnn.getBoolean( "value", true );
+		binding.setCached( cacheable );
+	}
+
+	private void processFilters(ClassDetails classDetails, BindingState state, BindingContext context) {
+		final List<AnnotationUsage<Filter>> filters = classDetails.getRepeatedAnnotationUsages( Filter.class );
+		if ( CollectionHelper.isEmpty( filters ) ) {
+			return;
+		}
+
+		filters.forEach( (filter) -> {
+			binding.addFilter(
+					filter.getString( "name" ),
+					filter.getString( "condition", null ),
+					filter.getAttributeValue( "deduceAliasInjectionPoints", true ),
+					extractFilterAliasTableMap( filter ),
+					extractFilterAliasEntityMap( filter )
+			);
+		} );
+	}
+
+	private Map<String, String> extractFilterAliasTableMap(AnnotationUsage<Filter> filter) {
+		return null;
+	}
+
+	private Map<String, String> extractFilterAliasEntityMap(AnnotationUsage<Filter> filter) {
+		return null;
 	}
 
 	@Override
 	public void processSecondPasses() {
 		delegateBinders.getTableBinder().processSecondPasses();
 		super.processSecondPasses();
+	}
+
+	private void processSecondaryTable(SecondaryTable secondaryTable) {
+		final Join join = new Join();
+		join.setTable( secondaryTable.binding() );
+		join.setPersistentClass( binding );
+		join.setOptional( secondaryTable.optional() );
+		join.setInverse( !secondaryTable.owned() );
 	}
 }

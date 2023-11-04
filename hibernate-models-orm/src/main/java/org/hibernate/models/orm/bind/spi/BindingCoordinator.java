@@ -134,7 +134,6 @@ public class BindingCoordinator {
 					bindingOptions,
 					bindingContext
 			);
-			bindingState.registerTypeBinder( type, binder );
 		}
 		else {
 			assert type.getManagedTypeKind() == ManagedTypeMetadata.Kind.MAPPED_SUPER;
@@ -146,7 +145,6 @@ public class BindingCoordinator {
 					bindingOptions,
 					bindingContext
 			);
-			bindingState.registerTypeBinder( type, binder );
 		}
 	}
 

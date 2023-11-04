@@ -6,33 +6,22 @@
  */
 package org.hibernate.models.orm.bind;
 
-import org.hibernate.boot.MetadataSources;
-import org.hibernate.boot.internal.BootstrapContextImpl;
-import org.hibernate.boot.internal.InFlightMetadataCollectorImpl;
-import org.hibernate.boot.internal.MetadataBuilderImpl.MetadataBuildingOptionsImpl;
-import org.hibernate.boot.internal.MetadataBuildingContextRootImpl;
-import org.hibernate.boot.model.process.spi.ManagedResources;
-import org.hibernate.boot.model.process.spi.MetadataBuildingProcess;
-import org.hibernate.boot.registry.StandardServiceRegistry;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Column;
-import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.RootClass;
-import org.hibernate.models.orm.bind.internal.BindingContextImpl;
-import org.hibernate.models.orm.bind.internal.BindingOptionsImpl;
-import org.hibernate.models.orm.bind.internal.BindingStateImpl;
 import org.hibernate.models.orm.bind.internal.PhysicalTable;
 import org.hibernate.models.orm.bind.internal.SecondaryTable;
-import org.hibernate.models.orm.bind.spi.BindingCoordinator;
-import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
-import org.hibernate.models.orm.categorize.spi.ManagedResourcesProcessor;
+import org.hibernate.type.SqlTypes;
 
 import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.ServiceRegistryScope;
 import org.hibernate.testing.orm.junit.SettingProvider;
 import org.junit.jupiter.api.Test;
+
+import jakarta.persistence.EnumType;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -46,7 +35,7 @@ public class SimpleBindingCoordinatorTests {
 			provider = CustomNamingStrategyProvider.class
 	) )
 	void testIt(ServiceRegistryScope scope) {
-		checkDomainModel(
+		BindingTestingHelper.checkDomainModel(
 				(context) -> {
 					final var bindingState = context.getBindingState();
 					final var metadataCollector = context.getMetadataCollector();
@@ -88,6 +77,14 @@ public class SimpleBindingCoordinatorTests {
 					assertThat( namespace2.getTables() ).hasSize( 1 );
 
 					final RootClass entityBinding = (RootClass) context.getMetadataCollector().getEntityBinding( SimpleEntity.class.getName() );
+					assertThat( entityBinding.isCached() ).isFalse();
+					final Column softDeleteColumn = entityBinding.getSoftDeleteColumn();
+					assertThat( softDeleteColumn ).isNotNull();
+					assertThat( softDeleteColumn.getName() ).isEqualTo( "ACTIVE" );
+					assertThat( entityBinding.getFilters() ).hasSize( 1 );
+					assertThat( entityBinding.getCacheRegionName() ).isEqualTo( "my-region" );
+					assertThat( entityBinding.getCacheConcurrencyStrategy() ).isEqualTo( CacheConcurrencyStrategy.READ_ONLY.toAccessType().getExternalName() );
+
 					final Property id = entityBinding.getProperty( "id" );
 					assertThat( id.getValue().getTable().getName() ).isEqualTo( "SIMPLETONS" );
 					final BasicValue idValue = (BasicValue) id.getValue();
@@ -105,84 +102,27 @@ public class SimpleBindingCoordinatorTests {
 					final BasicValue dataValue = (BasicValue) data.getValue();
 					assertThat( ( (Column) (dataValue).getColumn() ).getCanonicalName() ).isEqualTo( "datum" );
 					assertThat( dataValue.resolve().getDomainJavaType().getJavaType() ).isEqualTo( String.class );
+
+					final Property stuff = entityBinding.getProperty( "stuff" );
+					assertThat( stuff.getValue().getTable().getName() ).isEqualTo( "SIMPLETONS" );
+					final BasicValue stuffValue = (BasicValue) stuff.getValue();
+					assertThat( stuffValue.getEnumerationStyle() ).isEqualTo( EnumType.STRING );
+					assertThat( ( (Column) stuffValue.getColumn() ).getCanonicalName() ).isEqualTo( "stuff" );
+					assertThat( stuffValue.resolve().getDomainJavaType().getJavaType() ).isEqualTo( SimpleEntity.Stuff.class );
+					assertThat( stuffValue.resolve().getJdbcType().getJdbcTypeCode() ).isEqualTo( SqlTypes.VARCHAR );
+
+					final Property tenantKey = entityBinding.getProperty( "tenantKey" );
+					final BasicValue tenantKeyValue = (BasicValue) tenantKey.getValue();
+					assertThat( ( (Column) tenantKeyValue.getColumn() ).getCanonicalName() ).isEqualTo( "tenantkey" );
+					assertThat( tenantKeyValue.resolve().getDomainJavaType().getJavaType() ).isEqualTo( String.class );
+
+					final Property version = entityBinding.getProperty( "version" );
+					final BasicValue versionValue = (BasicValue) version.getValue();
+					assertThat( ( (Column) versionValue.getColumn() ).getCanonicalName() ).isEqualTo( "version" );
+					assertThat( versionValue.resolve().getDomainJavaType().getJavaType() ).isEqualTo( Integer.class );
 				},
 				scope.getRegistry(),
 				SimpleEntity.class
 		);
-	}
-
-	interface DomainModelCheckContext {
-		InFlightMetadataCollectorImpl getMetadataCollector();
-		BindingStateImpl getBindingState();
-	}
-
-	@FunctionalInterface
-	interface DomainModelCheck {
-		void checkDomainModel(DomainModelCheckContext context);
-	}
-
-	private static void checkDomainModel(DomainModelCheck check, StandardServiceRegistry serviceRegistry, Class<?>... domainClasses) {
-		final BootstrapContextImpl bootstrapContext = buildBootstrapContext( serviceRegistry );
-		final ManagedResources managedResources = buildManagedResources( domainClasses, bootstrapContext );
-
-		final InFlightMetadataCollectorImpl metadataCollector = new InFlightMetadataCollectorImpl(
-				bootstrapContext,
-				bootstrapContext.getMetadataBuildingOptions()
-		);
-
-		final CategorizedDomainModel categorizedDomainModel = ManagedResourcesProcessor.processManagedResources(
-				managedResources,
-				bootstrapContext
-		);
-
-		final MetadataBuildingContextRootImpl metadataBuildingContext = new MetadataBuildingContextRootImpl(
-				"models",
-				bootstrapContext,
-				bootstrapContext.getMetadataBuildingOptions(),
-				metadataCollector
-		);
-		final BindingStateImpl bindingState = new BindingStateImpl( metadataBuildingContext );
-		final BindingOptionsImpl bindingOptions = new BindingOptionsImpl( metadataBuildingContext );
-		final BindingContextImpl bindingContext = new BindingContextImpl(
-				categorizedDomainModel,
-				bootstrapContext
-		);
-
-		BindingCoordinator.coordinateBinding(
-				categorizedDomainModel,
-				bindingState,
-				bindingOptions,
-				bindingContext
-		);
-
-		check.checkDomainModel( new DomainModelCheckContext() {
-			@Override
-			public InFlightMetadataCollectorImpl getMetadataCollector() {
-				return metadataCollector;
-			}
-
-			@Override
-			public BindingStateImpl getBindingState() {
-				return bindingState;
-			}
-		} );
-	}
-
-	private static BootstrapContextImpl buildBootstrapContext(StandardServiceRegistry serviceRegistry) {
-		final MetadataBuildingOptionsImpl metadataBuildingOptions = new MetadataBuildingOptionsImpl( serviceRegistry );
-		final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl( serviceRegistry, metadataBuildingOptions );
-		metadataBuildingOptions.setBootstrapContext( bootstrapContext );
-		return bootstrapContext;
-	}
-
-	private static ManagedResources buildManagedResources(
-			Class<?>[] domainClasses,
-			BootstrapContextImpl bootstrapContext) {
-		final MetadataSources metadataSources = new MetadataSources( bootstrapContext.getServiceRegistry() );
-		for ( int i = 0; i < domainClasses.length; i++ ) {
-			metadataSources.addAnnotatedClass( domainClasses[i] );
-		}
-		final ManagedResources managedResources = MetadataBuildingProcess.prepare( metadataSources, bootstrapContext );
-		return managedResources;
 	}
 }

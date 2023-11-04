@@ -8,19 +8,14 @@ package org.hibernate.models.orm.bind.internal.binders;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 import org.hibernate.annotations.NaturalId;
-import org.hibernate.annotations.OptimisticLock;
-import org.hibernate.annotations.OptimisticLockType;
-import org.hibernate.annotations.OptimisticLocking;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.IdentifiableTypeClass;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
 import org.hibernate.mapping.Value;
-import org.hibernate.models.orm.AnnotationPlacementException;
 import org.hibernate.models.orm.bind.spi.BindingContext;
 import org.hibernate.models.orm.bind.spi.BindingOptions;
 import org.hibernate.models.orm.bind.spi.BindingState;
@@ -29,11 +24,6 @@ import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.KeyMapping;
-import org.hibernate.models.source.spi.ClassDetails;
-
-import jakarta.persistence.Version;
-
-import static org.hibernate.models.orm.categorize.xml.internal.AttributeProcessor.processNaturalId;
 
 /**
  * @author Steve Ebersole
@@ -55,7 +45,7 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 		super( type, state, options, bindingContext );
 		this.superType = superType;
 		this.hierarchyRelation = hierarchyRelation;
-		this.superTypeBinder = state.getSuperTypeBinder( getManagedType().getClassDetails() );
+		this.superTypeBinder = superType == null ? null : (IdentifiableTypeBinder) state.getTypeBinder( superType.getClassDetails() );
 		this.attributeBinders = new ArrayList<>( type.getNumberOfAttributes() );
 	}
 
@@ -63,6 +53,10 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 
 	public EntityTypeBinder getSuperEntityBinder() {
 		IdentifiableTypeBinder check = superTypeBinder;
+		if ( check == null ) {
+			return null;
+		}
+
 		do {
 			if ( check.getTypeBinding() instanceof PersistentClass ) {
 				return (EntityTypeBinder) check.getSuperTypeBinder();

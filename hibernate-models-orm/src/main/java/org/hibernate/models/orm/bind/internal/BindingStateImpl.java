@@ -24,6 +24,7 @@ import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.orm.bind.internal.binders.EntityTypeBinder;
 import org.hibernate.models.orm.bind.internal.binders.IdentifiableTypeBinder;
 import org.hibernate.models.orm.bind.internal.binders.ManagedTypeBinder;
+import org.hibernate.models.orm.bind.internal.binders.MappedSuperTypeBinder;
 import org.hibernate.models.orm.bind.internal.binders.TableBinder;
 import org.hibernate.models.orm.bind.spi.BindingState;
 import org.hibernate.models.orm.bind.spi.TableReference;
@@ -98,9 +99,14 @@ public class BindingStateImpl implements BindingState {
 			}
 		}
 
-		if ( binder instanceof EntityTypeBinder ) {
-			metadataBuildingContext.getMetadataCollector().addEntityBinding( ( (EntityTypeBinder) binder ).getTypeBinding() );
+		if ( binder instanceof EntityTypeBinder entityTypeBinder ) {
+			metadataBuildingContext.getMetadataCollector().addEntityBinding( entityTypeBinder.getTypeBinding() );
 		}
+		else if ( binder instanceof MappedSuperTypeBinder mappedSuperBinder )
+		metadataBuildingContext.getMetadataCollector().addMappedSuperclass(
+				mappedSuperBinder.getManagedType().getClassDetails().toJavaClass(),
+				mappedSuperBinder.getTypeBinding()
+		);
 	}
 
 	@Override
