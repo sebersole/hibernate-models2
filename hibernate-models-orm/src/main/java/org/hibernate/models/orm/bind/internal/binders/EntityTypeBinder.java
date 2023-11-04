@@ -6,7 +6,10 @@
  */
 package org.hibernate.models.orm.bind.internal.binders;
 
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.hibernate.annotations.Filter;
@@ -20,6 +23,10 @@ import org.hibernate.boot.model.naming.PhysicalNamingStrategy;
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.engine.OptimisticLockStyle;
 import org.hibernate.internal.util.StringHelper;
+import org.hibernate.jpa.event.internal.EntityCallback;
+import org.hibernate.jpa.event.internal.ListenerCallback;
+import org.hibernate.jpa.event.spi.CallbackDefinition;
+import org.hibernate.jpa.event.spi.CallbackType;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.IdentifiableTypeClass;
@@ -44,9 +51,12 @@ import org.hibernate.models.orm.categorize.spi.CacheRegion;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
+import org.hibernate.models.orm.categorize.spi.JpaEventListener;
+import org.hibernate.models.orm.categorize.spi.JpaEventListenerStyle;
 import org.hibernate.models.orm.categorize.spi.NaturalIdCacheRegion;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.source.spi.MethodDetails;
 
 import jakarta.persistence.Cacheable;
 import jakarta.persistence.Entity;
@@ -140,8 +150,170 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 
 		processCaching( classDetails, state, context );
 		processFilters( classDetails, state, context );
+		processJpaEventListeners( type, state, context );
 
 		prepareBinding( delegateBinders );
+	}
+
+	private void processJpaEventListeners(EntityTypeMetadata type, BindingState state, BindingContext context) {
+		final List<JpaEventListener> listeners = type.getCompleteJpaEventListeners();
+		if ( CollectionHelper.isEmpty( listeners ) ) {
+			return;
+		}
+
+		listeners.forEach( (listener) -> {
+			if ( listener.getStyle() == JpaEventListenerStyle.CALLBACK ) {
+				processEntityCallbacks( listener );
+			}
+			else {
+				assert listener.getStyle() == JpaEventListenerStyle.LISTENER;
+				processListenerCallbacks( listener );
+			}
+		} );
+	}
+
+	private void processEntityCallbacks(JpaEventListener listener) {
+		final Class<?> entityClass = listener.getCallbackClass().toJavaClass();
+		processJpaEventCallbacks( entityClass, listener, JpaEventListenerStyle.CALLBACK, null );
+	}
+
+	private void processJpaEventCallbacks(
+			Class<?> listenerClass,
+			JpaEventListener listener,
+			JpaEventListenerStyle style,
+			Class<?> methodArgumentType) {
+		assert style == JpaEventListenerStyle.CALLBACK || methodArgumentType != null;
+
+		// todo : would be nicer to allow injecting them one at a time.
+		//  		upstream is defined currently to accept a List
+		final List<CallbackDefinition> callbackDefinitions = new ArrayList<>();
+
+		final MethodDetails prePersistMethod = listener.getPrePersistMethod();
+		if ( prePersistMethod != null ) {
+			final Method callbackMethod = findCallbackMethod( listenerClass, prePersistMethod, methodArgumentType );
+			callbackDefinitions.add( createCallbackDefinition(
+					listenerClass,
+					callbackMethod,
+					style,
+					CallbackType.PRE_PERSIST
+			) );
+		}
+
+		final MethodDetails postPersistMethod = listener.getPostPersistMethod();
+		if ( postPersistMethod != null ) {
+			final Method callbackMethod = findCallbackMethod( listenerClass, postPersistMethod, methodArgumentType );
+			callbackDefinitions.add( createCallbackDefinition(
+					listenerClass,
+					callbackMethod,
+					style,
+					CallbackType.POST_PERSIST
+			) );
+		}
+
+		final MethodDetails preUpdateMethod = listener.getPreUpdateMethod();
+		if ( preUpdateMethod != null ) {
+			final Method callbackMethod = findCallbackMethod( listenerClass, preUpdateMethod, methodArgumentType );
+			callbackDefinitions.add( createCallbackDefinition(
+					listenerClass,
+					callbackMethod,
+					style,
+					CallbackType.PRE_UPDATE
+			) );
+		}
+
+		final MethodDetails postUpdateMethod = listener.getPostUpdateMethod();
+		if ( postUpdateMethod != null ) {
+			final Method callbackMethod = findCallbackMethod( listenerClass, postUpdateMethod, methodArgumentType );
+			callbackDefinitions.add( createCallbackDefinition(
+					listenerClass,
+					callbackMethod,
+					style,
+					CallbackType.POST_UPDATE
+			) );
+		}
+
+		final MethodDetails preRemoveMethod = listener.getPreRemoveMethod();
+		if ( preRemoveMethod != null ) {
+			final Method callbackMethod = findCallbackMethod( listenerClass, preRemoveMethod, methodArgumentType );
+			callbackDefinitions.add( createCallbackDefinition(
+					listenerClass,
+					callbackMethod,
+					style,
+					CallbackType.PRE_REMOVE
+			) );
+		}
+
+		final MethodDetails postRemoveMethod = listener.getPostRemoveMethod();
+		if ( postRemoveMethod != null ) {
+			final Method callbackMethod = findCallbackMethod( listenerClass, postRemoveMethod, methodArgumentType );
+			callbackDefinitions.add( createCallbackDefinition(
+					listenerClass,
+					callbackMethod,
+					style,
+					CallbackType.POST_REMOVE
+			) );
+		}
+
+		final MethodDetails postLoadMethod = listener.getPostLoadMethod();
+		if ( postLoadMethod != null ) {
+			final Method callbackMethod = findCallbackMethod( listenerClass, postLoadMethod, methodArgumentType );
+			callbackDefinitions.add( createCallbackDefinition(
+					listenerClass,
+					callbackMethod,
+					style,
+					CallbackType.POST_LOAD
+			) );
+		}
+
+		binding.addCallbackDefinitions( callbackDefinitions );
+	}
+
+	private static CallbackDefinition createCallbackDefinition(
+			Class<?> listenerClass,
+			Method callbackMethod,
+			JpaEventListenerStyle style,
+			CallbackType callbackType) {
+		final CallbackDefinition callback;
+		if ( style == JpaEventListenerStyle.CALLBACK ) {
+			callback = new EntityCallback.Definition( callbackMethod, callbackType );
+		}
+		else {
+			callback = new ListenerCallback.Definition( listenerClass, callbackMethod, callbackType );
+		}
+		return callback;
+	}
+
+	private void processListenerCallbacks(JpaEventListener listener) {
+		final Class<?> listenerClass = listener.getCallbackClass().toJavaClass();
+		processJpaEventCallbacks( listenerClass, listener, JpaEventListenerStyle.LISTENER, getManagedType().getClassDetails().toJavaClass() );
+	}
+
+	private Method findCallbackMethod(
+			Class<?> callbackTarget,
+			MethodDetails callbackMethod,
+			Class<?> entityType) {
+		try {
+			if ( callbackMethod.getArgumentTypes().isEmpty() ) {
+				return callbackTarget.getDeclaredMethod( callbackMethod.getName() );
+			}
+			else {
+				final ClassDetails argClassDetails = callbackMethod.getArgumentTypes().get( 0 );
+				// we don't
+				return callbackTarget.getMethod( callbackMethod.getName(), argClassDetails.toJavaClass() );
+			}
+		}
+		catch (NoSuchMethodException e) {
+			final ModelsException modelsException = new ModelsException(
+					String.format(
+							Locale.ROOT,
+							"Unable to locate callback method - %s.%s",
+							callbackTarget.getName(),
+							callbackMethod.getName()
+					)
+			);
+			modelsException.addSuppressed( e );
+			throw modelsException;
+		}
 	}
 
 	@Override

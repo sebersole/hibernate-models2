@@ -19,7 +19,7 @@ import static org.hibernate.models.orm.bind.BindingTestingHelper.checkDomainMode
 /**
  * @author Steve Ebersole
  */
-public class MappedSuperTests {
+public class MappedSuperBindingTests {
 	@Test
 	@ServiceRegistry
 	void testMappedSuper(ServiceRegistryScope scope) {
@@ -30,11 +30,13 @@ public class MappedSuperTests {
 
 					final MappedSuperclass mappedSuper = metadataCollector.getMappedSuperclass( HierarchySuper.class );
 					assertThat( mappedSuper ).isNotNull();
+
 					final PersistentClass entityBinding = metadataCollector.getEntityBinding( HierarchyRoot.class.getName() );
 					assertThat( entityBinding ).isNotNull();
 					assertThat( entityBinding.getSuperPersistentClass() ).isNull();
 					assertThat( entityBinding.getSuperType() ).isEqualTo( mappedSuper );
 					assertThat( entityBinding.getSuperMappedSuperclass() ).isEqualTo( mappedSuper );
+					assertThat( entityBinding.getCallbackDefinitions() ).hasSize( 3 );
 				},
 				scope.getRegistry(),
 				HierarchySuper.class,
