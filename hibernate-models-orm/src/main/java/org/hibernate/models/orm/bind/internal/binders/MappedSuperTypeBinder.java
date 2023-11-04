@@ -6,12 +6,13 @@
  */
 package org.hibernate.models.orm.bind.internal.binders;
 
-import org.hibernate.mapping.IdentifiableTypeClass;
 import org.hibernate.mapping.MappedSuperclass;
+import org.hibernate.mapping.Table;
 import org.hibernate.models.orm.bind.spi.BindingContext;
 import org.hibernate.models.orm.bind.spi.BindingOptions;
 import org.hibernate.models.orm.bind.spi.BindingState;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
+import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.MappedSuperclassTypeMetadata;
 
@@ -35,7 +36,26 @@ public class MappedSuperTypeBinder extends IdentifiableTypeBinder {
 	}
 
 	@Override
-	public IdentifiableTypeClass getTypeBinding() {
+	public MappedSuperclass getTypeBinding() {
+		return binding;
+	}
+
+	@Override
+	public Table getTable() {
+		final var superEntityBinder = getSuperEntityBinder();
+		if ( superEntityBinder == null ) {
+			return null;
+		}
+
+		return superEntityBinder.getTypeBinding().getTable();
+	}
+
+	@Override
+	public EntityTypeMetadata findSuperEntity() {
+		if ( getSuperType() != null ) {
+			final var superTypeBinder = getBindingState().getSuperTypeBinder( getManagedType().getClassDetails() );
+			return superTypeBinder.findSuperEntity();
+		}
 		return null;
 	}
 }

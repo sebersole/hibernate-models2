@@ -52,4 +52,8 @@ public abstract class ManagedTypeBinder {
 		// todo : ideally we'd pre-process attributes here, but the boot mapping model has
 		//		no commonality between embeddable and identifiable (no ManagedType corollary)
 	}
+
+	public void processSecondPasses() {
+
+	}
 }

@@ -9,7 +9,7 @@ package org.hibernate.models.orm.bind.internal.binders;
 import java.util.function.Supplier;
 
 import org.hibernate.mapping.Column;
-import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
+import org.hibernate.models.orm.bind.internal.BindingHelper;
 import org.hibernate.models.source.spi.AnnotationUsage;
 
 import static org.hibernate.internal.util.NullnessHelper.nullif;
@@ -20,8 +20,7 @@ import static org.hibernate.internal.util.NullnessHelper.nullif;
 public class ColumnBinder {
 	public static Column bindColumn(
 			AnnotationUsage<?> annotationUsage,
-			Supplier<String> defaultNameSupplier,
-			ModelCategorizationContext modelBuildingContext) {
+			Supplier<String> defaultNameSupplier) {
 		return bindColumn(
 				annotationUsage,
 				defaultNameSupplier,
@@ -29,8 +28,7 @@ public class ColumnBinder {
 				true,
 				255,
 				0,
-				0,
-				modelBuildingContext
+				0
 		);
 	}
 
@@ -39,27 +37,29 @@ public class ColumnBinder {
 			Supplier<String> defaultNameSupplier,
 			boolean uniqueByDefault,
 			boolean nullableByDefault,
-			long lengthByDefault,
+			int lengthByDefault,
 			int precisionByDefault,
-			int scaleByDefault,
-			ModelCategorizationContext modelBuildingContext) {
+			int scaleByDefault) {
 		final Column result = new Column();
-		result.setName( columnName( annotationUsage, defaultNameSupplier, modelBuildingContext ) );
+		result.setName( columnName( annotationUsage, defaultNameSupplier ) );
 
-		result.setUnique( annotationUsage.getBoolean( "unique", uniqueByDefault ) );
-		result.setNullable( annotationUsage.getBoolean( "nullable", nullableByDefault ) );
-		result.setSqlType( annotationUsage.getString( "columnDefinition" ) );
-		result.setLength( annotationUsage.getLong( "length", lengthByDefault ) );
-		result.setPrecision( annotationUsage.getInteger( "precision", precisionByDefault ) );
-		result.setScale( annotationUsage.getInteger( "scale", scaleByDefault ) );
+		result.setUnique( BindingHelper.getValue( annotationUsage, "unique", uniqueByDefault ) );
+		result.setNullable( BindingHelper.getValue( annotationUsage, "nullable", nullableByDefault ) );
+		result.setSqlType( BindingHelper.getValue( annotationUsage, "columnDefinition", null ) );
+		result.setLength( BindingHelper.getValue( annotationUsage, "length", lengthByDefault ) );
+		result.setPrecision( BindingHelper.getValue( annotationUsage, "precision", precisionByDefault ) );
+		result.setScale( BindingHelper.getValue( annotationUsage, "scale", scaleByDefault ) );
 		return result;
 	}
 
 
 	private static String columnName(
 			AnnotationUsage<?> columnAnnotation,
-			Supplier<String> defaultNameSupplier,
-			ModelCategorizationContext modelBuildingContext) {
+			Supplier<String> defaultNameSupplier) {
+		if ( columnAnnotation == null ) {
+			return defaultNameSupplier.get();
+		}
+
 		return nullif( columnAnnotation.getAttributeValue( "name" ), defaultNameSupplier );
 	}
 

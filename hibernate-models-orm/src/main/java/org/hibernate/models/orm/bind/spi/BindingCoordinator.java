@@ -97,7 +97,8 @@ public class BindingCoordinator {
 		categorizedDomainModel.forEachEntityHierarchy( bindingCoordinator::processHierarchy );
 
 		// complete tables
-		bindingCoordinator.delegateBinders.getTableBinder().processQueue();
+		bindingCoordinator.delegateBinders.getTableBinder().processSecondPasses();
+		bindingCoordinator.delegateBinders.getTableBinder().processSecondPasses();
 
 		// process identifiers
 		categorizedDomainModel.forEachEntityHierarchy( (index, hierarchy) -> {
@@ -106,6 +107,9 @@ public class BindingCoordinator {
 
 		} );
 
+		state.forEachType( (name, managedTypeBinder) -> {
+			managedTypeBinder.processSecondPasses();
+		} );
 	}
 
 	private void processHierarchy(int index, EntityHierarchy hierarchy) {

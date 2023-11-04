@@ -46,4 +46,14 @@ public class NonAggregatedKeyMappingImpl implements NonAggregatedKeyMapping {
 			consumer.accept( i, idAttributes.get( i ) );
 		}
 	}
+
+	@Override
+	public boolean contains(AttributeMetadata attributeMetadata) {
+		for ( int i = 0; i < idAttributes.size(); i++ ) {
+			if ( idAttributes.get( i ) == attributeMetadata ) {
+				return true;
+			}
+		}
+		return false;
+	}
 }
