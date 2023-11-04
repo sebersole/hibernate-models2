@@ -19,6 +19,7 @@ import jakarta.persistence.AccessType;
  * @author Steve Ebersole
  */
 public interface ManagedTypeMetadata {
+
 	enum Kind { ENTITY, MAPPED_SUPER, EMBEDDABLE }
 
 	Kind getManagedTypeKind();

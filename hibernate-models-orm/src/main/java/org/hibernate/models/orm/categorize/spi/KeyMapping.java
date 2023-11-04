@@ -15,4 +15,6 @@ public interface KeyMapping {
 	ClassDetails getKeyType();
 
 	void forEachAttribute(AttributeConsumer consumer);
+
+	boolean contains(AttributeMetadata attributeMetadata);
 }

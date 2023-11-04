@@ -4,15 +4,23 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright: Red Hat Inc. and Hibernate Authors
  */
-package org.hibernate.models.orm.bind.spi;
+package org.hibernate.models.orm.bind.internal;
 
 import java.lang.annotation.Annotation;
+import java.util.Iterator;
+import java.util.List;
 
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
+import org.hibernate.models.ModelsException;
+import org.hibernate.models.orm.bind.spi.BindingContext;
+import org.hibernate.models.orm.bind.spi.BindingOptions;
+import org.hibernate.models.orm.bind.spi.QuotedIdentifierTarget;
 import org.hibernate.models.source.spi.AnnotationDescriptor;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.AttributeDescriptor;
+
+import static org.hibernate.models.orm.bind.ModelBindingLogging.MODEL_BINDING_LOGGER;
 
 /**
  * @author Steve Ebersole
@@ -97,5 +105,38 @@ public class BindingHelper {
 		}
 
 		return ann.getAttributeValue( attributeName, defaultValue );
+	}
+
+	public static void processSecondPassQueue(List<? extends SecondPass> secondPasses) {
+		if ( secondPasses == null ) {
+			return;
+		}
+
+		int processedCount = 0;
+		final Iterator<? extends SecondPass> secondPassItr = secondPasses.iterator();
+		while ( secondPassItr.hasNext() ) {
+			final SecondPass secondPass = secondPassItr.next();
+			try {
+				final boolean success = secondPass.process();
+				if ( success ) {
+					processedCount++;
+					secondPassItr.remove();
+				}
+			}
+			catch (Exception e) {
+				MODEL_BINDING_LOGGER.debug( "Error processing second pass", e );
+			}
+		}
+
+		if ( !secondPasses.isEmpty() ) {
+			if ( processedCount == 0 ) {
+				// there are second-passes in the queue, but we were not able to
+				// successfully process any of them.  this is a non-changing
+				// error condition - just throw an exception
+				throw new ModelsException( "Unable to process second-pass list" );
+			}
+
+			processSecondPassQueue( secondPasses );
+		}
 	}
 }

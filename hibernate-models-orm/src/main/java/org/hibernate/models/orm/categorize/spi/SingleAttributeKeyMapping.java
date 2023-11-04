@@ -26,4 +26,9 @@ public interface SingleAttributeKeyMapping extends KeyMapping {
 	default void forEachAttribute(AttributeConsumer consumer) {
 		consumer.accept( 0, getAttribute() );
 	}
+
+	@Override
+	default boolean contains(AttributeMetadata attributeMetadata) {
+		return attributeMetadata == getAttribute();
+	}
 }

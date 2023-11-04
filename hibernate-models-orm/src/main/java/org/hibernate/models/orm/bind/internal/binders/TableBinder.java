@@ -8,7 +8,6 @@ package org.hibernate.models.orm.bind.internal.binders;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import org.hibernate.annotations.Comment;
@@ -22,14 +21,13 @@ import org.hibernate.boot.model.naming.PhysicalNamingStrategy;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 import org.hibernate.mapping.Table;
-import org.hibernate.models.ModelsException;
 import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.orm.AnnotationPlacementException;
 import org.hibernate.models.orm.bind.internal.InLineView;
 import org.hibernate.models.orm.bind.internal.PhysicalTable;
 import org.hibernate.models.orm.bind.internal.SecondPass;
 import org.hibernate.models.orm.bind.spi.BindingContext;
-import org.hibernate.models.orm.bind.spi.BindingHelper;
+import org.hibernate.models.orm.bind.internal.BindingHelper;
 import org.hibernate.models.orm.bind.spi.BindingOptions;
 import org.hibernate.models.orm.bind.spi.BindingState;
 import org.hibernate.models.orm.bind.spi.PhysicalTableReference;
@@ -361,36 +359,8 @@ public class TableBinder {
 		}
 	}
 
-	public void processQueue() {
-		if ( secondPasses == null ) {
-			return;
-		}
-
-		int processedCount = 0;
-		final Iterator<? extends SecondPass> secondPassItr = secondPasses.iterator();
-		while ( secondPassItr.hasNext() ) {
-			final SecondPass secondPass = secondPassItr.next();
-			try {
-				final boolean success = secondPass.process();
-				if ( success ) {
-					processedCount++;
-					secondPassItr.remove();
-				}
-			}
-			catch (Exception ignoreForNow) {
-			}
-		}
-
-		if ( !secondPasses.isEmpty() ) {
-			if ( processedCount == 0 ) {
-				// there are second-passes in the queue, but we were not able to
-				// successfully process any of them.  this is a non-changing
-				// error condition - just throw an exception
-				throw new ModelsException( "Unable to process second-pass list" );
-			}
-
-			processQueue();
-		}
+	public void processSecondPasses() {
+		BindingHelper.processSecondPassQueue( secondPasses );
 	}
 
 	private void applyComment(Table table, AnnotationUsage<?> tableAnn, AnnotationUsage<Comment> commentAnn) {

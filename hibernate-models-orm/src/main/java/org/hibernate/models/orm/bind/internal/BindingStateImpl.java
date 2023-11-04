@@ -21,6 +21,7 @@ import org.hibernate.internal.util.NamedConsumer;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.models.ModelsException;
 import org.hibernate.models.internal.CollectionHelper;
+import org.hibernate.models.orm.bind.internal.binders.EntityTypeBinder;
 import org.hibernate.models.orm.bind.internal.binders.IdentifiableTypeBinder;
 import org.hibernate.models.orm.bind.internal.binders.ManagedTypeBinder;
 import org.hibernate.models.orm.bind.internal.binders.TableBinder;
@@ -88,14 +89,18 @@ public class BindingStateImpl implements BindingState {
 	public void registerTypeBinder(ManagedTypeMetadata type, ManagedTypeBinder binder) {
 		typeBinders.put( type.getClassDetails(), binder );
 
-//		if ( type instanceof IdentifiableTypeMetadata identifiableType ) {
-//			if ( identifiableType.getSuperType() != null ) {
-//				typeBindersBySuper.put(
-//						identifiableType.getSuperType().getClassDetails(),
-//						(IdentifiableTypeBinder) binder
-//				);
-//			}
-//		}
+		if ( type instanceof IdentifiableTypeMetadata identifiableType ) {
+			if ( identifiableType.getSuperType() != null ) {
+				typeBindersBySuper.put(
+						identifiableType.getSuperType().getClassDetails(),
+						(IdentifiableTypeBinder) binder
+				);
+			}
+		}
+
+		if ( binder instanceof EntityTypeBinder ) {
+			metadataBuildingContext.getMetadataCollector().addEntityBinding( ( (EntityTypeBinder) binder ).getTypeBinding() );
+		}
 	}
 
 	@Override
@@ -106,6 +111,11 @@ public class BindingStateImpl implements BindingState {
 	@Override
 	public IdentifiableTypeBinder getSuperTypeBinder(ClassDetails type) {
 		return typeBindersBySuper.get( type );
+	}
+
+	@Override
+	public void forEachType(NamedConsumer<ManagedTypeBinder> consumer) {
+		typeBinders.forEach( (classDetails, managedTypeBinder) -> consumer.consume( classDetails.getName(), managedTypeBinder ) );
 	}
 
 	@Override

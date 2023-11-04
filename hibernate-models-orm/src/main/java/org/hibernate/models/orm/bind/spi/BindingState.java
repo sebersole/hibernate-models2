@@ -46,5 +46,6 @@ public interface BindingState {
 
 	ManagedTypeBinder getTypeBinder(ClassDetails type);
 	IdentifiableTypeBinder getSuperTypeBinder(ClassDetails type);
+	void forEachType(NamedConsumer<ManagedTypeBinder> consumer);
 
 }

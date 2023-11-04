@@ -15,6 +15,11 @@ import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.model.process.spi.MetadataBuildingProcess;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.cfg.AvailableSettings;
+import org.hibernate.mapping.BasicValue;
+import org.hibernate.mapping.Column;
+import org.hibernate.mapping.PersistentClass;
+import org.hibernate.mapping.Property;
+import org.hibernate.mapping.RootClass;
 import org.hibernate.models.orm.bind.internal.BindingContextImpl;
 import org.hibernate.models.orm.bind.internal.BindingOptionsImpl;
 import org.hibernate.models.orm.bind.internal.BindingStateImpl;
@@ -81,6 +86,19 @@ public class SimpleBindingCoordinatorTests {
 					assertThat( namespaceItr.hasNext() ).isFalse();
 					assertThat( namespace1.getTables() ).hasSize( 1 );
 					assertThat( namespace2.getTables() ).hasSize( 1 );
+
+					final RootClass entityBinding = (RootClass) context.getMetadataCollector().getEntityBinding( SimpleEntity.class.getName() );
+					final Property id = entityBinding.getProperty( "id" );
+					assertThat( id.getValue().getTable().getName() ).isEqualTo( "SIMPLETONS" );
+					assertThat( ( (Column) ( (BasicValue) id.getValue() ).getColumn() ).getCanonicalName() ).isEqualTo( "id" );
+
+					final Property name = entityBinding.getProperty( "name" );
+					assertThat( id.getValue().getTable().getName() ).isEqualTo( "SIMPLETONS" );
+					assertThat( ( (Column) ( (BasicValue) name.getValue() ).getColumn() ).getCanonicalName() ).isEqualTo( "name" );
+
+					final Property data = entityBinding.getProperty( "data" );
+					assertThat( data.getValue().getTable().getName() ).isEqualTo( "SIMPLE_STUFF" );
+					assertThat( ( (Column) ( (BasicValue) data.getValue() ).getColumn() ).getCanonicalName() ).isEqualTo( "datum" );
 				},
 				scope.getRegistry(),
 				SimpleEntity.class
