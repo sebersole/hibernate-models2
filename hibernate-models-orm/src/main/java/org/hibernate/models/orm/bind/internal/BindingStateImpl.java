@@ -6,21 +6,29 @@
  */
 package org.hibernate.models.orm.bind.internal;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
 import org.hibernate.boot.model.naming.Identifier;
-import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.engine.spi.FilterDefinition;
 import org.hibernate.internal.util.NamedConsumer;
 import org.hibernate.metamodel.mapping.JdbcMapping;
+import org.hibernate.models.ModelsException;
 import org.hibernate.models.internal.CollectionHelper;
+import org.hibernate.models.orm.bind.internal.binders.IdentifiableTypeBinder;
+import org.hibernate.models.orm.bind.internal.binders.ManagedTypeBinder;
+import org.hibernate.models.orm.bind.internal.binders.TableBinder;
 import org.hibernate.models.orm.bind.spi.BindingState;
 import org.hibernate.models.orm.bind.spi.TableReference;
 import org.hibernate.models.orm.categorize.spi.FilterDefRegistration;
+import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
+import org.hibernate.models.orm.categorize.spi.ManagedTypeMetadata;
 import org.hibernate.models.source.spi.ClassDetails;
 import org.hibernate.type.spi.TypeConfiguration;
 
@@ -30,88 +38,105 @@ import org.hibernate.type.spi.TypeConfiguration;
 public class BindingStateImpl implements BindingState {
 	private final MetadataBuildingContext metadataBuildingContext;
 
-	private Map<String, TableReference> tableMap;
+	private final Map<String, TableReference> tableMap = new HashMap<>();
+
+	private final Map<ClassDetails, ManagedTypeBinder> typeBinders = new HashMap<>();
+	private final Map<ClassDetails, IdentifiableTypeBinder> typeBindersBySuper = new HashMap<>();
+
+	private List<TableBinder.TableSecondPass> tableSecondPasses;
 
 	public BindingStateImpl(MetadataBuildingContext metadataBuildingContext) {
 		this.metadataBuildingContext = metadataBuildingContext;
 	}
 
+	public void processSecondPasses() {
+		processSecondPasses( tableSecondPasses );
+	}
+
+	private void processSecondPasses(List<? extends SecondPass> secondPasses) {
+		int processedCount = 0;
+		final Iterator<? extends SecondPass> secondPassItr = secondPasses.iterator();
+		while ( secondPassItr.hasNext() ) {
+			final SecondPass secondPass = secondPassItr.next();
+			try {
+				final boolean success = secondPass.process();
+				if ( success ) {
+					processedCount++;
+					secondPassItr.remove();
+				}
+			}
+			catch (Exception ignoreForNow) {
+			}
+		}
+
+		if ( !secondPasses.isEmpty() ) {
+			if ( processedCount == 0 ) {
+				// there are second-passes in the queue, but we were not able to
+				// successfully process any of them.  this is a non-changing
+				// error condition - just throw an exception
+				throw new ModelsException( "Unable to process second-pass list" );
+			}
+		}
+	}
+
+	@Override
 	public MetadataBuildingContext getMetadataBuildingContext() {
 		return metadataBuildingContext;
 	}
 
 	@Override
-	public Database getDatabase() {
-		return getMetadataBuildingContext().getMetadataCollector().getDatabase();
+	public void registerTypeBinder(ManagedTypeMetadata type, ManagedTypeBinder binder) {
+		typeBinders.put( type.getClassDetails(), binder );
+
+//		if ( type instanceof IdentifiableTypeMetadata identifiableType ) {
+//			if ( identifiableType.getSuperType() != null ) {
+//				typeBindersBySuper.put(
+//						identifiableType.getSuperType().getClassDetails(),
+//						(IdentifiableTypeBinder) binder
+//				);
+//			}
+//		}
+	}
+
+	@Override
+	public ManagedTypeBinder getTypeBinder(ClassDetails type) {
+		return typeBinders.get( type );
+	}
+
+	@Override
+	public IdentifiableTypeBinder getSuperTypeBinder(ClassDetails type) {
+		return typeBindersBySuper.get( type );
 	}
 
 	@Override
 	public int getTableCount() {
-		return tableMap == null ? 0 : tableMap.size();
+		return tableMap.size();
 	}
 
 	@Override
 	public void forEachTable(NamedConsumer<TableReference> consumer) {
-		if ( tableMap != null ) {
-			//noinspection unchecked
-			tableMap.forEach( (BiConsumer<? super String, ? super TableReference>) consumer );
-		}
+		//noinspection unchecked
+		tableMap.forEach( (BiConsumer<? super String, ? super TableReference>) consumer );
 	}
 
 	@Override
 	public <T extends TableReference> T getTableByName(String name) {
-		if ( tableMap == null ) {
-			return null;
-		}
 		//noinspection unchecked
 		return (T) tableMap.get( name );
 	}
 
 	@Override
 	public void addTable(TableReference table) {
-		if ( tableMap == null ) {
-			tableMap = new HashMap<>();
-		}
 		tableMap.put( table.getLogicalName().getCanonicalName(), table );
-
-		if ( table instanceof PhysicalTable physicalTable ) {
-			var addedTable = metadataBuildingContext.getMetadataCollector().addTable(
-					resolveSchemaName( physicalTable.schema() ),
-					resolveCatalogName( physicalTable.catalog() ),
-					physicalTable.logicalName().getCanonicalName(),
-					null,
-					!table.isExportable(),
-					metadataBuildingContext
-			);
-			addedTable.setComment( physicalTable.comment() );
-		}
-		else if ( table instanceof PhysicalView physicalView ) {
-			var addedTable = metadataBuildingContext.getMetadataCollector().addTable(
-					null,
-					null,
-					null,
-					null,
-					!physicalView.isExportable(),
-					metadataBuildingContext
-			);
-			addedTable.setViewQuery( physicalView.query() );
-		}
-		else if ( table instanceof SecondaryTable secondaryTable ) {
-			var addedTable = metadataBuildingContext.getMetadataCollector().addTable(
-					resolveSchemaName( secondaryTable.schema() ),
-					resolveCatalogName( secondaryTable.catalog() ),
-					secondaryTable.logicalName().getCanonicalName(),
-					null,
-					!table.isExportable(),
-					metadataBuildingContext
-			);
-			addedTable.setComment( secondaryTable.comment() );
-		}
 	}
 
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	// PhysicalTable
+	@Override
+	public void registerTableSecondPass(TableBinder.TableSecondPass secondPass) {
+		if ( tableSecondPasses == null ) {
+			tableSecondPasses = new ArrayList<>();
+		}
+		tableSecondPasses.add( secondPass );
+	}
 
 	private String resolveSchemaName(Identifier explicit) {
 		if ( explicit != null ) {
@@ -147,10 +172,6 @@ public class BindingStateImpl implements BindingState {
 		return null;
 
 	}
-
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	// VirtualTableBinding
 
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

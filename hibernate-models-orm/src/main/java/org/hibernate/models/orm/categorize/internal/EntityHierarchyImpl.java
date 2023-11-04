@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.NaturalIdCache;
 import org.hibernate.annotations.OptimisticLocking;
+import org.hibernate.annotations.ParamDef;
 import org.hibernate.cache.spi.access.AccessType;
 import org.hibernate.engine.OptimisticLockStyle;
 import org.hibernate.models.orm.JpaAnnotations;
@@ -172,13 +173,41 @@ public class EntityHierarchyImpl implements EntityHierarchy {
 	}
 
 	@Override
-	public void forEachType(Consumer<IdentifiableTypeMetadata> typeConsumer) {
-		forEachType( getAbsoluteRoot(), typeConsumer );
+	public void forEachType(HierarchyTypeVisitor typeVisitor) {
+		final IdentifiableTypeMetadata absoluteRoot = getAbsoluteRoot();
+		final HierarchyRelation hierarchyRelation;
+		if ( absoluteRoot == getRoot() ) {
+			hierarchyRelation = HierarchyRelation.ROOT;
+		}
+		else {
+			hierarchyRelation = HierarchyRelation.SUPER;
+		}
+
+		forEachType( absoluteRoot, null, hierarchyRelation, typeVisitor );
 	}
 
-	private void forEachType(IdentifiableTypeMetadata start, Consumer<IdentifiableTypeMetadata> typeConsumer) {
-		typeConsumer.accept( getAbsoluteRoot() );
-		start.forEachSubType( typeMetadata -> forEachType( typeMetadata, typeConsumer ) );
+	private void forEachType(
+			IdentifiableTypeMetadata type,
+			IdentifiableTypeMetadata superType,
+			HierarchyRelation hierarchyRelation,
+			HierarchyTypeVisitor typeVisitor) {
+		typeVisitor.visitType( type, superType, this, hierarchyRelation );
+
+		final HierarchyRelation nextRelation;
+		if ( hierarchyRelation == HierarchyRelation.SUPER ) {
+			if ( type == getRoot().getSuperType() ) {
+				// the next iteration will be the root
+				nextRelation = HierarchyRelation.ROOT;
+			}
+			else {
+				nextRelation = HierarchyRelation.SUPER;
+			}
+		}
+		else {
+			nextRelation = HierarchyRelation.SUB;
+		}
+
+		type.forEachSubType( subType -> forEachType( subType, type, nextRelation, typeVisitor ) );
 	}
 
 	@Override

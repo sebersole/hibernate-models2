@@ -13,7 +13,6 @@ import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 import org.hibernate.models.source.spi.AnnotationDescriptor;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.AttributeDescriptor;
-import org.hibernate.models.source.spi.SourceModelContext;
 
 /**
  * @author Steve Ebersole
@@ -90,5 +89,13 @@ public class BindingHelper {
 			JdbcEnvironment jdbcEnvironment) {
 		final boolean globallyQuoted = options.getGloballyQuotedIdentifierTargets().contains( target );
 		return jdbcEnvironment.getIdentifierHelper().toIdentifier( name, globallyQuoted );
+	}
+
+	public static <T,A extends Annotation> T getValue(AnnotationUsage<A> ann, String attributeName, T defaultValue) {
+		if ( ann == null ) {
+			return defaultValue;
+		}
+
+		return ann.getAttributeValue( attributeName, defaultValue );
 	}
 }

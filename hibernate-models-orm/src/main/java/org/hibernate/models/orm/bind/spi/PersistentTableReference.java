@@ -9,5 +9,5 @@ package org.hibernate.models.orm.bind.spi;
 /**
  * @author Steve Ebersole
  */
-public interface PersistentTableReference extends TableReference {
+public interface PersistentTableReference extends TableReference, SchemaAware {
 }

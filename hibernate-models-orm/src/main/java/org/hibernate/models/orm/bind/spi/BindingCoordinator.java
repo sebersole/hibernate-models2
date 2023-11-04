@@ -10,17 +10,19 @@ import java.util.List;
 
 import org.hibernate.annotations.Any;
 import org.hibernate.annotations.ManyToAny;
-import org.hibernate.boot.model.naming.ImplicitNamingStrategy;
-import org.hibernate.boot.model.naming.ImplicitNamingStrategyComponentPathImpl;
-import org.hibernate.boot.model.naming.PhysicalNamingStrategy;
-import org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl;
-import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
+import org.hibernate.mapping.RootClass;
 import org.hibernate.models.orm.AnnotationPlacementException;
-import org.hibernate.models.orm.bind.internal.TableBinder;
+import org.hibernate.models.orm.bind.internal.binders.DelegateBinders;
+import org.hibernate.models.orm.bind.internal.binders.EntityTypeBinder;
+import org.hibernate.models.orm.bind.internal.binders.MappedSuperTypeBinder;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
+import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
+import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.GlobalRegistrations;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
+import org.hibernate.models.orm.categorize.spi.ManagedTypeMetadata;
+import org.hibernate.models.orm.categorize.spi.MappedSuperclassTypeMetadata;
 import org.hibernate.models.source.spi.AnnotationUsage;
 import org.hibernate.models.source.spi.ClassDetails;
 
@@ -41,23 +43,23 @@ import jakarta.persistence.TableGenerator;
  */
 public class BindingCoordinator {
 	private final CategorizedDomainModel categorizedDomainModel;
-	private final BindingState state;
-	private final BindingOptions options;
+	private final BindingState bindingState;
+	private final BindingOptions bindingOptions;
 	private final BindingContext bindingContext;
 
-	private final TableBinder tableBinder;
+	private final DelegateBinders delegateBinders;
 
 	public BindingCoordinator(
 			CategorizedDomainModel categorizedDomainModel,
-			BindingState state,
-			BindingOptions options,
+			BindingState bindingState,
+			BindingOptions bindingOptions,
 			BindingContext bindingContext) {
 		this.categorizedDomainModel = categorizedDomainModel;
-		this.options = options;
-		this.state = state;
+		this.bindingOptions = bindingOptions;
+		this.bindingState = bindingState;
 		this.bindingContext = bindingContext;
 
-		this.tableBinder = new TableBinder( state, options, bindingContext );
+		this.delegateBinders = new DelegateBinders( bindingState, bindingOptions, bindingContext );
 	}
 
 	/**
@@ -91,26 +93,58 @@ public class BindingCoordinator {
 		bindingCoordinator.processEventListeners( categorizedDomainModel.getGlobalRegistrations() );
 		bindingCoordinator.processFilterDefinitions( categorizedDomainModel.getGlobalRegistrations() );
 
-		categorizedDomainModel.forEachEntityHierarchy( (typeIndex, hierarchy) -> {
-			hierarchy.forEachType( (type) -> {
-				// type bindings
-				bindingCoordinator.processTables( type );
-				bindingCoordinator.processGenerators( type );
+		// process hierarchy
+		categorizedDomainModel.forEachEntityHierarchy( bindingCoordinator::processHierarchy );
 
-				type.forEachAttribute( (attributeIndex, attribute) -> {
-					// attribute bindings
-					bindingCoordinator.processTables( attribute );
-				} );
-			} );
+		// complete tables
+		bindingCoordinator.delegateBinders.getTableBinder().processQueue();
+
+		// process identifiers
+		categorizedDomainModel.forEachEntityHierarchy( (index, hierarchy) -> {
+			final EntityTypeBinder typeBinder = (EntityTypeBinder) state.getTypeBinder( hierarchy.getRoot() );
+			final RootClass binding = (RootClass) typeBinder.getTypeBinding();
+
 		} );
 
-		bindingCoordinator.processQueues();
 	}
 
-	private void processQueues() {
-		tableBinder.processQueue();
+	private void processHierarchy(int index, EntityHierarchy hierarchy) {
+		hierarchy.forEachType( this::processIdentifiableType );
 	}
 
+
+	private void processIdentifiableType(
+			IdentifiableTypeMetadata type,
+			IdentifiableTypeMetadata superType,
+			EntityHierarchy hierarchy,
+			EntityHierarchy.HierarchyRelation relation) {
+		processGenerators( type );
+
+		if ( type.getManagedTypeKind() == ManagedTypeMetadata.Kind.ENTITY ) {
+			final EntityTypeBinder binder = new EntityTypeBinder(
+					(EntityTypeMetadata) type,
+					superType,
+					relation,
+					delegateBinders,
+					bindingState,
+					bindingOptions,
+					bindingContext
+			);
+			bindingState.registerTypeBinder( type, binder );
+		}
+		else {
+			assert type.getManagedTypeKind() == ManagedTypeMetadata.Kind.MAPPED_SUPER;
+			final MappedSuperTypeBinder binder = new MappedSuperTypeBinder(
+					(MappedSuperclassTypeMetadata) type,
+					superType,
+					relation,
+					bindingState,
+					bindingOptions,
+					bindingContext
+			);
+			bindingState.registerTypeBinder( type, binder );
+		}
+	}
 
 	private void processGenerators(GlobalRegistrations globalRegistrations) {
 		// todo : process these
@@ -154,7 +188,7 @@ public class BindingCoordinator {
 
 	private void processFilterDefinitions(GlobalRegistrations globalRegistrations) {
 		globalRegistrations.getFilterDefRegistrations().forEach( (s, filterDefRegistration) -> {
-			state.apply( filterDefRegistration );
+			bindingState.apply( filterDefRegistration );
 		} );
 
 	}
@@ -224,10 +258,6 @@ public class BindingCoordinator {
 			// process both the sequence and the generator
 		} );
 
-	}
-
-	private void processTables(IdentifiableTypeMetadata type) {
-		tableBinder.processTables( type );
 	}
 
 }

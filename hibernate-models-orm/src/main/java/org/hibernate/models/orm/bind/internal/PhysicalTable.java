@@ -7,6 +7,7 @@
 package org.hibernate.models.orm.bind.internal;
 
 import org.hibernate.boot.model.naming.Identifier;
+import org.hibernate.mapping.Table;
 import org.hibernate.models.orm.bind.spi.PhysicalTableReference;
 
 /**
@@ -20,12 +21,12 @@ import org.hibernate.models.orm.bind.spi.PhysicalTableReference;
  */
 public record PhysicalTable(
 		Identifier logicalName,
-		Identifier physicalName,
-		Identifier catalog,
-		Identifier schema,
-		boolean isAbstract,
-		String comment,
-		String options) implements PhysicalTableReference {
+		Identifier logicalCatalogName,
+		Identifier logicalSchemaName,
+		Identifier physicalTableName,
+		Identifier physicalCatalogName,
+		Identifier physicalSchemaName,
+		Table binding) implements PhysicalTableReference {
 
 	@Override
 	public Identifier getLogicalName() {
@@ -33,22 +34,37 @@ public record PhysicalTable(
 	}
 
 	@Override
+	public Identifier getLogicalSchemaName() {
+		return logicalSchemaName;
+	}
+
+	@Override
+	public Identifier getLogicalCatalogName() {
+		return logicalCatalogName;
+	}
+
+	@Override
+	public Identifier getPhysicalTableName() {
+		return physicalTableName;
+	}
+
+	@Override
+	public Identifier getPhysicalSchemaName() {
+		return physicalSchemaName;
+	}
+
+	@Override
+	public Identifier getPhysicalCatalogName() {
+		return physicalCatalogName;
+	}
+
+	@Override
 	public boolean isExportable() {
-		return !isAbstract;
+		return !binding.isAbstract() && binding.getExportIdentifier() != null;
 	}
 
 	@Override
-	public Identifier getTableName() {
-		return physicalName;
-	}
-
-	@Override
-	public Identifier getSchemaName() {
-		return schema;
-	}
-
-	@Override
-	public Identifier getCatalogName() {
-		return catalog;
+	public Table getBinding() {
+		return binding;
 	}
 }
