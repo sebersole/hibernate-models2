@@ -7,7 +7,9 @@
 package org.hibernate.models.orm.bind.internal.binders;
 
 import org.hibernate.mapping.MappedSuperclass;
+import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Table;
+import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.orm.bind.spi.BindingContext;
 import org.hibernate.models.orm.bind.spi.BindingOptions;
 import org.hibernate.models.orm.bind.spi.BindingState;
@@ -31,8 +33,34 @@ public class MappedSuperTypeBinder extends IdentifiableTypeBinder {
 			BindingContext bindingContext) {
 		super( type, superType, hierarchyRelation, state, options, bindingContext );
 
-		throw new UnsupportedOperationException( "Not yet implemented" );
-//		this.binding = new MappedSuperclass(  );
+		final IdentifiableTypeBinder superTypeBinder = getSuperTypeBinder();
+		final EntityTypeBinder superEntityBinder = getSuperEntityBinder();
+		final MappedSuperclass superMappedSuper;
+		final PersistentClass superEntity;
+		if ( superTypeBinder == superEntityBinder && superTypeBinder != null ) {
+			superMappedSuper = null;
+			superEntity = superEntityBinder.getTypeBinding();
+		}
+		else if ( superTypeBinder != null ) {
+			superMappedSuper = (MappedSuperclass) superTypeBinder.getTypeBinding();
+			superEntity = null;
+		}
+		else if ( superEntityBinder != null ) {
+			superMappedSuper = null;
+			superEntity = superEntityBinder.getTypeBinding();
+		}
+		else {
+			superMappedSuper = null;
+			superEntity = null;
+		}
+
+		this.binding = new MappedSuperclass( superMappedSuper, superEntity, getTable() );
+		state.registerTypeBinder( type, this );
+
+		state.getMetadataBuildingContext().getMetadataCollector().addImport(
+				StringHelper.unqualify( type.getClassDetails().getClassName() ),
+				type.getClassDetails().getClassName()
+		);
 	}
 
 	@Override

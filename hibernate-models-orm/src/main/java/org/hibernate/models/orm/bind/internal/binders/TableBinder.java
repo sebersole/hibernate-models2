@@ -169,8 +169,8 @@ public class TableBinder {
 		final Identifier logicalName = determineLogicalName( type, null );
 
 		final Table binding = bindingState.getMetadataBuildingContext().getMetadataCollector().addTable(
-				bindingOptions.getDefaultSchemaName().getCanonicalName(),
-				bindingOptions.getDefaultCatalogName().getCanonicalName(),
+				bindingOptions.getDefaultSchemaName() == null ? null : bindingOptions.getDefaultSchemaName().getCanonicalName(),
+				bindingOptions.getDefaultCatalogName() == null ? null : bindingOptions.getDefaultCatalogName().getCanonicalName(),
 				logicalName.getCanonicalName(),
 				null,
 				type.isAbstract(),
@@ -233,7 +233,7 @@ public class TableBinder {
 
 					@Override
 					public MetadataBuildingContext getBuildingContext() {
-						throw new UnsupportedOperationException( "Not (yet) implemented" );
+						return bindingState.getMetadataBuildingContext();
 					}
 				}
 		);
