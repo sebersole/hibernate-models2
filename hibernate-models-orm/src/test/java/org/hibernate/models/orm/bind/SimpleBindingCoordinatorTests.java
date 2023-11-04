@@ -90,15 +90,21 @@ public class SimpleBindingCoordinatorTests {
 					final RootClass entityBinding = (RootClass) context.getMetadataCollector().getEntityBinding( SimpleEntity.class.getName() );
 					final Property id = entityBinding.getProperty( "id" );
 					assertThat( id.getValue().getTable().getName() ).isEqualTo( "SIMPLETONS" );
-					assertThat( ( (Column) ( (BasicValue) id.getValue() ).getColumn() ).getCanonicalName() ).isEqualTo( "id" );
+					final BasicValue idValue = (BasicValue) id.getValue();
+					assertThat( ( (Column) (idValue).getColumn() ).getCanonicalName() ).isEqualTo( "id" );
+					assertThat( idValue.resolve().getDomainJavaType().getJavaType() ).isEqualTo( Integer.class );
 
 					final Property name = entityBinding.getProperty( "name" );
 					assertThat( id.getValue().getTable().getName() ).isEqualTo( "SIMPLETONS" );
-					assertThat( ( (Column) ( (BasicValue) name.getValue() ).getColumn() ).getCanonicalName() ).isEqualTo( "name" );
+					final BasicValue nameValue = (BasicValue) name.getValue();
+					assertThat( ( (Column) (nameValue).getColumn() ).getCanonicalName() ).isEqualTo( "name" );
+					assertThat( nameValue.resolve().getDomainJavaType().getJavaType() ).isEqualTo( String.class );
 
 					final Property data = entityBinding.getProperty( "data" );
 					assertThat( data.getValue().getTable().getName() ).isEqualTo( "SIMPLE_STUFF" );
-					assertThat( ( (Column) ( (BasicValue) data.getValue() ).getColumn() ).getCanonicalName() ).isEqualTo( "datum" );
+					final BasicValue dataValue = (BasicValue) data.getValue();
+					assertThat( ( (Column) (dataValue).getColumn() ).getCanonicalName() ).isEqualTo( "datum" );
+					assertThat( dataValue.resolve().getDomainJavaType().getJavaType() ).isEqualTo( String.class );
 				},
 				scope.getRegistry(),
 				SimpleEntity.class

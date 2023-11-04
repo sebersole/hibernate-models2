@@ -17,8 +17,12 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Mutability;
 import org.hibernate.annotations.Nationalized;
 import org.hibernate.annotations.OptimisticLock;
+import org.hibernate.annotations.TimeZoneColumn;
+import org.hibernate.annotations.TimeZoneStorage;
+import org.hibernate.annotations.TimeZoneStorageType;
 import org.hibernate.boot.model.convert.internal.ClassBasedConverterDescriptor;
 import org.hibernate.boot.model.naming.Identifier;
+import org.hibernate.boot.model.naming.ImplicitNamingStrategy;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Property;
 import org.hibernate.models.ModelsException;
@@ -41,8 +45,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Lob;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 
 import static jakarta.persistence.EnumType.ORDINAL;
+import static org.hibernate.annotations.TimeZoneStorageType.AUTO;
+import static org.hibernate.annotations.TimeZoneStorageType.COLUMN;
 import static org.hibernate.models.orm.categorize.spi.AttributeMetadata.AttributeNature.BASIC;
 
 /**
@@ -298,12 +306,61 @@ public class AttributeBinder {
 				processNationalized( member, basicValue );
 				processEnumerated( member, basicValue );
 				processConversion( member, basicValue, bindingContext );
+				processImplicitJavaType( member, basicValue );
 				processJavaType( member, basicValue );
 				processJdbcType( member, basicValue );
 				processMutability( member, property, basicValue );
 				processOptimisticLocking( member, property, basicValue );
+				processTemporalPrecision( member, basicValue );
+				processTimeZoneStorage( member, property, basicValue );
 
 				return true;
 			}
+
+		private void processImplicitJavaType(MemberDetails member, BasicValue basicValue) {
+			basicValue.setImplicitJavaTypeAccess( (typeConfiguration) -> member.getType().toJavaClass() );
 		}
+
+		private void processTemporalPrecision(MemberDetails member, BasicValue basicValue) {
+			final AnnotationUsage<Temporal> temporalAnn = member.getAnnotationUsage( Temporal.class );
+			if ( temporalAnn == null ) {
+				return;
+			}
+
+			//noinspection deprecation
+			final TemporalType precision = temporalAnn.getEnum( "value" );
+			basicValue.setTemporalPrecision( precision );
+		}
+
+		private void processTimeZoneStorage(MemberDetails member, Property property, BasicValue basicValue) {
+			final AnnotationUsage<TimeZoneStorage> storageAnn = member.getAnnotationUsage( TimeZoneStorage.class );
+			final AnnotationUsage<TimeZoneColumn> columnAnn = member.getAnnotationUsage( TimeZoneColumn.class );
+			if ( storageAnn != null ) {
+				final TimeZoneStorageType strategy = storageAnn.getEnum( "value", AUTO );
+				if ( strategy != COLUMN && columnAnn != null ) {
+					throw new AnnotationPlacementException(
+							"Illegal combination of @TimeZoneStorage(" + strategy.name() + ") and @TimeZoneColumn"
+					);
+				}
+				basicValue.setTimeZoneStorageType( strategy );
+			}
+
+			if ( columnAnn != null ) {
+				final org.hibernate.mapping.Column column = (org.hibernate.mapping.Column) basicValue.getColumn();
+				column.setName( columnAnn.getString( "name", property.getName() + "_tz" ) );
+				column.setSqlType( columnAnn.getString( "columnDefinition", null ) );
+
+				final var tableName = columnAnn.getString( "table", null );
+				TableReference tableByName = null;
+				if ( tableName != null ) {
+					final Identifier identifier = Identifier.toIdentifier( tableName );
+					tableByName = bindingState.getTableByName( identifier.getCanonicalName() );
+					basicValue.setTable( tableByName.getBinding() );
+				}
+
+				property.setInsertable( columnAnn.getBoolean( "insertable", true ) );
+				property.setUpdateable( columnAnn.getBoolean( "updatable", true ) );
+			}
+		}
+	}
 }
