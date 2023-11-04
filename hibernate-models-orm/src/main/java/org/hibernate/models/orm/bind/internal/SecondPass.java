@@ -9,5 +9,7 @@ package org.hibernate.models.orm.bind.internal;
 /**
  * @author Steve Ebersole
  */
-public class EntityBinder {
+@FunctionalInterface
+public interface SecondPass {
+	boolean process();
 }

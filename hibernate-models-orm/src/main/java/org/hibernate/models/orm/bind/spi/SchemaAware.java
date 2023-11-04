@@ -12,6 +12,9 @@ import org.hibernate.boot.model.naming.Identifier;
  * @author Steve Ebersole
  */
 public interface SchemaAware {
-	Identifier getSchemaName();
-	Identifier getCatalogName();
+	Identifier getPhysicalSchemaName();
+	Identifier getLogicalSchemaName();
+
+	Identifier getPhysicalCatalogName();
+	Identifier getLogicalCatalogName();
 }

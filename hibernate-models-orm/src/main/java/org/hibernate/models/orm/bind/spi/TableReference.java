@@ -7,13 +7,16 @@
 package org.hibernate.models.orm.bind.spi;
 
 import org.hibernate.boot.model.naming.Identifier;
+import org.hibernate.mapping.Table;
 import org.hibernate.models.orm.bind.internal.InLineView;
 import org.hibernate.models.orm.bind.internal.PhysicalTable;
 import org.hibernate.models.orm.bind.internal.PhysicalView;
+import org.hibernate.models.orm.bind.internal.SecondaryTable;
 
 /**
  * Following the SQL "table reference" rule, will be one of <ul>
  *     <li>a {@linkplain PhysicalTable physical table}</li>
+ *     <li>a {@linkplain SecondaryTable secondary table}</li>
  *     <li>a {@linkplain PhysicalView physical view}</li>
  *     <li>a {@linkplain InLineView in-line view}</li>
  * </ul>
@@ -32,4 +35,6 @@ public interface TableReference {
 	 * Should this "table" be exposed to schema tooling?
 	 */
 	boolean isExportable();
+
+	Table getBinding();
 }

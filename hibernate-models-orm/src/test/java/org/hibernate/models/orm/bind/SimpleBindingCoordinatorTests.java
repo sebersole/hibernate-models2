@@ -11,20 +11,22 @@ import org.hibernate.boot.internal.BootstrapContextImpl;
 import org.hibernate.boot.internal.InFlightMetadataCollectorImpl;
 import org.hibernate.boot.internal.MetadataBuilderImpl.MetadataBuildingOptionsImpl;
 import org.hibernate.boot.internal.MetadataBuildingContextRootImpl;
-import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.model.process.spi.MetadataBuildingProcess;
 import org.hibernate.boot.registry.StandardServiceRegistry;
+import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.models.orm.bind.internal.BindingContextImpl;
 import org.hibernate.models.orm.bind.internal.BindingOptionsImpl;
 import org.hibernate.models.orm.bind.internal.BindingStateImpl;
 import org.hibernate.models.orm.bind.internal.PhysicalTable;
+import org.hibernate.models.orm.bind.internal.SecondaryTable;
 import org.hibernate.models.orm.bind.spi.BindingCoordinator;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.categorize.spi.ManagedResourcesProcessor;
 
 import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.ServiceRegistryScope;
+import org.hibernate.testing.orm.junit.SettingProvider;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,7 +36,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public class SimpleBindingCoordinatorTests {
 	@Test
-	@ServiceRegistry
+	@ServiceRegistry( settingProviders = @SettingProvider(
+			settingName = AvailableSettings.PHYSICAL_NAMING_STRATEGY,
+			provider = CustomNamingStrategyProvider.class
+	) )
 	void testIt(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -53,21 +58,21 @@ public class SimpleBindingCoordinatorTests {
 
 					final PhysicalTable simpletonsTable = bindingState.getTableByName( "simpletons" );
 					assertThat( simpletonsTable.logicalName().render() ).isEqualTo( "simpletons" );
-					assertThat( simpletonsTable.physicalName().render() ).isEqualTo( "simpletons" );
 					assertThat( simpletonsTable.logicalName().getCanonicalName() ).isEqualTo( "simpletons" );
-					assertThat( simpletonsTable.physicalName().getCanonicalName() ).isEqualTo( "simpletons" );
-					assertThat( simpletonsTable.catalog() ).isNull();
-					assertThat( simpletonsTable.schema() ).isNull();
-					assertThat( simpletonsTable.comment() ).isEqualTo( "Stupid is as stupid does" );
+					assertThat( simpletonsTable.physicalTableName().render() ).isEqualTo( "SIMPLETONS" );
+					assertThat( simpletonsTable.physicalTableName().getCanonicalName() ).isEqualTo( "simpletons" );
+					assertThat( simpletonsTable.physicalCatalogName() ).isNull();
+					assertThat( simpletonsTable.getPhysicalSchemaName() ).isNull();
+					assertThat( simpletonsTable.binding().getComment() ).isEqualTo( "Stupid is as stupid does" );
 
-					final PhysicalTable simpleStuffTable = bindingState.getTableByName( "simple_stuff" );
+					final SecondaryTable simpleStuffTable = bindingState.getTableByName( "simple_stuff" );
 					assertThat( simpleStuffTable.logicalName().render() ).isEqualTo( "simple_stuff" );
-					assertThat( simpleStuffTable.physicalName().render() ).isEqualTo( "simple_stuff" );
-					assertThat( simpleStuffTable.logicalName().getCanonicalName() ).isEqualTo( "simple_stuff" );
-					assertThat( simpleStuffTable.physicalName().getCanonicalName() ).isEqualTo( "simple_stuff" );
-					assertThat( simpleStuffTable.catalog() ).isEqualTo( Identifier.toIdentifier( "my_catalog" ) );
-					assertThat( simpleStuffTable.schema() ).isEqualTo( Identifier.toIdentifier( "my_schema" ) );
-					assertThat( simpleStuffTable.comment() ).isEqualTo( "Don't sweat it" );
+					assertThat( simpleStuffTable.physicalName().render() ).isEqualTo( "SIMPLE_STUFF" );
+					assertThat( simpleStuffTable.logicalCatalogName().render() ).isEqualTo( "my_catalog" );
+					assertThat( simpleStuffTable.physicalCatalogName().render() ).isEqualTo( "MY_CATALOG" );
+					assertThat( simpleStuffTable.logicalSchemaName().render() ).isEqualTo( "my_schema" );
+					assertThat( simpleStuffTable.physicalSchemaName().render() ).isEqualTo( "MY_SCHEMA" );
+					assertThat( simpleStuffTable.binding().getComment() ).isEqualTo( "Don't sweat it" );
 
 					final var database = metadataCollector.getDatabase();
 					final var namespaceItr = database.getNamespaces().iterator();

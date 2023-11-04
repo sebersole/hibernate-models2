@@ -31,6 +31,11 @@ public interface EntityHierarchy {
 	IdentifiableTypeMetadata getAbsoluteRoot();
 
 	/**
+	 * Visit each type in the hierarchy, top down starting from {@linkplain #getAbsoluteRoot()}
+	 */
+	void forEachType(HierarchyTypeVisitor typeVisitor);
+
+	/**
 	 * The inheritance strategy for the hierarchy.
 	 */
 	InheritanceType getInheritanceType();
@@ -58,5 +63,17 @@ public interface EntityHierarchy {
 	 */
 	NaturalIdCacheRegion getNaturalIdCacheRegion();
 
-	void forEachType(Consumer<IdentifiableTypeMetadata> typeConsumer);
+	/**
+	 * Describes a type's place in the hierarchy relative to the {@linkplain #getRoot() root entity}
+	 */
+	enum HierarchyRelation { SUPER, ROOT, SUB }
+
+	@FunctionalInterface
+	interface HierarchyTypeVisitor {
+		void visitType(
+				IdentifiableTypeMetadata type,
+				IdentifiableTypeMetadata superType,
+				EntityHierarchy hierarchy,
+				HierarchyRelation relation);
+	}
 }

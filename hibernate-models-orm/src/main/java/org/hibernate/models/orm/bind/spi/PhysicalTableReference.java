@@ -11,6 +11,6 @@ import org.hibernate.boot.model.naming.Identifier;
 /**
  * @author Steve Ebersole
  */
-public interface PhysicalTableReference extends PersistentTableReference, SchemaAware {
-	Identifier getTableName();
+public interface PhysicalTableReference extends PersistentTableReference {
+	Identifier getPhysicalTableName();
 }

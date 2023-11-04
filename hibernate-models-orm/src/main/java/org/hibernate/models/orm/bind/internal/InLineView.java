@@ -7,6 +7,7 @@
 package org.hibernate.models.orm.bind.internal;
 
 import org.hibernate.boot.model.naming.Identifier;
+import org.hibernate.mapping.Table;
 import org.hibernate.models.orm.bind.spi.TableReference;
 
 /**
@@ -16,14 +17,23 @@ import org.hibernate.models.orm.bind.spi.TableReference;
  *
  * @author Steve Ebersole
  */
-public record InLineView(Identifier logicalName, String query) implements TableReference {
+public record InLineView(Identifier logicalName, Table binding) implements TableReference {
 	@Override
 	public Identifier getLogicalName() {
 		return logicalName;
 	}
 
+	public String getQuery() {
+		return binding.getSubselect();
+	}
+
 	@Override
 	public boolean isExportable() {
 		return false;
+	}
+
+	@Override
+	public Table getBinding() {
+		return binding;
 	}
 }
