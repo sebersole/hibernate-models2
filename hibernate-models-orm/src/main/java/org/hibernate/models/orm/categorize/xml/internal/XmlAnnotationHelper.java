@@ -286,7 +286,7 @@ public class XmlAnnotationHelper {
 		final DynamicAnnotationUsage<Type> typeAnn = new DynamicAnnotationUsage<>( Type.class, memberDetails );
 		memberDetails.addAnnotationUsage( typeAnn );
 
-		final ClassDetails userTypeImpl = resolveJavaType( jaxbType.getType(), buildingContext );
+		final ClassDetails userTypeImpl = resolveJavaType( jaxbType.getValue(), buildingContext );
 		typeAnn.setAttributeValue( "value", userTypeImpl );
 		typeAnn.setAttributeValue( "parameters", collectParameters( jaxbType.getParameters(), memberDetails ) );
 	}
@@ -904,8 +904,8 @@ public class XmlAnnotationHelper {
 			annotation.setAttributeValue( "sql", jaxbCustomSql.getValue() );
 			annotation.setAttributeValue( "callable", jaxbCustomSql.isCallable() );
 			applyAttributeIfSpecified( annotation, "table", jaxbCustomSql.getTable() );
-			if ( jaxbCustomSql.getCheck() != null ) {
-				annotation.setAttributeValue( "check", getResultCheckStyle( jaxbCustomSql.getCheck() ) );
+			if ( jaxbCustomSql.getResultCheck() != null ) {
+				annotation.setAttributeValue( "check", getResultCheckStyle( jaxbCustomSql.getResultCheck() ) );
 			}
 		}
 	}

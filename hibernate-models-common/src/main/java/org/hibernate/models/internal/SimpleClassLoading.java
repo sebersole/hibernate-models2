@@ -6,7 +6,6 @@
  */
 package org.hibernate.models.internal;
 
-import java.lang.instrument.UnmodifiableClassException;
 import java.net.URL;
 
 import org.hibernate.models.spi.ClassLoading;

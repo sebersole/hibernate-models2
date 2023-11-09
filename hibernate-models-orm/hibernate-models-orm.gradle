@@ -1,10 +1,16 @@
 apply from: rootProject.file( "gradle/java-module.gradle" )
 
+configurations.api {
+    // temporarily limit caching for hibernate-core SNAPSHOT
+    resolutionStrategy.cacheChangingModulesFor 10, 'minutes'
+}
+
 dependencies {
+    api platform( libs.hibernatePlatform )
+    api libs.hibernateCore
+
     implementation project( ":hibernate-models-common" )
     implementation project( ":hibernate-models-source" )
-
-    implementation project( ":hibernate-orm" )
     implementation libs.jandex
     implementation libs.byteBuddy
     implementation libs.classmate

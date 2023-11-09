@@ -13,7 +13,7 @@
                 <target>Integer</target>
                 <jdbc-type-name>BIGINT</jdbc-type-name>
             </id>
-            <element-collection name="labels" target-class="string" classification="set">
+            <element-collection name="labels" target-class="string" classification="SET">
                 <sort-natural/>
                 <collection-table name="labels">
                     <join-column name="contact_fk"/>

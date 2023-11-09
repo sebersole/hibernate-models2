@@ -15,7 +15,6 @@ import java.util.Map;
 import org.hibernate.boot.jaxb.Origin;
 import org.hibernate.boot.jaxb.SourceType;
 import org.hibernate.boot.jaxb.internal.MappingBinder;
-import org.hibernate.boot.jaxb.spi.BindableMappingDescriptor;
 import org.hibernate.boot.jaxb.spi.Binding;
 import org.hibernate.boot.jaxb.spi.JaxbBindableMappingDescriptor;
 import org.hibernate.boot.model.convert.spi.ConverterDescriptor;
@@ -59,7 +58,7 @@ public class ManagedResourcesImpl implements ManagedResources {
 	}
 
 	@Override
-	public Collection<Binding<BindableMappingDescriptor>> getXmlMappingBindings() {
+	public Collection<Binding<JaxbBindableMappingDescriptor>> getXmlMappingBindings() {
 		if ( xmlMappings == null ) {
 			return Collections.emptyList();
 		}

@@ -7,7 +7,7 @@
   -->
 <entity-mappings xmlns="http://www.hibernate.org/xsd/orm/mapping"
                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                 version="3.1">
+                 version="3.2">
     <persistence-unit-metadata>
         <persistence-unit-defaults>
             <entity-listeners>
@@ -25,11 +25,11 @@
     <conversion converter="org.hibernate.type.YesNoConverter" class="boolean" auto-apply="true"/>
     
     <filter-def name="amount_filter">
+        <default-condition>amount = :amount</default-condition>
         <filter-param name="amount" type="int"/>
-        <condition>amount = :amount</condition>
     </filter-def>
     <filter-def name="name_filter">
+        <default-condition>name = :name</default-condition>
         <filter-param name="name" type="string"/>
-        <condition>name = :name</condition>
     </filter-def>
 </entity-mappings>

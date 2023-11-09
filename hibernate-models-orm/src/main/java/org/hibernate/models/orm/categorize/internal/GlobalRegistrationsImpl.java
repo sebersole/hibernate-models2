@@ -438,7 +438,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 
 		filterDefinitions.forEach( (filterDefinition) -> collectFilterDefinition(
 				filterDefinition.getName(),
-				filterDefinition.getCondition(),
+				filterDefinition.getDefaultCondition(),
 				extractFilterParameters( filterDefinition )
 		) );
 	}

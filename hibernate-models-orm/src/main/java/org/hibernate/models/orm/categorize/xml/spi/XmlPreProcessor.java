@@ -7,7 +7,7 @@
 package org.hibernate.models.orm.categorize.xml.spi;
 
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
-import org.hibernate.boot.jaxb.spi.BindableMappingDescriptor;
+import org.hibernate.boot.jaxb.spi.JaxbBindableMappingDescriptor;
 import org.hibernate.boot.jaxb.spi.Binding;
 import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.models.orm.categorize.xml.internal.XmlPreProcessingResultImpl;
@@ -26,7 +26,7 @@ public class XmlPreProcessor {
 	public static XmlPreProcessingResult preProcessXmlResources(ManagedResources managedResources) {
 		final XmlPreProcessingResultImpl collected = new XmlPreProcessingResultImpl();
 
-		for ( Binding<BindableMappingDescriptor> mappingXmlBinding : managedResources.getXmlMappingBindings() ) {
+		for ( Binding<JaxbBindableMappingDescriptor> mappingXmlBinding : managedResources.getXmlMappingBindings() ) {
 			collected.addDocument( (JaxbEntityMappingsImpl) mappingXmlBinding.getRoot() );
 		}
 
