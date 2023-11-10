@@ -10,7 +10,7 @@ import org.hibernate.boot.internal.ClassmateContext;
 import org.hibernate.boot.spi.BootstrapContext;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.models.orm.categorize.spi.GlobalRegistrations;
-import org.hibernate.models.source.spi.SourceModelContext;
+import org.hibernate.models.spi.SourceModelContext;
 import org.hibernate.service.ServiceRegistry;
 
 import jakarta.persistence.SharedCacheMode;

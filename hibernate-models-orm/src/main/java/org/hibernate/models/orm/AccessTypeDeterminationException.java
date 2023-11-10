@@ -9,7 +9,7 @@ package org.hibernate.models.orm;
 import java.util.Locale;
 
 import org.hibernate.MappingException;
-import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetails;
 
 /**
  * Indicates that {@link jakarta.persistence.AccessType} could not be

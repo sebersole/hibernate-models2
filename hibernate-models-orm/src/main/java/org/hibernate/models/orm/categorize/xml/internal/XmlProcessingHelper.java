@@ -11,17 +11,17 @@ import java.lang.annotation.Annotation;
 
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbManagedType;
-import org.hibernate.models.internal.StringHelper;
+import org.hibernate.internal.util.StringHelper;
 import org.hibernate.models.orm.MemberResolutionException;
-import org.hibernate.models.source.internal.MutableAnnotationTarget;
-import org.hibernate.models.source.internal.MutableAnnotationUsage;
-import org.hibernate.models.source.internal.MutableClassDetails;
-import org.hibernate.models.source.internal.MutableMemberDetails;
-import org.hibernate.models.source.internal.dynamic.DynamicAnnotationUsage;
-import org.hibernate.models.source.spi.AnnotationUsage;
-import org.hibernate.models.source.spi.FieldDetails;
-import org.hibernate.models.source.spi.MethodDetails;
-import org.hibernate.models.source.spi.SourceModelBuildingContext;
+import org.hibernate.models.internal.MutableAnnotationTarget;
+import org.hibernate.models.internal.MutableAnnotationUsage;
+import org.hibernate.models.internal.MutableClassDetails;
+import org.hibernate.models.internal.MutableMemberDetails;
+import org.hibernate.models.internal.dynamic.DynamicAnnotationUsage;
+import org.hibernate.models.spi.AnnotationUsage;
+import org.hibernate.models.spi.FieldDetails;
+import org.hibernate.models.spi.MethodDetails;
+import org.hibernate.models.spi.SourceModelBuildingContext;
 
 import jakarta.persistence.AccessType;
 
@@ -38,11 +38,12 @@ public class XmlProcessingHelper {
 	 * @param jaxbManagedType The class JAXB node
 	 */
 	public static String determineClassName(JaxbEntityMappingsImpl jaxbRoot, JaxbManagedType jaxbManagedType) {
-		if ( StringHelper.isQualified( jaxbManagedType.getClazz() ) ) {
+//		if ( StringHelper.isQualified( jaxbManagedType.getClazz() ) ) {
+		if ( jaxbManagedType.getClazz().lastIndexOf( '.' ) > 0 ) {
 			return jaxbManagedType.getClazz();
 		}
 
-		return StringHelper.qualify( jaxbManagedType.getClazz(), jaxbRoot.getPackage() );
+		return StringHelper.qualify( jaxbRoot.getPackage(), jaxbManagedType.getClazz() );
 	}
 
 	public static AccessType inverse(AccessType accessType) {

@@ -12,7 +12,7 @@ import org.hibernate.boot.CacheRegionDefinition;
 import org.hibernate.cache.spi.access.AccessType;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.models.ModelsException;
-import org.hibernate.models.source.spi.AnnotationUsage;
+import org.hibernate.models.spi.AnnotationUsage;
 
 /**
  * Models the caching options for an entity, natural-id, or collection.

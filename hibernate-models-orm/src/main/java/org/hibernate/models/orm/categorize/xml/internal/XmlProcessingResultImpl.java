@@ -14,7 +14,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbMappedSuperclassImpl;
 import org.hibernate.models.orm.categorize.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.models.orm.categorize.xml.spi.XmlProcessingResult;
-import org.hibernate.models.source.spi.SourceModelBuildingContext;
+import org.hibernate.models.spi.SourceModelBuildingContext;
 
 /**
  * @author Steve Ebersole

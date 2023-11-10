@@ -16,7 +16,7 @@ import org.hibernate.annotations.ManyToAny;
 import org.hibernate.boot.model.source.spi.AttributePath;
 import org.hibernate.boot.model.source.spi.AttributeRole;
 import org.hibernate.boot.model.source.spi.NaturalIdMutability;
-import org.hibernate.models.internal.IndexedConsumer;
+import org.hibernate.internal.util.IndexedConsumer;
 import org.hibernate.models.orm.HibernateAnnotations;
 import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.orm.MultipleAttributeNaturesException;
@@ -24,9 +24,9 @@ import org.hibernate.models.orm.categorize.spi.AllMemberConsumer;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
 import org.hibernate.models.orm.categorize.spi.ManagedTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
-import org.hibernate.models.source.spi.AnnotationUsage;
-import org.hibernate.models.source.spi.ClassDetails;
-import org.hibernate.models.source.spi.MemberDetails;
+import org.hibernate.models.spi.AnnotationUsage;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.MemberDetails;
 
 import jakarta.persistence.Basic;
 import jakarta.persistence.ElementCollection;
@@ -37,7 +37,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 
-import static org.hibernate.models.internal.CollectionHelper.arrayList;
+import static org.hibernate.internal.util.collections.CollectionHelper.arrayList;
 import static org.hibernate.models.orm.categorize.ModelCategorizationLogging.MODEL_CATEGORIZATION_LOGGER;
 
 /**

@@ -10,8 +10,8 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityListenerImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitDefaultsImpl;
 import org.hibernate.internal.util.MutableObject;
 import org.hibernate.models.ModelsException;
-import org.hibernate.models.source.spi.ClassDetails;
-import org.hibernate.models.source.spi.MethodDetails;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.MethodDetails;
 
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.PostPersist;

@@ -9,11 +9,11 @@ package org.hibernate.models.orm.categorize.spi;
 import java.util.Map;
 import java.util.Set;
 
-import org.hibernate.models.internal.IndexedConsumer;
-import org.hibernate.models.internal.KeyedConsumer;
-import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
-import org.hibernate.models.source.spi.ClassDetails;
-import org.hibernate.models.source.spi.ClassDetailsRegistry;
+import org.hibernate.internal.util.IndexedConsumer;
+import org.hibernate.internal.util.KeyedConsumer;
+import org.hibernate.models.spi.AnnotationDescriptorRegistry;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetailsRegistry;
 
 /**
  * The application's domain model, understood at a very rudimentary level - we know

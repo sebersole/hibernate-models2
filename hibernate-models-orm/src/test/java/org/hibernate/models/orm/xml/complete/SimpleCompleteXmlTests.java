@@ -24,8 +24,8 @@ import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.xml.SimpleEntity;
-import org.hibernate.models.source.spi.AnnotationUsage;
-import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.spi.AnnotationUsage;
+import org.hibernate.models.spi.ClassDetails;
 
 import org.junit.jupiter.api.Test;
 

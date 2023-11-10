@@ -8,8 +8,8 @@ package org.hibernate.models.orm.categorize.spi;
 
 import java.util.Collection;
 
-import org.hibernate.models.internal.IndexedConsumer;
-import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.internal.util.IndexedConsumer;
+import org.hibernate.models.spi.ClassDetails;
 
 import jakarta.persistence.AccessType;
 

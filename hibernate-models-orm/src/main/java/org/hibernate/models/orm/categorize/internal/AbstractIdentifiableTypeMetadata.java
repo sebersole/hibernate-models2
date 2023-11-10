@@ -12,16 +12,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import org.hibernate.models.internal.CollectionHelper;
+import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.JpaEventListener;
 import org.hibernate.models.orm.categorize.spi.JpaEventListenerStyle;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
-import org.hibernate.models.source.spi.AnnotationUsage;
-import org.hibernate.models.source.spi.ClassDetails;
-import org.hibernate.models.source.spi.ClassDetailsRegistry;
+import org.hibernate.models.spi.AnnotationUsage;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetailsRegistry;
 
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;

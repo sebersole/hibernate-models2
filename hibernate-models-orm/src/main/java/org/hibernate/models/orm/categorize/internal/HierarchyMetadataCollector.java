@@ -22,9 +22,9 @@ import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.KeyMapping;
-import org.hibernate.models.source.spi.AnnotationUsage;
-import org.hibernate.models.source.spi.ClassDetails;
-import org.hibernate.models.source.spi.MemberDetails;
+import org.hibernate.models.spi.AnnotationUsage;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.MemberDetails;
 
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Id;

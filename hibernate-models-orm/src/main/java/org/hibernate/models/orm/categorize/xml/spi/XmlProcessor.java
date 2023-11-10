@@ -9,7 +9,7 @@ package org.hibernate.models.orm.categorize.xml.spi;
 import org.hibernate.models.orm.categorize.internal.DomainModelCategorizationCollector;
 import org.hibernate.models.orm.categorize.xml.internal.ManagedTypeProcessor;
 import org.hibernate.models.orm.categorize.xml.internal.XmlProcessingResultImpl;
-import org.hibernate.models.source.spi.SourceModelBuildingContext;
+import org.hibernate.models.spi.SourceModelBuildingContext;
 
 /**
  * Processes XML mappings - applying metadata-complete mappings and collecting

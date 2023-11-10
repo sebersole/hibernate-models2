@@ -38,12 +38,12 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbOneToOneImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistentAttribute;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAnyMappingImpl;
 import org.hibernate.internal.util.StringHelper;
-import org.hibernate.models.source.internal.MutableAnnotationUsage;
-import org.hibernate.models.source.internal.MutableClassDetails;
-import org.hibernate.models.source.internal.MutableMemberDetails;
-import org.hibernate.models.source.spi.ClassDetails;
-import org.hibernate.models.source.spi.ClassDetailsRegistry;
-import org.hibernate.models.source.spi.SourceModelBuildingContext;
+import org.hibernate.models.internal.MutableAnnotationUsage;
+import org.hibernate.models.internal.MutableClassDetails;
+import org.hibernate.models.internal.MutableMemberDetails;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetailsRegistry;
+import org.hibernate.models.spi.SourceModelBuildingContext;
 
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Column;

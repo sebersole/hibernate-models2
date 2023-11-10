@@ -7,7 +7,7 @@
 package org.hibernate.models.orm.categorize.internal;
 
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
-import org.hibernate.models.source.spi.MemberDetails;
+import org.hibernate.models.spi.MemberDetails;
 
 /**
  * @author Steve Ebersole

@@ -16,7 +16,7 @@ import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.models.orm.process.ManagedResourcesImpl;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.categorize.spi.JpaEventListener;
-import org.hibernate.models.source.spi.MethodDetails;
+import org.hibernate.models.spi.MethodDetails;
 
 import org.junit.jupiter.api.Test;
 

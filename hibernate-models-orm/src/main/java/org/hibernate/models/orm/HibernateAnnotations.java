@@ -15,9 +15,9 @@ import org.hibernate.boot.internal.CollectionClassification;
 import org.hibernate.boot.internal.Extends;
 import org.hibernate.boot.internal.Target;
 import org.hibernate.models.orm.categorize.internal.OrmAnnotationHelper;
-import org.hibernate.models.source.spi.AnnotationDescriptor;
+import org.hibernate.models.spi.AnnotationDescriptor;
 
-import static org.hibernate.models.source.internal.AnnotationHelper.createOrmDescriptor;
+import static org.hibernate.models.internal.AnnotationHelper.createOrmDescriptor;
 
 /**
  * Details about Hibernate annotations

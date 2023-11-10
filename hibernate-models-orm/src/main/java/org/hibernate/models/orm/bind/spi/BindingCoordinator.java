@@ -23,8 +23,8 @@ import org.hibernate.models.orm.categorize.spi.GlobalRegistrations;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.ManagedTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.MappedSuperclassTypeMetadata;
-import org.hibernate.models.source.spi.AnnotationUsage;
-import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.spi.AnnotationUsage;
+import org.hibernate.models.spi.ClassDetails;
 
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;

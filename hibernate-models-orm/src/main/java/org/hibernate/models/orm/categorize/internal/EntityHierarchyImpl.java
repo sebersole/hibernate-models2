@@ -7,12 +7,10 @@
 package org.hibernate.models.orm.categorize.internal;
 
 import java.util.Locale;
-import java.util.function.Consumer;
 
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.NaturalIdCache;
 import org.hibernate.annotations.OptimisticLocking;
-import org.hibernate.annotations.ParamDef;
 import org.hibernate.cache.spi.access.AccessType;
 import org.hibernate.engine.OptimisticLockStyle;
 import org.hibernate.models.orm.JpaAnnotations;
@@ -24,8 +22,8 @@ import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.KeyMapping;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
 import org.hibernate.models.orm.categorize.spi.NaturalIdCacheRegion;
-import org.hibernate.models.source.spi.AnnotationUsage;
-import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.spi.AnnotationUsage;
+import org.hibernate.models.spi.ClassDetails;
 
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;

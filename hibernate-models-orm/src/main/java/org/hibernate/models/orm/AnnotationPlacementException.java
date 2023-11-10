@@ -6,12 +6,10 @@
  */
 package org.hibernate.models.orm;
 
-import org.hibernate.models.ModelsException;
-
 /**
  * @author Steve Ebersole
  */
-public class AnnotationPlacementException extends ModelsException {
+public class AnnotationPlacementException extends RuntimeException {
 	public AnnotationPlacementException(String message) {
 		super( message );
 	}

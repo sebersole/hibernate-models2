@@ -8,7 +8,7 @@ package org.hibernate.models.orm.categorize.spi;
 
 import java.util.List;
 
-import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetails;
 
 /**
  * CompositeIdMapping which is virtually an embeddable and represented by one-or-more

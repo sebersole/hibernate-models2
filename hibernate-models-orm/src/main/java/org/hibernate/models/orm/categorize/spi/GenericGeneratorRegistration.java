@@ -7,7 +7,7 @@
 package org.hibernate.models.orm.categorize.spi;
 
 import org.hibernate.annotations.GenericGenerator;
-import org.hibernate.models.source.spi.AnnotationUsage;
+import org.hibernate.models.spi.AnnotationUsage;
 
 /**
  * Global registration of a generic generator

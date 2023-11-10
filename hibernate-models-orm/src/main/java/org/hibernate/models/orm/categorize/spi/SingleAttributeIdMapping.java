@@ -6,7 +6,7 @@
  */
 package org.hibernate.models.orm.categorize.spi;
 
-import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetails;
 
 /**
  * @author Steve Ebersole

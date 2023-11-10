@@ -72,7 +72,7 @@ public class BootstrapContextTesting implements BootstrapContext {
 	private Object scannerSetting;
 	private ArchiveDescriptorFactory archiveDescriptorFactory;
 
-	private IndexView jandexView;
+	private IndexView jandexIndex;
 
 	private HashMap<String, SqmFunctionDescriptor> sqlFunctionMap;
 	private ArrayList<AuxiliaryDatabaseObject> auxiliaryDatabaseObjectList;
@@ -195,7 +195,7 @@ public class BootstrapContextTesting implements BootstrapContext {
 
 	@Override
 	public IndexView getJandexView() {
-		return jandexView;
+		return jandexIndex;
 	}
 
 	@Override
@@ -242,7 +242,7 @@ public class BootstrapContextTesting implements BootstrapContext {
 		scanEnvironment = null;
 		scannerSetting = null;
 		archiveDescriptorFactory = null;
-		jandexView = null;
+		jandexIndex = null;
 
 		if ( sqlFunctionMap != null ) {
 			sqlFunctionMap.clear();

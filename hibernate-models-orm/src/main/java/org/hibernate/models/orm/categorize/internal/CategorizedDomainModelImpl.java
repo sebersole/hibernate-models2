@@ -12,9 +12,9 @@ import java.util.Set;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.GlobalRegistrations;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
-import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
-import org.hibernate.models.source.spi.ClassDetails;
-import org.hibernate.models.source.spi.ClassDetailsRegistry;
+import org.hibernate.models.spi.AnnotationDescriptorRegistry;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetailsRegistry;
 
 /**
  * @author Steve Ebersole

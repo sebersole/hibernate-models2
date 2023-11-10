@@ -6,14 +6,12 @@
  */
 package org.hibernate.models.orm;
 
-import org.hibernate.models.ModelsException;
-
 /**
- * Indicates a problem resolving a member from {@linkplain org.hibernate.models.source.spi.ClassDetails}
+ * Indicates a problem resolving a member from {@linkplain org.hibernate.models.spi.ClassDetails}
  *
  * @author Steve Ebersole
  */
-public class MemberResolutionException extends ModelsException {
+public class MemberResolutionException extends RuntimeException {
 	public MemberResolutionException(String message) {
 		super( message );
 	}

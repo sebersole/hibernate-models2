@@ -33,21 +33,21 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbMappedSuperclassImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbOneToOneImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistentAttribute;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAttribute;
+import org.hibernate.internal.util.StringHelper;
+import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.models.ModelsException;
-import org.hibernate.models.internal.CollectionHelper;
-import org.hibernate.models.internal.StringHelper;
+import org.hibernate.models.internal.MutableClassDetails;
+import org.hibernate.models.internal.MutableMemberDetails;
+import org.hibernate.models.internal.SourceModelLogging;
+import org.hibernate.models.internal.dynamic.DynamicAnnotationUsage;
+import org.hibernate.models.internal.dynamic.DynamicClassDetails;
+import org.hibernate.models.internal.dynamic.MapModeFieldDetails;
 import org.hibernate.models.orm.categorize.spi.JpaEventListenerStyle;
 import org.hibernate.models.orm.categorize.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.models.orm.categorize.xml.spi.XmlProcessingResult;
-import org.hibernate.models.source.internal.MutableClassDetails;
-import org.hibernate.models.source.internal.MutableMemberDetails;
-import org.hibernate.models.source.internal.SourceModelLogging;
-import org.hibernate.models.source.internal.dynamic.DynamicAnnotationUsage;
-import org.hibernate.models.source.internal.dynamic.DynamicClassDetails;
-import org.hibernate.models.source.internal.dynamic.MapModeFieldDetails;
-import org.hibernate.models.source.spi.ClassDetails;
-import org.hibernate.models.source.spi.ClassDetailsRegistry;
-import org.hibernate.models.source.spi.SourceModelBuildingContext;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetailsRegistry;
+import org.hibernate.models.spi.SourceModelBuildingContext;
 import org.hibernate.property.access.spi.BuiltInPropertyAccessStrategies;
 
 import jakarta.persistence.AccessType;
@@ -56,8 +56,6 @@ import jakarta.persistence.MappedSuperclass;
 
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
 import static org.hibernate.internal.util.NullnessHelper.nullif;
-import static org.hibernate.models.orm.categorize.xml.internal.AttributeProcessor.processAttributes;
-import static org.hibernate.models.orm.categorize.xml.internal.AttributeProcessor.processNaturalId;
 
 /**
  * Helper for handling managed types defined in mapping XML, in either
@@ -78,7 +76,6 @@ public class ManagedTypeProcessor {
 		final MutableClassDetails classDetails;
 		final AccessType classAccessType;
 		final AttributeProcessor.MemberAdjuster memberAdjuster;
-		final boolean isDynamic;
 
 		if ( StringHelper.isEmpty( jaxbEntity.getClazz() ) ) {
 			// no class == dynamic
@@ -90,16 +87,13 @@ public class ManagedTypeProcessor {
 			classAccessType = AccessType.FIELD;
 			classDetails = (MutableClassDetails) sourceModelBuildingContext.getClassDetailsRegistry().resolveClassDetails(
 					jaxbEntity.getName(),
-					() -> {
-						final DynamicClassDetails dynamicClassDetails = new DynamicClassDetails(
-								jaxbEntity.getName(),
-								null,
-								false,
-								null,
-								sourceModelBuildingContext
-						);
-						return dynamicClassDetails;
-					}
+					(name) -> new DynamicClassDetails(
+							jaxbEntity.getName(),
+							null,
+							false,
+							null,
+							sourceModelBuildingContext
+					)
 			);
 
 			prepareDynamicClass( classDetails, jaxbEntity, persistenceUnitMetadata, sourceModelBuildingContext );
@@ -122,8 +116,8 @@ public class ManagedTypeProcessor {
 		processEntityMetadata(
 				classDetails,
 				jaxbEntity,
-				AccessType.FIELD,
-				ManagedTypeProcessor::adjustDynamicTypeMember,
+				classAccessType,
+				memberAdjuster,
 				persistenceUnitMetadata,
 				sourceModelBuildingContext
 		);
@@ -137,8 +131,7 @@ public class ManagedTypeProcessor {
 			JaxbManagedType jaxbManagedType,
 			PersistenceUnitMetadata persistenceUnitMetadata,
 			SourceModelBuildingContext sourceModelBuildingContext) {
-		if ( jaxbManagedType instanceof JaxbEntityImpl ) {
-			final JaxbEntityImpl jaxbDynamicEntity = (JaxbEntityImpl) jaxbManagedType;
+		if ( jaxbManagedType instanceof JaxbEntityImpl jaxbDynamicEntity ) {
 			final JaxbAttributesContainerImpl attributes = jaxbDynamicEntity.getAttributes();
 
 			if ( CollectionHelper.isNotEmpty( attributes.getIdAttributes() ) ) {
@@ -315,49 +308,44 @@ public class ManagedTypeProcessor {
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		final ClassDetailsRegistry classDetailsRegistry = sourceModelBuildingContext.getClassDetailsRegistry();
 
-		if ( jaxbPersistentAttribute instanceof JaxbIdImpl ) {
-			final JaxbIdImpl jaxbId = (JaxbIdImpl) jaxbPersistentAttribute;
+		if ( jaxbPersistentAttribute instanceof JaxbIdImpl jaxbId ) {
 			return XmlAnnotationHelper.resolveJavaType( jaxbId.getTarget(), sourceModelBuildingContext );
 		}
 
-		if ( jaxbPersistentAttribute instanceof JaxbEmbeddedIdImpl ) {
-			final JaxbEmbeddedIdImpl jaxbEmbeddedId = (JaxbEmbeddedIdImpl) jaxbPersistentAttribute;
+		if ( jaxbPersistentAttribute instanceof JaxbEmbeddedIdImpl jaxbEmbeddedId ) {
 			final String target = jaxbEmbeddedId.getTarget();
 			if ( StringHelper.isEmpty( target ) ) {
 				return null;
 			}
 			return classDetailsRegistry.resolveClassDetails(
 					target,
-					() -> new DynamicClassDetails( target, sourceModelBuildingContext )
+					(name) -> new DynamicClassDetails( target, sourceModelBuildingContext )
 			);
 		}
 
-		if ( jaxbPersistentAttribute instanceof JaxbBasicImpl ) {
-			final JaxbBasicImpl jaxbBasic = (JaxbBasicImpl) jaxbPersistentAttribute;
+		if ( jaxbPersistentAttribute instanceof JaxbBasicImpl jaxbBasic ) {
 			return XmlAnnotationHelper.resolveJavaType( jaxbBasic.getTarget(), sourceModelBuildingContext );
 		}
 
-		if ( jaxbPersistentAttribute instanceof JaxbEmbeddedImpl ) {
-			final JaxbEmbeddedImpl jaxbEmbedded = (JaxbEmbeddedImpl) jaxbPersistentAttribute;
+		if ( jaxbPersistentAttribute instanceof JaxbEmbeddedImpl jaxbEmbedded ) {
 			final String target = jaxbEmbedded.getTarget();
 			if ( StringHelper.isEmpty( target ) ) {
 				return null;
 			}
 			return classDetailsRegistry.resolveClassDetails(
 					target,
-					() -> new DynamicClassDetails( target, sourceModelBuildingContext )
+					(name) -> new DynamicClassDetails( target, sourceModelBuildingContext )
 			);
 		}
 
-		if ( jaxbPersistentAttribute instanceof JaxbOneToOneImpl ) {
-			final JaxbOneToOneImpl jaxbOneToOne = (JaxbOneToOneImpl) jaxbPersistentAttribute;
+		if ( jaxbPersistentAttribute instanceof JaxbOneToOneImpl jaxbOneToOne ) {
 			final String target = jaxbOneToOne.getTargetEntity();
 			if ( StringHelper.isEmpty( target ) ) {
 				return null;
 			}
 			return classDetailsRegistry.resolveClassDetails(
 					target,
-					() -> new DynamicClassDetails(
+					(name) -> new DynamicClassDetails(
 							target,
 							null,
 							false,
@@ -371,23 +359,14 @@ public class ManagedTypeProcessor {
 			return classDetailsRegistry.getClassDetails( Object.class.getName() );
 		}
 
-		if ( jaxbPersistentAttribute instanceof JaxbPluralAttribute ) {
-			final JaxbPluralAttribute jaxbPluralAttribute = (JaxbPluralAttribute) jaxbPersistentAttribute;
+		if ( jaxbPersistentAttribute instanceof JaxbPluralAttribute jaxbPluralAttribute ) {
 			final LimitedCollectionClassification classification = nullif( jaxbPluralAttribute.getClassification(), LimitedCollectionClassification.BAG );
-			switch ( classification ) {
-				case BAG: {
-					return classDetailsRegistry.resolveClassDetails( Collection.class.getName() );
-				}
-				case LIST: {
-					return classDetailsRegistry.resolveClassDetails( List.class.getName() );
-				}
-				case SET: {
-					return classDetailsRegistry.resolveClassDetails( Set.class.getName() );
-				}
-				case MAP: {
-					return classDetailsRegistry.resolveClassDetails( Map.class.getName() );
-				}
-			}
+			return switch ( classification ) {
+				case BAG -> classDetailsRegistry.resolveClassDetails( Collection.class.getName() );
+				case LIST -> classDetailsRegistry.resolveClassDetails( List.class.getName() );
+				case SET -> classDetailsRegistry.resolveClassDetails( Set.class.getName() );
+				case MAP -> classDetailsRegistry.resolveClassDetails( Map.class.getName() );
+			};
 		}
 		throw new UnsupportedOperationException( "Resolution of dynamic attribute Java type not yet implemented for " + jaxbPersistentAttribute );
 	}

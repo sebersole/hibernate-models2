@@ -6,7 +6,7 @@
  */
 package org.hibernate.models.orm.categorize.spi;
 
-import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetails;
 
 /**
  * Registration for a {@linkplain org.hibernate.usertype.UserType}

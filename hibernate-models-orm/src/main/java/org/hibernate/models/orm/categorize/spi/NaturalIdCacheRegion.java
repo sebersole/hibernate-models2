@@ -7,8 +7,8 @@
 package org.hibernate.models.orm.categorize.spi;
 
 import org.hibernate.annotations.NaturalIdCache;
-import org.hibernate.models.internal.StringHelper;
-import org.hibernate.models.source.spi.AnnotationUsage;
+import org.hibernate.internal.util.StringHelper;
+import org.hibernate.models.spi.AnnotationUsage;
 
 /**
  * Details about caching related to the natural-id of an entity

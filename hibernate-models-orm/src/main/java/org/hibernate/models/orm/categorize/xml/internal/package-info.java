@@ -7,11 +7,11 @@
 
 /**
  * Support for processing mapping XML files and applying implied
- * {@linkplain org.hibernate.models.source.spi.AnnotationUsage}
+ * {@linkplain org.hibernate.models.spi.AnnotationUsage}
  * references over the appropriate
- * {@linkplain org.hibernate.models.source.spi.ClassDetails classes},
- * {@linkplain org.hibernate.models.source.spi.FieldDetails fields} and
- * {@linkplain org.hibernate.models.source.spi.MethodDetails methods}.
+ * {@linkplain org.hibernate.models.spi.ClassDetails classes},
+ * {@linkplain org.hibernate.models.spi.FieldDetails fields} and
+ * {@linkplain org.hibernate.models.spi.MethodDetails methods}.
  * <p/>
  * JPA defines 2 modes for applying mapping XML information, as covered under
  * section 12.1 (<i>Use of the XML Descriptor</i>) of the specification-<dl>
@@ -31,9 +31,9 @@
  * When operating in metadata-complete mode,
  * {@linkplain org.hibernate.models.orm.categorize.xml.internal.ManagedTypeProcessor} will first clear
  * all annotations from the managed type's
- * {@linkplain org.hibernate.models.source.spi.ClassDetails class},
- * {@linkplain org.hibernate.models.source.spi.FieldDetails fields} and
- * {@linkplain org.hibernate.models.source.spi.MethodDetails methods}.  This allows the same
+ * {@linkplain org.hibernate.models.spi.ClassDetails class},
+ * {@linkplain org.hibernate.models.spi.FieldDetails fields} and
+ * {@linkplain org.hibernate.models.spi.MethodDetails methods}.  This allows the same
  * code to be used to apply the metadata in both modes.
  *
  * @author Steve Ebersole

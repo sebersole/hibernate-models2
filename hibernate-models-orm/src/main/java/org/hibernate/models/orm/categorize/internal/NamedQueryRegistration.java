@@ -10,7 +10,7 @@ import java.lang.annotation.Annotation;
 
 import org.hibernate.models.orm.HibernateAnnotations;
 import org.hibernate.models.orm.JpaAnnotations;
-import org.hibernate.models.source.spi.AnnotationUsage;
+import org.hibernate.models.spi.AnnotationUsage;
 
 /**
  * @see JpaAnnotations#NAMED_QUERY

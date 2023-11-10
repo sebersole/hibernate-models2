@@ -13,8 +13,8 @@ import java.util.Set;
 
 import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
+import org.hibernate.boot.registry.classloading.spi.ClassLoadingException;
 import org.hibernate.boot.spi.BootstrapContext;
-import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.orm.categorize.internal.ClassLoaderServiceLoading;
 import org.hibernate.models.orm.categorize.internal.DomainModelCategorizationCollector;
 import org.hibernate.models.orm.categorize.internal.ModelCategorizationContextImpl;
@@ -23,23 +23,23 @@ import org.hibernate.models.orm.categorize.xml.spi.XmlProcessingResult;
 import org.hibernate.models.orm.categorize.xml.spi.XmlPreProcessingResult;
 import org.hibernate.models.orm.categorize.xml.spi.XmlPreProcessor;
 import org.hibernate.models.orm.categorize.xml.spi.XmlProcessor;
-import org.hibernate.models.source.internal.SourceModelBuildingContextImpl;
-import org.hibernate.models.source.internal.jandex.JandexClassDetails;
-import org.hibernate.models.source.internal.jandex.JandexIndexerHelper;
-import org.hibernate.models.source.internal.jandex.JandexPackageDetails;
-import org.hibernate.models.source.internal.jdk.JdkBuilders;
-import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
-import org.hibernate.models.source.spi.ClassDetails;
-import org.hibernate.models.source.spi.ClassDetailsRegistry;
-import org.hibernate.models.source.spi.RegistryPrimer;
-import org.hibernate.models.source.spi.SourceModelBuildingContext;
+import org.hibernate.models.internal.SourceModelBuildingContextImpl;
+import org.hibernate.models.internal.jandex.JandexClassDetails;
+import org.hibernate.models.internal.jandex.JandexIndexerHelper;
+import org.hibernate.models.internal.jdk.JdkBuilders;
+import org.hibernate.models.spi.AnnotationDescriptorRegistry;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetailsRegistry;
 import org.hibernate.models.spi.ClassLoading;
+import org.hibernate.models.spi.RegistryPrimer;
+import org.hibernate.models.spi.SourceModelBuildingContext;
 
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.CompositeIndex;
 import org.jboss.jandex.IndexView;
 import org.jboss.jandex.Indexer;
 
+import static org.hibernate.models.internal.util.CollectionHelper.mutableJoin;
 import static org.hibernate.models.orm.categorize.internal.EntityHierarchyBuilder.createEntityHierarchies;
 
 /**
@@ -74,10 +74,19 @@ public class ManagedResourcesProcessor {
 
 		final XmlPreProcessingResult xmlPreProcessingResult = XmlPreProcessor.preProcessXmlResources( managedResources );
 
-		final List<String> allKnownClassNames = CollectionHelper.mutableJoin(
+		final List<String> allKnownClassNames = mutableJoin(
 				managedResources.getAnnotatedClassNames(),
 				xmlPreProcessingResult.getMappedClasses()
 		);
+		managedResources.getAnnotatedPackageNames().forEach( (packageName) -> {
+			try {
+				final Class<?> packageInfoClass = classLoading.classForName( packageName + ".package-info" );
+				allKnownClassNames.add( packageInfoClass.getName() );
+			}
+			catch (ClassLoadingException classLoadingException) {
+				// no package-info, so there can be no annotations... just skip it
+			}
+		} );
 		managedResources.getAnnotatedClassReferences().forEach( (clazz) -> allKnownClassNames.add( clazz.getName() ) );
 
 		// At this point we know all managed class names across all sources.
@@ -228,13 +237,6 @@ public class ManagedResourcesProcessor {
 
 		for ( ClassInfo knownClass : jandexIndex.getKnownClasses() ) {
 			final String className = knownClass.name().toString();
-			if ( className.endsWith( "package-info" ) ) {
-				classDetailsRegistry.resolvePackageDetails(
-						className,
-						() -> new JandexPackageDetails( knownClass, buildingContext )
-				);
-				continue;
-			}
 
 			if ( knownClass.isAnnotation() ) {
 				// it is always safe to load the annotation classes - we will never be enhancing them
@@ -245,13 +247,13 @@ public class ManagedResourcesProcessor {
 				//noinspection unchecked
 				annotationDescriptorRegistry.resolveDescriptor(
 						annotationClass,
-						(t) -> JdkBuilders.buildAnnotationDescriptor( annotationClass, buildingContext )
+						(t) -> JdkBuilders.buildAnnotationDescriptor( annotationClass, buildingContext.getAnnotationDescriptorRegistry() )
 				);
 			}
 
 			classDetailsRegistry.resolveClassDetails(
 					className,
-					() -> new JandexClassDetails( knownClass, buildingContext )
+					(name) -> new JandexClassDetails( knownClass, buildingContext )
 			);
 		}
 	}

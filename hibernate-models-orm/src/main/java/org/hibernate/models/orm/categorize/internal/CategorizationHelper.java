@@ -7,7 +7,7 @@
 package org.hibernate.models.orm.categorize.internal;
 
 import org.hibernate.models.orm.JpaAnnotations;
-import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetails;
 
 /**
  * @author Steve Ebersole

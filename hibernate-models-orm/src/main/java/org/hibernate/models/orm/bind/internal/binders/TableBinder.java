@@ -20,8 +20,8 @@ import org.hibernate.boot.model.naming.ImplicitNamingStrategy;
 import org.hibernate.boot.model.naming.PhysicalNamingStrategy;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
+import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.Table;
-import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.orm.AnnotationPlacementException;
 import org.hibernate.models.orm.bind.internal.InLineView;
 import org.hibernate.models.orm.bind.internal.PhysicalTable;
@@ -34,8 +34,8 @@ import org.hibernate.models.orm.bind.spi.PhysicalTableReference;
 import org.hibernate.models.orm.bind.spi.QuotedIdentifierTarget;
 import org.hibernate.models.orm.bind.spi.TableReference;
 import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
-import org.hibernate.models.source.spi.AnnotationUsage;
-import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.spi.AnnotationUsage;
+import org.hibernate.models.spi.ClassDetails;
 
 import jakarta.persistence.SecondaryTable;
 

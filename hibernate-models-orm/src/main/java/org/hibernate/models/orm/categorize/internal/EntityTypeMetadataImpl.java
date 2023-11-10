@@ -28,17 +28,17 @@ import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.JpaEventListener;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
-import org.hibernate.models.source.spi.AnnotationUsage;
-import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.spi.AnnotationUsage;
+import org.hibernate.models.spi.ClassDetails;
 
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Cacheable;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 
-import static org.hibernate.models.internal.StringHelper.EMPTY_STRINGS;
-import static org.hibernate.models.internal.StringHelper.isNotEmpty;
-import static org.hibernate.models.internal.StringHelper.unqualify;
+import static org.hibernate.internal.util.StringHelper.EMPTY_STRINGS;
+import static org.hibernate.internal.util.StringHelper.isNotEmpty;
+import static org.hibernate.internal.util.StringHelper.unqualify;
 
 /**
  * @author Steve Ebersole

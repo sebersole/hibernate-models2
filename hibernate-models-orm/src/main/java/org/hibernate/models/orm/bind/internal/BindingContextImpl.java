@@ -11,8 +11,8 @@ import org.hibernate.boot.spi.BootstrapContext;
 import org.hibernate.models.orm.bind.spi.BindingContext;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.categorize.spi.GlobalRegistrations;
-import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
-import org.hibernate.models.source.spi.ClassDetailsRegistry;
+import org.hibernate.models.spi.AnnotationDescriptorRegistry;
+import org.hibernate.models.spi.ClassDetailsRegistry;
 import org.hibernate.service.ServiceRegistry;
 
 import jakarta.persistence.SharedCacheMode;

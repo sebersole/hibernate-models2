@@ -7,8 +7,8 @@
 
 /**
  * Support for processing mapping XML files, ultimately creating/updating
- * {@linkplain org.hibernate.models.source.spi.AnnotationUsage annotation} references
- * on the model's {@linkplain org.hibernate.models.source.spi.AnnotationTarget targets}
+ * {@linkplain org.hibernate.models.spi.AnnotationUsage annotation} references
+ * on the model's {@linkplain org.hibernate.models.spi.AnnotationTarget targets}
  * based on the XML.<ol>
  *     <li>
  *         First performs some {@linkplain org.hibernate.models.orm.categorize.xml.spi.XmlPreProcessor pre-processing}

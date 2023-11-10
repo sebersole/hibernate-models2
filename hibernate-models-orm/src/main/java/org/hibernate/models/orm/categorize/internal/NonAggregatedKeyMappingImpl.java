@@ -11,7 +11,7 @@ import java.util.List;
 import org.hibernate.models.orm.categorize.spi.AttributeConsumer;
 import org.hibernate.models.orm.categorize.spi.NonAggregatedKeyMapping;
 import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
-import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetails;
 
 /**
  * @author Steve Ebersole

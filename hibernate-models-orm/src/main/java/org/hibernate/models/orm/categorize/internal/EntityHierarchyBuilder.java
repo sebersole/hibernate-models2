@@ -16,12 +16,12 @@ import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
-import org.hibernate.models.source.spi.AnnotationTarget;
-import org.hibernate.models.source.spi.AnnotationUsage;
-import org.hibernate.models.source.spi.ClassDetails;
-import org.hibernate.models.source.spi.ClassDetailsRegistry;
-import org.hibernate.models.source.spi.FieldDetails;
-import org.hibernate.models.source.spi.MethodDetails;
+import org.hibernate.models.spi.AnnotationTarget;
+import org.hibernate.models.spi.AnnotationUsage;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetailsRegistry;
+import org.hibernate.models.spi.FieldDetails;
+import org.hibernate.models.spi.MethodDetails;
 
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;

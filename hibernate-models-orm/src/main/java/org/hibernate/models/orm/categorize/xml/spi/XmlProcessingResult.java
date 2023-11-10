@@ -13,7 +13,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbManagedType;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbMappedSuperclassImpl;
-import org.hibernate.models.source.spi.SourceModelBuildingContext;
+import org.hibernate.models.spi.SourceModelBuildingContext;
 
 /**
  * Collected XML override mappings we can apply wholesale after

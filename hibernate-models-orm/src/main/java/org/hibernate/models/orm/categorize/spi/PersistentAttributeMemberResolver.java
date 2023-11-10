@@ -8,8 +8,8 @@ package org.hibernate.models.orm.categorize.spi;
 
 import java.util.List;
 
-import org.hibernate.models.source.spi.ClassDetails;
-import org.hibernate.models.source.spi.MemberDetails;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.MemberDetails;
 
 import jakarta.persistence.AccessType;
 

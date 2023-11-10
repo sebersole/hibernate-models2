@@ -13,8 +13,8 @@
  * <p/>
  * Happens in 2 steps -<ol>
  *     <li>
- *         Create the "source metamodel" ({@linkplain org.hibernate.models.source.spi.ClassDetails classes},
- *         {@linkplain org.hibernate.models.source.spi.AnnotationUsage annotations},
+ *         Create the "source metamodel" ({@linkplain org.hibernate.models.spi.ClassDetails classes},
+ *         {@linkplain org.hibernate.models.spi.AnnotationUsage annotations},
  *         {@linkplain org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl XML}, etc.)
  *     </li>
  *     <li>

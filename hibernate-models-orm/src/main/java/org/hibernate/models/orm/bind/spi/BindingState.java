@@ -14,7 +14,7 @@ import org.hibernate.models.orm.bind.internal.binders.IdentifiableTypeBinder;
 import org.hibernate.models.orm.bind.internal.binders.ManagedTypeBinder;
 import org.hibernate.models.orm.categorize.spi.FilterDefRegistration;
 import org.hibernate.models.orm.categorize.spi.ManagedTypeMetadata;
-import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetails;
 
 /**
  * The idea here is mostly the role filled by InFlightMetadataCollector upstream.

@@ -11,9 +11,9 @@ import java.util.List;
 
 import org.hibernate.models.orm.categorize.spi.JpaEventListener;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
-import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
-import org.hibernate.models.source.spi.ClassDetailsRegistry;
-import org.hibernate.models.source.spi.SourceModelBuildingContext;
+import org.hibernate.models.spi.AnnotationDescriptorRegistry;
+import org.hibernate.models.spi.ClassDetailsRegistry;
+import org.hibernate.models.spi.SourceModelBuildingContext;
 
 import jakarta.persistence.SharedCacheMode;
 

@@ -19,8 +19,8 @@ import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.FilterDefRegistration;
 import org.hibernate.models.orm.categorize.spi.ManagedResourcesProcessor;
-import org.hibernate.models.source.SourceModelTestHelper;
-import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.orm.SourceModelTestHelper;
+import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.type.CharBooleanConverter;
 import org.hibernate.type.YesNoConverter;
 import org.hibernate.type.descriptor.converter.spi.BasicValueConverter;
@@ -34,7 +34,7 @@ import org.jboss.jandex.Index;
 import jakarta.persistence.InheritanceType;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.models.internal.SimpleClassLoading.SIMPLE_CLASS_LOADING;
+import static org.hibernate.models.orm.SimpleClassLoading.SIMPLE_CLASS_LOADING;
 
 /**
  * @author Steve Ebersole

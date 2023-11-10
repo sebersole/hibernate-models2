@@ -6,7 +6,7 @@
  */
 package org.hibernate.models.orm.categorize;
 
-import org.hibernate.models.Internal;
+import org.hibernate.Internal;
 
 import org.jboss.logging.BasicLogger;
 import org.jboss.logging.Logger;

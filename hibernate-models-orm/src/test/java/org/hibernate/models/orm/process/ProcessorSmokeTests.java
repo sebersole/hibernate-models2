@@ -7,10 +7,10 @@
 package org.hibernate.models.orm.process;
 
 import org.hibernate.boot.model.process.spi.ManagedResources;
-import org.hibernate.models.source.SourceModelTestHelper;
-import org.hibernate.models.source.internal.SourceModelBuildingContextImpl;
-import org.hibernate.models.source.spi.ClassDetails;
-import org.hibernate.models.source.spi.ClassDetailsRegistry;
+import org.hibernate.models.orm.SourceModelTestHelper;
+import org.hibernate.models.internal.SourceModelBuildingContextImpl;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetailsRegistry;
 import org.hibernate.type.CharBooleanConverter;
 import org.hibernate.type.YesNoConverter;
 import org.hibernate.type.descriptor.converter.spi.BasicValueConverter;
@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.jboss.jandex.Index;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.models.internal.SimpleClassLoading.SIMPLE_CLASS_LOADING;
+import static org.hibernate.models.orm.SimpleClassLoading.SIMPLE_CLASS_LOADING;
 
 /**
  * @author Steve Ebersole

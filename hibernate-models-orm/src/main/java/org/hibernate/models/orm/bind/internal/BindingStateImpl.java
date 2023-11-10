@@ -18,9 +18,9 @@ import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.engine.spi.FilterDefinition;
 import org.hibernate.internal.util.NamedConsumer;
+import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.models.ModelsException;
-import org.hibernate.models.internal.CollectionHelper;
 import org.hibernate.models.orm.bind.internal.binders.EntityTypeBinder;
 import org.hibernate.models.orm.bind.internal.binders.IdentifiableTypeBinder;
 import org.hibernate.models.orm.bind.internal.binders.ManagedTypeBinder;
@@ -31,7 +31,7 @@ import org.hibernate.models.orm.bind.spi.TableReference;
 import org.hibernate.models.orm.categorize.spi.FilterDefRegistration;
 import org.hibernate.models.orm.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.models.orm.categorize.spi.ManagedTypeMetadata;
-import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.type.spi.TypeConfiguration;
 
 /**

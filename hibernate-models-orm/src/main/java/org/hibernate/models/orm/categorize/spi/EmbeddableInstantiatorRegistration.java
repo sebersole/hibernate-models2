@@ -6,7 +6,7 @@
  */
 package org.hibernate.models.orm.categorize.spi;
 
-import org.hibernate.models.source.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetails;
 
 /**
  * Registered {@linkplain org.hibernate.metamodel.spi.EmbeddableInstantiator}
@@ -17,7 +17,7 @@ import org.hibernate.models.source.spi.ClassDetails;
  * @author Steve Ebersole
  */
 public class EmbeddableInstantiatorRegistration {
-	private final ClassDetails embeddableClass;
+	private final org.hibernate.models.spi.ClassDetails embeddableClass;
 	private final ClassDetails instantiator;
 
 	public EmbeddableInstantiatorRegistration(ClassDetails embeddableClass, ClassDetails instantiator) {

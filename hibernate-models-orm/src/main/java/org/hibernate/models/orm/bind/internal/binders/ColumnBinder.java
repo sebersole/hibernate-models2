@@ -10,7 +10,7 @@ import java.util.function.Supplier;
 
 import org.hibernate.mapping.Column;
 import org.hibernate.models.orm.bind.internal.BindingHelper;
-import org.hibernate.models.source.spi.AnnotationUsage;
+import org.hibernate.models.spi.AnnotationUsage;
 
 import static org.hibernate.internal.util.NullnessHelper.nullif;
 

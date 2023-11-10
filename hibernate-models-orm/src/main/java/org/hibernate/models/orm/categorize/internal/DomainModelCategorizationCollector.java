@@ -18,10 +18,9 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitMetadataImpl;
 import org.hibernate.models.orm.categorize.spi.ManagedResourcesProcessor;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
-import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
-import org.hibernate.models.source.spi.ClassDetails;
-import org.hibernate.models.source.spi.ClassDetailsRegistry;
-import org.hibernate.models.source.spi.PackageDetails;
+import org.hibernate.models.spi.AnnotationDescriptorRegistry;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetailsRegistry;
 
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
@@ -123,19 +122,6 @@ public class DomainModelCategorizationCollector {
 		}
 
 		// todo : converters?  - @Converter / AttributeConverter, as opposed to @ConverterRegistration which is already collected
-	}
-
-	public void apply(PackageDetails packageDetails) {
-		getGlobalRegistrations().collectJavaTypeRegistrations( packageDetails );
-		getGlobalRegistrations().collectJdbcTypeRegistrations( packageDetails );
-		getGlobalRegistrations().collectConverterRegistrations( packageDetails );
-		getGlobalRegistrations().collectUserTypeRegistrations( packageDetails );
-		getGlobalRegistrations().collectCompositeUserTypeRegistrations( packageDetails );
-		getGlobalRegistrations().collectCollectionTypeRegistrations( packageDetails );
-		getGlobalRegistrations().collectEmbeddableInstantiatorRegistrations( packageDetails );
-		getGlobalRegistrations().collectFilterDefinitions( packageDetails );
-
-		// todo : others?
 	}
 
 	/**

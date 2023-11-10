@@ -8,10 +8,9 @@ package org.hibernate.models.orm.categorize.spi;
 
 import java.util.List;
 
-import org.hibernate.boot.internal.ClassmateContext;
 import org.hibernate.models.orm.categorize.internal.StandardPersistentAttributeMemberResolver;
-import org.hibernate.models.source.spi.AnnotationDescriptorRegistry;
-import org.hibernate.models.source.spi.ClassDetailsRegistry;
+import org.hibernate.models.spi.AnnotationDescriptorRegistry;
+import org.hibernate.models.spi.ClassDetailsRegistry;
 
 import jakarta.persistence.SharedCacheMode;
 

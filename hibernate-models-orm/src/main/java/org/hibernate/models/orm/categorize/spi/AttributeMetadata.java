@@ -7,7 +7,7 @@
 package org.hibernate.models.orm.categorize.spi;
 
 
-import org.hibernate.models.source.spi.MemberDetails;
+import org.hibernate.models.spi.MemberDetails;
 
 /**
  * Metadata about a persistent attribute

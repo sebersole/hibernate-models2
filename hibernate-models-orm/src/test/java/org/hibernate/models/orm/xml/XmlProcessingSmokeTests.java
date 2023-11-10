@@ -16,10 +16,10 @@ import org.hibernate.models.orm.categorize.spi.FilterDefRegistration;
 import org.hibernate.models.orm.categorize.xml.internal.XmlDocumentImpl;
 import org.hibernate.models.orm.categorize.xml.internal.XmlPreProcessingResultImpl;
 import org.hibernate.models.orm.categorize.xml.spi.PersistenceUnitMetadata;
-import org.hibernate.models.source.SourceModelTestHelper;
-import org.hibernate.models.source.internal.StringTypeDescriptor;
-import org.hibernate.models.source.spi.ClassDetails;
-import org.hibernate.models.source.spi.SourceModelBuildingContext;
+import org.hibernate.models.orm.SourceModelTestHelper;
+import org.hibernate.models.internal.StringTypeDescriptor;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.SourceModelBuildingContext;
 import org.hibernate.type.descriptor.jdbc.ClobJdbcType;
 
 import org.junit.jupiter.api.Test;
@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.annotations.CascadeType.LOCK;
 import static org.hibernate.annotations.CascadeType.PERSIST;
 import static org.hibernate.annotations.CascadeType.REMOVE;
-import static org.hibernate.models.internal.SimpleClassLoading.SIMPLE_CLASS_LOADING;
+import static org.hibernate.models.orm.SimpleClassLoading.SIMPLE_CLASS_LOADING;
 import static org.hibernate.models.orm.XmlHelper.loadMapping;
 
 /**
@@ -118,7 +118,7 @@ public class XmlProcessingSmokeTests {
 
 	@Test
 	void testSimpleGlobalXmlProcessing() {
-		final SourceModelBuildingContext buildingContext = SourceModelTestHelper.createBuildingContext();
+		final SourceModelBuildingContext buildingContext = SourceModelTestHelper.createBuildingContext( StringTypeDescriptor.class );
 		final XmlPreProcessingResultImpl collectedXmlResources = new XmlPreProcessingResultImpl();
 
 		final JaxbEntityMappingsImpl xmlMapping = loadMapping( "mappings/globals.xml", SIMPLE_CLASS_LOADING );

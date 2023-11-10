@@ -10,7 +10,7 @@ import java.lang.annotation.Annotation;
 import java.util.function.Consumer;
 
 import org.hibernate.models.orm.categorize.internal.OrmAnnotationHelper;
-import org.hibernate.models.source.spi.AnnotationDescriptor;
+import org.hibernate.models.spi.AnnotationDescriptor;
 
 import jakarta.persistence.Access;
 import jakarta.persistence.AssociationOverride;
@@ -98,7 +98,7 @@ import jakarta.persistence.Transient;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
 
-import static org.hibernate.models.source.internal.AnnotationHelper.createOrmDescriptor;
+import static org.hibernate.models.internal.AnnotationHelper.createOrmDescriptor;
 
 /**
  * Descriptors for JPA annotations

@@ -14,9 +14,9 @@ import org.hibernate.models.orm.categorize.spi.AllMemberConsumer;
 import org.hibernate.models.orm.categorize.spi.JpaEventListener;
 import org.hibernate.models.orm.categorize.spi.JpaEventListenerStyle;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
-import org.hibernate.models.source.spi.ClassDetails;
-import org.hibernate.models.source.spi.MemberDetails;
-import org.hibernate.models.source.spi.MethodDetails;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.MemberDetails;
+import org.hibernate.models.spi.MethodDetails;
 
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.PostPersist;

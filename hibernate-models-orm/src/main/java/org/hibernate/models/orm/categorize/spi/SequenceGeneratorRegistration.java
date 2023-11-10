@@ -6,7 +6,7 @@
  */
 package org.hibernate.models.orm.categorize.spi;
 
-import org.hibernate.models.source.spi.AnnotationUsage;
+import org.hibernate.models.spi.AnnotationUsage;
 
 import jakarta.persistence.SequenceGenerator;
 

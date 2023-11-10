@@ -6,7 +6,7 @@
  */
 package org.hibernate.models.orm.categorize.spi;
 
-import org.hibernate.models.internal.IndexedConsumer;
+import org.hibernate.internal.util.IndexedConsumer;
 
 /**
  * @author Steve Ebersole

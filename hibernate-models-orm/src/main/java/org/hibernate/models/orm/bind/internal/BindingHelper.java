@@ -16,9 +16,9 @@ import org.hibernate.models.ModelsException;
 import org.hibernate.models.orm.bind.spi.BindingContext;
 import org.hibernate.models.orm.bind.spi.BindingOptions;
 import org.hibernate.models.orm.bind.spi.QuotedIdentifierTarget;
-import org.hibernate.models.source.spi.AnnotationDescriptor;
-import org.hibernate.models.source.spi.AnnotationUsage;
-import org.hibernate.models.source.spi.AttributeDescriptor;
+import org.hibernate.models.spi.AnnotationDescriptor;
+import org.hibernate.models.spi.AnnotationUsage;
+import org.hibernate.models.spi.AttributeDescriptor;
 
 import static org.hibernate.models.orm.bind.ModelBindingLogging.MODEL_BINDING_LOGGER;
 

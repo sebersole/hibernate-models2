@@ -6,10 +6,10 @@
  */
 package org.hibernate.models.orm.bind.internal.binders;
 
+import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Table;
-import org.hibernate.models.internal.StringHelper;
 import org.hibernate.models.orm.bind.spi.BindingContext;
 import org.hibernate.models.orm.bind.spi.BindingOptions;
 import org.hibernate.models.orm.bind.spi.BindingState;

@@ -16,10 +16,10 @@ import org.hibernate.models.orm.JpaAnnotations;
 import org.hibernate.models.orm.categorize.spi.AllMemberConsumer;
 import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
 import org.hibernate.models.orm.categorize.spi.PersistentAttributeMemberResolver;
-import org.hibernate.models.source.spi.ClassDetails;
-import org.hibernate.models.source.spi.FieldDetails;
-import org.hibernate.models.source.spi.MemberDetails;
-import org.hibernate.models.source.spi.MethodDetails;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.FieldDetails;
+import org.hibernate.models.spi.MemberDetails;
+import org.hibernate.models.spi.MethodDetails;
 
 import jakarta.persistence.AccessType;
 
