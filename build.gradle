@@ -1,1 +1,51 @@
-apply from: rootProject.file( "gradle/module.gradle" )
+plugins {
+	id "java-library"
+}
+
+group = "org.hibernate.models"
+version = "1.0.0-SNAPSHOT"
+
+apply from: rootProject.file( "gradle/checkstyle.gradle" )
+
+dependencies {
+	implementation platform( libs.hibernatePlatform )
+	implementation libs.hibernateCore
+	implementation libs.hibernateModels
+	implementation libs.jandex
+	implementation libs.classmate
+	implementation libs.logging
+
+	implementation libs.hcann
+
+	compileOnly libs.loggingAnnotations
+
+	annotationProcessor libs.loggingProcessor
+	annotationProcessor libs.logging
+	annotationProcessor libs.loggingAnnotations
+
+	testImplementation testLibs.junit5Api
+	testImplementation testLibs.assertjCore
+	testImplementation libs.hibernateTesting
+
+	testRuntimeOnly testLibs.junit5Engine
+}
+
+java {
+	sourceCompatibility = 17
+	targetCompatibility = 17
+}
+
+//test {
+//	useJUnitPlatform()
+//}
+
+tasks.withType( JavaCompile ).configureEach {
+	options.encoding = "UTF-8"
+	options.warnings false
+}
+
+// create a single "compile" task
+tasks.register( "compile" ) {compile->
+	compile.dependsOn tasks.named( sourceSets.main.compileJavaTaskName )
+	compile.dependsOn tasks.named( sourceSets.test.compileJavaTaskName )
+}

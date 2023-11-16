@@ -89,7 +89,7 @@ dependencyResolutionManagement {
 			def junit5Version = version "junit5", "5.9.2"
 			library( "junit5Api", "org.junit.jupiter", "junit-jupiter-api" ).versionRef( junit5Version )
 			library( "junit5Engine", "org.junit.jupiter", "junit-jupiter-engine" ).versionRef( junit5Version )
-			library( "junit5Params", "org.junit.jupiter", "junit-jupiter-params" ).versionRef( junit5Version )
+			library( "junitq5Params", "org.junit.jupiter", "junit-jupiter-params" ).versionRef( junit5Version )
 
 			def log4jVersion = version "log4j", "2.17.1"
 			library( "log4j", "org.apache.logging.log4j", "log4j-core" ).versionRef( log4jVersion )
@@ -98,12 +98,4 @@ dependencyResolutionManagement {
 
 }
 
-include "hibernate-models-orm"
-
-rootProject.children.each { project ->
-	project.buildFileName = "${project.name}.gradle"
-	assert project.projectDir.isDirectory()
-	assert project.buildFile.exists()
-	assert project.buildFile.isFile()
-}
 

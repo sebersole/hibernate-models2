@@ -10,6 +10,7 @@ import org.hibernate.boot.model.naming.PhysicalNamingStrategy;
 
 import org.hibernate.testing.orm.junit.SettingProvider;
 
+
 /**
  * @author Steve Ebersole
  */

@@ -56,6 +56,8 @@ import jakarta.persistence.MappedSuperclass;
 
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
 import static org.hibernate.internal.util.NullnessHelper.nullif;
+import static org.hibernate.models.orm.categorize.xml.internal.attr.BasicIdAttributeProcessing.processBasicIdAttribute;
+import static org.hibernate.models.orm.categorize.xml.internal.attr.EmbeddedIdAttributeProcessing.processEmbeddedIdAttribute;
 
 /**
  * Helper for handling managed types defined in mapping XML, in either
@@ -505,7 +507,7 @@ public class ManagedTypeProcessor {
 		if ( CollectionHelper.isNotEmpty( jaxbIds ) ) {
 			for ( int i = 0; i < jaxbIds.size(); i++ ) {
 				final JaxbIdImpl jaxbId = jaxbIds.get( i );
-				final MutableMemberDetails memberDetails = AttributeProcessor.processBasicIdAttribute(
+				final MutableMemberDetails memberDetails = processBasicIdAttribute(
 						jaxbId,
 						classDetails,
 						classAccessType,
@@ -515,7 +517,7 @@ public class ManagedTypeProcessor {
 			}
 		}
 		else if ( jaxbEmbeddedId != null ) {
-			final MutableMemberDetails memberDetails = AttributeProcessor.processEmbeddedIdAttribute(
+			final MutableMemberDetails memberDetails = processEmbeddedIdAttribute(
 					jaxbEmbeddedId,
 					classDetails,
 					classAccessType,

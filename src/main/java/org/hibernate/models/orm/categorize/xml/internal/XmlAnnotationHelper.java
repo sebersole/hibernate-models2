@@ -814,7 +814,7 @@ public class XmlAnnotationHelper {
 		typeCodeAnn.setAttributeValue( "value", jdbcTypeCode );
 	}
 
-	static void applyFilter(
+	public static void applyFilter(
 			JaxbHbmFilterImpl jaxbFilter,
 			MutableAnnotationTarget target,
 			SourceModelBuildingContext sourceModelBuildingContext) {
@@ -869,14 +869,14 @@ public class XmlAnnotationHelper {
 		return sqlFragmentAliases;
 	}
 
-	static void applySqlRestriction(
+	public static void applySqlRestriction(
 			String sqlRestriction,
 			MutableAnnotationTarget target,
 			SourceModelBuildingContext buildingContext) {
 		applySqlRestriction( sqlRestriction, target, SQLRestriction.class, buildingContext );
 	}
 
-	static void applySqlJoinTableRestriction(
+	public static void applySqlJoinTableRestriction(
 			String sqlJoinTableRestriction,
 			MutableAnnotationTarget target,
 			SourceModelBuildingContext buildingContext) {
@@ -894,7 +894,7 @@ public class XmlAnnotationHelper {
 		}
 	}
 
-	static <A extends Annotation> void applyCustomSql(
+	public static <A extends Annotation> void applyCustomSql(
 			JaxbCustomSqlImpl jaxbCustomSql,
 			MutableAnnotationTarget target,
 			Class<A> annotationType,
