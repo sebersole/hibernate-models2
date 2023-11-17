@@ -17,7 +17,7 @@ import java.util.function.BiConsumer;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.engine.spi.FilterDefinition;
-import org.hibernate.internal.util.NamedConsumer;
+import org.hibernate.internal.util.KeyedConsumer;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.models.ModelsException;
@@ -121,8 +121,8 @@ public class BindingStateImpl implements BindingState {
 	}
 
 	@Override
-	public void forEachType(NamedConsumer<ManagedTypeBinder> consumer) {
-		typeBinders.forEach( (classDetails, managedTypeBinder) -> consumer.consume( classDetails.getName(), managedTypeBinder ) );
+	public void forEachType(KeyedConsumer<String,ManagedTypeBinder> consumer) {
+		typeBinders.forEach( (classDetails, managedTypeBinder) -> consumer.accept( classDetails.getName(), managedTypeBinder ) );
 	}
 
 	@Override
@@ -131,7 +131,7 @@ public class BindingStateImpl implements BindingState {
 	}
 
 	@Override
-	public void forEachTable(NamedConsumer<TableReference> consumer) {
+	public void forEachTable(KeyedConsumer<String,TableReference> consumer) {
 		//noinspection unchecked
 		tableMap.forEach( (BiConsumer<? super String, ? super TableReference>) consumer );
 	}

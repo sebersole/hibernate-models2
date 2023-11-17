@@ -8,10 +8,10 @@ package org.hibernate.models.orm.bind.spi;
 
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.spi.MetadataBuildingContext;
-import org.hibernate.internal.util.NamedConsumer;
-import org.hibernate.models.orm.bind.internal.binders.TableBinder;
+import org.hibernate.internal.util.KeyedConsumer;
 import org.hibernate.models.orm.bind.internal.binders.IdentifiableTypeBinder;
 import org.hibernate.models.orm.bind.internal.binders.ManagedTypeBinder;
+import org.hibernate.models.orm.bind.internal.binders.TableBinder;
 import org.hibernate.models.orm.categorize.spi.FilterDefRegistration;
 import org.hibernate.models.orm.categorize.spi.ManagedTypeMetadata;
 import org.hibernate.models.spi.ClassDetails;
@@ -32,7 +32,7 @@ public interface BindingState {
 	void apply(FilterDefRegistration registration);
 
 	int getTableCount();
-	void forEachTable(NamedConsumer<TableReference> consumer);
+	void forEachTable(KeyedConsumer<String,TableReference> consumer);
 	<T extends TableReference> T getTableByName(String name);
 	void addTable(TableReference table);
 	void registerTableSecondPass(TableBinder.TableSecondPass secondPass);
@@ -46,6 +46,6 @@ public interface BindingState {
 
 	ManagedTypeBinder getTypeBinder(ClassDetails type);
 	IdentifiableTypeBinder getSuperTypeBinder(ClassDetails type);
-	void forEachType(NamedConsumer<ManagedTypeBinder> consumer);
+	void forEachType(KeyedConsumer<String,ManagedTypeBinder> consumer);
 
 }

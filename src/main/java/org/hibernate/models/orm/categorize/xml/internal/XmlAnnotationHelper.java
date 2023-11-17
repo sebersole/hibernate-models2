@@ -11,11 +11,16 @@ import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.hibernate.AnnotationException;
 import org.hibernate.annotations.AttributeAccessor;
+import org.hibernate.annotations.Check;
 import org.hibernate.annotations.CollectionType;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterJoinTable;
@@ -41,6 +46,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbAttributeOverrideImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicMapping;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbCachingImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbCheckConstraintImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbCollectionUserTypeImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbColumnImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbConfigurationParameterImpl;
@@ -49,10 +55,12 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbCustomSqlImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntity;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityListenerImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbForeignKeyImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbGeneratedValueImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbHbmFilterImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbIdClassImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbIdImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbJoinColumnImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbLifecycleCallback;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbLifecycleCallbackContainer;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbLobImpl;
@@ -64,6 +72,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbTableImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbUserTypeImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbUuidGeneratorImpl;
 import org.hibernate.engine.spi.ExecuteUpdateResultCheckStyle;
+import org.hibernate.internal.util.KeyedConsumer;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.models.ModelsException;
@@ -75,6 +84,7 @@ import org.hibernate.models.internal.MutableAnnotationUsage;
 import org.hibernate.models.internal.MutableClassDetails;
 import org.hibernate.models.internal.MutableMemberDetails;
 import org.hibernate.models.internal.dynamic.DynamicAnnotationUsage;
+import org.hibernate.models.spi.AnnotationDescriptor;
 import org.hibernate.models.spi.AnnotationTarget;
 import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.ClassDetails;
@@ -88,6 +98,7 @@ import jakarta.persistence.AccessType;
 import jakarta.persistence.AssociationOverride;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Basic;
+import jakarta.persistence.CheckConstraint;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.EmbeddedId;
@@ -95,10 +106,13 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.Inheritance;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinColumns;
 import jakarta.persistence.Lob;
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.PostPersist;
@@ -133,7 +147,7 @@ public class XmlAnnotationHelper {
 			JaxbEntity jaxbEntity,
 			MutableClassDetails classDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
-		final MutableAnnotationUsage<Entity> entityUsage = XmlProcessingHelper.getOrMakeAnnotation( Entity.class, classDetails );
+		final MutableAnnotationUsage<Entity> entityUsage = getOrMakeAnnotation( Entity.class, classDetails );
 		if ( StringHelper.isNotEmpty( jaxbEntity.getName() ) ) {
 			entityUsage.setAttributeValue( "name", jaxbEntity.getName() );
 		}
@@ -153,7 +167,7 @@ public class XmlAnnotationHelper {
 			JaxbBasicImpl jaxbBasic,
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
-		final MutableAnnotationUsage<Basic> basicAnn = XmlProcessingHelper.getOrMakeAnnotation( Basic.class, memberDetails );
+		final MutableAnnotationUsage<Basic> basicAnn = getOrMakeAnnotation( Basic.class, memberDetails );
 		if ( jaxbBasic.getFetch() != null ) {
 			basicAnn.setAttributeValue( "fetch", jaxbBasic.getFetch() );
 		}
@@ -205,10 +219,106 @@ public class XmlAnnotationHelper {
 		createColumnAnnotation( jaxbColumn, memberDetails );
 	}
 
+	public static MutableAnnotationUsage<JoinColumn> applyJoinColumn(
+			JaxbJoinColumnImpl jaxbJoinColumn,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		if ( jaxbJoinColumn == null ) {
+			return null;
+		}
+
+		return createJoinColumnAnnotation( jaxbJoinColumn, memberDetails, sourceModelBuildingContext );
+	}
+
+	public static MutableAnnotationUsage<JoinColumn> createJoinColumnAnnotation(
+			JaxbJoinColumnImpl jaxbJoinColumn,
+			MutableMemberDetails memberDetails,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		final MutableAnnotationUsage<JoinColumn> joinColumnAnn = getOrMakeAnnotation( JoinColumn.class, memberDetails );
+		final AnnotationDescriptor<JoinColumn> joinColumnDescriptor = sourceModelBuildingContext
+				.getAnnotationDescriptorRegistry()
+				.getDescriptor( JoinColumn.class );
+
+		applyOr( jaxbJoinColumn, JaxbJoinColumnImpl::getName, "name", joinColumnAnn, joinColumnDescriptor );
+		applyOr( jaxbJoinColumn, JaxbJoinColumnImpl::getTable, "table", joinColumnAnn, joinColumnDescriptor );
+		applyOr( jaxbJoinColumn, JaxbJoinColumnImpl::getReferencedColumnName, "referencedColumnName", joinColumnAnn, joinColumnDescriptor );
+		applyOr( jaxbJoinColumn, JaxbJoinColumnImpl::getOptions, "options", joinColumnAnn, joinColumnDescriptor );
+		applyOr( jaxbJoinColumn, JaxbJoinColumnImpl::getComment, "comment", joinColumnAnn, joinColumnDescriptor );
+		applyOr( jaxbJoinColumn, JaxbJoinColumnImpl::getColumnDefinition, "columnDefinition", joinColumnAnn, joinColumnDescriptor );
+
+		final JaxbForeignKeyImpl jaxbForeignKey = jaxbJoinColumn.getForeignKey();
+		final MutableAnnotationUsage<ForeignKey> foreignKeyAnn = getOrMakeAnnotation( ForeignKey.class, memberDetails );
+		final AnnotationDescriptor<ForeignKey> foreignKeyDescriptor = sourceModelBuildingContext
+				.getAnnotationDescriptorRegistry()
+				.getDescriptor( ForeignKey.class );
+		joinColumnAnn.setAttributeValue( "foreignKey", foreignKeyAnn );
+
+		applyOr( jaxbForeignKey, JaxbForeignKeyImpl::getName, "name", foreignKeyAnn, foreignKeyDescriptor );
+		applyOr( jaxbForeignKey, JaxbForeignKeyImpl::getConstraintMode, "value", foreignKeyAnn, foreignKeyDescriptor );
+		applyOr( jaxbForeignKey, JaxbForeignKeyImpl::getForeignKeyDefinition, "foreignKeyDefinition", foreignKeyAnn, foreignKeyDescriptor );
+		applyOr( jaxbForeignKey, JaxbForeignKeyImpl::getOptions, "options", foreignKeyAnn, foreignKeyDescriptor );
+
+		if ( CollectionHelper.isNotEmpty( jaxbJoinColumn.getCheckConstraint() ) ) {
+			final List<MutableAnnotationUsage<CheckConstraint>> constraints = new ArrayList<>( jaxbJoinColumn.getCheckConstraint().size() );
+			joinColumnAnn.setAttributeValue( "check", constraints );
+			for ( int i = 0; i < jaxbJoinColumn.getCheckConstraint().size(); i++ ) {
+				final JaxbCheckConstraintImpl jaxbCheckConstraint = jaxbJoinColumn.getCheckConstraint().get( i );
+				final MutableAnnotationUsage<CheckConstraint> checkConstraintAnn = getOrMakeAnnotation( CheckConstraint.class, memberDetails );
+				final AnnotationDescriptor<CheckConstraint> checkConstraintDescriptor = sourceModelBuildingContext
+						.getAnnotationDescriptorRegistry()
+						.getDescriptor( CheckConstraint.class );
+				constraints.add( checkConstraintAnn );
+
+				applyOr( jaxbCheckConstraint, JaxbCheckConstraintImpl::getName, "name", checkConstraintAnn, checkConstraintDescriptor );
+				applyOr( jaxbCheckConstraint, JaxbCheckConstraintImpl::getConstraint, "constraint", checkConstraintAnn, checkConstraintDescriptor );
+				applyOr( jaxbCheckConstraint, JaxbCheckConstraintImpl::getOptions, "options", checkConstraintAnn, checkConstraintDescriptor );
+			}
+		}
+		else {
+			final MutableAnnotationUsage<CheckConstraint> checkConstraintAnn = getOrMakeAnnotation( CheckConstraint.class, memberDetails );
+			joinColumnAnn.setAttributeValue( "check", List.of( checkConstraintAnn ) );
+		}
+
+		return joinColumnAnn;
+	}
+
+	public static <T,N> void applyOr(
+			N jaxbNode,
+			Function<N,T> jaxbValueAccess,
+			String name,
+			KeyedConsumer<String, T> valueConsumer,
+			Supplier<T> defaultValueProvider) {
+		if ( jaxbNode != null ) {
+			final T value = jaxbValueAccess.apply( jaxbNode );
+			if ( value != null ) {
+				valueConsumer.accept( name, value );
+				return;
+			}
+		}
+
+		valueConsumer.accept( name, defaultValueProvider.get() );
+	}
+
+	public static <T,N,A extends Annotation> void applyOr(
+			N jaxbNode,
+			Function<N,T> jaxbValueAccess,
+			String name,
+			MutableAnnotationUsage<A> annotationUsage,
+			AnnotationDescriptor<A> annotationDescriptor) {
+		//noinspection unchecked
+		applyOr(
+				jaxbNode,
+				jaxbValueAccess,
+				name,
+				(key, value) -> annotationUsage.setAttributeValue( name, value ),
+				() -> (T) annotationDescriptor.getAttribute( name ).getAttributeMethod().getDefaultValue()
+		);
+	}
+
 	private static MutableAnnotationUsage<Column> createColumnAnnotation(
 			JaxbColumnImpl jaxbColumn,
 			MutableAnnotationTarget target) {
-		final MutableAnnotationUsage<Column> columnAnn = XmlProcessingHelper.getOrMakeAnnotation( Column.class, target );
+		final MutableAnnotationUsage<Column> columnAnn = getOrMakeAnnotation( Column.class, target );
 
 		if ( jaxbColumn != null ) {
 			if ( StringHelper.isNotEmpty( jaxbColumn.getName() ) ) {
@@ -249,6 +359,26 @@ public class XmlAnnotationHelper {
 
 			if ( jaxbColumn.getScale() != null ) {
 				columnAnn.setAttributeValue( "scale", jaxbColumn.getScale() );
+			}
+
+			if ( jaxbColumn.getComment() != null ) {
+				columnAnn.setAttributeValue( "comment", jaxbColumn.getComment() );
+			}
+
+			if ( jaxbColumn.getOptions() != null ) {
+				columnAnn.setAttributeValue( "options", jaxbColumn.getOptions() );
+			}
+
+			if ( CollectionHelper.isNotEmpty( jaxbColumn.getCheckConstraints() ) ) {
+				final List<AnnotationUsage<Check>> checks = new ArrayList<>( jaxbColumn.getCheckConstraints().size() );
+				for ( int i = 0; i < jaxbColumn.getCheckConstraints().size(); i++ ) {
+					final JaxbCheckConstraintImpl jaxbCheck = jaxbColumn.getCheckConstraints().get( i );
+					final MutableAnnotationUsage<Check> checkAnn = getOrMakeAnnotation( Check.class, target );
+					checkAnn.setAttributeValue( "name", jaxbCheck.getName() );
+					checkAnn.setAttributeValue( "constraints", jaxbCheck.getConstraint() );
+					checks.add( checkAnn );
+				}
+				columnAnn.setAttributeValue( "check", checks );
 			}
 		}
 
@@ -558,7 +688,7 @@ public class XmlAnnotationHelper {
 			return;
 		}
 
-		final MutableAnnotationUsage<Table> tableAnn = XmlProcessingHelper.getOrMakeAnnotation( Table.class, target );
+		final MutableAnnotationUsage<Table> tableAnn = getOrMakeAnnotation( Table.class, target );
 
 		applyTableAttributes( tableAnn, jaxbTable, persistenceUnitMetadata );
 
@@ -672,7 +802,7 @@ public class XmlAnnotationHelper {
 			return;
 		}
 
-		final MutableAnnotationUsage<Inheritance> inheritanceAnn = XmlProcessingHelper.getOrMakeAnnotation(
+		final MutableAnnotationUsage<Inheritance> inheritanceAnn = getOrMakeAnnotation(
 				Inheritance.class,
 				classDetails
 		);
@@ -939,7 +1069,7 @@ public class XmlAnnotationHelper {
 			JaxbEntityListenerImpl jaxbEntityListener,
 			MutableClassDetails classDetails,
 			SourceModelBuildingContext buildingContext) {
-		final MutableAnnotationUsage<EntityListeners> entityListeners = XmlProcessingHelper.getOrMakeAnnotation(
+		final MutableAnnotationUsage<EntityListeners> entityListeners = getOrMakeAnnotation(
 				EntityListeners.class,
 				classDetails
 		);
@@ -1013,7 +1143,7 @@ public class XmlAnnotationHelper {
 			MutableClassDetails target,
 			SourceModelBuildingContext buildingContext) {
 		if ( rowId != null ) {
-			final MutableAnnotationUsage<RowId> rowIdAnn = XmlProcessingHelper.getOrMakeAnnotation( RowId.class, target );
+			final MutableAnnotationUsage<RowId> rowIdAnn = getOrMakeAnnotation( RowId.class, target );
 			applyAttributeIfSpecified( rowIdAnn, "value", rowId );
 		}
 	}

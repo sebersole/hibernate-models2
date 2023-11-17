@@ -1,11 +1,11 @@
 plugins {
 	id "java-library"
+
+	id "checkstyle"
 }
 
 group = "org.hibernate.models"
 version = "1.0.0-SNAPSHOT"
-
-apply from: rootProject.file( "gradle/checkstyle.gradle" )
 
 dependencies {
 	implementation platform( libs.hibernatePlatform )
@@ -28,6 +28,7 @@ dependencies {
 	testImplementation libs.hibernateTesting
 
 	testRuntimeOnly testLibs.junit5Engine
+	testRuntimeOnly testLibs.h2
 }
 
 java {
@@ -35,9 +36,9 @@ java {
 	targetCompatibility = 17
 }
 
-//test {
-//	useJUnitPlatform()
-//}
+test {
+	useJUnitPlatform()
+}
 
 tasks.withType( JavaCompile ).configureEach {
 	options.encoding = "UTF-8"
@@ -49,3 +50,10 @@ tasks.register( "compile" ) {compile->
 	compile.dependsOn tasks.named( sourceSets.main.compileJavaTaskName )
 	compile.dependsOn tasks.named( sourceSets.test.compileJavaTaskName )
 }
+
+checkstyle {
+	sourceSets = [ project.sourceSets.main ]
+	showViolations = false
+}
+// only include explicit sources (and thereby exclude generated sources)
+tasks.checkstyleMain.source = 'src/main'
