@@ -7,8 +7,10 @@
 package org.hibernate.models.orm.categorize.xml.internal.attr;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 
+import org.hibernate.annotations.CascadeType;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.NotFound;
@@ -17,6 +19,7 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.OptimisticLock;
 import org.hibernate.boot.internal.Target;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbCascadeTypeImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbJoinColumnImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbManyToOneImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbSingularFetchModeImpl;
@@ -68,6 +71,7 @@ public class ManyToOneAttributeProcessing {
 		applyFetching( memberDetails, jaxbManyToOne, manyToOneAnn, sourceModelBuildingContext );
 		applyOptimisticLock( memberDetails, jaxbManyToOne, manyToOneAnn, sourceModelBuildingContext );
 		applyTarget( memberDetails, jaxbManyToOne, manyToOneAnn, sourceModelBuildingContext );
+		applyCascading( memberDetails, jaxbManyToOne, manyToOneAnn, sourceModelBuildingContext );
 
 		return memberDetails;
 	}
@@ -117,6 +121,7 @@ public class ManyToOneAttributeProcessing {
 		}
 	}
 
+	@SuppressWarnings("unused")
 	private static void applyNotFound(
 			MutableMemberDetails memberDetails,
 			JaxbManyToOneImpl jaxbManyToOne,
@@ -131,6 +136,7 @@ public class ManyToOneAttributeProcessing {
 		notFoundAnn.setAttributeValue( "action", notFoundAction );
 	}
 
+	@SuppressWarnings("unused")
 	private static void applyOnDelete(
 			MutableMemberDetails memberDetails,
 			JaxbManyToOneImpl jaxbManyToOne,
@@ -145,6 +151,7 @@ public class ManyToOneAttributeProcessing {
 		notFoundAnn.setAttributeValue( "action", action );
 	}
 
+	@SuppressWarnings("unused")
 	private static void applyFetching(
 			MutableMemberDetails memberDetails,
 			JaxbManyToOneImpl jaxbManyToOne,
@@ -160,6 +167,7 @@ public class ManyToOneAttributeProcessing {
 		fetchAnn.setAttributeValue( "value", fetchMode );
 	}
 
+	@SuppressWarnings("unused")
 	private static void applyOptimisticLock(
 			MutableMemberDetails memberDetails,
 			JaxbManyToOneImpl jaxbManyToOne,
@@ -170,6 +178,7 @@ public class ManyToOneAttributeProcessing {
 		optLockAnn.setAttributeValue( "excluded", !includeInOptimisticLock );
 	}
 
+	@SuppressWarnings("unused")
 	private static void applyTarget(
 			MutableMemberDetails memberDetails,
 			JaxbManyToOneImpl jaxbManyToOne,
@@ -182,5 +191,56 @@ public class ManyToOneAttributeProcessing {
 
 		final MutableAnnotationUsage<Target> targetAnn = makeAnnotation( Target.class, memberDetails );
 		targetAnn.setAttributeValue( "value", targetEntityName );
+	}
+
+	@SuppressWarnings("unused")
+	private static void applyCascading(
+			MutableMemberDetails memberDetails,
+			JaxbManyToOneImpl jaxbManyToOne,
+			MutableAnnotationUsage<ManyToOne> manyToOneAnn,
+			SourceModelBuildingContext sourceModelBuildingContext) {
+		final JaxbCascadeTypeImpl cascadeContainer = jaxbManyToOne.getCascade();
+		if ( cascadeContainer == null ) {
+			return;
+		}
+
+		final EnumSet<CascadeType> cascadeTypes;
+
+		if ( cascadeContainer.getCascadeAll() != null ) {
+			cascadeTypes = EnumSet.allOf( CascadeType.class );
+		}
+		else {
+			cascadeTypes = EnumSet.noneOf( CascadeType.class );
+			if ( cascadeContainer.getCascadePersist() != null ) {
+				cascadeTypes.add( CascadeType.PERSIST );
+			}
+			if ( cascadeContainer.getCascadeMerge() != null ) {
+				cascadeTypes.add( CascadeType.MERGE );
+			}
+			if ( cascadeContainer.getCascadeRemove() != null ) {
+				cascadeTypes.add( CascadeType.REMOVE );
+			}
+			if ( cascadeContainer.getCascadeLock() != null ) {
+				cascadeTypes.add( CascadeType.LOCK );
+			}
+			if ( cascadeContainer.getCascadeRefresh() != null ) {
+				cascadeTypes.add( CascadeType.REFRESH );
+			}
+			if ( cascadeContainer.getCascadeReplicate() != null ) {
+				//noinspection deprecation
+				cascadeTypes.add( CascadeType.REPLICATE );
+			}
+			if ( cascadeContainer.getCascadeDetach() != null ) {
+				cascadeTypes.add( CascadeType.DETACH );
+			}
+		}
+
+		manyToOneAnn.setAttributeValue( "cascade", asList( cascadeTypes ) );
+	}
+
+	private static <E extends Enum<E>> List<E> asList(EnumSet<E> enums) {
+		final List<E> list = CollectionHelper.arrayList( enums.size() );
+		list.addAll( enums );
+		return list;
 	}
 }

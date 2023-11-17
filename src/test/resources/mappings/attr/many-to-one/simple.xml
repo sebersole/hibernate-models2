@@ -17,6 +17,9 @@
                          optimistic-lock="false"
                          not-found="IGNORE">
                 <join-column name="parent_fk" insertable="false" updatable="false"/>
+                <cascade>
+                    <cascade-all/>
+                </cascade>
                 <on-delete>CASCADE</on-delete>
             </many-to-one>
         </attributes>

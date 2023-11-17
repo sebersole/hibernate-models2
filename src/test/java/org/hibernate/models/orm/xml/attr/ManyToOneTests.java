@@ -6,6 +6,9 @@
  */
 package org.hibernate.models.orm.xml.attr;
 
+import java.util.List;
+
+import org.hibernate.annotations.CascadeType;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.NotFound;
@@ -13,7 +16,6 @@ import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.OptimisticLock;
-import org.hibernate.annotations.OptimisticLocking;
 import org.hibernate.boot.internal.BootstrapContextImpl;
 import org.hibernate.boot.internal.MetadataBuilderImpl;
 import org.hibernate.boot.internal.Target;
@@ -45,6 +47,7 @@ import static org.hibernate.models.orm.categorize.spi.ManagedResourcesProcessor.
 @ServiceRegistry
 public class ManyToOneTests {
 	@Test
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	void testSimpleManyToOne(ServiceRegistryScope scope) {
 		final StandardServiceRegistry serviceRegistry = scope.getRegistry();
 		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
@@ -93,8 +96,13 @@ public class ManyToOneTests {
 		final AnnotationUsage<Target> targetAnn = parentField.getAnnotationUsage( Target.class );
 		assertThat( targetAnn ).isNotNull();
 		assertThat( targetAnn.getString( "value" ) ).isEqualTo( "org.hibernate.models.orm.xml.attr.ManyToOneTests$SimpleEntity" );
+
+		final List<CascadeType> cascadeTypes = manyToOneAnn.getList( "cascade" );
+		assertThat( cascadeTypes ).isNotEmpty();
+		assertThat( cascadeTypes ).contains( CascadeType.PERSIST, CascadeType.MERGE, CascadeType.LOCK );
 	}
 
+	@SuppressWarnings("unused")
 	@Entity(name="SimpleEntity")
 	@Table(name="SimpleEntity")
 	public static class SimpleEntity {
