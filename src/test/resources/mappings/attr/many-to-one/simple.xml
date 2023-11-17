@@ -11,8 +11,13 @@
         <attributes>
             <id name="id"/>
             <basic name="name"/>
-            <many-to-one name="parent">
+            <many-to-one name="parent"
+                         target-entity="org.hibernate.models.orm.xml.attr.ManyToOneTests$SimpleEntity"
+                         fetch-mode="SELECT"
+                         optimistic-lock="false"
+                         not-found="IGNORE">
                 <join-column name="parent_fk" insertable="false" updatable="false"/>
+                <on-delete>CASCADE</on-delete>
             </many-to-one>
         </attributes>
     </entity>

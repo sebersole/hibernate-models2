@@ -45,7 +45,7 @@ public class EmbeddedIdAttributeProcessing {
 		);
 
 		XmlAnnotationHelper.applyAttributeOverrides(
-				jaxbEmbeddedId.getAttributeOverride(),
+				jaxbEmbeddedId.getAttributeOverrides(),
 				memberDetails,
 				sourceModelBuildingContext
 		);

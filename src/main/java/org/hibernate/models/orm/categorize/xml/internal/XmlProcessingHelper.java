@@ -138,7 +138,7 @@ public class XmlProcessingHelper {
 	 * Used when applying XML in complete mode or when {@linkplain #getOrMakeAnnotation}
 	 * needs to make.
 	 */
-	public static <A extends Annotation> DynamicAnnotationUsage<A> makeAnnotation(
+	public static <A extends Annotation> MutableAnnotationUsage<A> makeAnnotation(
 			Class<A> annotationType,
 			MutableAnnotationTarget target) {
 		final DynamicAnnotationUsage<A> created = new DynamicAnnotationUsage<>( annotationType, target );

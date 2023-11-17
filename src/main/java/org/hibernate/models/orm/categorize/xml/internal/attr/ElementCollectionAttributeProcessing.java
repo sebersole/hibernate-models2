@@ -190,7 +190,7 @@ public class ElementCollectionAttributeProcessing {
 			targetAnn.setAttributeValue( "value", jaxbElementCollection.getTargetClass() );
 		}
 
-		jaxbElementCollection.getConvert().forEach( (jaxbConvert) -> {
+		jaxbElementCollection.getConverts().forEach( (jaxbConvert) -> {
 			XmlAnnotationHelper.applyConvert( jaxbConvert, memberDetails, sourceModelBuildingContext );
 		} );
 

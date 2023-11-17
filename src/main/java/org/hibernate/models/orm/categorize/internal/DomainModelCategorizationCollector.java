@@ -11,7 +11,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityListenersImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityListenerContainerImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitDefaultsImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitMetadataImpl;
@@ -76,9 +76,9 @@ public class DomainModelCategorizationCollector {
 		final JaxbPersistenceUnitMetadataImpl persistenceUnitMetadata = jaxbRoot.getPersistenceUnitMetadata();
 		if ( persistenceUnitMetadata != null ) {
 			final JaxbPersistenceUnitDefaultsImpl persistenceUnitDefaults = persistenceUnitMetadata.getPersistenceUnitDefaults();
-			final JaxbEntityListenersImpl entityListeners = persistenceUnitDefaults.getEntityListeners();
-			if ( entityListeners != null ) {
-				getGlobalRegistrations().collectEntityListenerRegistrations( entityListeners.getEntityListener() );
+			final JaxbEntityListenerContainerImpl listenerContainer = persistenceUnitDefaults.getEntityListenerContainer();
+			if ( listenerContainer != null ) {
+				getGlobalRegistrations().collectEntityListenerRegistrations( listenerContainer.getEntityListeners() );
 			}
 		}
 

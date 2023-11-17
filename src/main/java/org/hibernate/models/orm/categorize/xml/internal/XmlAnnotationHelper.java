@@ -11,10 +11,8 @@ import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -76,14 +74,14 @@ import org.hibernate.internal.util.KeyedConsumer;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.models.ModelsException;
-import org.hibernate.models.orm.categorize.spi.JpaEventListener;
-import org.hibernate.models.orm.categorize.spi.JpaEventListenerStyle;
-import org.hibernate.models.orm.categorize.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.models.internal.MutableAnnotationTarget;
 import org.hibernate.models.internal.MutableAnnotationUsage;
 import org.hibernate.models.internal.MutableClassDetails;
 import org.hibernate.models.internal.MutableMemberDetails;
 import org.hibernate.models.internal.dynamic.DynamicAnnotationUsage;
+import org.hibernate.models.orm.categorize.spi.JpaEventListener;
+import org.hibernate.models.orm.categorize.spi.JpaEventListenerStyle;
+import org.hibernate.models.orm.categorize.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.models.spi.AnnotationDescriptor;
 import org.hibernate.models.spi.AnnotationTarget;
 import org.hibernate.models.spi.AnnotationUsage;
@@ -112,7 +110,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinColumns;
 import jakarta.persistence.Lob;
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.PostPersist;
@@ -131,6 +128,7 @@ import static jakarta.persistence.FetchType.EAGER;
 import static java.util.Collections.emptyList;
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
 import static org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper.getOrMakeAnnotation;
+import static org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper.makeAnnotation;
 
 /**
  * Helper for creating annotation from equivalent JAXB
@@ -246,7 +244,7 @@ public class XmlAnnotationHelper {
 		applyOr( jaxbJoinColumn, JaxbJoinColumnImpl::getComment, "comment", joinColumnAnn, joinColumnDescriptor );
 		applyOr( jaxbJoinColumn, JaxbJoinColumnImpl::getColumnDefinition, "columnDefinition", joinColumnAnn, joinColumnDescriptor );
 
-		final JaxbForeignKeyImpl jaxbForeignKey = jaxbJoinColumn.getForeignKey();
+		final JaxbForeignKeyImpl jaxbForeignKey = jaxbJoinColumn.getForeignKeys();
 		final MutableAnnotationUsage<ForeignKey> foreignKeyAnn = getOrMakeAnnotation( ForeignKey.class, memberDetails );
 		final AnnotationDescriptor<ForeignKey> foreignKeyDescriptor = sourceModelBuildingContext
 				.getAnnotationDescriptorRegistry()
@@ -258,11 +256,11 @@ public class XmlAnnotationHelper {
 		applyOr( jaxbForeignKey, JaxbForeignKeyImpl::getForeignKeyDefinition, "foreignKeyDefinition", foreignKeyAnn, foreignKeyDescriptor );
 		applyOr( jaxbForeignKey, JaxbForeignKeyImpl::getOptions, "options", foreignKeyAnn, foreignKeyDescriptor );
 
-		if ( CollectionHelper.isNotEmpty( jaxbJoinColumn.getCheckConstraint() ) ) {
-			final List<MutableAnnotationUsage<CheckConstraint>> constraints = new ArrayList<>( jaxbJoinColumn.getCheckConstraint().size() );
+		if ( CollectionHelper.isNotEmpty( jaxbJoinColumn.getCheckConstraints() ) ) {
+			final List<MutableAnnotationUsage<CheckConstraint>> constraints = new ArrayList<>( jaxbJoinColumn.getCheckConstraints().size() );
 			joinColumnAnn.setAttributeValue( "check", constraints );
-			for ( int i = 0; i < jaxbJoinColumn.getCheckConstraint().size(); i++ ) {
-				final JaxbCheckConstraintImpl jaxbCheckConstraint = jaxbJoinColumn.getCheckConstraint().get( i );
+			for ( int i = 0; i < jaxbJoinColumn.getCheckConstraints().size(); i++ ) {
+				final JaxbCheckConstraintImpl jaxbCheckConstraint = jaxbJoinColumn.getCheckConstraints().get( i );
 				final MutableAnnotationUsage<CheckConstraint> checkConstraintAnn = getOrMakeAnnotation( CheckConstraint.class, memberDetails );
 				final AnnotationDescriptor<CheckConstraint> checkConstraintDescriptor = sourceModelBuildingContext
 						.getAnnotationDescriptorRegistry()
@@ -459,7 +457,7 @@ public class XmlAnnotationHelper {
 			MutableMemberDetails memberDetails,
 			SourceModelBuildingContext sourceModelBuildingContext) {
 		final ClassDetails classDetails = resolveJavaType( name, sourceModelBuildingContext );
-		final DynamicAnnotationUsage<Target> targetAnn = XmlProcessingHelper.makeAnnotation( Target.class, memberDetails );
+		final MutableAnnotationUsage<Target> targetAnn = makeAnnotation( Target.class, memberDetails );
 		targetAnn.setAttributeValue( "value", classDetails );
 	}
 
@@ -926,7 +924,7 @@ public class XmlAnnotationHelper {
 		final ClassDetails descriptorClassDetails = sourceModelBuildingContext
 				.getClassDetailsRegistry()
 				.resolveClassDetails( descriptorClassName );
-		final DynamicAnnotationUsage<JdbcType> jdbcTypeAnn = XmlProcessingHelper.makeAnnotation( JdbcType.class, memberDetails );
+		final MutableAnnotationUsage<JdbcType> jdbcTypeAnn = makeAnnotation( JdbcType.class, memberDetails );
 		jdbcTypeAnn.setAttributeValue( "value", descriptorClassDetails );
 
 	}
@@ -1122,7 +1120,7 @@ public class XmlAnnotationHelper {
 						classDetails.getName()
 				) );
 			}
-			XmlProcessingHelper.makeAnnotation( lifecycleAnnotation, (MutableMemberDetails) methodDetails );
+			makeAnnotation( lifecycleAnnotation, (MutableMemberDetails) methodDetails );
 		}
 	}
 

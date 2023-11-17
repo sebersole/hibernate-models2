@@ -48,8 +48,8 @@ public class EmbeddedAttributeProcessing {
 		}
 
 		processCommonAttributeAnnotations( jaxbEmbedded, memberDetails, accessType, sourceModelBuildingContext );
-		XmlAnnotationHelper.applyAttributeOverrides( jaxbEmbedded.getAttributeOverride(), memberDetails, sourceModelBuildingContext );
-		XmlAnnotationHelper.applyAssociationOverrides( jaxbEmbedded.getAssociationOverride(), memberDetails, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyAttributeOverrides( jaxbEmbedded.getAttributeOverrides(), memberDetails, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyAssociationOverrides( jaxbEmbedded.getAssociationOverrides(), memberDetails, sourceModelBuildingContext );
 
 		return memberDetails;
 	}

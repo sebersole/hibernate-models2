@@ -36,10 +36,10 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAttribute;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.models.ModelsException;
+import org.hibernate.models.internal.MutableAnnotationUsage;
 import org.hibernate.models.internal.MutableClassDetails;
 import org.hibernate.models.internal.MutableMemberDetails;
 import org.hibernate.models.internal.SourceModelLogging;
-import org.hibernate.models.internal.dynamic.DynamicAnnotationUsage;
 import org.hibernate.models.internal.dynamic.DynamicClassDetails;
 import org.hibernate.models.internal.dynamic.MapModeFieldDetails;
 import org.hibernate.models.orm.categorize.spi.JpaEventListenerStyle;
@@ -400,7 +400,7 @@ public class ManagedTypeProcessor {
 		}
 
 		if ( StringHelper.isNotEmpty( jaxbEntity.getExtends() ) ) {
-			final DynamicAnnotationUsage<Extends> extendsAnn = XmlProcessingHelper.makeAnnotation(
+			final MutableAnnotationUsage<Extends> extendsAnn = XmlProcessingHelper.makeAnnotation(
 					Extends.class,
 					classDetails
 			);
@@ -604,8 +604,8 @@ public class ManagedTypeProcessor {
 				sourceModelBuildingContext
 		);
 
-		if ( jaxbEntity.getEntityListeners() != null ) {
-			jaxbEntity.getEntityListeners().getEntityListener().forEach( ( jaxbEntityListener -> {
+		if ( jaxbEntity.getEntityListenerContainer() != null ) {
+			jaxbEntity.getEntityListenerContainer().getEntityListeners().forEach( ( jaxbEntityListener -> {
 				XmlAnnotationHelper.applyEntityListener( jaxbEntityListener, classDetails, sourceModelBuildingContext );
 			} ) );
 		}

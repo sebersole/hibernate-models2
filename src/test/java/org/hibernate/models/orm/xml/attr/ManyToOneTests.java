@@ -6,8 +6,17 @@
  */
 package org.hibernate.models.orm.xml.attr;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+import org.hibernate.annotations.OptimisticLock;
+import org.hibernate.annotations.OptimisticLocking;
 import org.hibernate.boot.internal.BootstrapContextImpl;
 import org.hibernate.boot.internal.MetadataBuilderImpl;
+import org.hibernate.boot.internal.Target;
 import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
@@ -62,6 +71,28 @@ public class ManyToOneTests {
 		final AnnotationUsage<JoinColumn> joinColumnAnn = parentField.getAnnotationUsage( JoinColumn.class );
 		assertThat( joinColumnAnn ).isNotNull();
 		assertThat( joinColumnAnn.getString( "name" ) ).isEqualTo( "parent_fk" );
+
+		assertThat( manyToOneAnn.getList( "joinColumns" ) ).isNotEmpty();
+
+		final AnnotationUsage<NotFound> notFoundAnn = parentField.getAnnotationUsage( NotFound.class );
+		assertThat( notFoundAnn ).isNotNull();
+		assertThat( notFoundAnn.<NotFoundAction>getEnum( "action" ) ).isEqualTo( NotFoundAction.IGNORE );
+
+		final AnnotationUsage<OnDelete> onDeleteAnn = parentField.getAnnotationUsage( OnDelete.class );
+		assertThat( onDeleteAnn ).isNotNull();
+		assertThat( onDeleteAnn.<OnDeleteAction>getEnum( "action" ) ).isEqualTo( OnDeleteAction.CASCADE );
+
+		final AnnotationUsage<Fetch> fetchAnn = parentField.getAnnotationUsage( Fetch.class );
+		assertThat( fetchAnn ).isNotNull();
+		assertThat( fetchAnn.<FetchMode>getEnum( "value" ) ).isEqualTo( FetchMode.SELECT );
+
+		final AnnotationUsage<OptimisticLock> optLockAnn = parentField.getAnnotationUsage( OptimisticLock.class );
+		assertThat( optLockAnn ).isNotNull();
+		assertThat( optLockAnn.getBoolean( "excluded" ) ).isTrue();
+
+		final AnnotationUsage<Target> targetAnn = parentField.getAnnotationUsage( Target.class );
+		assertThat( targetAnn ).isNotNull();
+		assertThat( targetAnn.getString( "value" ) ).isEqualTo( "org.hibernate.models.orm.xml.attr.ManyToOneTests$SimpleEntity" );
 	}
 
 	@Entity(name="SimpleEntity")
