@@ -13,7 +13,6 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbManagedType;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbMappedSuperclassImpl;
-import org.hibernate.models.spi.SourceModelBuildingContext;
 
 /**
  * Collected XML override mappings we can apply wholesale after
@@ -27,10 +26,12 @@ public interface XmlProcessingResult {
 	 */
 	class OverrideTuple<M extends JaxbManagedType> {
 		private final JaxbEntityMappingsImpl jaxbRoot;
+		private final XmlDocumentContext xmlDocumentContext;
 		private final M managedType;
 
-		public OverrideTuple(JaxbEntityMappingsImpl jaxbRoot, M managedType) {
+		public OverrideTuple(JaxbEntityMappingsImpl jaxbRoot, XmlDocumentContext xmlDocumentContext, M managedType) {
 			this.jaxbRoot = jaxbRoot;
+			this.xmlDocumentContext = xmlDocumentContext;
 			this.managedType = managedType;
 		}
 
@@ -38,12 +39,16 @@ public interface XmlProcessingResult {
 			return jaxbRoot;
 		}
 
+		public XmlDocumentContext getXmlDocumentContext() {
+			return xmlDocumentContext;
+		}
+
 		public M getManagedType() {
 			return managedType;
 		}
 	}
 
-	void apply(PersistenceUnitMetadata metadata, SourceModelBuildingContext buildingContext);
+	void apply(PersistenceUnitMetadata metadata);
 
 	List<OverrideTuple<JaxbEntityImpl>> getEntityOverrides();
 	List<OverrideTuple<JaxbMappedSuperclassImpl>> getMappedSuperclassesOverrides();

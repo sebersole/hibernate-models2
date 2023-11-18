@@ -11,18 +11,14 @@ import java.util.EnumSet;
 import java.util.List;
 
 import org.hibernate.annotations.CascadeType;
-import org.hibernate.annotations.Fetch;
-import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.NotFound;
 import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
-import org.hibernate.annotations.OptimisticLock;
 import org.hibernate.boot.internal.Target;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbCascadeTypeImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbJoinColumnImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbManyToOneImpl;
-import org.hibernate.boot.jaxb.mapping.spi.JaxbSingularFetchModeImpl;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.models.internal.MutableAnnotationUsage;
@@ -30,8 +26,8 @@ import org.hibernate.models.internal.MutableClassDetails;
 import org.hibernate.models.internal.MutableMemberDetails;
 import org.hibernate.models.orm.categorize.xml.internal.XmlAnnotationHelper;
 import org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper;
+import org.hibernate.models.orm.categorize.xml.spi.XmlDocumentContext;
 import org.hibernate.models.spi.AnnotationDescriptor;
-import org.hibernate.models.spi.SourceModelBuildingContext;
 
 import jakarta.persistence.AccessType;
 import jakarta.persistence.JoinColumn;
@@ -50,28 +46,28 @@ public class ManyToOneAttributeProcessing {
 			JaxbManyToOneImpl jaxbManyToOne,
 			MutableClassDetails declarer,
 			AccessType classAccessType,
-			SourceModelBuildingContext sourceModelBuildingContext) {
+			XmlDocumentContext xmlDocumentContext) {
 		final AccessType accessType = coalesce( jaxbManyToOne.getAccess(), classAccessType );
 		final MutableMemberDetails memberDetails = XmlProcessingHelper.getAttributeMember(
 				jaxbManyToOne.getName(),
 				accessType,
-				declarer,
-				sourceModelBuildingContext
+				declarer
 		);
 
 		final MutableAnnotationUsage<ManyToOne> manyToOneAnn = applyManyToOne(
 				memberDetails,
 				jaxbManyToOne,
-				sourceModelBuildingContext
+				xmlDocumentContext
 		);
 
-		applyJoinColumns( memberDetails, jaxbManyToOne, manyToOneAnn, sourceModelBuildingContext );
-		applyNotFound( memberDetails, jaxbManyToOne, manyToOneAnn, sourceModelBuildingContext );
-		applyOnDelete( memberDetails, jaxbManyToOne, manyToOneAnn, sourceModelBuildingContext );
-		applyFetching( memberDetails, jaxbManyToOne, manyToOneAnn, sourceModelBuildingContext );
-		applyOptimisticLock( memberDetails, jaxbManyToOne, manyToOneAnn, sourceModelBuildingContext );
-		applyTarget( memberDetails, jaxbManyToOne, manyToOneAnn, sourceModelBuildingContext );
-		applyCascading( memberDetails, jaxbManyToOne, manyToOneAnn, sourceModelBuildingContext );
+		CommonProcessing.applyFetching( memberDetails, jaxbManyToOne, manyToOneAnn );
+		CommonProcessing.applyOptimisticLock( memberDetails, jaxbManyToOne, manyToOneAnn );
+		CommonProcessing.applyAttributeAccessor( memberDetails, jaxbManyToOne, manyToOneAnn, xmlDocumentContext );
+		applyJoinColumns( memberDetails, jaxbManyToOne, manyToOneAnn, xmlDocumentContext );
+		applyNotFound( memberDetails, jaxbManyToOne, manyToOneAnn, xmlDocumentContext );
+		applyOnDelete( memberDetails, jaxbManyToOne, manyToOneAnn, xmlDocumentContext );
+		applyTarget( memberDetails, jaxbManyToOne, manyToOneAnn, xmlDocumentContext );
+		applyCascading( memberDetails, jaxbManyToOne, manyToOneAnn, xmlDocumentContext );
 
 		return memberDetails;
 	}
@@ -79,11 +75,12 @@ public class ManyToOneAttributeProcessing {
 	private static MutableAnnotationUsage<ManyToOne> applyManyToOne(
 			MutableMemberDetails memberDetails,
 			JaxbManyToOneImpl jaxbManyToOne,
-			SourceModelBuildingContext sourceModelBuildingContext) {
+			XmlDocumentContext xmlDocumentContext) {
 		// todo : apply the @ManyToOne annotation
 
 		final MutableAnnotationUsage<ManyToOne> manyToOneAnn = getOrMakeAnnotation( ManyToOne.class, memberDetails );
-		final AnnotationDescriptor<ManyToOne> manyToOneDescriptor = sourceModelBuildingContext
+		final AnnotationDescriptor<ManyToOne> manyToOneDescriptor = xmlDocumentContext
+				.getModelBuildingContext()
 				.getAnnotationDescriptorRegistry()
 				.getDescriptor( ManyToOne.class );
 
@@ -102,7 +99,7 @@ public class ManyToOneAttributeProcessing {
 			MutableMemberDetails memberDetails,
 			JaxbManyToOneImpl jaxbManyToOne,
 			MutableAnnotationUsage<ManyToOne> manyToOneAnn,
-			SourceModelBuildingContext sourceModelBuildingContext) {
+			XmlDocumentContext xmlDocumentContext) {
 		if ( CollectionHelper.isNotEmpty( jaxbManyToOne.getJoinColumns() ) ) {
 			final List<MutableAnnotationUsage<JoinColumn>> joinColumns = new ArrayList<>( jaxbManyToOne.getJoinColumns().size() );
 			manyToOneAnn.setAttributeValue( "joinColumns", joinColumns );
@@ -111,7 +108,7 @@ public class ManyToOneAttributeProcessing {
 				final MutableAnnotationUsage<JoinColumn> joinColumnAnn = XmlAnnotationHelper.applyJoinColumn(
 						jaxbJoinColumn,
 						memberDetails,
-						sourceModelBuildingContext
+						xmlDocumentContext
 				);
 				joinColumns.add( joinColumnAnn );
 			}
@@ -121,12 +118,11 @@ public class ManyToOneAttributeProcessing {
 		}
 	}
 
-	@SuppressWarnings("unused")
 	private static void applyNotFound(
 			MutableMemberDetails memberDetails,
 			JaxbManyToOneImpl jaxbManyToOne,
 			MutableAnnotationUsage<ManyToOne> manyToOneAnn,
-			SourceModelBuildingContext sourceModelBuildingContext) {
+			XmlDocumentContext xmlDocumentContext) {
 		final NotFoundAction notFoundAction = jaxbManyToOne.getNotFound();
 		if ( notFoundAction == null ) {
 			return;
@@ -141,7 +137,7 @@ public class ManyToOneAttributeProcessing {
 			MutableMemberDetails memberDetails,
 			JaxbManyToOneImpl jaxbManyToOne,
 			MutableAnnotationUsage<ManyToOne> manyToOneAnn,
-			SourceModelBuildingContext sourceModelBuildingContext) {
+			XmlDocumentContext xmlDocumentContext) {
 		final OnDeleteAction action = jaxbManyToOne.getOnDelete();
 		if ( action == null ) {
 			return;
@@ -152,38 +148,11 @@ public class ManyToOneAttributeProcessing {
 	}
 
 	@SuppressWarnings("unused")
-	private static void applyFetching(
-			MutableMemberDetails memberDetails,
-			JaxbManyToOneImpl jaxbManyToOne,
-			MutableAnnotationUsage<ManyToOne> manyToOneAnn,
-			SourceModelBuildingContext sourceModelBuildingContext) {
-		final JaxbSingularFetchModeImpl jaxbFetchMode = jaxbManyToOne.getFetchMode();
-		if ( jaxbFetchMode == null ) {
-			return;
-		}
-
-		final FetchMode fetchMode = FetchMode.valueOf( jaxbFetchMode.value() );
-		final MutableAnnotationUsage<Fetch> fetchAnn = makeAnnotation( Fetch.class, memberDetails );
-		fetchAnn.setAttributeValue( "value", fetchMode );
-	}
-
-	@SuppressWarnings("unused")
-	private static void applyOptimisticLock(
-			MutableMemberDetails memberDetails,
-			JaxbManyToOneImpl jaxbManyToOne,
-			MutableAnnotationUsage<ManyToOne> manyToOneAnn,
-			SourceModelBuildingContext sourceModelBuildingContext) {
-		final boolean includeInOptimisticLock = jaxbManyToOne.isOptimisticLock();
-		final MutableAnnotationUsage<OptimisticLock> optLockAnn = makeAnnotation( OptimisticLock.class, memberDetails );
-		optLockAnn.setAttributeValue( "excluded", !includeInOptimisticLock );
-	}
-
-	@SuppressWarnings("unused")
 	private static void applyTarget(
 			MutableMemberDetails memberDetails,
 			JaxbManyToOneImpl jaxbManyToOne,
 			MutableAnnotationUsage<ManyToOne> manyToOneAnn,
-			SourceModelBuildingContext sourceModelBuildingContext) {
+			XmlDocumentContext xmlDocumentContext) {
 		final String targetEntityName = jaxbManyToOne.getTargetEntity();
 		if ( StringHelper.isEmpty( targetEntityName ) ) {
 			return;
@@ -198,7 +167,7 @@ public class ManyToOneAttributeProcessing {
 			MutableMemberDetails memberDetails,
 			JaxbManyToOneImpl jaxbManyToOne,
 			MutableAnnotationUsage<ManyToOne> manyToOneAnn,
-			SourceModelBuildingContext sourceModelBuildingContext) {
+			XmlDocumentContext xmlDocumentContext) {
 		final JaxbCascadeTypeImpl cascadeContainer = jaxbManyToOne.getCascade();
 		if ( cascadeContainer == null ) {
 			return;

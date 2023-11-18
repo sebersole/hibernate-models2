@@ -11,9 +11,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbAttributesContainer;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBaseAttributesContainer;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbElementCollectionImpl;
-import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedImpl;
-import org.hibernate.boot.jaxb.mapping.spi.JaxbIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbManyToManyImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbManyToOneImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbNaturalId;
@@ -23,14 +21,12 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistentAttribute;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAnyMappingImpl;
 import org.hibernate.models.internal.MutableClassDetails;
 import org.hibernate.models.internal.MutableMemberDetails;
-import org.hibernate.models.spi.SourceModelBuildingContext;
+import org.hibernate.models.orm.categorize.xml.spi.XmlDocumentContext;
 
 import jakarta.persistence.AccessType;
 
-import static org.hibernate.internal.util.NullnessHelper.coalesce;
 import static org.hibernate.models.orm.categorize.xml.internal.attr.AnyMappingAttributeProcessing.processAnyMappingAttribute;
 import static org.hibernate.models.orm.categorize.xml.internal.attr.BasicAttributeProcessing.processBasicAttribute;
-import static org.hibernate.models.orm.categorize.xml.internal.attr.CommonAttributeProcessing.processCommonAttributeAnnotations;
 import static org.hibernate.models.orm.categorize.xml.internal.attr.ElementCollectionAttributeProcessing.processElementCollectionAttribute;
 import static org.hibernate.models.orm.categorize.xml.internal.attr.EmbeddedAttributeProcessing.processEmbeddedAttribute;
 import static org.hibernate.models.orm.categorize.xml.internal.attr.ManyToManyAttributeProcessing.processManyToManyAttribute;
@@ -49,8 +45,8 @@ public class AttributeProcessor {
 			JaxbNaturalId jaxbNaturalId,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
-			SourceModelBuildingContext sourceModelBuildingContext) {
-		processNaturalId( jaxbNaturalId, mutableClassDetails, classAccessType, null, sourceModelBuildingContext );
+			XmlDocumentContext xmlDocumentContext) {
+		processNaturalId( jaxbNaturalId, mutableClassDetails, classAccessType, null, xmlDocumentContext );
 	}
 
 	public static void processNaturalId(
@@ -58,14 +54,14 @@ public class AttributeProcessor {
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
 			MemberAdjuster memberAdjuster,
-			SourceModelBuildingContext sourceModelBuildingContext) {
+			XmlDocumentContext xmlDocumentContext) {
 		if ( jaxbNaturalId == null ) {
 			return;
 		}
 
-		XmlAnnotationHelper.applyNaturalIdCache( jaxbNaturalId, mutableClassDetails, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyNaturalIdCache( jaxbNaturalId, mutableClassDetails );
 
-		processBaseAttributes( jaxbNaturalId, mutableClassDetails, classAccessType, memberAdjuster, sourceModelBuildingContext );
+		processBaseAttributes( jaxbNaturalId, mutableClassDetails, classAccessType, memberAdjuster, xmlDocumentContext );
 	}
 
 	public static void processBaseAttributes(
@@ -73,17 +69,17 @@ public class AttributeProcessor {
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
 			MemberAdjuster memberAdjuster,
-			SourceModelBuildingContext sourceModelBuildingContext) {
+			XmlDocumentContext xmlDocumentContext) {
 		for ( int i = 0; i < attributesContainer.getBasicAttributes().size(); i++ ) {
 			final JaxbBasicImpl jaxbBasic = attributesContainer.getBasicAttributes().get( i );
 			final MutableMemberDetails memberDetails = processBasicAttribute(
 					jaxbBasic,
 					mutableClassDetails,
 					classAccessType,
-					sourceModelBuildingContext
+					xmlDocumentContext
 			);
 			if ( memberAdjuster != null ) {
-				memberAdjuster.adjust( memberDetails, jaxbBasic, sourceModelBuildingContext );
+				memberAdjuster.adjust( memberDetails, jaxbBasic, xmlDocumentContext );
 			}
 		}
 
@@ -93,10 +89,10 @@ public class AttributeProcessor {
 					jaxbEmbedded,
 					mutableClassDetails,
 					classAccessType,
-					sourceModelBuildingContext
+					xmlDocumentContext
 			);
 			if ( memberAdjuster != null ) {
-				memberAdjuster.adjust( memberDetails, jaxbEmbedded, sourceModelBuildingContext );
+				memberAdjuster.adjust( memberDetails, jaxbEmbedded, xmlDocumentContext );
 			}
 		}
 
@@ -106,10 +102,10 @@ public class AttributeProcessor {
 					jaxbManyToOne,
 					mutableClassDetails,
 					classAccessType,
-					sourceModelBuildingContext
+					xmlDocumentContext
 			);
 			if ( memberAdjuster != null ) {
-				memberAdjuster.adjust( memberDetails, jaxbManyToOne, sourceModelBuildingContext );
+				memberAdjuster.adjust( memberDetails, jaxbManyToOne, xmlDocumentContext );
 			}
 		}
 
@@ -119,25 +115,25 @@ public class AttributeProcessor {
 					jaxbAnyMapping,
 					mutableClassDetails,
 					classAccessType,
-					sourceModelBuildingContext
+					xmlDocumentContext
 			);
 			if ( memberAdjuster != null ) {
-				memberAdjuster.adjust( memberDetails, jaxbAnyMapping, sourceModelBuildingContext );
+				memberAdjuster.adjust( memberDetails, jaxbAnyMapping, xmlDocumentContext );
 			}
 		}
 	}
 
 	@FunctionalInterface
 	public interface MemberAdjuster {
-		<M extends MutableMemberDetails> void adjust(M member, JaxbPersistentAttribute jaxbPersistentAttribute, SourceModelBuildingContext sourceModelBuildingContext);
+		<M extends MutableMemberDetails> void adjust(M member, JaxbPersistentAttribute jaxbPersistentAttribute, XmlDocumentContext xmlDocumentContext);
 	}
 
 	public static void processAttributes(
 			JaxbAttributesContainer attributesContainer,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
-			SourceModelBuildingContext sourceModelBuildingContext) {
-		processAttributes( attributesContainer, mutableClassDetails, classAccessType, null, sourceModelBuildingContext );
+			XmlDocumentContext xmlDocumentContext) {
+		processAttributes( attributesContainer, mutableClassDetails, classAccessType, null, xmlDocumentContext );
 	}
 
 	public static void processAttributes(
@@ -145,8 +141,8 @@ public class AttributeProcessor {
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
 			MemberAdjuster memberAdjuster,
-			SourceModelBuildingContext sourceModelBuildingContext) {
-		processBaseAttributes( attributesContainer, mutableClassDetails, classAccessType, memberAdjuster, sourceModelBuildingContext );
+			XmlDocumentContext xmlDocumentContext) {
+		processBaseAttributes( attributesContainer, mutableClassDetails, classAccessType, memberAdjuster, xmlDocumentContext );
 
 		for ( int i = 0; i < attributesContainer.getOneToOneAttributes().size(); i++ ) {
 			final JaxbOneToOneImpl jaxbOneToOne = attributesContainer.getOneToOneAttributes().get( i );
@@ -154,10 +150,10 @@ public class AttributeProcessor {
 					jaxbOneToOne,
 					mutableClassDetails,
 					classAccessType,
-					sourceModelBuildingContext
+					xmlDocumentContext
 			);
 			if ( memberAdjuster != null ) {
-				memberAdjuster.adjust( memberDetails, jaxbOneToOne, sourceModelBuildingContext );
+				memberAdjuster.adjust( memberDetails, jaxbOneToOne, xmlDocumentContext );
 			}
 		}
 
@@ -167,10 +163,10 @@ public class AttributeProcessor {
 					jaxbElementCollection,
 					mutableClassDetails,
 					classAccessType,
-					sourceModelBuildingContext
+					xmlDocumentContext
 			);
 			if ( memberAdjuster != null ) {
-				memberAdjuster.adjust( memberDetails, jaxbElementCollection, sourceModelBuildingContext );
+				memberAdjuster.adjust( memberDetails, jaxbElementCollection, xmlDocumentContext );
 			}
 		}
 
@@ -180,10 +176,10 @@ public class AttributeProcessor {
 					jaxbOneToMany,
 					mutableClassDetails,
 					classAccessType,
-					sourceModelBuildingContext
+					xmlDocumentContext
 			);
 			if ( memberAdjuster != null ) {
-				memberAdjuster.adjust( memberDetails, jaxbOneToMany, sourceModelBuildingContext );
+				memberAdjuster.adjust( memberDetails, jaxbOneToMany, xmlDocumentContext );
 			}
 		}
 
@@ -193,10 +189,10 @@ public class AttributeProcessor {
 					jaxbManyToMany,
 					mutableClassDetails,
 					classAccessType,
-					sourceModelBuildingContext
+					xmlDocumentContext
 			);
 			if ( memberAdjuster != null ) {
-				memberAdjuster.adjust( memberDetails, jaxbManyToMany, sourceModelBuildingContext );
+				memberAdjuster.adjust( memberDetails, jaxbManyToMany, xmlDocumentContext );
 			}
 		}
 
@@ -207,10 +203,10 @@ public class AttributeProcessor {
 					jaxbPluralAnyMapping,
 					mutableClassDetails,
 					classAccessType,
-					sourceModelBuildingContext
+					xmlDocumentContext
 			);
 			if ( memberAdjuster != null ) {
-				memberAdjuster.adjust( memberDetails, jaxbPluralAnyMapping, sourceModelBuildingContext );
+				memberAdjuster.adjust( memberDetails, jaxbPluralAnyMapping, xmlDocumentContext );
 			}
 		}
 	}

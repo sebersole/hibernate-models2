@@ -9,7 +9,7 @@ package org.hibernate.models.orm.categorize.xml.internal.attr;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbOneToOneImpl;
 import org.hibernate.models.internal.MutableClassDetails;
 import org.hibernate.models.internal.MutableMemberDetails;
-import org.hibernate.models.spi.SourceModelBuildingContext;
+import org.hibernate.models.orm.categorize.xml.spi.XmlDocumentContext;
 
 import jakarta.persistence.AccessType;
 
@@ -23,7 +23,7 @@ public class OneToOneAttributeProcessing {
 			JaxbOneToOneImpl jaxbOneToOne,
 			MutableClassDetails mutableClassDetails,
 			AccessType classAccessType,
-			SourceModelBuildingContext sourceModelBuildingContext) {
+			XmlDocumentContext xmlDocumentContext) {
 		throw new UnsupportedOperationException( "Support for one-to-one attributes not yet implemented" );
 	}
 }

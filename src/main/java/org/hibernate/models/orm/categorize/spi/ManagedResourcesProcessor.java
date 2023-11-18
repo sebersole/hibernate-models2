@@ -23,6 +23,7 @@ import org.hibernate.models.orm.categorize.internal.ClassLoaderServiceLoading;
 import org.hibernate.models.orm.categorize.internal.DomainModelCategorizationCollector;
 import org.hibernate.models.orm.categorize.internal.ModelCategorizationContextImpl;
 import org.hibernate.models.orm.categorize.ModelCategorizationLogging;
+import org.hibernate.models.orm.categorize.internal.OrmAnnotationHelper;
 import org.hibernate.models.orm.categorize.xml.spi.XmlProcessingResult;
 import org.hibernate.models.orm.categorize.xml.spi.XmlPreProcessingResult;
 import org.hibernate.models.orm.categorize.xml.spi.XmlPreProcessor;
@@ -134,7 +135,7 @@ public class ManagedResourcesProcessor {
 			modelCategorizationCollector.apply( classDetails );
 		} );
 
-		xmlProcessingResult.apply( xmlPreProcessingResult.getPersistenceUnitMetadata(), sourceModelBuildingContext );
+		xmlProcessingResult.apply( xmlPreProcessingResult.getPersistenceUnitMetadata() );
 
 
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -227,6 +228,8 @@ public class ManagedResourcesProcessor {
 	}
 
 	public static void preFillRegistries(RegistryPrimer.Contributions contributions, SourceModelBuildingContext buildingContext) {
+		OrmAnnotationHelper.forEachOrmAnnotation( contributions::registerAnnotation );
+
 		final IndexView jandexIndex = buildingContext.getJandexIndex();
 		if ( jandexIndex == null ) {
 			return;

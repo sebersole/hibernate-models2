@@ -11,7 +11,7 @@ import org.hibernate.models.internal.MutableClassDetails;
 import org.hibernate.models.internal.MutableMemberDetails;
 import org.hibernate.models.orm.categorize.xml.internal.XmlAnnotationHelper;
 import org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper;
-import org.hibernate.models.spi.SourceModelBuildingContext;
+import org.hibernate.models.orm.categorize.xml.spi.XmlDocumentContext;
 
 import jakarta.persistence.AccessType;
 
@@ -27,28 +27,18 @@ public class EmbeddedIdAttributeProcessing {
 			JaxbEmbeddedIdImpl jaxbEmbeddedId,
 			MutableClassDetails classDetails,
 			AccessType classAccessType,
-			SourceModelBuildingContext sourceModelBuildingContext) {
+			XmlDocumentContext xmlDocumentContext) {
 		final AccessType accessType = coalesce( jaxbEmbeddedId.getAccess(), classAccessType );
 		final MutableMemberDetails memberDetails = XmlProcessingHelper.findAttributeMember(
 				jaxbEmbeddedId.getName(),
 				accessType,
-				classDetails,
-				sourceModelBuildingContext
+				classDetails
 		);
 
-		XmlAnnotationHelper.applyEmbeddedId( jaxbEmbeddedId, memberDetails, sourceModelBuildingContext );
-		processCommonAttributeAnnotations(
-				jaxbEmbeddedId,
-				memberDetails,
-				accessType,
-				sourceModelBuildingContext
-		);
+		processCommonAttributeAnnotations( jaxbEmbeddedId, memberDetails, accessType );
 
-		XmlAnnotationHelper.applyAttributeOverrides(
-				jaxbEmbeddedId.getAttributeOverrides(),
-				memberDetails,
-				sourceModelBuildingContext
-		);
+		XmlAnnotationHelper.applyEmbeddedId( jaxbEmbeddedId, memberDetails, xmlDocumentContext );
+		XmlAnnotationHelper.applyAttributeOverrides( jaxbEmbeddedId.getAttributeOverrides(), memberDetails );
 
 		return memberDetails;
 	}

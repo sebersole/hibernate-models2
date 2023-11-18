@@ -21,7 +21,7 @@ public interface XmlPreProcessingResult {
 	/**
 	 * Aggregated persistence unit defaults and metadata
 	 */
-	PersistenceUnitMetadataImpl getPersistenceUnitMetadata();
+	PersistenceUnitMetadata getPersistenceUnitMetadata();
 
 	/**
 	 * All XML documents (JAXB roots)

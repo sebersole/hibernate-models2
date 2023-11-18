@@ -11,7 +11,7 @@ import org.hibernate.models.internal.MutableClassDetails;
 import org.hibernate.models.internal.MutableMemberDetails;
 import org.hibernate.models.orm.categorize.xml.internal.XmlAnnotationHelper;
 import org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper;
-import org.hibernate.models.spi.SourceModelBuildingContext;
+import org.hibernate.models.orm.categorize.xml.spi.XmlDocumentContext;
 
 import jakarta.persistence.AccessType;
 
@@ -27,33 +27,32 @@ public class BasicAttributeProcessing {
 			JaxbBasicImpl jaxbBasic,
 			MutableClassDetails declarer,
 			AccessType classAccessType,
-			SourceModelBuildingContext sourceModelBuildingContext) {
+			XmlDocumentContext xmlDocumentContext) {
 		final AccessType accessType = coalesce( jaxbBasic.getAccess(), classAccessType );
 		final MutableMemberDetails memberDetails = XmlProcessingHelper.getAttributeMember(
 				jaxbBasic.getName(),
 				accessType,
-				declarer,
-				sourceModelBuildingContext
+				declarer
 		);
 
-		XmlAnnotationHelper.applyBasic( jaxbBasic, memberDetails, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyBasic( jaxbBasic, memberDetails );
 
-		processCommonAttributeAnnotations( jaxbBasic, memberDetails, accessType, sourceModelBuildingContext );
+		processCommonAttributeAnnotations( jaxbBasic, memberDetails, accessType );
 		// only semi-common
-		XmlAnnotationHelper.applyOptimisticLockInclusion( jaxbBasic.isOptimisticLock(), memberDetails, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyOptimisticLockInclusion( jaxbBasic.isOptimisticLock(), memberDetails );
 
-		XmlAnnotationHelper.applyColumn( jaxbBasic.getColumn(), memberDetails, sourceModelBuildingContext );
-		XmlAnnotationHelper.applyFormula( jaxbBasic.getFormula(), memberDetails, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyColumn( jaxbBasic.getColumn(), memberDetails );
+		XmlAnnotationHelper.applyFormula( jaxbBasic.getFormula(), memberDetails );
 
 		// todo : value generation
 
-		XmlAnnotationHelper.applyConvert( jaxbBasic.getConvert(), memberDetails, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyConvert( jaxbBasic.getConvert(), memberDetails, xmlDocumentContext );
 
-		XmlAnnotationHelper.applyBasicTypeComposition( jaxbBasic, memberDetails, sourceModelBuildingContext );
-		XmlAnnotationHelper.applyTemporal( jaxbBasic.getTemporal(), memberDetails, sourceModelBuildingContext );
-		XmlAnnotationHelper.applyLob( jaxbBasic.getLob(), memberDetails, sourceModelBuildingContext );
-		XmlAnnotationHelper.applyEnumerated( jaxbBasic.getEnumerated(), memberDetails, sourceModelBuildingContext );
-		XmlAnnotationHelper.applyNationalized( jaxbBasic.getNationalized(), memberDetails, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyBasicTypeComposition( jaxbBasic, memberDetails, xmlDocumentContext );
+		XmlAnnotationHelper.applyTemporal( jaxbBasic.getTemporal(), memberDetails );
+		XmlAnnotationHelper.applyLob( jaxbBasic.getLob(), memberDetails );
+		XmlAnnotationHelper.applyEnumerated( jaxbBasic.getEnumerated(), memberDetails );
+		XmlAnnotationHelper.applyNationalized( jaxbBasic.getNationalized(), memberDetails );
 
 		return memberDetails;
 	}

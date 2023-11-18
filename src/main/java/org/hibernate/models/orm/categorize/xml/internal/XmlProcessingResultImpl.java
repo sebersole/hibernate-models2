@@ -13,8 +13,8 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddableImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbMappedSuperclassImpl;
 import org.hibernate.models.orm.categorize.xml.spi.PersistenceUnitMetadata;
+import org.hibernate.models.orm.categorize.xml.spi.XmlDocumentContext;
 import org.hibernate.models.orm.categorize.xml.spi.XmlProcessingResult;
-import org.hibernate.models.spi.SourceModelBuildingContext;
 
 /**
  * @author Steve Ebersole
@@ -37,12 +37,12 @@ public class XmlProcessingResultImpl implements XmlProcessingResult {
 	}
 
 	@Override
-	public void apply(PersistenceUnitMetadata metadata, SourceModelBuildingContext buildingContext) {
-		ManagedTypeProcessor.processOverrideEmbeddable( getEmbeddableOverrides(), metadata, buildingContext );
+	public void apply(PersistenceUnitMetadata metadata) {
+		ManagedTypeProcessor.processOverrideEmbeddable( getEmbeddableOverrides() );
 
-		ManagedTypeProcessor.processOverrideMappedSuperclass( getMappedSuperclassesOverrides(), metadata, buildingContext );
+		ManagedTypeProcessor.processOverrideMappedSuperclass( getMappedSuperclassesOverrides() );
 
-		ManagedTypeProcessor.processOverrideEntity( getEntityOverrides(), metadata, buildingContext );
+		ManagedTypeProcessor.processOverrideEntity( getEntityOverrides() );
 	}
 
 	@Override

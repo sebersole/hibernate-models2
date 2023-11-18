@@ -8,6 +8,8 @@ package org.hibernate.models.orm.categorize.xml.spi;
 
 import org.hibernate.models.orm.categorize.internal.DomainModelCategorizationCollector;
 import org.hibernate.models.orm.categorize.xml.internal.ManagedTypeProcessor;
+import org.hibernate.models.orm.categorize.xml.internal.XmlDocumentContextImpl;
+import org.hibernate.models.orm.categorize.xml.internal.XmlDocumentImpl;
 import org.hibernate.models.orm.categorize.xml.internal.XmlProcessingResultImpl;
 import org.hibernate.models.spi.SourceModelBuildingContext;
 
@@ -27,37 +29,50 @@ public class XmlProcessor {
 
 		xmlPreProcessingResult.getDocuments().forEach( (jaxbRoot) -> {
 			modelCategorizationCollector.apply( jaxbRoot );
+			final XmlDocumentImpl xmlDocument = XmlDocumentImpl.consume(
+					jaxbRoot,
+					xmlPreProcessingResult.getPersistenceUnitMetadata()
+			);
+			final XmlDocumentContext xmlDocumentContext = new XmlDocumentContextImpl(
+					xmlDocument,
+					xmlPreProcessingResult.getPersistenceUnitMetadata(),
+					sourceModelBuildingContext
+			);
 
 			jaxbRoot.getEmbeddables().forEach( (jaxbEmbeddable) -> {
 				if ( xmlMappingsGloballyComplete || jaxbEmbeddable.isMetadataComplete() == Boolean.TRUE ) {
 					// the XML mapping is complete, we can process it immediately
-					ManagedTypeProcessor.processCompleteEmbeddable( jaxbRoot, jaxbEmbeddable, xmlPreProcessingResult.getPersistenceUnitMetadata(), sourceModelBuildingContext );
+					ManagedTypeProcessor.processCompleteEmbeddable(
+							jaxbRoot,
+							jaxbEmbeddable,
+							xmlDocumentContext
+					);
 				}
 				else {
 					// otherwise, wait to process it until later
-					xmlOverlay.addEmbeddableOverride( new XmlProcessingResult.OverrideTuple<>( jaxbRoot, jaxbEmbeddable ) );
+					xmlOverlay.addEmbeddableOverride( new XmlProcessingResult.OverrideTuple<>( jaxbRoot, xmlDocumentContext, jaxbEmbeddable ) );
 				}
 			} );
 
 			jaxbRoot.getMappedSuperclasses().forEach( (jaxbMappedSuperclass) -> {
 				if ( xmlMappingsGloballyComplete || jaxbMappedSuperclass.isMetadataComplete() == Boolean.TRUE ) {
 					// the XML mapping is complete, we can process it immediately
-					ManagedTypeProcessor.processCompleteMappedSuperclass( jaxbRoot, jaxbMappedSuperclass, xmlPreProcessingResult.getPersistenceUnitMetadata(), sourceModelBuildingContext );
+					ManagedTypeProcessor.processCompleteMappedSuperclass( jaxbRoot, jaxbMappedSuperclass, xmlDocumentContext );
 				}
 				else {
 					// otherwise, wait to process it until later
-					xmlOverlay.addMappedSuperclassesOverride( new XmlProcessingResult.OverrideTuple<>( jaxbRoot, jaxbMappedSuperclass ) );
+					xmlOverlay.addMappedSuperclassesOverride( new XmlProcessingResult.OverrideTuple<>( jaxbRoot, xmlDocumentContext, jaxbMappedSuperclass ) );
 				}
 			});
 
 			jaxbRoot.getEntities().forEach( (jaxbEntity) -> {
 				if ( xmlMappingsGloballyComplete || jaxbEntity.isMetadataComplete() == Boolean.TRUE ) {
 					// the XML mapping is complete, we can process it immediately
-					ManagedTypeProcessor.processCompleteEntity( jaxbRoot, jaxbEntity, xmlPreProcessingResult.getPersistenceUnitMetadata(), sourceModelBuildingContext );
+					ManagedTypeProcessor.processCompleteEntity( jaxbRoot, jaxbEntity, xmlDocumentContext );
 				}
 				else {
 					// otherwise, wait to process it until later
-					xmlOverlay.addEntityOverride( new XmlProcessingResult.OverrideTuple<>( jaxbRoot, jaxbEntity ) );
+					xmlOverlay.addEntityOverride( new XmlProcessingResult.OverrideTuple<>( jaxbRoot, xmlDocumentContext, jaxbEntity ) );
 				}
 			} );
 		} );

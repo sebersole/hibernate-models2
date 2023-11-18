@@ -11,7 +11,7 @@ import org.hibernate.models.internal.MutableClassDetails;
 import org.hibernate.models.internal.MutableMemberDetails;
 import org.hibernate.models.orm.categorize.xml.internal.XmlAnnotationHelper;
 import org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper;
-import org.hibernate.models.spi.SourceModelBuildingContext;
+import org.hibernate.models.orm.categorize.xml.spi.XmlDocumentContext;
 
 import jakarta.persistence.AccessType;
 
@@ -27,60 +27,28 @@ public class BasicIdAttributeProcessing {
 			JaxbIdImpl jaxbId,
 			MutableClassDetails declarer,
 			AccessType classAccessType,
-			SourceModelBuildingContext sourceModelBuildingContext) {
+			XmlDocumentContext xmlDocumentContext) {
 		final AccessType accessType = coalesce( jaxbId.getAccess(), classAccessType );
 		final MutableMemberDetails memberDetails = XmlProcessingHelper.getAttributeMember(
 				jaxbId.getName(),
 				accessType,
-				declarer,
-				sourceModelBuildingContext
+				declarer
 		);
-		XmlAnnotationHelper.applyId( jaxbId, memberDetails, sourceModelBuildingContext );
-		XmlAnnotationHelper.applyBasic( jaxbId, memberDetails, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyId( jaxbId, memberDetails, xmlDocumentContext );
+		XmlAnnotationHelper.applyBasic( jaxbId, memberDetails );
 		processCommonAttributeAnnotations(
 				jaxbId,
 				memberDetails,
-				accessType,
-				sourceModelBuildingContext
+				accessType
 		);
 
-		XmlAnnotationHelper.applyColumn(
-				jaxbId.getColumn(),
-				memberDetails,
-				sourceModelBuildingContext
-		);
-
-		XmlAnnotationHelper.applyBasicTypeComposition(
-				jaxbId,
-				memberDetails,
-				sourceModelBuildingContext
-		);
-		XmlAnnotationHelper.applyTemporal(
-				jaxbId.getTemporal(),
-				memberDetails,
-				sourceModelBuildingContext
-		);
-
-		XmlAnnotationHelper.applyGeneratedValue(
-				jaxbId.getGeneratedValue(),
-				memberDetails,
-				sourceModelBuildingContext
-		);
-		XmlAnnotationHelper.applySequenceGenerator(
-				jaxbId.getSequenceGenerator(),
-				memberDetails,
-				sourceModelBuildingContext
-		);
-		XmlAnnotationHelper.applyTableGenerator(
-				jaxbId.getTableGenerator(),
-				memberDetails,
-				sourceModelBuildingContext
-		);
-		XmlAnnotationHelper.applyUuidGenerator(
-				jaxbId.getUuidGenerator(),
-				memberDetails,
-				sourceModelBuildingContext
-		);
+		XmlAnnotationHelper.applyColumn( jaxbId.getColumn(), memberDetails );
+		XmlAnnotationHelper.applyBasicTypeComposition( jaxbId, memberDetails, xmlDocumentContext );
+		XmlAnnotationHelper.applyTemporal( jaxbId.getTemporal(), memberDetails );
+		XmlAnnotationHelper.applyGeneratedValue( jaxbId.getGeneratedValue(), memberDetails, xmlDocumentContext );
+		XmlAnnotationHelper.applySequenceGenerator( jaxbId.getSequenceGenerator(), memberDetails, xmlDocumentContext );
+		XmlAnnotationHelper.applyTableGenerator( jaxbId.getTableGenerator(), memberDetails, xmlDocumentContext );
+		XmlAnnotationHelper.applyUuidGenerator( jaxbId.getUuidGenerator(), memberDetails, xmlDocumentContext );
 
 		// todo : unsaved-value?
 

@@ -29,9 +29,9 @@ import org.hibernate.models.internal.MutableClassDetails;
 import org.hibernate.models.internal.MutableMemberDetails;
 import org.hibernate.models.orm.categorize.xml.internal.XmlAnnotationHelper;
 import org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper;
+import org.hibernate.models.orm.categorize.xml.spi.XmlDocumentContext;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.ClassDetailsRegistry;
-import org.hibernate.models.spi.SourceModelBuildingContext;
 
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Column;
@@ -57,15 +57,14 @@ public class ElementCollectionAttributeProcessing {
 			JaxbElementCollectionImpl jaxbElementCollection,
 			MutableClassDetails declarer,
 			AccessType classAccessType,
-			SourceModelBuildingContext sourceModelBuildingContext) {
-		final ClassDetailsRegistry classDetailsRegistry = sourceModelBuildingContext.getClassDetailsRegistry();
+			XmlDocumentContext xmlDocumentContext) {
+		final ClassDetailsRegistry classDetailsRegistry = xmlDocumentContext.getModelBuildingContext().getClassDetailsRegistry();
 
 		final AccessType accessType = coalesce( jaxbElementCollection.getAccess(), classAccessType );
 		final MutableMemberDetails memberDetails = XmlProcessingHelper.getAttributeMember(
 				jaxbElementCollection.getName(),
 				accessType,
-				declarer,
-				sourceModelBuildingContext
+				declarer
 		);
 
 		final MutableAnnotationUsage<ElementCollection> elementCollectionAnn = XmlProcessingHelper.getOrMakeAnnotation(
@@ -75,7 +74,7 @@ public class ElementCollectionAttributeProcessing {
 		setIf( jaxbElementCollection.getTargetClass(), "targetClass", elementCollectionAnn );
 		setIf( jaxbElementCollection.getFetch(), "fetch", elementCollectionAnn );
 
-		processCommonAttributeAnnotations( jaxbElementCollection, memberDetails, accessType, sourceModelBuildingContext );
+		processCommonAttributeAnnotations( jaxbElementCollection, memberDetails, accessType );
 
 		if ( jaxbElementCollection.getFetchMode() != null ) {
 			final MutableAnnotationUsage<Fetch> fetchAnn = getOrMakeAnnotation( Fetch.class, memberDetails );
@@ -122,7 +121,7 @@ public class ElementCollectionAttributeProcessing {
 			}
 		}
 
-		XmlAnnotationHelper.applyCollectionUserType( jaxbElementCollection.getCollectionType(), memberDetails, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyCollectionUserType( jaxbElementCollection.getCollectionType(), memberDetails, xmlDocumentContext );
 
 		if ( StringHelper.isNotEmpty( jaxbElementCollection.getSort() ) ) {
 			final MutableAnnotationUsage<SortComparator> sortAnn = getOrMakeAnnotation(
@@ -184,28 +183,28 @@ public class ElementCollectionAttributeProcessing {
 			temporalAnn.setAttributeValue( "value", jaxbElementCollection.getTemporal() );
 		}
 
-		XmlAnnotationHelper.applyBasicTypeComposition( jaxbElementCollection, memberDetails, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyBasicTypeComposition( jaxbElementCollection, memberDetails, xmlDocumentContext );
 		if ( StringHelper.isNotEmpty( jaxbElementCollection.getTargetClass() ) ) {
 			final MutableAnnotationUsage<Target> targetAnn = getOrMakeAnnotation( Target.class, memberDetails );
 			targetAnn.setAttributeValue( "value", jaxbElementCollection.getTargetClass() );
 		}
 
 		jaxbElementCollection.getConverts().forEach( (jaxbConvert) -> {
-			XmlAnnotationHelper.applyConvert( jaxbConvert, memberDetails, sourceModelBuildingContext );
+			XmlAnnotationHelper.applyConvert( jaxbConvert, memberDetails, xmlDocumentContext );
 		} );
 
 		jaxbElementCollection.getFilters().forEach( (jaxbFilter) -> XmlAnnotationHelper.applyFilter(
 				jaxbFilter,
 				memberDetails,
-				sourceModelBuildingContext
+				xmlDocumentContext
 		) );
 
-		XmlAnnotationHelper.applySqlRestriction( jaxbElementCollection.getSqlRestriction(), memberDetails, sourceModelBuildingContext );
+		XmlAnnotationHelper.applySqlRestriction( jaxbElementCollection.getSqlRestriction(), memberDetails );
 
-		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlInsert(), memberDetails, SQLInsert.class, sourceModelBuildingContext );
-		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlUpdate(), memberDetails, SQLUpdate.class, sourceModelBuildingContext );
-		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlDelete(), memberDetails, SQLDelete.class, sourceModelBuildingContext );
-		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlDeleteAll(), memberDetails, SQLDeleteAll.class, sourceModelBuildingContext );
+		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlInsert(), memberDetails, SQLInsert.class );
+		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlUpdate(), memberDetails, SQLUpdate.class );
+		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlDelete(), memberDetails, SQLDelete.class );
+		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlDeleteAll(), memberDetails, SQLDeleteAll.class );
 
 		// todo : attribute-override
 		// todo : association-override

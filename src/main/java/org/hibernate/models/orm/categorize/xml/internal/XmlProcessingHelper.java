@@ -12,16 +12,16 @@ import java.lang.annotation.Annotation;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbManagedType;
 import org.hibernate.internal.util.StringHelper;
-import org.hibernate.models.orm.MemberResolutionException;
 import org.hibernate.models.internal.MutableAnnotationTarget;
 import org.hibernate.models.internal.MutableAnnotationUsage;
 import org.hibernate.models.internal.MutableClassDetails;
 import org.hibernate.models.internal.MutableMemberDetails;
 import org.hibernate.models.internal.dynamic.DynamicAnnotationUsage;
+import org.hibernate.models.orm.MemberResolutionException;
+import org.hibernate.models.orm.categorize.xml.spi.XmlDocumentContext;
 import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.FieldDetails;
 import org.hibernate.models.spi.MethodDetails;
-import org.hibernate.models.spi.SourceModelBuildingContext;
 
 import jakarta.persistence.AccessType;
 
@@ -56,13 +56,11 @@ public class XmlProcessingHelper {
 	public static MutableMemberDetails getAttributeMember(
 			String attributeName,
 			AccessType accessType,
-			MutableClassDetails classDetails,
-			SourceModelBuildingContext buildingContext) {
+			MutableClassDetails classDetails) {
 		final MutableMemberDetails result = findAttributeMember(
 				attributeName,
 				accessType,
-				classDetails,
-				buildingContext
+				classDetails
 		);
 		if ( result == null ) {
 			throw new MemberResolutionException(
@@ -82,8 +80,7 @@ public class XmlProcessingHelper {
 	public static MutableMemberDetails findAttributeMember(
 			String attributeName,
 			AccessType accessType,
-			MutableClassDetails classDetails,
-			SourceModelBuildingContext buildingContext) {
+			MutableClassDetails classDetails) {
 		if ( accessType == AccessType.PROPERTY ) {
 			for ( int i = 0; i < classDetails.getMethods().size(); i++ ) {
 				final MethodDetails methodDetails = classDetails.getMethods().get( i );
@@ -131,6 +128,15 @@ public class XmlProcessingHelper {
 		}
 
 		return makeAnnotation( annotationType, target );
+	}
+
+	/**
+	 * Make an AnnotationUsage.
+	 * Used when applying XML in complete mode or when {@linkplain #getOrMakeAnnotation}
+	 * needs to make.
+	 */
+	public static <A extends Annotation> MutableAnnotationUsage<A> makeAnnotation(Class<A> annotationType) {
+		return new DynamicAnnotationUsage<>( annotationType );
 	}
 
 	/**
