@@ -6,17 +6,24 @@
  */
 package org.hibernate.models.orm.categorize.xml.internal.attr;
 
+import org.hibernate.annotations.Formula;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicImpl;
+import org.hibernate.internal.util.StringHelper;
+import org.hibernate.models.internal.MutableAnnotationUsage;
 import org.hibernate.models.internal.MutableClassDetails;
 import org.hibernate.models.internal.MutableMemberDetails;
 import org.hibernate.models.orm.categorize.xml.internal.XmlAnnotationHelper;
 import org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper;
+import org.hibernate.models.orm.categorize.xml.internal.db.ColumnProcessing;
 import org.hibernate.models.orm.categorize.xml.spi.XmlDocumentContext;
 
 import jakarta.persistence.AccessType;
+import jakarta.persistence.Basic;
+import jakarta.persistence.Column;
 
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
-import static org.hibernate.models.orm.categorize.xml.internal.attr.CommonAttributeProcessing.processCommonAttributeAnnotations;
+import static org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper.getOrMakeAnnotation;
+import static org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper.makeAnnotation;
 
 /**
  * @author Steve Ebersole
@@ -35,24 +42,29 @@ public class BasicAttributeProcessing {
 				declarer
 		);
 
-		XmlAnnotationHelper.applyBasic( jaxbBasic, memberDetails );
+		final MutableAnnotationUsage<Basic> basicAnn = getOrMakeAnnotation( Basic.class, memberDetails, xmlDocumentContext );
+		CommonAttributeProcessing.applyAttributeBasics( jaxbBasic, memberDetails, basicAnn, accessType, xmlDocumentContext );
 
-		processCommonAttributeAnnotations( jaxbBasic, memberDetails, accessType );
-		// only semi-common
-		XmlAnnotationHelper.applyOptimisticLockInclusion( jaxbBasic.isOptimisticLock(), memberDetails );
-
-		XmlAnnotationHelper.applyColumn( jaxbBasic.getColumn(), memberDetails );
-		XmlAnnotationHelper.applyFormula( jaxbBasic.getFormula(), memberDetails );
-
-		// todo : value generation
+		if ( StringHelper.isNotEmpty( jaxbBasic.getFormula() ) ) {
+			assert jaxbBasic.getColumn() == null;
+			final MutableAnnotationUsage<Formula> formulaAnn = getOrMakeAnnotation( Formula.class, memberDetails, xmlDocumentContext );
+			formulaAnn.setAttributeValue( "value", jaxbBasic.getFormula() );
+		}
+		else {
+			final MutableAnnotationUsage<Column> columnAnn = getOrMakeAnnotation( Column.class, memberDetails, xmlDocumentContext );
+			ColumnProcessing.applyColumnDetails( jaxbBasic.getColumn(), memberDetails, columnAnn, xmlDocumentContext );
+		}
 
 		XmlAnnotationHelper.applyConvert( jaxbBasic.getConvert(), memberDetails, xmlDocumentContext );
 
 		XmlAnnotationHelper.applyBasicTypeComposition( jaxbBasic, memberDetails, xmlDocumentContext );
-		XmlAnnotationHelper.applyTemporal( jaxbBasic.getTemporal(), memberDetails );
-		XmlAnnotationHelper.applyLob( jaxbBasic.getLob(), memberDetails );
-		XmlAnnotationHelper.applyEnumerated( jaxbBasic.getEnumerated(), memberDetails );
-		XmlAnnotationHelper.applyNationalized( jaxbBasic.getNationalized(), memberDetails );
+		XmlAnnotationHelper.applyTemporal( jaxbBasic.getTemporal(), memberDetails, xmlDocumentContext );
+		XmlAnnotationHelper.applyLob( jaxbBasic.getLob(), memberDetails, xmlDocumentContext );
+		XmlAnnotationHelper.applyEnumerated( jaxbBasic.getEnumerated(), memberDetails, xmlDocumentContext );
+		XmlAnnotationHelper.applyNationalized( jaxbBasic.getNationalized(), memberDetails, xmlDocumentContext );
+
+		// todo : value generation
+		// todo : ...
 
 		return memberDetails;
 	}

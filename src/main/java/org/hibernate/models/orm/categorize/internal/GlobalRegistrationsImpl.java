@@ -35,6 +35,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbUserTypeRegistrationImpl;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.CollectionClassification;
+import org.hibernate.models.internal.MutableAnnotationUsage;
 import org.hibernate.models.internal.dynamic.DynamicAnnotationUsage;
 import org.hibernate.models.orm.categorize.spi.CollectionTypeRegistration;
 import org.hibernate.models.orm.categorize.spi.CompositeUserTypeRegistration;
@@ -51,6 +52,8 @@ import org.hibernate.models.orm.categorize.spi.SequenceGeneratorRegistration;
 import org.hibernate.models.orm.categorize.spi.TableGeneratorRegistration;
 import org.hibernate.models.orm.categorize.spi.UserTypeRegistration;
 import org.hibernate.models.orm.categorize.xml.internal.XmlAnnotationHelper;
+import org.hibernate.models.spi.AnnotationDescriptor;
+import org.hibernate.models.spi.AnnotationDescriptorRegistry;
 import org.hibernate.models.spi.AnnotationTarget;
 import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.ClassDetails;
@@ -77,6 +80,7 @@ import static org.hibernate.models.orm.HibernateAnnotations.TYPE_REG;
  */
 public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	private final ClassDetailsRegistry classDetailsRegistry;
+	private final AnnotationDescriptorRegistry descriptorRegistry;
 
 	private List<JpaEventListener> jpaEventListeners;
 	private List<ConversionRegistration> converterRegistrations;
@@ -93,11 +97,12 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	private Map<String,GenericGeneratorRegistration> genericGeneratorRegistrations;
 
 	public GlobalRegistrationsImpl(SourceModelContext sourceModelContext) {
-		this( sourceModelContext.getClassDetailsRegistry() );
+		this( sourceModelContext.getClassDetailsRegistry(), sourceModelContext.getAnnotationDescriptorRegistry() );
 	}
 
-	public GlobalRegistrationsImpl(ClassDetailsRegistry classDetailsRegistry) {
+	public GlobalRegistrationsImpl(ClassDetailsRegistry classDetailsRegistry, AnnotationDescriptorRegistry descriptorRegistry) {
 		this.classDetailsRegistry = classDetailsRegistry;
+		this.descriptorRegistry = descriptorRegistry;
 	}
 
 	@Override
@@ -528,7 +533,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		}
 
 		sequenceGenerators.forEach( (generator) -> {
-			final DynamicAnnotationUsage<SequenceGenerator> annotationUsage = new DynamicAnnotationUsage<>( SequenceGenerator.class );
+			final MutableAnnotationUsage<SequenceGenerator> annotationUsage = makeAnnotation( SequenceGenerator.class );
 			annotationUsage.setAttributeValue( "name", generator.getName() );
 			annotationUsage.setAttributeValue( "sequenceName", generator.getSequenceName() );
 			annotationUsage.setAttributeValue( "catalog", generator.getCatalog() );
@@ -538,6 +543,11 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 
 			collectSequenceGenerator( new SequenceGeneratorRegistration( generator.getName(), annotationUsage ) );
 		} );
+	}
+
+	private <A extends Annotation> MutableAnnotationUsage<A> makeAnnotation(Class<A> annotationType) {
+		final AnnotationDescriptor<A> descriptor = descriptorRegistry.getDescriptor( annotationType );
+		return new DynamicAnnotationUsage<>( descriptor );
 	}
 
 	public void collectSequenceGenerator(AnnotationUsage<SequenceGenerator> usage) {
@@ -562,7 +572,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		}
 
 		tableGenerators.forEach( (generator) -> {
-			final DynamicAnnotationUsage<TableGenerator> annotationUsage = new DynamicAnnotationUsage<>( TableGenerator.class );
+			final MutableAnnotationUsage<TableGenerator> annotationUsage = makeAnnotation( TableGenerator.class );
 			annotationUsage.setAttributeValue( "name", generator.getName() );
 			annotationUsage.setAttributeValue( "table", generator.getTable() );
 			annotationUsage.setAttributeValue( "catalog", generator.getCatalog() );
@@ -599,7 +609,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		}
 
 		genericGenerators.forEach( (generator) -> {
-			final DynamicAnnotationUsage<GenericGenerator> annotationUsage = new DynamicAnnotationUsage<>( GenericGenerator.class );
+			final MutableAnnotationUsage<GenericGenerator> annotationUsage = makeAnnotation( GenericGenerator.class );
 			annotationUsage.setAttributeValue( "name", generator.getName() );
 			annotationUsage.setAttributeValue( "strategy", generator.getClazz() );
 

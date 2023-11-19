@@ -15,7 +15,7 @@
             <basic name="name"/>
             <any name="association">
                 <discriminator>
-                    <type>integer</type>
+                    <type>INTEGER</type>
                     <column name="association_type"/>
                     <mapping value="1">AnyTests$Entity1</mapping>
                     <mapping value="2">AnyTests$Entity2</mapping>

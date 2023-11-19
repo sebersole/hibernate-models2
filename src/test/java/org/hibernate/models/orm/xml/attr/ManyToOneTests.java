@@ -35,6 +35,7 @@ import org.junit.jupiter.api.Test;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinColumns;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
@@ -75,7 +76,8 @@ public class ManyToOneTests {
 		assertThat( joinColumnAnn ).isNotNull();
 		assertThat( joinColumnAnn.getString( "name" ) ).isEqualTo( "parent_fk" );
 
-		assertThat( manyToOneAnn.getList( "joinColumns" ) ).isNotEmpty();
+		assertThat( parentField.getAnnotationUsage( JoinColumns.class ) ).isNotNull();
+		assertThat( parentField.getAnnotationUsage( JoinColumns.class ).getList( "value" ) ).hasSize( 1 );
 
 		final AnnotationUsage<NotFound> notFoundAnn = parentField.getAnnotationUsage( NotFound.class );
 		assertThat( notFoundAnn ).isNotNull();

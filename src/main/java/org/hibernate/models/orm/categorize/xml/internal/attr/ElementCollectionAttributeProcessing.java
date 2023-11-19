@@ -45,7 +45,7 @@ import jakarta.persistence.Temporal;
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
 import static org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper.getOrMakeAnnotation;
 import static org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper.setIf;
-import static org.hibernate.models.orm.categorize.xml.internal.attr.CommonAttributeProcessing.processCommonAttributeAnnotations;
+import static org.hibernate.models.orm.categorize.xml.internal.attr.CommonAttributeProcessing.applyAttributeBasics;
 
 /**
  * @author Steve Ebersole
@@ -69,15 +69,16 @@ public class ElementCollectionAttributeProcessing {
 
 		final MutableAnnotationUsage<ElementCollection> elementCollectionAnn = XmlProcessingHelper.getOrMakeAnnotation(
 				ElementCollection.class,
-				memberDetails
+				memberDetails,
+				xmlDocumentContext
 		);
 		setIf( jaxbElementCollection.getTargetClass(), "targetClass", elementCollectionAnn );
 		setIf( jaxbElementCollection.getFetch(), "fetch", elementCollectionAnn );
 
-		processCommonAttributeAnnotations( jaxbElementCollection, memberDetails, accessType );
+		applyAttributeBasics( jaxbElementCollection, memberDetails, elementCollectionAnn, accessType, xmlDocumentContext );
 
 		if ( jaxbElementCollection.getFetchMode() != null ) {
-			final MutableAnnotationUsage<Fetch> fetchAnn = getOrMakeAnnotation( Fetch.class, memberDetails );
+			final MutableAnnotationUsage<Fetch> fetchAnn = getOrMakeAnnotation( Fetch.class, memberDetails, xmlDocumentContext );
 			fetchAnn.setAttributeValue( "value", jaxbElementCollection.getFetchMode() );
 		}
 
@@ -85,13 +86,15 @@ public class ElementCollectionAttributeProcessing {
 		if ( jaxbCollectionId != null ) {
 			final MutableAnnotationUsage<CollectionId> collectionIdAnn = XmlProcessingHelper.getOrMakeAnnotation(
 					CollectionId.class,
-					memberDetails
+					memberDetails,
+					xmlDocumentContext
 			);
 
 			final JaxbColumnImpl jaxbColumn = jaxbCollectionId.getColumn();
 			final MutableAnnotationUsage<Column> columnAnn = XmlProcessingHelper.getOrMakeAnnotation(
 					Column.class,
-					memberDetails
+					memberDetails,
+					xmlDocumentContext
 			);
 			collectionIdAnn.setAttributeValue( "column", columnAnn );
 			setIf( jaxbColumn.getName(), "name", columnAnn );
@@ -113,11 +116,12 @@ public class ElementCollectionAttributeProcessing {
 		if ( jaxbElementCollection.getClassification() != null ) {
 			final MutableAnnotationUsage<CollectionClassification> collectionClassificationAnn = getOrMakeAnnotation(
 					CollectionClassification.class,
-					memberDetails
+					memberDetails,
+					xmlDocumentContext
 			);
 			setIf( jaxbElementCollection.getClassification(), "value", collectionClassificationAnn );
 			if ( jaxbElementCollection.getClassification() == LimitedCollectionClassification.BAG ) {
-				getOrMakeAnnotation( Bag.class, memberDetails );
+				getOrMakeAnnotation( Bag.class, memberDetails, xmlDocumentContext );
 			}
 		}
 
@@ -126,20 +130,22 @@ public class ElementCollectionAttributeProcessing {
 		if ( StringHelper.isNotEmpty( jaxbElementCollection.getSort() ) ) {
 			final MutableAnnotationUsage<SortComparator> sortAnn = getOrMakeAnnotation(
 					SortComparator.class,
-					memberDetails
+					memberDetails,
+					xmlDocumentContext
 			);
 			final ClassDetails comparatorClassDetails = classDetailsRegistry.resolveClassDetails( jaxbElementCollection.getSort() );
 			sortAnn.setAttributeValue( "value", comparatorClassDetails );
 		}
 
 		if ( jaxbElementCollection.getSortNatural() != null ) {
-			getOrMakeAnnotation( SortNatural.class, memberDetails );
+			getOrMakeAnnotation( SortNatural.class, memberDetails, xmlDocumentContext );
 		}
 
 		if ( StringHelper.isNotEmpty( jaxbElementCollection.getOrderBy() ) ) {
 			final MutableAnnotationUsage<OrderBy> orderByAnn = getOrMakeAnnotation(
 					OrderBy.class,
-					memberDetails
+					memberDetails,
+					xmlDocumentContext
 			);
 			orderByAnn.setAttributeValue( "value", jaxbElementCollection.getOrderBy() );
 		}
@@ -147,7 +153,8 @@ public class ElementCollectionAttributeProcessing {
 		if ( jaxbElementCollection.getOrderColumn() != null ) {
 			final MutableAnnotationUsage<OrderColumn> orderByAnn = getOrMakeAnnotation(
 					OrderColumn.class,
-					memberDetails
+					memberDetails,
+					xmlDocumentContext
 			);
 			setIf( jaxbElementCollection.getOrderColumn().getName(), "name", orderByAnn );
 			setIf( jaxbElementCollection.getOrderColumn().isNullable(), "nullable", orderByAnn );
@@ -162,30 +169,32 @@ public class ElementCollectionAttributeProcessing {
 		if ( jaxbElementCollection.getEnumerated() != null ) {
 			final MutableAnnotationUsage<Enumerated> enumeratedAnn = getOrMakeAnnotation(
 					Enumerated.class,
-					memberDetails
+					memberDetails,
+					xmlDocumentContext
 			);
 			enumeratedAnn.setAttributeValue( "value", jaxbElementCollection.getEnumerated() );
 		}
 
 		if ( jaxbElementCollection.getLob() != null ) {
-			getOrMakeAnnotation( Lob.class, memberDetails );
+			getOrMakeAnnotation( Lob.class, memberDetails, xmlDocumentContext );
 		}
 
 		if ( jaxbElementCollection.getNationalized() != null ) {
-			getOrMakeAnnotation( Nationalized.class, memberDetails );
+			getOrMakeAnnotation( Nationalized.class, memberDetails, xmlDocumentContext );
 		}
 
 		if ( jaxbElementCollection.getTemporal() != null ) {
 			final MutableAnnotationUsage<Temporal> temporalAnn = getOrMakeAnnotation(
 					Temporal.class,
-					memberDetails
+					memberDetails,
+					xmlDocumentContext
 			);
 			temporalAnn.setAttributeValue( "value", jaxbElementCollection.getTemporal() );
 		}
 
 		XmlAnnotationHelper.applyBasicTypeComposition( jaxbElementCollection, memberDetails, xmlDocumentContext );
 		if ( StringHelper.isNotEmpty( jaxbElementCollection.getTargetClass() ) ) {
-			final MutableAnnotationUsage<Target> targetAnn = getOrMakeAnnotation( Target.class, memberDetails );
+			final MutableAnnotationUsage<Target> targetAnn = getOrMakeAnnotation( Target.class, memberDetails, xmlDocumentContext );
 			targetAnn.setAttributeValue( "value", jaxbElementCollection.getTargetClass() );
 		}
 
@@ -199,12 +208,12 @@ public class ElementCollectionAttributeProcessing {
 				xmlDocumentContext
 		) );
 
-		XmlAnnotationHelper.applySqlRestriction( jaxbElementCollection.getSqlRestriction(), memberDetails );
+		XmlAnnotationHelper.applySqlRestriction( jaxbElementCollection.getSqlRestriction(), memberDetails, xmlDocumentContext );
 
-		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlInsert(), memberDetails, SQLInsert.class );
-		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlUpdate(), memberDetails, SQLUpdate.class );
-		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlDelete(), memberDetails, SQLDelete.class );
-		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlDeleteAll(), memberDetails, SQLDeleteAll.class );
+		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlInsert(), memberDetails, SQLInsert.class, xmlDocumentContext );
+		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlUpdate(), memberDetails, SQLUpdate.class, xmlDocumentContext );
+		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlDelete(), memberDetails, SQLDelete.class, xmlDocumentContext );
+		XmlAnnotationHelper.applyCustomSql( jaxbElementCollection.getSqlDeleteAll(), memberDetails, SQLDeleteAll.class, xmlDocumentContext );
 
 		// todo : attribute-override
 		// todo : association-override

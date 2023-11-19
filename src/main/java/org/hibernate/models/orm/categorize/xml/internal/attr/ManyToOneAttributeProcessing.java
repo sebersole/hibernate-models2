@@ -31,6 +31,7 @@ import org.hibernate.models.spi.AnnotationDescriptor;
 
 import jakarta.persistence.AccessType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinColumns;
 import jakarta.persistence.ManyToOne;
 
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
@@ -60,9 +61,8 @@ public class ManyToOneAttributeProcessing {
 				xmlDocumentContext
 		);
 
-		CommonProcessing.applyFetching( memberDetails, jaxbManyToOne, manyToOneAnn );
-		CommonProcessing.applyOptimisticLock( memberDetails, jaxbManyToOne, manyToOneAnn );
-		CommonProcessing.applyAttributeAccessor( memberDetails, jaxbManyToOne, manyToOneAnn, xmlDocumentContext );
+		CommonAttributeProcessing.applyAttributeBasics( jaxbManyToOne, memberDetails, manyToOneAnn, accessType, xmlDocumentContext );
+
 		applyJoinColumns( memberDetails, jaxbManyToOne, manyToOneAnn, xmlDocumentContext );
 		applyNotFound( memberDetails, jaxbManyToOne, manyToOneAnn, xmlDocumentContext );
 		applyOnDelete( memberDetails, jaxbManyToOne, manyToOneAnn, xmlDocumentContext );
@@ -78,7 +78,7 @@ public class ManyToOneAttributeProcessing {
 			XmlDocumentContext xmlDocumentContext) {
 		// todo : apply the @ManyToOne annotation
 
-		final MutableAnnotationUsage<ManyToOne> manyToOneAnn = getOrMakeAnnotation( ManyToOne.class, memberDetails );
+		final MutableAnnotationUsage<ManyToOne> manyToOneAnn = getOrMakeAnnotation( ManyToOne.class, memberDetails, xmlDocumentContext );
 		final AnnotationDescriptor<ManyToOne> manyToOneDescriptor = xmlDocumentContext
 				.getModelBuildingContext()
 				.getAnnotationDescriptorRegistry()
@@ -100,9 +100,17 @@ public class ManyToOneAttributeProcessing {
 			JaxbManyToOneImpl jaxbManyToOne,
 			MutableAnnotationUsage<ManyToOne> manyToOneAnn,
 			XmlDocumentContext xmlDocumentContext) {
-		if ( CollectionHelper.isNotEmpty( jaxbManyToOne.getJoinColumns() ) ) {
-			final List<MutableAnnotationUsage<JoinColumn>> joinColumns = new ArrayList<>( jaxbManyToOne.getJoinColumns().size() );
-			manyToOneAnn.setAttributeValue( "joinColumns", joinColumns );
+		if ( CollectionHelper.isEmpty( jaxbManyToOne.getJoinColumns() ) ) {
+			makeAnnotation( JoinColumn.class, memberDetails, xmlDocumentContext );
+		}
+		else {
+			final MutableAnnotationUsage<JoinColumns> columnsAnn = makeAnnotation(
+					JoinColumns.class,
+					memberDetails,
+					xmlDocumentContext
+			);
+			final List<MutableAnnotationUsage<JoinColumn>> columnList = new ArrayList<>( jaxbManyToOne.getJoinColumns().size() );
+			columnsAnn.setAttributeValue( "value", columnList );
 			for ( int i = 0; i < jaxbManyToOne.getJoinColumns().size(); i++ ) {
 				final JaxbJoinColumnImpl jaxbJoinColumn = jaxbManyToOne.getJoinColumns().get( i );
 				final MutableAnnotationUsage<JoinColumn> joinColumnAnn = XmlAnnotationHelper.applyJoinColumn(
@@ -110,11 +118,8 @@ public class ManyToOneAttributeProcessing {
 						memberDetails,
 						xmlDocumentContext
 				);
-				joinColumns.add( joinColumnAnn );
+				columnList.add( joinColumnAnn );
 			}
-		}
-		else {
-			manyToOneAnn.setAttributeValue( "joinColumns", List.of( makeAnnotation( JoinColumn.class, memberDetails ) ) );
 		}
 	}
 
@@ -128,7 +133,7 @@ public class ManyToOneAttributeProcessing {
 			return;
 		}
 
-		final MutableAnnotationUsage<NotFound> notFoundAnn = makeAnnotation( NotFound.class, memberDetails );
+		final MutableAnnotationUsage<NotFound> notFoundAnn = makeAnnotation( NotFound.class, memberDetails, xmlDocumentContext );
 		notFoundAnn.setAttributeValue( "action", notFoundAction );
 	}
 
@@ -143,7 +148,7 @@ public class ManyToOneAttributeProcessing {
 			return;
 		}
 
-		final MutableAnnotationUsage<OnDelete> notFoundAnn = makeAnnotation( OnDelete.class, memberDetails );
+		final MutableAnnotationUsage<OnDelete> notFoundAnn = makeAnnotation( OnDelete.class, memberDetails, xmlDocumentContext );
 		notFoundAnn.setAttributeValue( "action", action );
 	}
 
@@ -158,7 +163,7 @@ public class ManyToOneAttributeProcessing {
 			return;
 		}
 
-		final MutableAnnotationUsage<Target> targetAnn = makeAnnotation( Target.class, memberDetails );
+		final MutableAnnotationUsage<Target> targetAnn = makeAnnotation( Target.class, memberDetails, xmlDocumentContext );
 		targetAnn.setAttributeValue( "value", targetEntityName );
 	}
 

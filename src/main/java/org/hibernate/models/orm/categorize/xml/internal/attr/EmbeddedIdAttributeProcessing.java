@@ -7,6 +7,7 @@
 package org.hibernate.models.orm.categorize.xml.internal.attr;
 
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedIdImpl;
+import org.hibernate.models.internal.MutableAnnotationUsage;
 import org.hibernate.models.internal.MutableClassDetails;
 import org.hibernate.models.internal.MutableMemberDetails;
 import org.hibernate.models.orm.categorize.xml.internal.XmlAnnotationHelper;
@@ -14,9 +15,11 @@ import org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper;
 import org.hibernate.models.orm.categorize.xml.spi.XmlDocumentContext;
 
 import jakarta.persistence.AccessType;
+import jakarta.persistence.EmbeddedId;
 
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
-import static org.hibernate.models.orm.categorize.xml.internal.attr.CommonAttributeProcessing.processCommonAttributeAnnotations;
+import static org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper.makeAnnotation;
+import static org.hibernate.models.orm.categorize.xml.internal.attr.CommonAttributeProcessing.applyAttributeBasics;
 
 /**
  * @author Steve Ebersole
@@ -35,10 +38,10 @@ public class EmbeddedIdAttributeProcessing {
 				classDetails
 		);
 
-		processCommonAttributeAnnotations( jaxbEmbeddedId, memberDetails, accessType );
+		final MutableAnnotationUsage<EmbeddedId> idAnn = makeAnnotation( EmbeddedId.class, memberDetails, xmlDocumentContext );
+		applyAttributeBasics( jaxbEmbeddedId, memberDetails, idAnn, accessType, xmlDocumentContext );
 
-		XmlAnnotationHelper.applyEmbeddedId( jaxbEmbeddedId, memberDetails, xmlDocumentContext );
-		XmlAnnotationHelper.applyAttributeOverrides( jaxbEmbeddedId.getAttributeOverrides(), memberDetails );
+		XmlAnnotationHelper.applyAttributeOverrides( jaxbEmbeddedId.getAttributeOverrides(), memberDetails, xmlDocumentContext );
 
 		return memberDetails;
 	}

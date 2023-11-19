@@ -19,5 +19,5 @@ import java.lang.annotation.Retention;
 @Target({ElementType.FIELD, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface AnyKeyType {
-	String type();
+	String value();
 }

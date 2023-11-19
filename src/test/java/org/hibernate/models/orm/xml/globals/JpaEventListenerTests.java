@@ -13,6 +13,7 @@ import org.hibernate.boot.internal.MetadataBuilderImpl;
 import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.models.internal.jdk.VoidClassDetails;
 import org.hibernate.models.orm.process.ManagedResourcesImpl;
 import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
 import org.hibernate.models.orm.categorize.spi.JpaEventListener;
@@ -49,7 +50,7 @@ public class JpaEventListenerTests {
 			final JpaEventListener registration = registrations.get( 0 );
 			final MethodDetails postPersistMethod = registration.getPostPersistMethod();
 			assertThat( postPersistMethod ).isNotNull();
-			assertThat( postPersistMethod.getReturnType() ).isNull();
+			assertThat( postPersistMethod.getReturnType() ).isEqualTo( VoidClassDetails.VOID_CLASS_DETAILS );
 			assertThat( postPersistMethod.getArgumentTypes() ).hasSize( 1 );
 		}
 	}

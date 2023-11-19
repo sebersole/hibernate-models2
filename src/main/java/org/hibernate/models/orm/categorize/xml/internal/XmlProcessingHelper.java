@@ -121,22 +121,30 @@ public class XmlProcessingHelper {
 	 */
 	public static <A extends Annotation> MutableAnnotationUsage<A> getOrMakeAnnotation(
 			Class<A> annotationType,
-			MutableAnnotationTarget target) {
+			MutableAnnotationTarget target,
+			XmlDocumentContext xmlDocumentContext) {
 		final AnnotationUsage<A> existing = target.getAnnotationUsage( annotationType );
 		if ( existing != null ) {
 			return (MutableAnnotationUsage<A>) existing;
 		}
 
-		return makeAnnotation( annotationType, target );
+		return makeAnnotation( annotationType, target, xmlDocumentContext );
 	}
 
 	/**
-	 * Make an AnnotationUsage.
-	 * Used when applying XML in complete mode or when {@linkplain #getOrMakeAnnotation}
-	 * needs to make.
+	 * Make a nested AnnotationUsage.  The usage is created with the given target,
+	 * but it is not added to the target's annotations.
 	 */
-	public static <A extends Annotation> MutableAnnotationUsage<A> makeAnnotation(Class<A> annotationType) {
-		return new DynamicAnnotationUsage<>( annotationType );
+	public static <A extends Annotation> MutableAnnotationUsage<A> makeNestedAnnotation(
+			Class<A> annotationType,
+			MutableAnnotationTarget target,
+			XmlDocumentContext xmlDocumentContext) {
+		return new DynamicAnnotationUsage<>(
+				xmlDocumentContext.getModelBuildingContext()
+						.getAnnotationDescriptorRegistry()
+						.getDescriptor( annotationType ),
+				target
+		);
 	}
 
 	/**
@@ -146,8 +154,9 @@ public class XmlProcessingHelper {
 	 */
 	public static <A extends Annotation> MutableAnnotationUsage<A> makeAnnotation(
 			Class<A> annotationType,
-			MutableAnnotationTarget target) {
-		final DynamicAnnotationUsage<A> created = new DynamicAnnotationUsage<>( annotationType, target );
+			MutableAnnotationTarget target,
+			XmlDocumentContext xmlDocumentContext) {
+		final MutableAnnotationUsage<A> created = makeNestedAnnotation( annotationType, target, xmlDocumentContext );
 		target.addAnnotationUsage( created );
 		return created;
 	}
@@ -159,8 +168,9 @@ public class XmlProcessingHelper {
 	public static <A extends Annotation> MutableAnnotationUsage<A> getOrMakeNamedAnnotation(
 			Class<A> annotationType,
 			String name,
-			MutableAnnotationTarget target) {
-		return getOrMakeNamedAnnotation( annotationType, name, "name", target );
+			MutableAnnotationTarget target,
+			XmlDocumentContext xmlDocumentContext) {
+		return getOrMakeNamedAnnotation( annotationType, name, "name", target, xmlDocumentContext );
 	}
 
 	/**
@@ -171,9 +181,10 @@ public class XmlProcessingHelper {
 			Class<A> annotationType,
 			String name,
 			String attributeToMatch,
-			MutableAnnotationTarget target) {
+			MutableAnnotationTarget target,
+			XmlDocumentContext xmlDocumentContext) {
 		if ( name == null ) {
-			return makeAnnotation( annotationType, target );
+			return makeAnnotation( annotationType, target, xmlDocumentContext );
 		}
 
 		final AnnotationUsage<A> existing = target.getNamedAnnotationUsage( annotationType, name, attributeToMatch );
@@ -181,7 +192,7 @@ public class XmlProcessingHelper {
 			return (MutableAnnotationUsage<A>) existing;
 		}
 
-		return makeNamedAnnotation( annotationType, name, attributeToMatch, target );
+		return makeNamedAnnotation( annotationType, name, attributeToMatch, target, xmlDocumentContext );
 	}
 
 	/**
@@ -189,12 +200,13 @@ public class XmlProcessingHelper {
 	 * Used when applying XML in complete mode or when {@linkplain #getOrMakeNamedAnnotation}
 	 * needs to make.
 	 */
-	public static <A extends Annotation> DynamicAnnotationUsage<A> makeNamedAnnotation(
+	public static <A extends Annotation> MutableAnnotationUsage<A> makeNamedAnnotation(
 			Class<A> annotationType,
 			String name,
 			String nameAttributeName,
-			MutableAnnotationTarget target) {
-		final DynamicAnnotationUsage<A> created = new DynamicAnnotationUsage<>( annotationType, target );
+			MutableAnnotationTarget target,
+			XmlDocumentContext xmlDocumentContext) {
+		final MutableAnnotationUsage<A> created = makeNestedAnnotation( annotationType, target, xmlDocumentContext );
 		target.addAnnotationUsage( created );
 		created.setAttributeValue( nameAttributeName, name );
 		return created;

@@ -7,10 +7,12 @@
 package org.hibernate.models.orm.xml.attr;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.hibernate.annotations.Any;
 import org.hibernate.annotations.AnyDiscriminator;
 import org.hibernate.annotations.AnyDiscriminatorValue;
+import org.hibernate.boot.internal.AnyKeyType;
 import org.hibernate.boot.internal.BootstrapContextImpl;
 import org.hibernate.boot.internal.MetadataBuilderImpl;
 import org.hibernate.boot.model.process.spi.ManagedResources;
@@ -28,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import jakarta.persistence.DiscriminatorType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -76,6 +79,18 @@ public class AnyTests {
 		final List<AnnotationUsage<AnyDiscriminatorValue>> discriminatorMappings = associationField.getRepeatedAnnotationUsages( AnyDiscriminatorValue.class );
 		assertThat( discriminatorMappings ).hasSize( 2 );
 
+		final List<String> mappedEntityNames = discriminatorMappings.stream()
+				.map( (valueAnn) -> valueAnn.getClassDetails( "entity" ).getName() )
+				.collect( Collectors.toList() );
+		assertThat( mappedEntityNames ).containsExactly( Entity1.class.getName(), Entity2.class.getName() );
+
+		final AnnotationUsage<AnyKeyType> keyTypeAnn = associationField.getAnnotationUsage( AnyKeyType.class );
+		assertThat( keyTypeAnn ).isNotNull();
+		assertThat( keyTypeAnn.getString( "value" ) ).isEqualTo( "integer" );
+
+		final AnnotationUsage<JoinColumn> keyColumn = associationField.getAnnotationUsage( JoinColumn.class );
+		assertThat( keyColumn ).isNotNull();
+		assertThat( keyColumn.getString( "name" ) ).isEqualTo( "association_fk" );
 	}
 
 	@Entity(name="Entity1")

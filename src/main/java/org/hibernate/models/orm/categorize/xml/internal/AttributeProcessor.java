@@ -59,7 +59,7 @@ public class AttributeProcessor {
 			return;
 		}
 
-		XmlAnnotationHelper.applyNaturalIdCache( jaxbNaturalId, mutableClassDetails );
+		XmlAnnotationHelper.applyNaturalIdCache( jaxbNaturalId, mutableClassDetails, xmlDocumentContext );
 
 		processBaseAttributes( jaxbNaturalId, mutableClassDetails, classAccessType, memberAdjuster, xmlDocumentContext );
 	}

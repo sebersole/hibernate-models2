@@ -124,7 +124,11 @@ public class XmlProcessingSmokeTests {
 		final JaxbEntityMappingsImpl xmlMapping = loadMapping( "mappings/globals.xml", SIMPLE_CLASS_LOADING );
 		collectedXmlResources.addDocument( xmlMapping );
 
-		final DomainModelCategorizationCollector collector = new DomainModelCategorizationCollector( false, buildingContext.getClassDetailsRegistry() );
+		final DomainModelCategorizationCollector collector = new DomainModelCategorizationCollector(
+				false,
+				buildingContext.getClassDetailsRegistry(),
+				buildingContext.getAnnotationDescriptorRegistry()
+		);
 		collectedXmlResources.getDocuments().forEach( collector::apply );
 
 		final GlobalRegistrationsImpl globalRegistrations = collector.getGlobalRegistrations();

@@ -512,7 +512,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		final SoftDeleteType strategy = softDeleteConfig.getEnum( "strategy" );
 		final String logicalColumnName = coalesce(
 				strategy.getDefaultColumnName(),
-				softDeleteConfig.getString( softDeleteConfig.getString( "columnName" ) )
+				softDeleteConfig.getString( "columnName" )
 		);
 		final Identifier physicalColumnName = namingStrategy.toPhysicalColumnName(
 				database.toIdentifier( logicalColumnName ),

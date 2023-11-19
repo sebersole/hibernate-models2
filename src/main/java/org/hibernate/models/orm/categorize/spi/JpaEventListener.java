@@ -10,6 +10,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityListenerImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitDefaultsImpl;
 import org.hibernate.internal.util.MutableObject;
 import org.hibernate.models.ModelsException;
+import org.hibernate.models.internal.jdk.VoidClassDetails;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MethodDetails;
 
@@ -261,13 +262,13 @@ public class JpaEventListener {
 		if ( callbackType == JpaEventListenerStyle.CALLBACK ) {
 			// should have no arguments.  and technically (spec) have a void return
 			return methodDetails.getArgumentTypes().isEmpty()
-					&& methodDetails.getReturnType() == null;
+					&& methodDetails.getReturnType() == VoidClassDetails.VOID_CLASS_DETAILS;
 		}
 		else {
 			assert callbackType == JpaEventListenerStyle.LISTENER;
 			// should have 1 argument.  and technically (spec) have a void return
 			return methodDetails.getArgumentTypes().size() == 1
-					&& methodDetails.getReturnType() == null;
+					&& methodDetails.getReturnType() == VoidClassDetails.VOID_CLASS_DETAILS;
 		}
 	}
 

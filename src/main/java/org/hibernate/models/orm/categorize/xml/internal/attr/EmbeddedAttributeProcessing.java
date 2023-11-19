@@ -21,7 +21,7 @@ import jakarta.persistence.Embedded;
 
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
 import static org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper.getOrMakeAnnotation;
-import static org.hibernate.models.orm.categorize.xml.internal.attr.CommonAttributeProcessing.processCommonAttributeAnnotations;
+import static org.hibernate.models.orm.categorize.xml.internal.attr.CommonAttributeProcessing.applyAttributeBasics;
 
 /**
  * @author Steve Ebersole
@@ -39,16 +39,16 @@ public class EmbeddedAttributeProcessing {
 				declarer
 		);
 
-		XmlProcessingHelper.getOrMakeAnnotation( Embedded.class, memberDetails );
+		final MutableAnnotationUsage<Embedded> embeddedAnn = getOrMakeAnnotation( Embedded.class, memberDetails, xmlDocumentContext );
 
 		if ( StringHelper.isNotEmpty( jaxbEmbedded.getTarget() ) ) {
-			final MutableAnnotationUsage<Target> targetAnn = getOrMakeAnnotation( Target.class, memberDetails );
+			final MutableAnnotationUsage<Target> targetAnn = getOrMakeAnnotation( Target.class, memberDetails, xmlDocumentContext );
 			targetAnn.setAttributeValue( "value", jaxbEmbedded.getTarget() );
 		}
 
-		processCommonAttributeAnnotations( jaxbEmbedded, memberDetails, accessType );
-		XmlAnnotationHelper.applyAttributeOverrides( jaxbEmbedded.getAttributeOverrides(), memberDetails );
-		XmlAnnotationHelper.applyAssociationOverrides( jaxbEmbedded.getAssociationOverrides(), memberDetails );
+		applyAttributeBasics( jaxbEmbedded, memberDetails, embeddedAnn, accessType, xmlDocumentContext );
+		XmlAnnotationHelper.applyAttributeOverrides( jaxbEmbedded.getAttributeOverrides(), memberDetails, xmlDocumentContext );
+		XmlAnnotationHelper.applyAssociationOverrides( jaxbEmbedded.getAssociationOverrides(), memberDetails, xmlDocumentContext );
 
 		return memberDetails;
 	}

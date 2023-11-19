@@ -119,9 +119,11 @@ public class ManagedResourcesProcessor {
 		// JPA id generator global-ity thing
 		final boolean areIdGeneratorsGlobal = true;
 		final ClassDetailsRegistry mutableClassDetailsRegistry = sourceModelBuildingContext.getClassDetailsRegistry();
+		final AnnotationDescriptorRegistry descriptorRegistry = sourceModelBuildingContext.getAnnotationDescriptorRegistry();
 		final DomainModelCategorizationCollector modelCategorizationCollector = new DomainModelCategorizationCollector(
 				areIdGeneratorsGlobal,
-				mutableClassDetailsRegistry
+				mutableClassDetailsRegistry,
+				descriptorRegistry
 		);
 
 		final XmlProcessingResult xmlProcessingResult = XmlProcessor.processXml( xmlPreProcessingResult, modelCategorizationCollector, sourceModelBuildingContext );
@@ -153,8 +155,7 @@ public class ManagedResourcesProcessor {
 		final ClassDetailsRegistry classDetailsRegistryImmutable = mutableClassDetailsRegistry
 				.makeImmutableCopy();
 
-		final AnnotationDescriptorRegistry annotationDescriptorRegistryImmutable = sourceModelBuildingContext
-				.getAnnotationDescriptorRegistry()
+		final AnnotationDescriptorRegistry annotationDescriptorRegistryImmutable = descriptorRegistry
 				.makeImmutableCopy();
 
 		// Collect the entity hierarchies based on the set of `rootEntities`

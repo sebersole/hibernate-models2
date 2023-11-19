@@ -38,7 +38,7 @@ dependencyResolutionManagement {
 			def hcannVersion = version "hcann", "6.0.6.Final"
 			library( "hcann", "org.hibernate.common", "hibernate-commons-annotations" ).versionRef( hcannVersion )
 
-			def hibernateModelsVersion = version "hibernateModels", "0.5.1"
+			def hibernateModelsVersion = version "hibernateModels", "0.5.3"
 			library( "hibernateModels", "org.hibernate.models", "hibernate-models" ).versionRef( hibernateModelsVersion )
 
 			def hibernateOrmVersion = version "hibernateOrm", "7.0.0-SNAPSHOT"

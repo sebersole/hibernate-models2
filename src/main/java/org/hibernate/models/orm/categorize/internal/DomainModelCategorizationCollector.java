@@ -41,9 +41,12 @@ public class DomainModelCategorizationCollector {
 	private final Map<String,ClassDetails> embeddables = new HashMap<>();
 	private final GlobalRegistrationsImpl globalRegistrations;
 
-	public DomainModelCategorizationCollector(boolean areIdGeneratorsGlobal, ClassDetailsRegistry classDetailsRegistry) {
+	public DomainModelCategorizationCollector(
+			boolean areIdGeneratorsGlobal,
+			ClassDetailsRegistry classDetailsRegistry,
+			AnnotationDescriptorRegistry descriptorRegistry) {
 		this.areIdGeneratorsGlobal = areIdGeneratorsGlobal;
-		this.globalRegistrations = new GlobalRegistrationsImpl( classDetailsRegistry );
+		this.globalRegistrations = new GlobalRegistrationsImpl( classDetailsRegistry, descriptorRegistry );
 	}
 
 	public Set<ClassDetails> getRootEntities() {

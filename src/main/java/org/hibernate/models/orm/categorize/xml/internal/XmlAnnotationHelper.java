@@ -18,11 +18,9 @@ import java.util.function.Supplier;
 
 import org.hibernate.AnnotationException;
 import org.hibernate.annotations.AttributeAccessor;
-import org.hibernate.annotations.Check;
 import org.hibernate.annotations.CollectionType;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterJoinTable;
-import org.hibernate.annotations.Formula;
 import org.hibernate.annotations.JavaType;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -41,7 +39,6 @@ import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.boot.internal.Target;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbAssociationOverrideImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbAttributeOverrideImpl;
-import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicMapping;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbCachingImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbCheckConstraintImpl;
@@ -78,13 +75,12 @@ import org.hibernate.models.internal.MutableAnnotationTarget;
 import org.hibernate.models.internal.MutableAnnotationUsage;
 import org.hibernate.models.internal.MutableClassDetails;
 import org.hibernate.models.internal.MutableMemberDetails;
-import org.hibernate.models.internal.dynamic.DynamicAnnotationUsage;
 import org.hibernate.models.orm.categorize.spi.JpaEventListener;
 import org.hibernate.models.orm.categorize.spi.JpaEventListenerStyle;
+import org.hibernate.models.orm.categorize.xml.internal.db.ColumnProcessing;
 import org.hibernate.models.orm.categorize.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.models.orm.categorize.xml.spi.XmlDocumentContext;
 import org.hibernate.models.spi.AnnotationDescriptor;
-import org.hibernate.models.spi.AnnotationTarget;
 import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.ClassDetailsRegistry;
@@ -96,7 +92,6 @@ import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.AssociationOverride;
 import jakarta.persistence.AttributeOverride;
-import jakarta.persistence.Basic;
 import jakarta.persistence.CheckConstraint;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -125,11 +120,12 @@ import jakarta.persistence.TableGenerator;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 
-import static jakarta.persistence.FetchType.EAGER;
 import static java.util.Collections.emptyList;
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
 import static org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper.getOrMakeAnnotation;
+import static org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper.getOrMakeNamedAnnotation;
 import static org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper.makeAnnotation;
+import static org.hibernate.models.orm.categorize.xml.internal.XmlProcessingHelper.makeNestedAnnotation;
 
 /**
  * Helper for creating annotation from equivalent JAXB
@@ -144,49 +140,19 @@ public class XmlAnnotationHelper {
 	 */
 	public static void applyEntity(
 			JaxbEntity jaxbEntity,
-			MutableClassDetails classDetails) {
-		final MutableAnnotationUsage<Entity> entityUsage = getOrMakeAnnotation( Entity.class, classDetails );
+			MutableClassDetails classDetails,
+			XmlDocumentContext xmlDocumentContext) {
+		final MutableAnnotationUsage<Entity> entityUsage = getOrMakeAnnotation( Entity.class, classDetails, xmlDocumentContext );
 		if ( StringHelper.isNotEmpty( jaxbEntity.getName() ) ) {
 			entityUsage.setAttributeValue( "name", jaxbEntity.getName() );
 		}
 	}
 
-	public static void applyBasic(JaxbIdImpl jaxbId, MutableMemberDetails memberDetails) {
-		final DynamicAnnotationUsage<Basic> annotationUsage = new DynamicAnnotationUsage<>( Basic.class, memberDetails );
-		memberDetails.addAnnotationUsage( annotationUsage );
-		annotationUsage.setAttributeValue( "fetch", EAGER );
-		annotationUsage.setAttributeValue( "optional", false );
-	}
-
-	public static void applyBasic(
-			JaxbBasicImpl jaxbBasic,
-			MutableMemberDetails memberDetails) {
-		final MutableAnnotationUsage<Basic> basicAnn = getOrMakeAnnotation( Basic.class, memberDetails );
-		if ( jaxbBasic.getFetch() != null ) {
-			basicAnn.setAttributeValue( "fetch", jaxbBasic.getFetch() );
-		}
-		if ( jaxbBasic.isOptional() != null ) {
-			basicAnn.setAttributeValue( "optional", jaxbBasic.isOptional() );
-		}
-	}
-
-	public static void applyAccess(
+	public static MutableAnnotationUsage<Access> createAccessAnnotation(
 			AccessType accessType,
-			MutableMemberDetails memberDetails) {
-		final DynamicAnnotationUsage<Access> annotationUsage = createAccessAnnotation(
-				accessType,
-				memberDetails
-		);
-		memberDetails.addAnnotationUsage( annotationUsage );
-	}
-
-	public static DynamicAnnotationUsage<Access> createAccessAnnotation(
-			AccessType accessType,
-			MutableAnnotationTarget target) {
-		final DynamicAnnotationUsage<Access> annotationUsage = new DynamicAnnotationUsage<>(
-				Access.class,
-				target
-		);
+			MutableAnnotationTarget target,
+			XmlDocumentContext xmlDocumentContext) {
+		final MutableAnnotationUsage<Access> annotationUsage = makeAnnotation( Access.class, target, xmlDocumentContext );
 		annotationUsage.setAttributeValue( "value", accessType );
 		return annotationUsage;
 	}
@@ -195,7 +161,7 @@ public class XmlAnnotationHelper {
 			String attributeAccessor,
 			MutableMemberDetails memberDetails,
 			XmlDocumentContext xmlDocumentContext) {
-		final DynamicAnnotationUsage<AttributeAccessor> accessorAnn = new DynamicAnnotationUsage<>( AttributeAccessor.class, memberDetails );
+		final MutableAnnotationUsage<AttributeAccessor> accessorAnn = makeAnnotation( AttributeAccessor.class, memberDetails, xmlDocumentContext );
 		memberDetails.addAnnotationUsage( accessorAnn );
 		// todo : this is the old, deprecated form
 		accessorAnn.setAttributeValue( "value", attributeAccessor );
@@ -203,12 +169,13 @@ public class XmlAnnotationHelper {
 
 	public static void applyColumn(
 			JaxbColumnImpl jaxbColumn,
-			MutableMemberDetails memberDetails) {
+			MutableMemberDetails memberDetails,
+			XmlDocumentContext xmlDocumentContext) {
 		if ( jaxbColumn == null ) {
 			return;
 		}
 
-		createColumnAnnotation( jaxbColumn, memberDetails );
+		createColumnAnnotation( jaxbColumn, memberDetails, xmlDocumentContext );
 	}
 
 	public static MutableAnnotationUsage<JoinColumn> applyJoinColumn(
@@ -226,7 +193,7 @@ public class XmlAnnotationHelper {
 			JaxbJoinColumnImpl jaxbJoinColumn,
 			MutableMemberDetails memberDetails,
 			XmlDocumentContext xmlDocumentContext) {
-		final MutableAnnotationUsage<JoinColumn> joinColumnAnn = getOrMakeAnnotation( JoinColumn.class, memberDetails );
+		final MutableAnnotationUsage<JoinColumn> joinColumnAnn = getOrMakeAnnotation( JoinColumn.class, memberDetails, xmlDocumentContext );
 		final AnnotationDescriptor<JoinColumn> joinColumnDescriptor = xmlDocumentContext
 				.getModelBuildingContext()
 				.getAnnotationDescriptorRegistry()
@@ -239,8 +206,8 @@ public class XmlAnnotationHelper {
 		applyOr( jaxbJoinColumn, JaxbJoinColumnImpl::getComment, "comment", joinColumnAnn, joinColumnDescriptor );
 		applyOr( jaxbJoinColumn, JaxbJoinColumnImpl::getColumnDefinition, "columnDefinition", joinColumnAnn, joinColumnDescriptor );
 
-		final JaxbForeignKeyImpl jaxbForeignKey = jaxbJoinColumn.getForeignKeys();
-		final MutableAnnotationUsage<ForeignKey> foreignKeyAnn = getOrMakeAnnotation( ForeignKey.class, memberDetails );
+		final JaxbForeignKeyImpl jaxbForeignKey = jaxbJoinColumn.getForeignKey();
+		final MutableAnnotationUsage<ForeignKey> foreignKeyAnn = getOrMakeAnnotation( ForeignKey.class, memberDetails, xmlDocumentContext );
 		final AnnotationDescriptor<ForeignKey> foreignKeyDescriptor = xmlDocumentContext
 				.getModelBuildingContext()
 				.getAnnotationDescriptorRegistry()
@@ -257,7 +224,7 @@ public class XmlAnnotationHelper {
 			joinColumnAnn.setAttributeValue( "check", constraints );
 			for ( int i = 0; i < jaxbJoinColumn.getCheckConstraints().size(); i++ ) {
 				final JaxbCheckConstraintImpl jaxbCheckConstraint = jaxbJoinColumn.getCheckConstraints().get( i );
-				final MutableAnnotationUsage<CheckConstraint> checkConstraintAnn = getOrMakeAnnotation( CheckConstraint.class, memberDetails );
+				final MutableAnnotationUsage<CheckConstraint> checkConstraintAnn = getOrMakeAnnotation( CheckConstraint.class, memberDetails, xmlDocumentContext );
 				final AnnotationDescriptor<CheckConstraint> checkConstraintDescriptor = xmlDocumentContext
 						.getModelBuildingContext()
 						.getAnnotationDescriptorRegistry()
@@ -270,7 +237,7 @@ public class XmlAnnotationHelper {
 			}
 		}
 		else {
-			final MutableAnnotationUsage<CheckConstraint> checkConstraintAnn = getOrMakeAnnotation( CheckConstraint.class, memberDetails );
+			final MutableAnnotationUsage<CheckConstraint> checkConstraintAnn = getOrMakeAnnotation( CheckConstraint.class, memberDetails, xmlDocumentContext );
 			joinColumnAnn.setAttributeValue( "check", List.of( checkConstraintAnn ) );
 		}
 
@@ -312,96 +279,13 @@ public class XmlAnnotationHelper {
 
 	private static MutableAnnotationUsage<Column> createColumnAnnotation(
 			JaxbColumnImpl jaxbColumn,
-			MutableAnnotationTarget target) {
-		final MutableAnnotationUsage<Column> columnAnn = getOrMakeAnnotation( Column.class, target );
+			MutableAnnotationTarget target,
+			XmlDocumentContext xmlDocumentContext) {
+		final MutableAnnotationUsage<Column> columnAnn = getOrMakeAnnotation( Column.class, target, xmlDocumentContext );
 
-		populateColumn( jaxbColumn, target, columnAnn );
+		ColumnProcessing.applyColumnDetails( jaxbColumn, target, columnAnn, xmlDocumentContext );
 
 		return columnAnn;
-	}
-
-	public static void populateColumn(
-			JaxbColumnImpl jaxbColumn,
-			MutableAnnotationTarget target,
-			MutableAnnotationUsage<Column> columnAnn) {
-		if ( jaxbColumn != null ) {
-			if ( StringHelper.isNotEmpty( jaxbColumn.getName() ) ) {
-				columnAnn.setAttributeValue( "name", jaxbColumn.getName() );
-			}
-
-			if ( StringHelper.isNotEmpty( jaxbColumn.getTable() ) ) {
-				columnAnn.setAttributeValue( "table", jaxbColumn.getTable() );
-			}
-
-			if ( jaxbColumn.isUnique() != null ) {
-				columnAnn.setAttributeValue( "unique", jaxbColumn.isUnique() );
-			}
-
-			if ( jaxbColumn.isNullable() != null ) {
-				columnAnn.setAttributeValue( "nullable", jaxbColumn.isNullable() );
-			}
-
-			if ( jaxbColumn.isInsertable() != null ) {
-				columnAnn.setAttributeValue( "insertable", jaxbColumn.isInsertable() );
-			}
-
-			if ( jaxbColumn.isUpdatable() != null ) {
-				columnAnn.setAttributeValue( "updatable", jaxbColumn.isUpdatable() );
-			}
-
-			if ( StringHelper.isNotEmpty( jaxbColumn.getColumnDefinition() ) ) {
-				columnAnn.setAttributeValue( "columnDefinition", jaxbColumn.getColumnDefinition() );
-			}
-
-			if ( jaxbColumn.getLength() != null ) {
-				columnAnn.setAttributeValue( "length", jaxbColumn.getLength() );
-			}
-
-			if ( jaxbColumn.getPrecision() != null ) {
-				columnAnn.setAttributeValue( "precision", jaxbColumn.getPrecision() );
-			}
-
-			if ( jaxbColumn.getScale() != null ) {
-				columnAnn.setAttributeValue( "scale", jaxbColumn.getScale() );
-			}
-
-			if ( jaxbColumn.getComment() != null ) {
-				columnAnn.setAttributeValue( "comment", jaxbColumn.getComment() );
-			}
-
-			if ( jaxbColumn.getOptions() != null ) {
-				columnAnn.setAttributeValue( "options", jaxbColumn.getOptions() );
-			}
-
-			if ( CollectionHelper.isNotEmpty( jaxbColumn.getCheckConstraints() ) ) {
-				final List<AnnotationUsage<Check>> checks = new ArrayList<>( jaxbColumn.getCheckConstraints().size() );
-				for ( int i = 0; i < jaxbColumn.getCheckConstraints().size(); i++ ) {
-					final JaxbCheckConstraintImpl jaxbCheck = jaxbColumn.getCheckConstraints().get( i );
-					final MutableAnnotationUsage<Check> checkAnn = getOrMakeAnnotation( Check.class, target );
-					checkAnn.setAttributeValue( "name", jaxbCheck.getName() );
-					checkAnn.setAttributeValue( "constraints", jaxbCheck.getConstraint() );
-					checks.add( checkAnn );
-				}
-				columnAnn.setAttributeValue( "check", checks );
-			}
-		}
-	}
-
-	public static void applyFormula(String formula, MutableMemberDetails memberDetails) {
-		if ( StringHelper.isEmpty( formula ) ) {
-			return;
-		}
-
-		final AnnotationUsage<Formula> annotationUsage = createFormulaAnnotation( formula, memberDetails );
-		memberDetails.addAnnotationUsage( annotationUsage );
-	}
-
-	private static AnnotationUsage<Formula> createFormulaAnnotation(
-			String formula,
-			AnnotationTarget target) {
-		final DynamicAnnotationUsage<Formula> annotationUsage = new DynamicAnnotationUsage<>( Formula.class, target );
-		annotationUsage.setAttributeValue( "value", formula );
-		return annotationUsage;
 	}
 
 	public static void applyUserType(
@@ -412,24 +296,25 @@ public class XmlAnnotationHelper {
 			return;
 		}
 
-		final DynamicAnnotationUsage<Type> typeAnn = new DynamicAnnotationUsage<>( Type.class, memberDetails );
+		final MutableAnnotationUsage<Type> typeAnn = makeAnnotation( Type.class, memberDetails, xmlDocumentContext );
 		memberDetails.addAnnotationUsage( typeAnn );
 
 		final ClassDetails userTypeImpl = resolveJavaType( jaxbType.getValue(), xmlDocumentContext );
 		typeAnn.setAttributeValue( "value", userTypeImpl );
-		typeAnn.setAttributeValue( "parameters", collectParameters( jaxbType.getParameters(), memberDetails ) );
+		typeAnn.setAttributeValue( "parameters", collectParameters( jaxbType.getParameters(), memberDetails, xmlDocumentContext ) );
 	}
 
 	public static List<AnnotationUsage<Parameter>> collectParameters(
 			List<JaxbConfigurationParameterImpl> jaxbParameters,
-			AnnotationTarget target) {
+			MutableAnnotationTarget target,
+			XmlDocumentContext xmlDocumentContext) {
 		if ( CollectionHelper.isEmpty( jaxbParameters ) ) {
 			return emptyList();
 		}
 
 		List<AnnotationUsage<Parameter>> parameterAnnList = new ArrayList<>( jaxbParameters.size() );
 		jaxbParameters.forEach( (jaxbParam) -> {
-			final DynamicAnnotationUsage<Parameter> annotationUsage = new DynamicAnnotationUsage<>( Parameter.class, target );
+			final MutableAnnotationUsage<Parameter> annotationUsage = makeNestedAnnotation( Parameter.class, target, xmlDocumentContext );
 			parameterAnnList.add( annotationUsage );
 			annotationUsage.setAttributeValue( "name", jaxbParam.getName() );
 			annotationUsage.setAttributeValue( "value", jaxbParam.getValue() );
@@ -445,12 +330,12 @@ public class XmlAnnotationHelper {
 			return;
 		}
 
-		final DynamicAnnotationUsage<CollectionType> typeAnn = new DynamicAnnotationUsage<>( CollectionType.class, memberDetails );
+		final MutableAnnotationUsage<CollectionType> typeAnn = makeAnnotation( CollectionType.class, memberDetails, xmlDocumentContext );
 		memberDetails.addAnnotationUsage( typeAnn );
 
 		final ClassDetails userTypeImpl = resolveJavaType( jaxbType.getType(), xmlDocumentContext );
 		typeAnn.setAttributeValue( "type", userTypeImpl );
-		typeAnn.setAttributeValue( "parameters", collectParameters( jaxbType.getParameters(), memberDetails ) );
+		typeAnn.setAttributeValue( "parameters", collectParameters( jaxbType.getParameters(), memberDetails, xmlDocumentContext ) );
 	}
 
 	public static void applyTargetClass(
@@ -458,55 +343,53 @@ public class XmlAnnotationHelper {
 			MutableMemberDetails memberDetails,
 			XmlDocumentContext xmlDocumentContext) {
 		final ClassDetails classDetails = resolveJavaType( name, xmlDocumentContext );
-		final MutableAnnotationUsage<Target> targetAnn = makeAnnotation( Target.class, memberDetails );
+		final MutableAnnotationUsage<Target> targetAnn = makeAnnotation( Target.class, memberDetails, xmlDocumentContext );
 		targetAnn.setAttributeValue( "value", classDetails );
 	}
 
 	public static void applyTemporal(
 			TemporalType temporalType,
-			MutableMemberDetails memberDetails) {
+			MutableMemberDetails memberDetails,
+			XmlDocumentContext xmlDocumentContext) {
 		if ( temporalType == null ) {
 			return;
 		}
 
-		final DynamicAnnotationUsage<Temporal> annotationUsage = new DynamicAnnotationUsage<>( Temporal.class, memberDetails );
-		memberDetails.addAnnotationUsage( annotationUsage );
+		final MutableAnnotationUsage<Temporal> annotationUsage = makeAnnotation( Temporal.class, memberDetails, xmlDocumentContext );
 		annotationUsage.setAttributeValue( "value", temporalType );
 	}
 
-	public static void applyLob(JaxbLobImpl jaxbLob, MutableMemberDetails memberDetails) {
+	public static void applyLob(JaxbLobImpl jaxbLob, MutableMemberDetails memberDetails, XmlDocumentContext xmlDocumentContext) {
 		if ( jaxbLob == null ) {
 			return;
 		}
 
-		final DynamicAnnotationUsage<Lob> annotationUsage = new DynamicAnnotationUsage<>( Lob.class, memberDetails );
-		memberDetails.addAnnotationUsage( annotationUsage );
+		makeAnnotation( Lob.class, memberDetails, xmlDocumentContext );
 	}
 
-	public static void applyEnumerated(EnumType enumType, MutableMemberDetails memberDetails) {
+	public static void applyEnumerated(EnumType enumType, MutableMemberDetails memberDetails, XmlDocumentContext xmlDocumentContext) {
 		if ( enumType == null ) {
 			return;
 		}
 
-		final DynamicAnnotationUsage<Enumerated> annotationUsage = new DynamicAnnotationUsage<>(
+		final MutableAnnotationUsage<Enumerated> annotationUsage = makeAnnotation(
 				Enumerated.class,
-				memberDetails
+				memberDetails,
+				xmlDocumentContext
 		);
-		memberDetails.addAnnotationUsage( annotationUsage );
 
 		annotationUsage.setAttributeValue( "value", enumType );
 	}
 
-	public static void applyNationalized(JaxbNationalizedImpl jaxbNationalized, MutableMemberDetails memberDetails) {
+	public static void applyNationalized(
+			JaxbNationalizedImpl jaxbNationalized,
+			MutableMemberDetails memberDetails,
+			XmlDocumentContext xmlDocumentContext) {
 		if ( jaxbNationalized == null ) {
 			return;
 		}
 
-		final DynamicAnnotationUsage<Nationalized> annotationUsage = new DynamicAnnotationUsage<>(
-				Nationalized.class,
-				memberDetails
-		);
-		memberDetails.addAnnotationUsage( annotationUsage );
+		makeAnnotation( Nationalized.class, memberDetails, xmlDocumentContext );
 	}
 
 	public static void applyGeneratedValue(
@@ -517,7 +400,7 @@ public class XmlAnnotationHelper {
 			return;
 		}
 
-		final DynamicAnnotationUsage<GeneratedValue> generatedValueAnn = new DynamicAnnotationUsage<>( GeneratedValue.class, memberDetails );
+		final MutableAnnotationUsage<GeneratedValue> generatedValueAnn = makeAnnotation( GeneratedValue.class, memberDetails, xmlDocumentContext );
 		memberDetails.addAnnotationUsage( generatedValueAnn );
 		generatedValueAnn.setAttributeValue( "strategy", jaxbGeneratedValue.getStrategy() );
 		generatedValueAnn.setAttributeValue( "generator", jaxbGeneratedValue.getGenerator() );
@@ -531,10 +414,11 @@ public class XmlAnnotationHelper {
 			return;
 		}
 
-		final MutableAnnotationUsage<SequenceGenerator> sequenceAnn = XmlProcessingHelper.getOrMakeNamedAnnotation(
+		final MutableAnnotationUsage<SequenceGenerator> sequenceAnn = getOrMakeNamedAnnotation(
 				SequenceGenerator.class,
 				jaxbGenerator.getName(),
-				memberDetails
+				memberDetails,
+				xmlDocumentContext
 		);
 
 		if ( StringHelper.isNotEmpty( jaxbGenerator.getSequenceName() ) ) {
@@ -555,7 +439,7 @@ public class XmlAnnotationHelper {
 			return;
 		}
 
-		final DynamicAnnotationUsage<TableGenerator> annotationUsage = new DynamicAnnotationUsage<>( TableGenerator.class, memberDetails );
+		final MutableAnnotationUsage<TableGenerator> annotationUsage = makeAnnotation( TableGenerator.class, memberDetails, xmlDocumentContext );
 		memberDetails.addAnnotationUsage( annotationUsage );
 		annotationUsage.setAttributeValue( "name", jaxbGenerator.getName() );
 		annotationUsage.setAttributeValue( "table", jaxbGenerator.getTable() );
@@ -578,40 +462,44 @@ public class XmlAnnotationHelper {
 			return;
 		}
 
-		final DynamicAnnotationUsage<UuidGenerator> annotationUsage = new DynamicAnnotationUsage<>( UuidGenerator.class, memberDetails );
+		final MutableAnnotationUsage<UuidGenerator> annotationUsage = makeAnnotation( UuidGenerator.class, memberDetails, xmlDocumentContext );
 		memberDetails.addAnnotationUsage( annotationUsage );
 		annotationUsage.setAttributeValue( "style", jaxbGenerator.getStyle() );
 	}
 
 	public static void applyAttributeOverrides(
 			List<JaxbAttributeOverrideImpl> jaxbOverrides,
-			MutableMemberDetails memberDetails) {
+			MutableMemberDetails memberDetails,
+			XmlDocumentContext xmlDocumentContext) {
 		if ( CollectionHelper.isEmpty( jaxbOverrides ) ) {
 			return;
 		}
 
 		jaxbOverrides.forEach( (jaxbOverride) -> {
-			final DynamicAnnotationUsage<AttributeOverride> annotationUsage = new DynamicAnnotationUsage<>(
+			final MutableAnnotationUsage<AttributeOverride> annotationUsage = makeAnnotation(
 					AttributeOverride.class,
-					memberDetails
+					memberDetails,
+					xmlDocumentContext
 			);
 			memberDetails.addAnnotationUsage( annotationUsage );
 			annotationUsage.setAttributeValue( "name", jaxbOverride.getName() );
-			annotationUsage.setAttributeValue( "column", createColumnAnnotation( jaxbOverride.getColumn(), memberDetails ) );
+			annotationUsage.setAttributeValue( "column", createColumnAnnotation( jaxbOverride.getColumn(), memberDetails, xmlDocumentContext ) );
 		} );
 	}
 
 	public static void applyAssociationOverrides(
 			List<JaxbAssociationOverrideImpl> jaxbOverrides,
-			MutableMemberDetails memberDetails) {
+			MutableMemberDetails memberDetails,
+			XmlDocumentContext xmlDocumentContext) {
 		if ( CollectionHelper.isEmpty( jaxbOverrides ) ) {
 			return;
 		}
 
 		jaxbOverrides.forEach( (jaxbOverride) -> {
-			final DynamicAnnotationUsage<AssociationOverride> annotationUsage = new DynamicAnnotationUsage<>(
+			final MutableAnnotationUsage<AssociationOverride> annotationUsage = makeAnnotation(
 					AssociationOverride.class,
-					memberDetails
+					memberDetails,
+					xmlDocumentContext
 			);
 			memberDetails.addAnnotationUsage( annotationUsage );
 			annotationUsage.setAttributeValue( "name", jaxbOverride.getName() );
@@ -623,10 +511,12 @@ public class XmlAnnotationHelper {
 
 	public static void applyOptimisticLockInclusion(
 			boolean inclusion,
-			MutableMemberDetails memberDetails) {
-		final DynamicAnnotationUsage<OptimisticLock> annotationUsage = new DynamicAnnotationUsage<>(
+			MutableMemberDetails memberDetails,
+			XmlDocumentContext xmlDocumentContext) {
+		final MutableAnnotationUsage<OptimisticLock> annotationUsage = makeAnnotation(
 				OptimisticLock.class,
-				memberDetails
+				memberDetails,
+				xmlDocumentContext
 		);
 		memberDetails.addAnnotationUsage( annotationUsage );
 		annotationUsage.setAttributeValue( "exclude", !inclusion );
@@ -640,9 +530,10 @@ public class XmlAnnotationHelper {
 			return;
 		}
 
-		final DynamicAnnotationUsage<Convert> annotationUsage = new DynamicAnnotationUsage<>(
+		final MutableAnnotationUsage<Convert> annotationUsage = makeAnnotation(
 				Convert.class,
-				memberDetails
+				memberDetails,
+				xmlDocumentContext
 		);
 		memberDetails.addAnnotationUsage( annotationUsage );
 
@@ -657,7 +548,7 @@ public class XmlAnnotationHelper {
 			JaxbTableImpl jaxbTable,
 			MutableAnnotationTarget target,
 			XmlDocumentContext xmlDocumentContext) {
-		final DynamicAnnotationUsage<Table> tableAnn = new DynamicAnnotationUsage<>( Table.class, target );
+		final MutableAnnotationUsage<Table> tableAnn = makeAnnotation( Table.class, target, xmlDocumentContext );
 		target.addAnnotationUsage( tableAnn );
 
 		applyTableAttributes( tableAnn, jaxbTable, xmlDocumentContext );
@@ -674,7 +565,7 @@ public class XmlAnnotationHelper {
 			return;
 		}
 
-		final MutableAnnotationUsage<Table> tableAnn = getOrMakeAnnotation( Table.class, target );
+		final MutableAnnotationUsage<Table> tableAnn = getOrMakeAnnotation( Table.class, target, xmlDocumentContext );
 
 		applyTableAttributes( tableAnn, jaxbTable, xmlDocumentContext );
 
@@ -723,13 +614,14 @@ public class XmlAnnotationHelper {
 	public static void applyNaturalId(
 			JaxbNaturalId jaxbNaturalId,
 			MutableMemberDetails backingMember,
-			SourceModelBuildingContext sourceModelBuildingContext) {
+			XmlDocumentContext xmlDocumentContext) {
 		if ( jaxbNaturalId == null ) {
 			return;
 		}
-		final DynamicAnnotationUsage<NaturalId> annotationUsage = new DynamicAnnotationUsage<>(
+		final MutableAnnotationUsage<NaturalId> annotationUsage = makeAnnotation(
 				NaturalId.class,
-				backingMember
+				backingMember,
+				xmlDocumentContext
 		);
 		backingMember.addAnnotationUsage( annotationUsage );
 		annotationUsage.setAttributeValue( "mutable", jaxbNaturalId.isMutable() );
@@ -737,14 +629,16 @@ public class XmlAnnotationHelper {
 
 	public static void applyNaturalIdCache(
 			JaxbNaturalId jaxbNaturalId,
-			MutableClassDetails classDetails) {
+			MutableClassDetails classDetails,
+			XmlDocumentContext xmlDocumentContext) {
 		if ( jaxbNaturalId == null || jaxbNaturalId.getCaching() == null ) {
 			return;
 		}
 
-		final DynamicAnnotationUsage<NaturalIdCache> annotationUsage = new DynamicAnnotationUsage<>(
+		final MutableAnnotationUsage<NaturalIdCache> annotationUsage = makeAnnotation(
 				NaturalIdCache.class,
-				classDetails
+				classDetails,
+				xmlDocumentContext
 		);
 		classDetails.addAnnotationUsage( annotationUsage );
 
@@ -759,9 +653,10 @@ public class XmlAnnotationHelper {
 		if ( jaxbId == null ) {
 			return;
 		}
-		final DynamicAnnotationUsage<Id> annotationUsage = new DynamicAnnotationUsage<>(
+		final MutableAnnotationUsage<Id> annotationUsage = makeAnnotation(
 				Id.class,
-				memberDetails
+				memberDetails,
+				xmlDocumentContext
 		);
 		memberDetails.addAnnotationUsage( annotationUsage );
 	}
@@ -773,23 +668,26 @@ public class XmlAnnotationHelper {
 		if ( jaxbEmbeddedId == null ) {
 			return;
 		}
-		final DynamicAnnotationUsage<EmbeddedId> annotationUsage = new DynamicAnnotationUsage<>(
+		final MutableAnnotationUsage<EmbeddedId> annotationUsage = makeAnnotation(
 				EmbeddedId.class,
-				memberDetails
+				memberDetails,
+				xmlDocumentContext
 		);
 		memberDetails.addAnnotationUsage( annotationUsage );
 	}
 
 	static void applyInheritance(
 			JaxbEntity jaxbEntity,
-			MutableClassDetails classDetails) {
+			MutableClassDetails classDetails,
+			XmlDocumentContext xmlDocumentContext) {
 		if ( jaxbEntity.getInheritance() == null ) {
 			return;
 		}
 
 		final MutableAnnotationUsage<Inheritance> inheritanceAnn = getOrMakeAnnotation(
 				Inheritance.class,
-				classDetails
+				classDetails,
+				xmlDocumentContext
 		);
 		inheritanceAnn.setAttributeValue( "strategy", jaxbEntity.getInheritance().getStrategy() );
 	}
@@ -898,7 +796,7 @@ public class XmlAnnotationHelper {
 			String descriptorClassName,
 			MutableMemberDetails memberDetails,
 			XmlDocumentContext xmlDocumentContext) {
-		final DynamicAnnotationUsage<JavaType> typeAnn = new DynamicAnnotationUsage<>( JavaType.class, memberDetails );
+		final MutableAnnotationUsage<JavaType> typeAnn = makeAnnotation( JavaType.class, memberDetails, xmlDocumentContext );
 		memberDetails.addAnnotationUsage( typeAnn );
 
 		final ClassDetails descriptorClass = xmlDocumentContext
@@ -917,7 +815,7 @@ public class XmlAnnotationHelper {
 				.getModelBuildingContext()
 				.getClassDetailsRegistry()
 				.resolveClassDetails( descriptorClassName );
-		final MutableAnnotationUsage<JdbcType> jdbcTypeAnn = makeAnnotation( JdbcType.class, memberDetails );
+		final MutableAnnotationUsage<JdbcType> jdbcTypeAnn = makeAnnotation( JdbcType.class, memberDetails, xmlDocumentContext );
 		jdbcTypeAnn.setAttributeValue( "value", descriptorClassDetails );
 
 	}
@@ -930,7 +828,7 @@ public class XmlAnnotationHelper {
 			return;
 		}
 
-		final DynamicAnnotationUsage<JdbcTypeCode> typeCodeAnn = new DynamicAnnotationUsage<>( JdbcTypeCode.class, memberDetails );
+		final MutableAnnotationUsage<JdbcTypeCode> typeCodeAnn = makeAnnotation( JdbcTypeCode.class, memberDetails, xmlDocumentContext );
 		memberDetails.addAnnotationUsage( typeCodeAnn );
 		typeCodeAnn.setAttributeValue( "value", jdbcTypeCode );
 	}
@@ -956,10 +854,11 @@ public class XmlAnnotationHelper {
 			XmlDocumentContext xmlDocumentContext) {
 		// Since @Filter and @FilterJoinTable have exactly the same attributes,
 		// we can use the same method with parametrized annotation class
-		final MutableAnnotationUsage<F> filterAnn = XmlProcessingHelper.getOrMakeNamedAnnotation(
+		final MutableAnnotationUsage<F> filterAnn = getOrMakeNamedAnnotation(
 				filterAnnotationClass,
 				jaxbFilter.getName(),
-				target
+				target,
+				xmlDocumentContext
 		);
 
 		applyAttributeIfSpecified( filterAnn, "condition", jaxbFilter.getCondition() );
@@ -967,16 +866,17 @@ public class XmlAnnotationHelper {
 
 		final List<JaxbHbmFilterImpl.JaxbAliasesImpl> aliases = jaxbFilter.getAliases();
 		if ( !CollectionHelper.isEmpty( aliases ) ) {
-			filterAnn.setAttributeValue( "aliases", getSqlFragmentAliases( aliases, xmlDocumentContext ) );
+			filterAnn.setAttributeValue( "aliases", getSqlFragmentAliases( aliases, target, xmlDocumentContext ) );
 		}
 	}
 
 	private static List<AnnotationUsage<SqlFragmentAlias>> getSqlFragmentAliases(
 			List<JaxbHbmFilterImpl.JaxbAliasesImpl> aliases,
+			MutableAnnotationTarget target,
 			XmlDocumentContext xmlDocumentContext) {
 		final List<AnnotationUsage<SqlFragmentAlias>> sqlFragmentAliases = new ArrayList<>( aliases.size() );
 		for ( JaxbHbmFilterImpl.JaxbAliasesImpl alias : aliases ) {
-			final MutableAnnotationUsage<SqlFragmentAlias> aliasAnn = new DynamicAnnotationUsage<>( SqlFragmentAlias.class );
+			final MutableAnnotationUsage<SqlFragmentAlias> aliasAnn = makeNestedAnnotation( SqlFragmentAlias.class, target, xmlDocumentContext );
 			aliasAnn.setAttributeValue( "alias", alias.getAlias() );
 			applyAttributeIfSpecified( aliasAnn, "table", alias.getTable() );
 			if ( StringHelper.isNotEmpty( alias.getEntity() ) ) {
@@ -992,23 +892,25 @@ public class XmlAnnotationHelper {
 
 	public static void applySqlRestriction(
 			String sqlRestriction,
-			MutableAnnotationTarget target) {
-		applySqlRestriction( sqlRestriction, target, SQLRestriction.class );
+			MutableAnnotationTarget target,
+			XmlDocumentContext xmlDocumentContext) {
+		applySqlRestriction( sqlRestriction, target, SQLRestriction.class, xmlDocumentContext );
 	}
 
 	public static void applySqlJoinTableRestriction(
 			String sqlJoinTableRestriction,
 			MutableAnnotationTarget target,
-			SourceModelBuildingContext buildingContext) {
-		applySqlRestriction( sqlJoinTableRestriction, target, SQLJoinTableRestriction.class );
+			XmlDocumentContext xmlDocumentContext) {
+		applySqlRestriction( sqlJoinTableRestriction, target, SQLJoinTableRestriction.class, xmlDocumentContext );
 	}
 
 	private static <A extends Annotation> void applySqlRestriction(
 			String sqlRestriction,
 			MutableAnnotationTarget target,
-			Class<A> annotationType) {
+			Class<A> annotationType,
+			XmlDocumentContext xmlDocumentContext) {
 		if ( StringHelper.isNotEmpty( sqlRestriction ) ) {
-			final MutableAnnotationUsage<A> annotation = getOrMakeAnnotation( annotationType, target );
+			final MutableAnnotationUsage<A> annotation = getOrMakeAnnotation( annotationType, target, xmlDocumentContext );
 			annotation.setAttributeValue( "value", sqlRestriction );
 		}
 	}
@@ -1016,9 +918,10 @@ public class XmlAnnotationHelper {
 	public static <A extends Annotation> void applyCustomSql(
 			JaxbCustomSqlImpl jaxbCustomSql,
 			MutableAnnotationTarget target,
-			Class<A> annotationType) {
+			Class<A> annotationType,
+			XmlDocumentContext xmlDocumentContext) {
 		if ( jaxbCustomSql != null ) {
-			final MutableAnnotationUsage<A> annotation = getOrMakeAnnotation( annotationType, target );
+			final MutableAnnotationUsage<A> annotation = getOrMakeAnnotation( annotationType, target, xmlDocumentContext );
 			annotation.setAttributeValue( "sql", jaxbCustomSql.getValue() );
 			annotation.setAttributeValue( "callable", jaxbCustomSql.isCallable() );
 			applyAttributeIfSpecified( annotation, "table", jaxbCustomSql.getTable() );
@@ -1046,7 +949,7 @@ public class XmlAnnotationHelper {
 			MutableClassDetails target,
 			XmlDocumentContext xmlDocumentContext) {
 		if ( jaxbIdClass != null ) {
-			getOrMakeAnnotation( IdClass.class, target ).setAttributeValue(
+			getOrMakeAnnotation( IdClass.class, target, xmlDocumentContext ).setAttributeValue(
 					"value",
 					xmlDocumentContext.getModelBuildingContext().getClassDetailsRegistry().resolveClassDetails( jaxbIdClass.getClazz() )
 			);
@@ -1059,7 +962,8 @@ public class XmlAnnotationHelper {
 			XmlDocumentContext xmlDocumentContext) {
 		final MutableAnnotationUsage<EntityListeners> entityListeners = getOrMakeAnnotation(
 				EntityListeners.class,
-				classDetails
+				classDetails,
+				xmlDocumentContext
 		);
 		final MutableClassDetails entityListenerClass = (MutableClassDetails) xmlDocumentContext.getModelBuildingContext().getClassDetailsRegistry()
 				.resolveClassDetails( jaxbEntityListener.getClazz() );
@@ -1083,20 +987,21 @@ public class XmlAnnotationHelper {
 			JpaEventListenerStyle callbackType,
 			MutableClassDetails classDetails,
 			XmlDocumentContext xmlDocumentContext) {
-		applyLifecycleCallback( lifecycleCallbackContainer.getPrePersist(), callbackType, PrePersist.class, classDetails );
-		applyLifecycleCallback( lifecycleCallbackContainer.getPostPersist(), callbackType, PostPersist.class, classDetails );
-		applyLifecycleCallback( lifecycleCallbackContainer.getPreRemove(), callbackType, PreRemove.class, classDetails );
-		applyLifecycleCallback( lifecycleCallbackContainer.getPostRemove(), callbackType, PostRemove.class, classDetails );
-		applyLifecycleCallback( lifecycleCallbackContainer.getPreUpdate(), callbackType, PreUpdate.class, classDetails );
-		applyLifecycleCallback( lifecycleCallbackContainer.getPostUpdate(), callbackType, PostUpdate.class, classDetails );
-		applyLifecycleCallback( lifecycleCallbackContainer.getPostLoad(), callbackType, PostLoad.class, classDetails );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPrePersist(), callbackType, PrePersist.class, classDetails, xmlDocumentContext );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPostPersist(), callbackType, PostPersist.class, classDetails, xmlDocumentContext );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPreRemove(), callbackType, PreRemove.class, classDetails, xmlDocumentContext );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPostRemove(), callbackType, PostRemove.class, classDetails, xmlDocumentContext );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPreUpdate(), callbackType, PreUpdate.class, classDetails, xmlDocumentContext );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPostUpdate(), callbackType, PostUpdate.class, classDetails, xmlDocumentContext );
+		applyLifecycleCallback( lifecycleCallbackContainer.getPostLoad(), callbackType, PostLoad.class, classDetails, xmlDocumentContext );
 	}
 
 	private static <A extends Annotation> void applyLifecycleCallback(
 			JaxbLifecycleCallback lifecycleCallback,
 			JpaEventListenerStyle callbackType,
 			Class<A> lifecycleAnnotation,
-			MutableClassDetails classDetails) {
+			MutableClassDetails classDetails,
+			XmlDocumentContext xmlDocumentContext) {
 		if ( lifecycleCallback != null ) {
 			final MethodDetails methodDetails = getCallbackMethodDetails(
 					lifecycleCallback.getMethodName(),
@@ -1110,7 +1015,7 @@ public class XmlAnnotationHelper {
 						classDetails.getName()
 				) );
 			}
-			makeAnnotation( lifecycleAnnotation, (MutableMemberDetails) methodDetails );
+			makeAnnotation( lifecycleAnnotation, (MutableMemberDetails) methodDetails, xmlDocumentContext );
 		}
 	}
 
@@ -1131,7 +1036,7 @@ public class XmlAnnotationHelper {
 			MutableClassDetails target,
 			XmlDocumentContext xmlDocumentContext) {
 		if ( rowId != null ) {
-			final MutableAnnotationUsage<RowId> rowIdAnn = getOrMakeAnnotation( RowId.class, target );
+			final MutableAnnotationUsage<RowId> rowIdAnn = getOrMakeAnnotation( RowId.class, target, xmlDocumentContext );
 			applyAttributeIfSpecified( rowIdAnn, "value", rowId );
 		}
 	}
