@@ -12,13 +12,13 @@ import java.util.stream.Collectors;
 import org.hibernate.annotations.Any;
 import org.hibernate.annotations.AnyDiscriminator;
 import org.hibernate.annotations.AnyDiscriminatorValue;
-import org.hibernate.boot.internal.AnyKeyType;
+import org.hibernate.boot.models.bind.internal.AnyKeyType;
 import org.hibernate.boot.internal.BootstrapContextImpl;
 import org.hibernate.boot.internal.MetadataBuilderImpl;
 import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
-import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
-import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
+import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
+import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.models.orm.process.ManagedResourcesImpl;
 import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.FieldDetails;
@@ -34,7 +34,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.models.orm.categorize.spi.ManagedResourcesProcessor.processManagedResources;
+import static org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor.processManagedResources;
 
 /**
  * @author Steve Ebersole

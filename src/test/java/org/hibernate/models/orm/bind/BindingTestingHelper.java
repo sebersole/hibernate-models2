@@ -14,12 +14,12 @@ import org.hibernate.boot.internal.MetadataBuildingContextRootImpl;
 import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.model.process.spi.MetadataBuildingProcess;
 import org.hibernate.boot.registry.StandardServiceRegistry;
-import org.hibernate.models.orm.bind.internal.BindingContextImpl;
-import org.hibernate.models.orm.bind.internal.BindingOptionsImpl;
-import org.hibernate.models.orm.bind.internal.BindingStateImpl;
-import org.hibernate.models.orm.bind.spi.BindingCoordinator;
-import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
-import org.hibernate.models.orm.categorize.spi.ManagedResourcesProcessor;
+import org.hibernate.boot.models.bind.internal.BindingContextImpl;
+import org.hibernate.boot.models.bind.internal.BindingOptionsImpl;
+import org.hibernate.boot.models.bind.internal.BindingStateImpl;
+import org.hibernate.boot.models.bind.spi.BindingCoordinator;
+import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
+import org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor;
 
 /**
  * @author Steve Ebersole

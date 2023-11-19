@@ -9,8 +9,8 @@ package org.hibernate.models.orm.util;
 import java.util.Collections;
 import java.util.List;
 
-import org.hibernate.models.orm.categorize.spi.JpaEventListener;
-import org.hibernate.models.orm.categorize.spi.ModelCategorizationContext;
+import org.hibernate.boot.models.categorize.spi.JpaEventListener;
+import org.hibernate.boot.models.categorize.spi.ModelCategorizationContext;
 import org.hibernate.models.spi.AnnotationDescriptorRegistry;
 import org.hibernate.models.spi.ClassDetailsRegistry;
 import org.hibernate.models.spi.SourceModelBuildingContext;

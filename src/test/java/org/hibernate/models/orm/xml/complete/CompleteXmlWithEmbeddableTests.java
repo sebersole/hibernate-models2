@@ -12,10 +12,10 @@ import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.models.orm.process.ManagedResourcesImpl;
-import org.hibernate.models.orm.categorize.spi.AttributeMetadata;
-import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
-import org.hibernate.models.orm.categorize.spi.EntityHierarchy;
-import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
+import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
+import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
+import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
+import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 
 import org.junit.jupiter.api.Test;
 
@@ -25,9 +25,9 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.Id;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.models.orm.categorize.spi.AttributeMetadata.AttributeNature.BASIC;
-import static org.hibernate.models.orm.categorize.spi.AttributeMetadata.AttributeNature.EMBEDDED;
-import static org.hibernate.models.orm.categorize.spi.ManagedResourcesProcessor.processManagedResources;
+import static org.hibernate.boot.models.categorize.spi.AttributeMetadata.AttributeNature.BASIC;
+import static org.hibernate.boot.models.categorize.spi.AttributeMetadata.AttributeNature.EMBEDDED;
+import static org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor.processManagedResources;
 
 /**
  * @author Steve Ebersole

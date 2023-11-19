@@ -14,8 +14,8 @@ import org.hibernate.boot.internal.MetadataBuilderImpl;
 import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.models.orm.categorize.spi.CategorizedDomainModel;
-import org.hibernate.models.orm.categorize.spi.EntityTypeMetadata;
+import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
+import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.models.orm.process.ManagedResourcesImpl;
 import org.hibernate.models.orm.xml.SimpleEntity;
 import org.hibernate.models.spi.AnnotationUsage;
@@ -34,7 +34,7 @@ import jakarta.persistence.PreRemove;
 import jakarta.persistence.PreUpdate;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.models.orm.categorize.spi.ManagedResourcesProcessor.processManagedResources;
+import static org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor.processManagedResources;
 
 /**
  * @author Marco Belladelli

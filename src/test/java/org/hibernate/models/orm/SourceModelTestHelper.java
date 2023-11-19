@@ -9,7 +9,9 @@ package org.hibernate.models.orm;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 
-import org.hibernate.models.orm.categorize.internal.OrmAnnotationHelper;
+import org.hibernate.boot.models.HibernateAnnotations;
+import org.hibernate.boot.models.JpaAnnotations;
+import org.hibernate.boot.models.categorize.internal.OrmAnnotationHelper;
 import org.hibernate.models.internal.AnnotationDescriptorRegistryStandard;
 import org.hibernate.models.internal.BaseLineJavaTypes;
 import org.hibernate.models.internal.SourceModelBuildingContextImpl;

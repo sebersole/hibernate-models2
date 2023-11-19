@@ -12,8 +12,8 @@ import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.RootClass;
-import org.hibernate.models.orm.bind.internal.PhysicalTable;
-import org.hibernate.models.orm.bind.internal.SecondaryTable;
+import org.hibernate.boot.models.bind.internal.PhysicalTable;
+import org.hibernate.boot.models.bind.internal.SecondaryTable;
 import org.hibernate.type.SqlTypes;
 
 import org.hibernate.testing.orm.junit.ServiceRegistry;
