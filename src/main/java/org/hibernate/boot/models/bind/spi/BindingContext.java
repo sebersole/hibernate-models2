@@ -7,6 +7,8 @@
 package org.hibernate.boot.models.bind.spi;
 
 import org.hibernate.boot.internal.ClassmateContext;
+import org.hibernate.boot.model.naming.ImplicitNamingStrategy;
+import org.hibernate.boot.model.naming.PhysicalNamingStrategy;
 import org.hibernate.boot.spi.BootstrapContext;
 import org.hibernate.boot.models.categorize.spi.GlobalRegistrations;
 import org.hibernate.models.spi.SourceModelContext;
@@ -28,6 +30,9 @@ public interface BindingContext extends SourceModelContext {
 	ClassmateContext getClassmateContext();
 
 	SharedCacheMode getSharedCacheMode();
+
+	ImplicitNamingStrategy getImplicitNamingStrategy();
+	PhysicalNamingStrategy getPhysicalNamingStrategy();
 
 	BootstrapContext getBootstrapContext();
 

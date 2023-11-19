@@ -26,7 +26,7 @@ public record SecondaryTable(
 		boolean owned,
 		Table binding) implements PhysicalTableReference {
 	@Override
-	public Identifier getLogicalName() {
+	public Identifier logicalName() {
 		return logicalName;
 	}
 
@@ -56,12 +56,12 @@ public record SecondaryTable(
 	}
 
 	@Override
-	public boolean isExportable() {
+	public boolean exportable() {
 		return !binding.isAbstract();
 	}
 
 	@Override
-	public Table getBinding() {
+	public Table binding() {
 		return binding;
 	}
 }

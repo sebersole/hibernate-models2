@@ -7,6 +7,7 @@
 package org.hibernate.boot.models.categorize.spi;
 
 
+import org.hibernate.boot.models.bind.spi.TableOwner;
 import org.hibernate.models.spi.MemberDetails;
 
 /**
@@ -14,7 +15,7 @@ import org.hibernate.models.spi.MemberDetails;
  *
  * @author Steve Ebersole
  */
-public interface AttributeMetadata {
+public interface AttributeMetadata extends TableOwner {
 	/**
 	 * The attribute name
 	 */

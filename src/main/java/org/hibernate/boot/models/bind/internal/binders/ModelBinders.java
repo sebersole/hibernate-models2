@@ -11,18 +11,23 @@ import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
 
 /**
+ * Composition of all binders which process aspects of the domain model
+ *
  * @author Steve Ebersole
  */
-public class DelegateBinders {
+public class ModelBinders {
 	private final TableBinder tableBinder;
 
-	public DelegateBinders(
+	public ModelBinders(
 			BindingState bindingState,
 			BindingOptions bindingOptions,
 			BindingContext bindingContext) {
 		this.tableBinder = new TableBinder( bindingState, bindingOptions, bindingContext, this );
 	}
 
+	/**
+	 * Binder for tables
+	 */
 	public TableBinder getTableBinder() {
 		return tableBinder;
 	}

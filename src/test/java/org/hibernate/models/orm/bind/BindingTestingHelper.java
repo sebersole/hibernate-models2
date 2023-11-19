@@ -6,6 +6,8 @@
  */
 package org.hibernate.models.orm.bind;
 
+import java.util.Set;
+
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.internal.BootstrapContextImpl;
 import org.hibernate.boot.internal.InFlightMetadataCollectorImpl;
@@ -13,6 +15,7 @@ import org.hibernate.boot.internal.MetadataBuilderImpl;
 import org.hibernate.boot.internal.MetadataBuildingContextRootImpl;
 import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.model.process.spi.MetadataBuildingProcess;
+import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.models.bind.internal.BindingContextImpl;
 import org.hibernate.boot.models.bind.internal.BindingOptionsImpl;
@@ -20,12 +23,14 @@ import org.hibernate.boot.models.bind.internal.BindingStateImpl;
 import org.hibernate.boot.models.bind.spi.BindingCoordinator;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.models.orm.process.ManagedResourcesImpl;
 
 /**
  * @author Steve Ebersole
  */
 public class BindingTestingHelper {
-	static void checkDomainModel(
+	public static void checkDomainModel(
 			DomainModelCheck check,
 			StandardServiceRegistry serviceRegistry,
 			Class<?>... domainClasses) {
@@ -79,13 +84,13 @@ public class BindingTestingHelper {
 		} );
 	}
 
-	interface DomainModelCheckContext {
+	public interface DomainModelCheckContext {
 		InFlightMetadataCollectorImpl getMetadataCollector();
 		BindingStateImpl getBindingState();
 	}
 
 	@FunctionalInterface
-	interface DomainModelCheck {
+	public interface DomainModelCheck {
 		void checkDomainModel(DomainModelCheckContext context);
 	}
 
@@ -104,5 +109,36 @@ public class BindingTestingHelper {
 			metadataSources.addAnnotatedClass( domainClasses[i] );
 		}
 		return MetadataBuildingProcess.prepare( metadataSources, bootstrapContext );
+	}
+
+	public static Set<EntityHierarchy> buildHierarchyMetadata(Class<?>... classes) {
+		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
+				.addLoadedClasses(classes)
+				.build();
+
+		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
+			final MetadataBuilderImpl.MetadataBuildingOptionsImpl metadataBuildingOptions = new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry );
+			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl( serviceRegistry, metadataBuildingOptions );
+
+			final CategorizedDomainModel categorizedDomainModel = ManagedResourcesProcessor.processManagedResources(
+					managedResources,
+					bootstrapContext
+			);
+
+			return categorizedDomainModel.getEntityHierarchies();
+		}
+	}
+
+	public static CategorizedDomainModel buildCategorizedDomainModel(Class<?>... classes) {
+		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
+				.addLoadedClasses(classes)
+				.build();
+
+		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
+			final MetadataBuilderImpl.MetadataBuildingOptionsImpl metadataBuildingOptions = new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry );
+			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl( serviceRegistry, metadataBuildingOptions );
+
+			return ManagedResourcesProcessor.processManagedResources( managedResources, bootstrapContext );
+		}
 	}
 }

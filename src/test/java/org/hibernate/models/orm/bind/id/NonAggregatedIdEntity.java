@@ -4,12 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright: Red Hat Inc. and Hibernate Authors
  */
-package org.hibernate.models.orm.bind;
+package org.hibernate.models.orm.bind.id;
 
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.annotations.NaturalId;
-import org.hibernate.annotations.RowId;
 import org.hibernate.annotations.TenantId;
 
 import jakarta.persistence.Entity;

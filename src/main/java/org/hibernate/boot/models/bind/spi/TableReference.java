@@ -29,12 +29,12 @@ public interface TableReference {
 	 * In the case of physical tables and views, the logical name might not be the same
 	 * as the table or view name (through {@linkplain org.hibernate.boot.model.naming.PhysicalNamingStrategy}, e.g.).
 	 */
-	Identifier getLogicalName();
+	Identifier logicalName();
 
 	/**
 	 * Should this "table" be exposed to schema tooling?
 	 */
-	boolean isExportable();
+	boolean exportable();
 
-	Table getBinding();
+	Table binding();
 }

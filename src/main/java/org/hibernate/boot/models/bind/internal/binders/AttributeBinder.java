@@ -126,7 +126,7 @@ public class AttributeBinder {
 			if ( tableName != null ) {
 				final Identifier identifier = Identifier.toIdentifier( tableName );
 				tableByName = bindingState.getTableByName( identifier.getCanonicalName() );
-				basicValue.setTable( tableByName.getBinding() );
+				basicValue.setTable( tableByName.binding() );
 			}
 		}
 
@@ -354,7 +354,7 @@ public class AttributeBinder {
 				if ( tableName != null ) {
 					final Identifier identifier = Identifier.toIdentifier( tableName );
 					tableByName = bindingState.getTableByName( identifier.getCanonicalName() );
-					basicValue.setTable( tableByName.getBinding() );
+					basicValue.setTable( tableByName.binding() );
 				}
 
 				property.setInsertable( columnAnn.getBoolean( "insertable", true ) );

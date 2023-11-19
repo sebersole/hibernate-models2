@@ -19,7 +19,7 @@ import org.hibernate.mapping.Table;
  */
 public record InLineView(Identifier logicalName, Table binding) implements TableReference {
 	@Override
-	public Identifier getLogicalName() {
+	public Identifier logicalName() {
 		return logicalName;
 	}
 
@@ -28,12 +28,12 @@ public record InLineView(Identifier logicalName, Table binding) implements Table
 	}
 
 	@Override
-	public boolean isExportable() {
+	public boolean exportable() {
 		return false;
 	}
 
 	@Override
-	public Table getBinding() {
+	public Table binding() {
 		return binding;
 	}
 }

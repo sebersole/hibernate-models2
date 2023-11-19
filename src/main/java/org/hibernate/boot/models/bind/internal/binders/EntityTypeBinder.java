@@ -72,18 +72,18 @@ import static org.hibernate.internal.util.StringHelper.coalesce;
 public class EntityTypeBinder extends IdentifiableTypeBinder {
 	private final PersistentClass binding;
 
-	private final DelegateBinders delegateBinders;
+	private final ModelBinders modelBinders;
 
 	public EntityTypeBinder(
 			EntityTypeMetadata type,
 			IdentifiableTypeMetadata superType,
 			EntityHierarchy.HierarchyRelation hierarchyRelation,
-			DelegateBinders delegateBinders,
+			ModelBinders modelBinders,
 			BindingState state,
 			BindingOptions options,
 			BindingContext context) {
 		super( type, superType, hierarchyRelation, state, options, context );
-		this.delegateBinders = delegateBinders;
+		this.modelBinders = modelBinders;
 
 		final ClassDetails classDetails = type.getClassDetails();
 		this.binding = createBinding();
@@ -102,7 +102,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 			entityName = classDetails.getClassName();
 		}
 
-		if ( jpaEntityName != null ) {
+		if ( StringHelper.isNotEmpty( jpaEntityName ) ) {
 			importName = jpaEntityName;
 		}
 		else {
@@ -111,23 +111,23 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 
 		binding.setClassName( classDetails.getClassName() );
 		binding.setEntityName( entityName );
-		binding.setJpaEntityName( jpaEntityName );
+		binding.setJpaEntityName( importName );
 
 		state.registerTypeBinder( type, this );
 		state.getMetadataBuildingContext().getMetadataCollector().addImport( importName, entityName );
 
-		final var primaryTable = delegateBinders.getTableBinder().processPrimaryTable( getManagedType() );
-		final var table = primaryTable.getBinding();
+		final var primaryTable = modelBinders.getTableBinder().processPrimaryTable( getManagedType() );
+		final var table = primaryTable.binding();
 		( (TableOwner) binding ).setTable( table );
 
-		final var secondaryTables = delegateBinders.getTableBinder().processSecondaryTables( getManagedType() );
+		final var secondaryTables = modelBinders.getTableBinder().processSecondaryTables( getManagedType() );
 		secondaryTables.forEach( this::processSecondaryTable );
 
 		final IdentifiableTypeBinder superTypeBinder = getSuperTypeBinder();
 		final EntityTypeBinder superEntityBinder = getSuperEntityBinder();
 		if ( binding instanceof RootClass rootClass ) {
-			processSoftDelete( primaryTable.getBinding(), rootClass, classDetails, state, context );
-			processOptimisticLocking( primaryTable.getBinding(), rootClass, classDetails, state, context );
+			processSoftDelete( primaryTable.binding(), rootClass, classDetails, state, context );
+			processOptimisticLocking( primaryTable.binding(), rootClass, classDetails, state, context );
 			processCacheRegions( getManagedType(), rootClass, classDetails, state, context );
 
 			assert superEntityBinder == null;
@@ -152,7 +152,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		processFilters( classDetails, state, context );
 		processJpaEventListeners( type, state, context );
 
-		prepareBinding( delegateBinders );
+		prepareBinding( modelBinders );
 	}
 
 	private void processJpaEventListeners(EntityTypeMetadata type, BindingState state, BindingContext context) {
@@ -432,10 +432,10 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 	}
 
 	@Override
-	protected void prepareBinding(DelegateBinders delegateBinders) {
+	protected void prepareBinding(ModelBinders modelBinders) {
 		// todo : possibly Hierarchy details - version, tenant-id, ...
 
-		super.prepareBinding( delegateBinders );
+		super.prepareBinding( modelBinders );
 	}
 
 	private void processSoftDelete(
@@ -593,7 +593,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 
 	@Override
 	public void processSecondPasses() {
-		delegateBinders.getTableBinder().processSecondPasses();
+		modelBinders.getTableBinder().processSecondPasses();
 		super.processSecondPasses();
 	}
 

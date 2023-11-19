@@ -4,14 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright: Red Hat Inc. and Hibernate Authors
  */
-package org.hibernate.models.orm.bind;
+package org.hibernate.models.orm.bind.union;
 
-import jakarta.persistence.PostLoad;
+import jakarta.persistence.Entity;
 
 /**
  * @author Steve Ebersole
  */
-public class Listener2 {
-	@PostLoad
-	public void wasLoaded(Object entity) {}
+@Entity
+public class UnionSub extends UnionRoot {
+	private String unionData;
 }

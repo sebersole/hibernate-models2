@@ -59,7 +59,7 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 
 		do {
 			if ( check.getTypeBinding() instanceof PersistentClass ) {
-				return (EntityTypeBinder) check.getSuperTypeBinder();
+				return (EntityTypeBinder) check;
 			}
 			check = check.getSuperTypeBinder();
 		} while ( check != null );
@@ -89,7 +89,7 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 	}
 
 	@Override
-	protected void prepareBinding(DelegateBinders delegateBinders) {
+	protected void prepareBinding(ModelBinders modelBinders) {
 		final var table = getTable();
 		final var managedType = getManagedType();
 
@@ -113,7 +113,7 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 			getTypeBinding().applyProperty( property );
 		} );
 
-		super.prepareBinding( delegateBinders );
+		super.prepareBinding( modelBinders );
 	}
 
 	private void processIdMapping(AttributeMetadata attributeMetadata, Property property) {

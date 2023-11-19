@@ -24,7 +24,7 @@ public record PhysicalView(
 		Identifier physicalSchemaName,
 		Table binding) implements PersistentTableReference {
 	@Override
-	public Identifier getLogicalName() {
+	public Identifier logicalName() {
 		return logicalName;
 	}
 
@@ -49,12 +49,12 @@ public record PhysicalView(
 	}
 
 	@Override
-	public boolean isExportable() {
+	public boolean exportable() {
 		return true;
 	}
 
 	@Override
-	public Table getBinding() {
+	public Table binding() {
 		return binding;
 	}
 }

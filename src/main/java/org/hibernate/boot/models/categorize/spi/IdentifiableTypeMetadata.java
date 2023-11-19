@@ -9,12 +9,14 @@ package org.hibernate.boot.models.categorize.spi;
 import java.util.List;
 import java.util.function.Consumer;
 
+import org.hibernate.boot.models.bind.spi.TableOwner;
+
 /**
  * Metadata about an {@linkplain jakarta.persistence.metamodel.IdentifiableType identifiable type}
  *
  * @author Steve Ebersole
  */
-public interface IdentifiableTypeMetadata extends ManagedTypeMetadata {
+public interface IdentifiableTypeMetadata extends ManagedTypeMetadata, TableOwner {
 	/**
 	 * The hierarchy in which this IdentifiableType occurs.
 	 */

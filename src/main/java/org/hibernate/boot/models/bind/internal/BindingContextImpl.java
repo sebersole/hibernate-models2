@@ -7,6 +7,8 @@
 package org.hibernate.boot.models.bind.internal;
 
 import org.hibernate.boot.internal.ClassmateContext;
+import org.hibernate.boot.model.naming.ImplicitNamingStrategy;
+import org.hibernate.boot.model.naming.PhysicalNamingStrategy;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.spi.BootstrapContext;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
@@ -24,6 +26,8 @@ public class BindingContextImpl implements BindingContext {
 	private final AnnotationDescriptorRegistry annotationDescriptorRegistry;
 	private final GlobalRegistrations globalRegistrations;
 
+	private final ImplicitNamingStrategy implicitNamingStrategy;
+	private final PhysicalNamingStrategy physicalNamingStrategy;
 	private final SharedCacheMode sharedCacheMode;
 	private final ClassmateContext classmateContext;
 	private final BootstrapContext bootstrapContext;
@@ -33,6 +37,8 @@ public class BindingContextImpl implements BindingContext {
 				categorizedDomainModel.getClassDetailsRegistry(),
 				categorizedDomainModel.getAnnotationDescriptorRegistry(),
 				categorizedDomainModel.getGlobalRegistrations(),
+				bootstrapContext.getMetadataBuildingOptions().getImplicitNamingStrategy(),
+				bootstrapContext.getMetadataBuildingOptions().getPhysicalNamingStrategy(),
 				bootstrapContext.getMetadataBuildingOptions().getSharedCacheMode(),
 				bootstrapContext.getClassmateContext(),
 				bootstrapContext
@@ -43,11 +49,15 @@ public class BindingContextImpl implements BindingContext {
 			ClassDetailsRegistry classDetailsRegistry,
 			AnnotationDescriptorRegistry annotationDescriptorRegistry,
 			GlobalRegistrations globalRegistrations,
+			ImplicitNamingStrategy implicitNamingStrategy,
+			PhysicalNamingStrategy physicalNamingStrategy,
 			SharedCacheMode sharedCacheMode,
 			ClassmateContext classmateContext,
 			BootstrapContext bootstrapContext) {
 		this.classDetailsRegistry = classDetailsRegistry;
 		this.annotationDescriptorRegistry = annotationDescriptorRegistry;
+		this.implicitNamingStrategy = implicitNamingStrategy;
+		this.physicalNamingStrategy = physicalNamingStrategy;
 		this.bootstrapContext = bootstrapContext;
 		this.globalRegistrations = globalRegistrations;
 		this.classmateContext = classmateContext;
@@ -82,5 +92,15 @@ public class BindingContextImpl implements BindingContext {
 	@Override
 	public SharedCacheMode getSharedCacheMode() {
 		return sharedCacheMode;
+	}
+
+	@Override
+	public ImplicitNamingStrategy getImplicitNamingStrategy() {
+		return implicitNamingStrategy;
+	}
+
+	@Override
+	public PhysicalNamingStrategy getPhysicalNamingStrategy() {
+		return physicalNamingStrategy;
 	}
 }

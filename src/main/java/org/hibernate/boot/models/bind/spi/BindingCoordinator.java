@@ -10,9 +10,11 @@ import java.util.List;
 
 import org.hibernate.annotations.Any;
 import org.hibernate.annotations.ManyToAny;
+import org.hibernate.boot.models.bind.ModelBindingLogging;
+import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
 import org.hibernate.mapping.RootClass;
 import org.hibernate.boot.models.AnnotationPlacementException;
-import org.hibernate.boot.models.bind.internal.binders.DelegateBinders;
+import org.hibernate.boot.models.bind.internal.binders.ModelBinders;
 import org.hibernate.boot.models.bind.internal.binders.EntityTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.MappedSuperTypeBinder;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
@@ -47,7 +49,7 @@ public class BindingCoordinator {
 	private final BindingOptions bindingOptions;
 	private final BindingContext bindingContext;
 
-	private final DelegateBinders delegateBinders;
+	private final ModelBinders modelBinders;
 
 	public BindingCoordinator(
 			CategorizedDomainModel categorizedDomainModel,
@@ -59,7 +61,7 @@ public class BindingCoordinator {
 		this.bindingState = bindingState;
 		this.bindingContext = bindingContext;
 
-		this.delegateBinders = new DelegateBinders( bindingState, bindingOptions, bindingContext );
+		this.modelBinders = new ModelBinders( bindingState, bindingOptions, bindingContext );
 	}
 
 	/**
@@ -74,42 +76,53 @@ public class BindingCoordinator {
 			BindingState state,
 			BindingOptions options,
 			BindingContext bindingContext) {
-		final BindingCoordinator bindingCoordinator = new BindingCoordinator(
+		final BindingCoordinator coordinator = new BindingCoordinator(
 				categorizedDomainModel,
 				state,
 				options,
 				bindingContext
 		);
 
-		// todo : to really work on these, need to expose MetadataBuildingContext/InFlightMetadataCollector
+		coordinator.coordinateBinding();
+	}
 
-		// "global" bindings
-		bindingCoordinator.processGenerators( categorizedDomainModel.getGlobalRegistrations() );
-		bindingCoordinator.processConverters( categorizedDomainModel.getGlobalRegistrations() );
-		bindingCoordinator.processJavaTypeRegistrations( categorizedDomainModel.getGlobalRegistrations() );
-		bindingCoordinator.processJdbcTypeRegistrations( categorizedDomainModel.getGlobalRegistrations() );
-		bindingCoordinator.processCustomTypes( categorizedDomainModel.getGlobalRegistrations() );
-		bindingCoordinator.processInstantiators( categorizedDomainModel.getGlobalRegistrations() );
-		bindingCoordinator.processEventListeners( categorizedDomainModel.getGlobalRegistrations() );
-		bindingCoordinator.processFilterDefinitions( categorizedDomainModel.getGlobalRegistrations() );
+	private void coordinateBinding() {
+		// todo : to really work on these, need to changes to MetadataBuildingContext/InFlightMetadataCollector
 
+		coordinateGlobalBindings();
+		coordinateModelBindings();
+	}
+
+	private void coordinateModelBindings() {
 		// process hierarchy
-		categorizedDomainModel.forEachEntityHierarchy( bindingCoordinator::processHierarchy );
+		categorizedDomainModel.forEachEntityHierarchy( this::processHierarchy );
 
 		// complete tables
-		bindingCoordinator.delegateBinders.getTableBinder().processSecondPasses();
-		bindingCoordinator.delegateBinders.getTableBinder().processSecondPasses();
+		modelBinders.getTableBinder().processSecondPasses();
 
 		// process identifiers
 		categorizedDomainModel.forEachEntityHierarchy( (index, hierarchy) -> {
-			final EntityTypeBinder typeBinder = (EntityTypeBinder) state.getTypeBinder( hierarchy.getRoot() );
+			final EntityTypeBinder typeBinder = (EntityTypeBinder) bindingState.getTypeBinder( hierarchy.getRoot() );
 			final RootClass binding = (RootClass) typeBinder.getTypeBinding();
-
+			ModelBindingLogging.MODEL_BINDING_LOGGER.tracef( "Bound entity hierarchy - %s", binding.getEntityName() );
 		} );
 
-		state.forEachType( (name, managedTypeBinder) -> {
-			managedTypeBinder.processSecondPasses();
-		} );
+		bindingState.forEachType( this::processModelSecondPasses );
+	}
+
+	private void processModelSecondPasses(String typeName, ManagedTypeBinder binder) {
+		binder.processSecondPasses();
+	}
+
+	private void coordinateGlobalBindings() {
+		processGenerators( categorizedDomainModel.getGlobalRegistrations() );
+		processConverters( categorizedDomainModel.getGlobalRegistrations() );
+		processJavaTypeRegistrations( categorizedDomainModel.getGlobalRegistrations() );
+		processJdbcTypeRegistrations( categorizedDomainModel.getGlobalRegistrations() );
+		processCustomTypes( categorizedDomainModel.getGlobalRegistrations() );
+		processInstantiators( categorizedDomainModel.getGlobalRegistrations() );
+		processEventListeners( categorizedDomainModel.getGlobalRegistrations() );
+		processFilterDefinitions( categorizedDomainModel.getGlobalRegistrations() );
 	}
 
 	private void processHierarchy(int index, EntityHierarchy hierarchy) {
@@ -129,7 +142,7 @@ public class BindingCoordinator {
 					(EntityTypeMetadata) type,
 					superType,
 					relation,
-					delegateBinders,
+					modelBinders,
 					bindingState,
 					bindingOptions,
 					bindingContext

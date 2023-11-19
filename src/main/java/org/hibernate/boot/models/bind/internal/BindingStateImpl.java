@@ -6,31 +6,27 @@
  */
 package org.hibernate.boot.models.bind.internal;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
 import org.hibernate.boot.model.naming.Identifier;
+import org.hibernate.boot.models.bind.internal.binders.EntityTypeBinder;
+import org.hibernate.boot.models.bind.internal.binders.IdentifiableTypeBinder;
+import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
+import org.hibernate.boot.models.bind.internal.binders.MappedSuperTypeBinder;
 import org.hibernate.boot.models.bind.spi.BindingState;
+import org.hibernate.boot.models.bind.spi.TableOwner;
 import org.hibernate.boot.models.bind.spi.TableReference;
+import org.hibernate.boot.models.categorize.spi.FilterDefRegistration;
+import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
+import org.hibernate.boot.models.categorize.spi.ManagedTypeMetadata;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.engine.spi.FilterDefinition;
 import org.hibernate.internal.util.KeyedConsumer;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.mapping.JdbcMapping;
-import org.hibernate.models.ModelsException;
-import org.hibernate.boot.models.bind.internal.binders.EntityTypeBinder;
-import org.hibernate.boot.models.bind.internal.binders.IdentifiableTypeBinder;
-import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
-import org.hibernate.boot.models.bind.internal.binders.MappedSuperTypeBinder;
-import org.hibernate.boot.models.bind.internal.binders.TableBinder;
-import org.hibernate.boot.models.categorize.spi.FilterDefRegistration;
-import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
-import org.hibernate.boot.models.categorize.spi.ManagedTypeMetadata;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.type.spi.TypeConfiguration;
 
@@ -41,44 +37,13 @@ public class BindingStateImpl implements BindingState {
 	private final MetadataBuildingContext metadataBuildingContext;
 
 	private final Map<String, TableReference> tableMap = new HashMap<>();
+	private final Map<TableOwner, TableReference> tableByOwnerMap = new HashMap<>();
 
 	private final Map<ClassDetails, ManagedTypeBinder> typeBinders = new HashMap<>();
 	private final Map<ClassDetails, IdentifiableTypeBinder> typeBindersBySuper = new HashMap<>();
 
-	private List<TableBinder.TableSecondPass> tableSecondPasses;
-
 	public BindingStateImpl(MetadataBuildingContext metadataBuildingContext) {
 		this.metadataBuildingContext = metadataBuildingContext;
-	}
-
-	public void processSecondPasses() {
-		processSecondPasses( tableSecondPasses );
-	}
-
-	private void processSecondPasses(List<? extends SecondPass> secondPasses) {
-		int processedCount = 0;
-		final Iterator<? extends SecondPass> secondPassItr = secondPasses.iterator();
-		while ( secondPassItr.hasNext() ) {
-			final SecondPass secondPass = secondPassItr.next();
-			try {
-				final boolean success = secondPass.process();
-				if ( success ) {
-					processedCount++;
-					secondPassItr.remove();
-				}
-			}
-			catch (Exception ignoreForNow) {
-			}
-		}
-
-		if ( !secondPasses.isEmpty() ) {
-			if ( processedCount == 0 ) {
-				// there are second-passes in the queue, but we were not able to
-				// successfully process any of them.  this is a non-changing
-				// error condition - just throw an exception
-				throw new ModelsException( "Unable to process second-pass list" );
-			}
-		}
 	}
 
 	@Override
@@ -143,16 +108,20 @@ public class BindingStateImpl implements BindingState {
 	}
 
 	@Override
-	public void addTable(TableReference table) {
-		tableMap.put( table.getLogicalName().getCanonicalName(), table );
+	public <T extends TableReference> T getTableByOwner(TableOwner owner) {
+		//noinspection unchecked
+		return (T) tableByOwnerMap.get( owner );
 	}
 
 	@Override
-	public void registerTableSecondPass(TableBinder.TableSecondPass secondPass) {
-		if ( tableSecondPasses == null ) {
-			tableSecondPasses = new ArrayList<>();
-		}
-		tableSecondPasses.add( secondPass );
+	public void addTable(TableOwner owner, TableReference table) {
+		tableMap.put( table.logicalName().getCanonicalName(), table );
+		tableByOwnerMap.put( owner, table );
+	}
+
+	@Override
+	public void addSecondaryTable(SecondaryTable table) {
+		tableMap.put( table.logicalName().getCanonicalName(), table );
 	}
 
 	private String resolveSchemaName(Identifier explicit) {

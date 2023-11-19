@@ -29,7 +29,7 @@ public record PhysicalTable(
 		Table binding) implements PhysicalTableReference {
 
 	@Override
-	public Identifier getLogicalName() {
+	public Identifier logicalName() {
 		return logicalName;
 	}
 
@@ -59,12 +59,12 @@ public record PhysicalTable(
 	}
 
 	@Override
-	public boolean isExportable() {
+	public boolean exportable() {
 		return !binding.isAbstract() && binding.getExportIdentifier() != null;
 	}
 
 	@Override
-	public Table getBinding() {
+	public Table binding() {
 		return binding;
 	}
 }
