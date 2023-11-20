@@ -36,6 +36,22 @@ public class ColumnBinder {
 			AnnotationUsage<?> annotationUsage,
 			Supplier<String> defaultNameSupplier,
 			boolean uniqueByDefault,
+			boolean nullableByDefault) {
+		return bindColumn(
+				annotationUsage,
+				defaultNameSupplier,
+				uniqueByDefault,
+				nullableByDefault,
+				255,
+				0,
+				0
+		);
+	}
+
+	public static Column bindColumn(
+			AnnotationUsage<?> annotationUsage,
+			Supplier<String> defaultNameSupplier,
+			boolean uniqueByDefault,
 			boolean nullableByDefault,
 			int lengthByDefault,
 			int precisionByDefault,

@@ -26,6 +26,11 @@ import org.hibernate.boot.models.bind.internal.SecondaryTable;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
+import org.hibernate.boot.models.categorize.spi.AggregatedKeyMapping;
+import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
+import org.hibernate.boot.models.categorize.spi.BasicKeyMapping;
+import org.hibernate.boot.models.categorize.spi.KeyMapping;
+import org.hibernate.boot.models.categorize.spi.NonAggregatedKeyMapping;
 import org.hibernate.engine.OptimisticLockStyle;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
@@ -40,6 +45,8 @@ import org.hibernate.mapping.Join;
 import org.hibernate.mapping.JoinedSubclass;
 import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
+import org.hibernate.mapping.PrimaryKey;
+import org.hibernate.mapping.Property;
 import org.hibernate.mapping.RootClass;
 import org.hibernate.mapping.SingleTableSubclass;
 import org.hibernate.mapping.Subclass;
@@ -62,6 +69,7 @@ import jakarta.persistence.Cacheable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.InheritanceType;
 
+import static org.hibernate.boot.models.bind.internal.binders.IdentifierBinder.bindIdentifier;
 import static org.hibernate.internal.util.StringHelper.coalesce;
 
 /**
@@ -116,11 +124,11 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		state.registerTypeBinder( type, this );
 		state.getMetadataBuildingContext().getMetadataCollector().addImport( importName, entityName );
 
-		final var primaryTable = modelBinders.getTableBinder().processPrimaryTable( getManagedType() );
+		final var primaryTable = modelBinders.getTableBinder().bindPrimaryTable( getManagedType(), hierarchyRelation );
 		final var table = primaryTable.binding();
 		( (TableOwner) binding ).setTable( table );
 
-		final var secondaryTables = modelBinders.getTableBinder().processSecondaryTables( getManagedType() );
+		final var secondaryTables = modelBinders.getTableBinder().bindSecondaryTables( getManagedType() );
 		secondaryTables.forEach( this::processSecondaryTable );
 
 		final IdentifiableTypeBinder superTypeBinder = getSuperTypeBinder();
@@ -433,9 +441,17 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 
 	@Override
 	protected void prepareBinding(ModelBinders modelBinders) {
-		// todo : possibly Hierarchy details - version, tenant-id, ...
+		if ( getHierarchyRelation() == EntityHierarchy.HierarchyRelation.ROOT ) {
+			prepareRootEntityBinding( (RootClass) getTypeBinding(), modelBinders );
+		}
 
 		super.prepareBinding( modelBinders );
+	}
+
+	private void prepareRootEntityBinding(RootClass typeBinding, ModelBinders modelBinders) {
+		// todo : possibly Hierarchy details - version, tenant-id, ...
+
+		bindIdentifier( getManagedType(), typeBinding, modelBinders, getBindingState(), getOptions(), getBindingContext() );
 	}
 
 	private void processSoftDelete(

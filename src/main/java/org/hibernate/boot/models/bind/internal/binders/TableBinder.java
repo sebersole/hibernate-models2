@@ -30,11 +30,13 @@ import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.boot.models.bind.spi.PhysicalTableReference;
 import org.hibernate.boot.models.bind.spi.QuotedIdentifierTarget;
 import org.hibernate.boot.models.bind.spi.TableReference;
+import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.DenormalizedTable;
+import org.hibernate.mapping.PrimaryKey;
 import org.hibernate.mapping.Table;
 import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.ClassDetails;
@@ -81,7 +83,7 @@ public class TableBinder {
 		this.jdbcEnvironment = bindingContext.getServiceRegistry().getService( JdbcEnvironment.class );
 	}
 
-	public TableReference processPrimaryTable(EntityTypeMetadata type) {
+	public TableReference bindPrimaryTable(EntityTypeMetadata type, EntityHierarchy.HierarchyRelation hierarchyRelation) {
 		final ClassDetails typeClassDetails = type.getClassDetails();
 		final AnnotationUsage<jakarta.persistence.Table> tableAnn = typeClassDetails.getAnnotationUsage( jakarta.persistence.Table.class );
 		final AnnotationUsage<Subselect> subselectAnn = typeClassDetails.getAnnotationUsage( Subselect.class );
@@ -90,42 +92,42 @@ public class TableBinder {
 
 		if ( type.getHierarchy().getInheritanceType() == InheritanceType.TABLE_PER_CLASS ) {
 			assert subselectAnn == null;
-			tableReference = processUnionTable( type, tableAnn );
+
+			if ( hierarchyRelation == EntityHierarchy.HierarchyRelation.ROOT ) {
+				tableReference = bindPhysicalTable( type, tableAnn, true );
+			}
+			else {
+				tableReference = bindUnionTable( type, tableAnn );
+			}
 		}
 		else {
 			if ( subselectAnn != null ) {
 				if ( tableAnn != null ) {
 					throw new AnnotationPlacementException( "Illegal combination of @Table and @Subselect on " + typeClassDetails.getName() );
 				}
-				tableReference = processVirtualTable( type, subselectAnn );
+				tableReference = bindVirtualTable( type, subselectAnn );
 			}
 			else {
 				// either an explicit or implicit @Table
-				tableReference = processPhysicalTable( type, tableAnn, true );
+				tableReference = bindPhysicalTable( type, tableAnn, true );
 			}
 		}
 
 		bindingState.addTable( type, tableReference );
+
+		final PrimaryKey primaryKey = new PrimaryKey( tableReference.binding() );
+		tableReference.binding().setPrimaryKey( primaryKey );
+
 		return tableReference;
 	}
 
-	private TableReference processUnionTable(
+	private TableReference bindUnionTable(
 			EntityTypeMetadata type,
 			AnnotationUsage<jakarta.persistence.Table> tableAnn) {
-		final UnionTable base;
-		final Table included;
-		if ( type.getSuperType() != null ) {
-			base = bindingState.getTableByOwner( type.getSuperType() );
-			included = base.binding();
-		}
-		else {
-			base = null;
-			// todo : change this in hibernate-core
-			//  	- `DenormalizedTable` assumes the `included` is non-null meaning that the
-			//		root always needs to be a non-null `Table`
-			included = new Table("orm");
-			included.setAbstract( true );
-		}
+		assert type.getSuperType() != null;
+
+		final TableReference superTypeTable = bindingState.getTableByOwner( type.getSuperType() );
+		final Table unionBaseTable = superTypeTable.binding();
 
 		final Identifier logicalName = determineLogicalName( type, tableAnn );
 		final Identifier logicalSchemaName = resolveDatabaseIdentifier(
@@ -147,16 +149,16 @@ public class TableBinder {
 				logicalSchemaName == null ? null : logicalSchemaName.getCanonicalName(),
 				logicalCatalogName == null  ? null : logicalCatalogName.getCanonicalName(),
 				logicalName.getCanonicalName(),
-				type.hasSubTypes(),
+				type.isAbstract(),
 				null,
-				included,
+				unionBaseTable,
 				bindingState.getMetadataBuildingContext()
 		);
 
-		return new UnionTable( logicalName, base, binding, !type.hasSubTypes() );
+		return new UnionTable( logicalName, superTypeTable, binding, !type.hasSubTypes() );
 	}
 
-	public List<org.hibernate.boot.models.bind.internal.SecondaryTable> processSecondaryTables(EntityTypeMetadata type) {
+	public List<org.hibernate.boot.models.bind.internal.SecondaryTable> bindSecondaryTables(EntityTypeMetadata type) {
 		final ClassDetails typeClassDetails = type.getClassDetails();
 
 		final List<AnnotationUsage<SecondaryTable>> secondaryTableAnns = typeClassDetails.getRepeatedAnnotationUsages( SecondaryTable.class );
@@ -168,14 +170,14 @@ public class TableBinder {
 					secondaryTableAnn.getString( "name" ),
 					"table"
 			);
-			final org.hibernate.boot.models.bind.internal.SecondaryTable binding = processSecondaryTable( type, secondaryTableAnn, secondaryRowAnn );
+			final org.hibernate.boot.models.bind.internal.SecondaryTable binding = bindSecondaryTable( type, secondaryTableAnn, secondaryRowAnn );
 			result.add( binding );
 			bindingState.addSecondaryTable( binding );
 		} );
 		return result;
 	}
 
-	private InLineView processVirtualTable(EntityTypeMetadata type, AnnotationUsage<Subselect> subselectAnn) {
+	private InLineView bindVirtualTable(EntityTypeMetadata type, AnnotationUsage<Subselect> subselectAnn) {
 		final Identifier logicalName = implicitNamingStrategy.determinePrimaryTableName(
 				new ImplicitEntityNameSource() {
 					@Override
@@ -203,19 +205,19 @@ public class TableBinder {
 		);
 	}
 
-	private PhysicalTableReference processPhysicalTable(
+	private PhysicalTableReference bindPhysicalTable(
 			EntityTypeMetadata type,
 			AnnotationUsage<jakarta.persistence.Table> tableAnn,
 			boolean isPrimary) {
 		if ( tableAnn != null ) {
-			return createExplicitPhysicalTable( type, tableAnn, isPrimary );
+			return bindExplicitPhysicalTable( type, tableAnn, isPrimary );
 		}
 		else {
-			return createImplicitPhysicalTable( type, isPrimary );
+			return bindImplicitPhysicalTable( type, isPrimary );
 		}
 	}
 
-	private PhysicalTable createImplicitPhysicalTable(EntityTypeMetadata type, boolean isPrimary) {
+	private PhysicalTable bindImplicitPhysicalTable(EntityTypeMetadata type, boolean isPrimary) {
 		final Identifier logicalName = determineLogicalName( type, null );
 
 		final Table binding = bindingState.getMetadataBuildingContext().getMetadataCollector().addTable(
@@ -289,7 +291,7 @@ public class TableBinder {
 		);
 	}
 
-	private PhysicalTable createExplicitPhysicalTable(
+	private PhysicalTable bindExplicitPhysicalTable(
 			EntityTypeMetadata type,
 			AnnotationUsage<jakarta.persistence.Table> tableAnn,
 			boolean isPrimary) {
@@ -332,7 +334,7 @@ public class TableBinder {
 		);
 	}
 
-	private org.hibernate.boot.models.bind.internal.SecondaryTable processSecondaryTable(
+	private org.hibernate.boot.models.bind.internal.SecondaryTable bindSecondaryTable(
 			EntityTypeMetadata type,
 			AnnotationUsage<SecondaryTable> secondaryTableAnn,
 			AnnotationUsage<SecondaryRow> secondaryRowAnn) {

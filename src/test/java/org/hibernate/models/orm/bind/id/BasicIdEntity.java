@@ -17,7 +17,7 @@ import jakarta.persistence.Version;
  * @author Steve Ebersole
  */
 @Entity
-public class SimpleIdEntity {
+public class BasicIdEntity {
 	@Id
 	private Integer id;
 	@Version

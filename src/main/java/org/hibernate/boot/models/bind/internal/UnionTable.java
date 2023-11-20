@@ -15,7 +15,7 @@ import org.hibernate.mapping.DenormalizedTable;
  */
 public record UnionTable(
 		Identifier logicalName,
-		UnionTable base,
+		TableReference base,
 		DenormalizedTable binding,
 		boolean exportable) implements TableReference {
 }

@@ -33,7 +33,7 @@ import static org.hibernate.models.orm.bind.BindingTestingHelper.buildHierarchyM
 public class SimpleIdTests {
 	@Test
 	void testSimpleId() {
-		final Set<EntityHierarchy> entityHierarchies = buildHierarchyMetadata( SimpleIdEntity.class );
+		final Set<EntityHierarchy> entityHierarchies = buildHierarchyMetadata( BasicIdEntity.class );
 		assertThat( entityHierarchies ).hasSize( 1 );
 		final EntityHierarchy entityHierarchy = entityHierarchies.iterator().next();
 

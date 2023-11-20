@@ -13,17 +13,16 @@ import org.hibernate.annotations.NaturalId;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
+import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
+import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
+import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
+import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.IdentifiableTypeClass;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
 import org.hibernate.mapping.Value;
-import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
-import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
-import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
-import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
-import org.hibernate.boot.models.categorize.spi.KeyMapping;
 
 /**
  * @author Steve Ebersole
@@ -94,6 +93,10 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 		final var managedType = getManagedType();
 
 		managedType.forEachAttribute( (index, attributeMetadata) -> {
+			if ( managedType.getHierarchy().getIdMapping().contains( attributeMetadata ) ) {
+				return;
+			}
+
 			final var attributeBinder = new AttributeBinder(
 					attributeMetadata,
 					getBindingState(),
@@ -106,7 +109,6 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 			final var value = property.getValue();
 			applyTable( value, table );
 
-			processIdMapping( attributeMetadata, property );
 			processNaturalId( attributeMetadata, property );
 
 			attributeBinders.add( attributeBinder );
@@ -114,15 +116,6 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 		} );
 
 		super.prepareBinding( modelBinders );
-	}
-
-	private void processIdMapping(AttributeMetadata attributeMetadata, Property property) {
-		final KeyMapping idMapping = getManagedType().getHierarchy().getIdMapping();
-		if ( !idMapping.contains( attributeMetadata ) ) {
-			return;
-		}
-
-		// todo : do it
 	}
 
 	private void processNaturalId(AttributeMetadata attributeMetadata, Property property) {
