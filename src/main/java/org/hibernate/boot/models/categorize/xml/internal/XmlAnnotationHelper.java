@@ -18,6 +18,7 @@ import java.util.function.Supplier;
 
 import org.hibernate.AnnotationException;
 import org.hibernate.annotations.AttributeAccessor;
+import org.hibernate.annotations.CollectionId;
 import org.hibernate.annotations.CollectionType;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterJoinTable;
@@ -42,6 +43,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbAttributeOverrideImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicMapping;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbCachingImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbCheckConstraintImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbCollectionIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbCollectionUserTypeImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbColumnImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbConfigurationParameterImpl;
@@ -122,7 +124,6 @@ import jakarta.persistence.TemporalType;
 
 import static java.util.Collections.emptyList;
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
-import static org.hibernate.boot.models.categorize.xml.internal.XmlProcessingHelper.getOrMakeNamedAnnotation;
 
 /**
  * Helper for creating annotation from equivalent JAXB
@@ -335,6 +336,33 @@ public class XmlAnnotationHelper {
 		typeAnn.setAttributeValue( "parameters", collectParameters( jaxbType.getParameters(), memberDetails, xmlDocumentContext ) );
 	}
 
+	public static void applyCollectionId(
+			JaxbCollectionIdImpl jaxbCollectionId,
+			MutableMemberDetails memberDetails,
+			XmlDocumentContext xmlDocumentContext) {
+		if ( jaxbCollectionId == null ) {
+			return;
+		}
+
+		final MutableAnnotationUsage<CollectionId> collectionIdAnn = XmlProcessingHelper.getOrMakeAnnotation( CollectionId.class, memberDetails, xmlDocumentContext );
+		final AnnotationDescriptor<CollectionId> collectionIdDescriptor = xmlDocumentContext
+				.getModelBuildingContext()
+				.getAnnotationDescriptorRegistry()
+				.getDescriptor( CollectionId.class );
+
+		final JaxbColumnImpl jaxbColumn = jaxbCollectionId.getColumn();
+		if ( jaxbColumn != null ) {
+			collectionIdAnn.setAttributeValue( "column", createColumnAnnotation(
+					jaxbColumn,
+					memberDetails,
+					xmlDocumentContext
+			) );
+		}
+
+		applyOr( jaxbCollectionId, JaxbCollectionIdImpl::getGenerator, "generator", collectionIdAnn, collectionIdDescriptor );
+	}
+
+
 	public static void applyTargetClass(
 			String name,
 			MutableMemberDetails memberDetails,
@@ -468,6 +496,14 @@ public class XmlAnnotationHelper {
 			List<JaxbAttributeOverrideImpl> jaxbOverrides,
 			MutableMemberDetails memberDetails,
 			XmlDocumentContext xmlDocumentContext) {
+		applyAttributeOverrides( jaxbOverrides, memberDetails, null, xmlDocumentContext );
+	}
+
+	public static void applyAttributeOverrides(
+			List<JaxbAttributeOverrideImpl> jaxbOverrides,
+			MutableMemberDetails memberDetails,
+			String namePrefix,
+			XmlDocumentContext xmlDocumentContext) {
 		if ( CollectionHelper.isEmpty( jaxbOverrides ) ) {
 			return;
 		}
@@ -479,7 +515,7 @@ public class XmlAnnotationHelper {
 					xmlDocumentContext
 			);
 			memberDetails.addAnnotationUsage( annotationUsage );
-			annotationUsage.setAttributeValue( "name", jaxbOverride.getName() );
+			annotationUsage.setAttributeValue( "name", prefixIfNotAlready( jaxbOverride.getName(), namePrefix ) );
 			annotationUsage.setAttributeValue( "column", createColumnAnnotation( jaxbOverride.getColumn(), memberDetails, xmlDocumentContext ) );
 		} );
 	}
@@ -487,6 +523,14 @@ public class XmlAnnotationHelper {
 	public static void applyAssociationOverrides(
 			List<JaxbAssociationOverrideImpl> jaxbOverrides,
 			MutableMemberDetails memberDetails,
+			XmlDocumentContext xmlDocumentContext) {
+		applyAssociationOverrides( jaxbOverrides, memberDetails, null, xmlDocumentContext );
+	}
+
+	public static void applyAssociationOverrides(
+			List<JaxbAssociationOverrideImpl> jaxbOverrides,
+			MutableMemberDetails memberDetails,
+			String namePrefix,
 			XmlDocumentContext xmlDocumentContext) {
 		if ( CollectionHelper.isEmpty( jaxbOverrides ) ) {
 			return;
@@ -499,7 +543,7 @@ public class XmlAnnotationHelper {
 					xmlDocumentContext
 			);
 			memberDetails.addAnnotationUsage( annotationUsage );
-			annotationUsage.setAttributeValue( "name", jaxbOverride.getName() );
+			annotationUsage.setAttributeValue( "name", prefixIfNotAlready( jaxbOverride.getName(), namePrefix ) );
 			// todo : join columns
 			// todo : join table
 			// todo : foreign key
@@ -523,6 +567,14 @@ public class XmlAnnotationHelper {
 			JaxbConvertImpl jaxbConvert,
 			MutableMemberDetails memberDetails,
 			XmlDocumentContext xmlDocumentContext) {
+		applyConvert( jaxbConvert, memberDetails, null, xmlDocumentContext );
+	}
+
+	public static void applyConvert(
+			JaxbConvertImpl jaxbConvert,
+			MutableMemberDetails memberDetails,
+			String namePrefix,
+			XmlDocumentContext xmlDocumentContext) {
 		if ( jaxbConvert == null ) {
 			return;
 		}
@@ -537,7 +589,7 @@ public class XmlAnnotationHelper {
 		final ClassDetailsRegistry classDetailsRegistry = xmlDocumentContext.getModelBuildingContext().getClassDetailsRegistry();
 		final ClassDetails converter = classDetailsRegistry.resolveClassDetails( jaxbConvert.getConverter() );
 		annotationUsage.setAttributeValue( "converter", converter );
-		annotationUsage.setAttributeValue( "attributeName", jaxbConvert.getAttributeName() );
+		annotationUsage.setAttributeValue( "attributeName", prefixIfNotAlready( jaxbConvert.getAttributeName(), namePrefix ) );
 		annotationUsage.setAttributeValue( "disableConversion", jaxbConvert.isDisableConversion() );
 	}
 
@@ -1036,5 +1088,15 @@ public class XmlAnnotationHelper {
 			final MutableAnnotationUsage<RowId> rowIdAnn = XmlProcessingHelper.getOrMakeAnnotation( RowId.class, target, xmlDocumentContext );
 			applyAttributeIfSpecified( rowIdAnn, "value", rowId );
 		}
+	}
+
+	private static String prefixIfNotAlready(String value, String prefix) {
+		if ( StringHelper.isNotEmpty( prefix ) ) {
+			final String previous = StringHelper.unqualify( value );
+			if ( !previous.equalsIgnoreCase( prefix ) ) {
+				return StringHelper.qualify( prefix, value );
+			}
+		}
+		return value;
 	}
 }
