@@ -8,6 +8,7 @@ package org.hibernate.models.orm.xml.attr;
 
 import java.util.List;
 
+import org.hibernate.annotations.Cascade;
 import org.hibernate.annotations.CascadeType;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
@@ -76,8 +77,7 @@ public class ManyToOneTests {
 		assertThat( joinColumnAnn ).isNotNull();
 		assertThat( joinColumnAnn.getString( "name" ) ).isEqualTo( "parent_fk" );
 
-		assertThat( parentField.getAnnotationUsage( JoinColumns.class ) ).isNotNull();
-		assertThat( parentField.getAnnotationUsage( JoinColumns.class ).getList( "value" ) ).hasSize( 1 );
+		assertThat( parentField.getAnnotationUsage( JoinColumn.class ) ).isNotNull();
 
 		final AnnotationUsage<NotFound> notFoundAnn = parentField.getAnnotationUsage( NotFound.class );
 		assertThat( notFoundAnn ).isNotNull();
@@ -99,9 +99,10 @@ public class ManyToOneTests {
 		assertThat( targetAnn ).isNotNull();
 		assertThat( targetAnn.getString( "value" ) ).isEqualTo( "org.hibernate.models.orm.xml.attr.ManyToOneTests$SimpleEntity" );
 
-		final List<CascadeType> cascadeTypes = manyToOneAnn.getList( "cascade" );
+		final AnnotationUsage<Cascade> cascadeAnn = parentField.getAnnotationUsage( Cascade.class );
+		final List<CascadeType> cascadeTypes = cascadeAnn.getList( "value" );
 		assertThat( cascadeTypes ).isNotEmpty();
-		assertThat( cascadeTypes ).contains( CascadeType.PERSIST, CascadeType.MERGE, CascadeType.LOCK );
+		assertThat( cascadeTypes ).containsOnly( CascadeType.ALL );
 	}
 
 	@SuppressWarnings("unused")

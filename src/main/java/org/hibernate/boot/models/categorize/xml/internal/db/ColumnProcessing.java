@@ -30,6 +30,8 @@ import org.hibernate.models.internal.MutableAnnotationTarget;
 import org.hibernate.models.internal.MutableAnnotationUsage;
 import org.hibernate.models.spi.AnnotationUsage;
 
+import static org.hibernate.boot.models.categorize.xml.internal.XmlAnnotationHelper.applyCheckConstraints;
+
 /**
  * @author Steve Ebersole
  */
@@ -50,7 +52,7 @@ public class ColumnProcessing {
 		applyColumnDefinition( jaxbColumn, target, columnAnn, xmlDocumentContext );
 		applyColumnUniqueness( jaxbColumn, target, columnAnn, xmlDocumentContext );
 		applyColumnComment( jaxbColumn, target, columnAnn, xmlDocumentContext );
-		applyColumnChecks( jaxbColumn, target, columnAnn, xmlDocumentContext );
+		applyCheckConstraints( jaxbColumn, target, columnAnn, xmlDocumentContext );
 
 		if ( jaxbColumn instanceof JaxbColumnSizable sizable ) {
 			applyColumnSizing( sizable, target, columnAnn, xmlDocumentContext );
@@ -74,7 +76,7 @@ public class ColumnProcessing {
 		applyColumnSizing( jaxbColumn, target, columnAnn, xmlDocumentContext );
 		applyColumnUniqueness( jaxbColumn, target, columnAnn, xmlDocumentContext );
 		applyColumnComment( jaxbColumn, target, columnAnn, xmlDocumentContext );
-		applyColumnChecks( jaxbColumn, target, columnAnn, xmlDocumentContext );
+		applyCheckConstraints( jaxbColumn, target, columnAnn, xmlDocumentContext );
 	}
 
 	public static <A extends Annotation> void applyColumnDetails(
@@ -113,7 +115,7 @@ public class ColumnProcessing {
 		}
 
 		if ( jaxbColumn instanceof JaxbCheckable checkable ) {
-			applyColumnChecks( checkable, target, columnAnn, xmlDocumentContext );
+			applyCheckConstraints( checkable, target, columnAnn, xmlDocumentContext );
 		}
 	}
 
@@ -205,24 +207,6 @@ public class ColumnProcessing {
 			XmlDocumentContext xmlDocumentContext) {
 		if ( StringHelper.isNotEmpty( jaxbColumn.getComment() ) ) {
 			columnAnn.setAttributeValue( "comment", jaxbColumn.getComment() );
-		}
-	}
-
-	private static <A extends Annotation> void applyColumnChecks(
-			JaxbCheckable jaxbColumn,
-			MutableAnnotationTarget target,
-			MutableAnnotationUsage<A> columnAnn,
-			XmlDocumentContext xmlDocumentContext) {
-		if ( CollectionHelper.isNotEmpty( jaxbColumn.getCheckConstraints() ) ) {
-			final List<AnnotationUsage<Check>> checks = new ArrayList<>( jaxbColumn.getCheckConstraints().size() );
-			for ( int i = 0; i < jaxbColumn.getCheckConstraints().size(); i++ ) {
-				final JaxbCheckConstraintImpl jaxbCheck = jaxbColumn.getCheckConstraints().get( i );
-				final MutableAnnotationUsage<Check> checkAnn = XmlProcessingHelper.getOrMakeAnnotation( Check.class, target, xmlDocumentContext );
-				checkAnn.setAttributeValue( "name", jaxbCheck.getName() );
-				checkAnn.setAttributeValue( "constraints", jaxbCheck.getConstraint() );
-				checks.add( checkAnn );
-			}
-			columnAnn.setAttributeValue( "check", checks );
 		}
 	}
 }

@@ -6,23 +6,9 @@
  */
 package org.hibernate.boot.models.categorize.xml.internal.attr;
 
-import org.hibernate.annotations.Bag;
-import org.hibernate.annotations.CollectionId;
-import org.hibernate.annotations.Fetch;
-import org.hibernate.annotations.Nationalized;
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLDeleteAll;
-import org.hibernate.annotations.SQLInsert;
-import org.hibernate.annotations.SQLUpdate;
-import org.hibernate.annotations.SortComparator;
-import org.hibernate.annotations.SortNatural;
-import org.hibernate.boot.internal.CollectionClassification;
-import org.hibernate.boot.internal.LimitedCollectionClassification;
 import org.hibernate.boot.internal.Target;
-import org.hibernate.boot.jaxb.mapping.spi.JaxbCollectionIdImpl;
-import org.hibernate.boot.jaxb.mapping.spi.JaxbColumnImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbCollectionTableImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbElementCollectionImpl;
-import org.hibernate.boot.jaxb.mapping.spi.JaxbGeneratedValueImpl;
 import org.hibernate.boot.models.categorize.xml.internal.XmlAnnotationHelper;
 import org.hibernate.boot.models.categorize.xml.internal.XmlProcessingHelper;
 import org.hibernate.boot.models.categorize.xml.spi.XmlDocumentContext;
@@ -30,18 +16,17 @@ import org.hibernate.internal.util.StringHelper;
 import org.hibernate.models.internal.MutableAnnotationUsage;
 import org.hibernate.models.internal.MutableClassDetails;
 import org.hibernate.models.internal.MutableMemberDetails;
-import org.hibernate.models.spi.ClassDetails;
-import org.hibernate.models.spi.ClassDetailsRegistry;
+import org.hibernate.models.spi.AnnotationDescriptor;
 
 import jakarta.persistence.AccessType;
-import jakarta.persistence.Column;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Lob;
-import jakarta.persistence.OrderBy;
-import jakarta.persistence.OrderColumn;
-import jakarta.persistence.Temporal;
 
+import static org.hibernate.boot.models.categorize.xml.internal.XmlAnnotationHelper.applyIndexes;
+import static org.hibernate.boot.models.categorize.xml.internal.XmlAnnotationHelper.applyOr;
+import static org.hibernate.boot.models.categorize.xml.internal.XmlAnnotationHelper.applyUniqueConstraints;
+import static org.hibernate.boot.models.categorize.xml.internal.XmlAnnotationHelper.createForeignKeyAnnotation;
+import static org.hibernate.boot.models.categorize.xml.internal.XmlAnnotationHelper.createJoinColumns;
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
 
 /**
@@ -82,36 +67,17 @@ public class ElementCollectionAttributeProcessing {
 
 		CommonPluralAttributeProcessing.applyPluralAttributeStructure( jaxbElementCollection, memberDetails, xmlDocumentContext );
 
+		applyCollectionTable( jaxbElementCollection.getCollectionTable(), memberDetails, xmlDocumentContext );
+
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// elements
 
-		if ( jaxbElementCollection.getEnumerated() != null ) {
-			final MutableAnnotationUsage<Enumerated> enumeratedAnn = XmlProcessingHelper.getOrMakeAnnotation(
-					Enumerated.class,
-					memberDetails,
-					xmlDocumentContext
-			);
-			enumeratedAnn.setAttributeValue( "value", jaxbElementCollection.getEnumerated() );
-		}
-
-		if ( jaxbElementCollection.getLob() != null ) {
-			XmlProcessingHelper.getOrMakeAnnotation( Lob.class, memberDetails, xmlDocumentContext );
-		}
-
-		if ( jaxbElementCollection.getNationalized() != null ) {
-			XmlProcessingHelper.getOrMakeAnnotation( Nationalized.class, memberDetails, xmlDocumentContext );
-		}
-
-		if ( jaxbElementCollection.getTemporal() != null ) {
-			final MutableAnnotationUsage<Temporal> temporalAnn = XmlProcessingHelper.getOrMakeAnnotation(
-					Temporal.class,
-					memberDetails,
-					xmlDocumentContext
-			);
-			temporalAnn.setAttributeValue( "value", jaxbElementCollection.getTemporal() );
-		}
-
+		XmlAnnotationHelper.applyEnumerated( jaxbElementCollection.getEnumerated(), memberDetails, xmlDocumentContext );
+		XmlAnnotationHelper.applyLob( jaxbElementCollection.getLob(), memberDetails, xmlDocumentContext );
+		XmlAnnotationHelper.applyNationalized( jaxbElementCollection.getNationalized(), memberDetails, xmlDocumentContext );
+		XmlAnnotationHelper.applyTemporal( jaxbElementCollection.getTemporal(), memberDetails, xmlDocumentContext );
 		XmlAnnotationHelper.applyBasicTypeComposition( jaxbElementCollection, memberDetails, xmlDocumentContext );
+
 		if ( StringHelper.isNotEmpty( jaxbElementCollection.getTargetClass() ) ) {
 			final MutableAnnotationUsage<Target> targetAnn = XmlProcessingHelper.getOrMakeAnnotation( Target.class, memberDetails, xmlDocumentContext );
 			targetAnn.setAttributeValue( "value", jaxbElementCollection.getTargetClass() );
@@ -121,20 +87,45 @@ public class ElementCollectionAttributeProcessing {
 			XmlAnnotationHelper.applyConvert( jaxbConvert, memberDetails, xmlDocumentContext );
 		} );
 
-		XmlAnnotationHelper.applyAttributeOverrides(
-				jaxbElementCollection.getAttributeOverrides(),
-				memberDetails,
-				"value",
-				xmlDocumentContext
-		);
+		XmlAnnotationHelper.applyAttributeOverrides( jaxbElementCollection.getAttributeOverrides(), memberDetails, xmlDocumentContext );
 
-		XmlAnnotationHelper.applyAssociationOverrides(
-				jaxbElementCollection.getAssociationOverrides(),
-				memberDetails,
-				"value",
-				xmlDocumentContext
-		);
+		XmlAnnotationHelper.applyAssociationOverrides( jaxbElementCollection.getAssociationOverrides(), memberDetails, xmlDocumentContext );
 
 		return memberDetails;
+	}
+
+	public static void applyCollectionTable(
+			JaxbCollectionTableImpl jaxbCollectionTable,
+			MutableMemberDetails memberDetails,
+			XmlDocumentContext xmlDocumentContext) {
+		if ( jaxbCollectionTable == null ) {
+			return;
+		}
+
+		final MutableAnnotationUsage<CollectionTable> collectionTableAnn = XmlProcessingHelper.getOrMakeAnnotation(
+				CollectionTable.class,
+				memberDetails,
+				xmlDocumentContext
+		);
+		final AnnotationDescriptor<CollectionTable> collectionTableDescriptor = xmlDocumentContext.getModelBuildingContext()
+				.getAnnotationDescriptorRegistry()
+				.getDescriptor( CollectionTable.class );
+
+		applyOr( jaxbCollectionTable, JaxbCollectionTableImpl::getName, "name", collectionTableAnn, collectionTableDescriptor );
+		applyOr( jaxbCollectionTable, JaxbCollectionTableImpl::getSchema, "schema", collectionTableAnn, collectionTableDescriptor );
+		applyOr( jaxbCollectionTable, JaxbCollectionTableImpl::getOptions, "options", collectionTableAnn, collectionTableDescriptor );
+
+		collectionTableAnn.setAttributeValue( "joinColumns", createJoinColumns( jaxbCollectionTable.getJoinColumns(), memberDetails, xmlDocumentContext ) );
+
+		if ( jaxbCollectionTable.getForeignKeys() != null ) {
+			collectionTableAnn.setAttributeValue(
+					"foreignKey",
+					createForeignKeyAnnotation( jaxbCollectionTable.getForeignKeys(), memberDetails, xmlDocumentContext )
+			);
+		}
+
+		applyUniqueConstraints( jaxbCollectionTable.getUniqueConstraints(), memberDetails, collectionTableAnn, xmlDocumentContext );
+
+		applyIndexes( jaxbCollectionTable.getIndexes(), memberDetails, collectionTableAnn, xmlDocumentContext );
 	}
 }
