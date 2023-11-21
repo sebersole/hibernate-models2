@@ -482,6 +482,23 @@ public class ManagedTypeProcessor {
 			XmlAnnotationHelper.applyNamedEntityGraph( namedEntityGraph, classDetails, xmlDocumentContext );
 		}
 
+		XmlAnnotationHelper.applyDiscriminatorValue(
+				jaxbEntity.getDiscriminatorValue(),
+				classDetails,
+				xmlDocumentContext
+		);
+
+		XmlAnnotationHelper.applyDiscriminatorColumn(
+				jaxbEntity.getDiscriminatorColumn(),
+				classDetails,
+				xmlDocumentContext
+		);
+
+		XmlAnnotationHelper.applyDiscriminatorFormula(
+				jaxbEntity.getDiscriminatorFormula(),
+				classDetails,
+				xmlDocumentContext
+		);
 		// todo : secondary-tables
 	}
 

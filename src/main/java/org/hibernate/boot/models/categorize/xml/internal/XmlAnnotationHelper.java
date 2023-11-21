@@ -23,6 +23,7 @@ import org.hibernate.annotations.Cascade;
 import org.hibernate.annotations.CascadeType;
 import org.hibernate.annotations.CollectionId;
 import org.hibernate.annotations.CollectionType;
+import org.hibernate.annotations.DiscriminatorFormula;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterJoinTable;
 import org.hibernate.annotations.JavaType;
@@ -53,6 +54,8 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbColumnImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbConfigurationParameterImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbConvertImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbCustomSqlImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbDiscriminatorColumnImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbDiscriminatorColumnImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddedIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntity;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityListenerImpl;
@@ -111,6 +114,8 @@ import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.CheckConstraint;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
+import jakarta.persistence.DiscriminatorColumn;
+import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -1495,5 +1500,82 @@ public class XmlAnnotationHelper {
 
 		}
 		return namedAttributeNodeAnnotations;
+	}
+
+	static void applyDiscriminatorValue(
+			String discriminatorValue,
+			MutableClassDetails target,
+			XmlDocumentContext xmlDocumentContext) {
+		if ( discriminatorValue != null ) {
+			final MutableAnnotationUsage<DiscriminatorValue> rowIdAnn = XmlProcessingHelper
+					.getOrMakeAnnotation( DiscriminatorValue.class, target, xmlDocumentContext );
+			applyAttributeIfSpecified( rowIdAnn, "value", discriminatorValue );
+		}
+	}
+
+	static void applyDiscriminatorColumn(
+			JaxbDiscriminatorColumnImpl discriminatorColumn,
+			MutableClassDetails target,
+			XmlDocumentContext xmlDocumentContext){
+		if ( discriminatorColumn != null ) {
+			final MutableAnnotationUsage<DiscriminatorColumn> discriminatorColumnAnn = XmlProcessingHelper
+					.getOrMakeAnnotation( DiscriminatorColumn.class, target, xmlDocumentContext );
+			final AnnotationDescriptor<DiscriminatorColumn> discriminatorColumnDescriptor = xmlDocumentContext
+					.getModelBuildingContext()
+					.getAnnotationDescriptorRegistry()
+					.getDescriptor( DiscriminatorColumn.class );
+			applyOr(
+					discriminatorColumn,
+					JaxbDiscriminatorColumnImpl::getName,
+					"name",
+					discriminatorColumnAnn,
+					discriminatorColumnDescriptor
+			);
+
+			applyOr(
+					discriminatorColumn,
+					JaxbDiscriminatorColumnImpl::getDiscriminatorType,
+					"discriminatorType",
+					discriminatorColumnAnn,
+					discriminatorColumnDescriptor
+			);
+			applyOr(
+					discriminatorColumn,
+					JaxbDiscriminatorColumnImpl::getColumnDefinition,
+					"columnDefinition",
+					discriminatorColumnAnn,
+					discriminatorColumnDescriptor
+			);
+			applyOr(
+					discriminatorColumn,
+					JaxbDiscriminatorColumnImpl::getOptions,
+					"options",
+					discriminatorColumnAnn,
+					discriminatorColumnDescriptor
+			);
+			applyOr(
+					discriminatorColumn,
+					JaxbDiscriminatorColumnImpl::getLength,
+					"length",
+					discriminatorColumnAnn,
+					discriminatorColumnDescriptor
+			);
+
+			// todo : add force-selection attribute to @DiscriminatorColumn
+		}
+
+	}
+
+	public static void applyDiscriminatorFormula(
+			String discriminatorFormula,
+			MutableClassDetails target,
+			XmlDocumentContext xmlDocumentContext) {
+		if ( StringHelper.isNotEmpty( discriminatorFormula ) ) {
+			final MutableAnnotationUsage<DiscriminatorFormula> discriminatorFormulaAnn = XmlProcessingHelper
+					.getOrMakeAnnotation( DiscriminatorFormula.class, target, xmlDocumentContext );
+			discriminatorFormulaAnn.setAttributeValue( "value", discriminatorFormula );
+
+			// todo add to mapping-3.2.0.xsd discriminatorType of @DiscriminatorFormula
+		}
 	}
 }
