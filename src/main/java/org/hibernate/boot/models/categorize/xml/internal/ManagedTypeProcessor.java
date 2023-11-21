@@ -501,6 +501,7 @@ public class ManagedTypeProcessor {
 					classAccessType,
 					xmlDocumentContext
 			);
+			// todo : add bind-as-param attribute to @TenantId
 		}
 	}
 

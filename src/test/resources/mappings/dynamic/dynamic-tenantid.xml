@@ -5,7 +5,7 @@
  ~ Copyright: Red Hat Inc. and Hibernate Authors
  -->
 <entity-mappings xmlns="http://www.hibernate.org/xsd/orm/mapping"
-                 version="3.1">
+                 version="3.2">
     <entity name="EntityWithoutTenantId" metadata-complete="true">
         <attributes>
             <id name="id"/>
