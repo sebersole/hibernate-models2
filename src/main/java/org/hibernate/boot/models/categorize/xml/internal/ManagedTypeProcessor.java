@@ -15,6 +15,7 @@ import java.util.Set;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLInsert;
 import org.hibernate.annotations.SQLUpdate;
+import org.hibernate.annotations.TenantId;
 import org.hibernate.boot.internal.Abstract;
 import org.hibernate.boot.internal.Extends;
 import org.hibernate.boot.internal.LimitedCollectionClassification;
@@ -34,7 +35,9 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbMappedSuperclassImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbOneToOneImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistentAttribute;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAttribute;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbTenantIdImpl;
 import org.hibernate.boot.models.categorize.spi.JpaEventListenerStyle;
+import org.hibernate.boot.models.categorize.xml.internal.attr.BasicAttributeProcessing;
 import org.hibernate.boot.models.categorize.xml.internal.attr.BasicIdAttributeProcessing;
 import org.hibernate.boot.models.categorize.xml.internal.attr.CommonAttributeProcessing;
 import org.hibernate.boot.models.categorize.xml.internal.attr.EmbeddedIdAttributeProcessing;
@@ -217,6 +220,22 @@ public class ManagedTypeProcessor {
 					);
 					classDetails.addField( member );
 				} );
+			}
+
+			// <tenant-id>
+			final JaxbTenantIdImpl tenantId = jaxbDynamicEntity.getTenantId();
+			if ( tenantId != null ) {
+				final ClassDetails attributeJavaType = determineDynamicAttributeJavaType(
+						tenantId,
+						xmlDocumentContext
+				);
+				final MapModeFieldDetails member = new MapModeFieldDetails(
+						tenantId.getName(),
+						attributeJavaType,
+						MEMBER_MODIFIERS,
+						xmlDocumentContext.getModelBuildingContext()
+				);
+				classDetails.addField( member );
 			}
 		}
 
@@ -454,7 +473,35 @@ public class ManagedTypeProcessor {
 
 		XmlAnnotationHelper.applyRowId( jaxbEntity.getRowid(), classDetails, xmlDocumentContext );
 
+		applyTenantId( classDetails, jaxbEntity, classAccessType, xmlDocumentContext );
+
 		// todo : secondary-tables
+	}
+
+	private static void applyTenantId(
+			MutableClassDetails classDetails,
+			JaxbEntityImpl jaxbEntity,
+			AccessType classAccessType,
+			XmlDocumentContext xmlDocumentContext) {
+		final JaxbTenantIdImpl jaxbTenantId = jaxbEntity.getTenantId();
+		if ( jaxbTenantId != null ) {
+			final MutableMemberDetails memberDetails = XmlProcessingHelper.getAttributeMember(
+					jaxbTenantId.getName(),
+					coalesce( jaxbTenantId.getAccess(), classAccessType ),
+					classDetails
+			);
+			XmlProcessingHelper.getOrMakeAnnotation(
+					TenantId.class,
+					memberDetails,
+					xmlDocumentContext
+			);
+			BasicAttributeProcessing.processBasicAttribute(
+					jaxbTenantId,
+					classDetails,
+					classAccessType,
+					xmlDocumentContext
+			);
+		}
 	}
 
 
