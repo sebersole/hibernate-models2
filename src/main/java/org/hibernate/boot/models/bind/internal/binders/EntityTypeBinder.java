@@ -69,6 +69,7 @@ import jakarta.persistence.DiscriminatorType;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.InheritanceType;
+import jakarta.persistence.SharedCacheMode;
 
 import static org.hibernate.boot.models.bind.ModelBindingLogging.MODEL_BINDING_LOGGER;
 import static org.hibernate.boot.models.bind.internal.binders.IdentifierBinder.bindIdentifier;
@@ -452,7 +453,37 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 			bindDiscriminatorValue( getManagedType(), getTypeBinding(), modelBinders, getBindingState(), getOptions(), getBindingContext() );
 		}
 
+		bindCacheable( getManagedType(), getTypeBinding(), modelBinders, getOptions(), getBindingState(), getBindingContext() );
+
 		super.prepareBinding( modelBinders );
+	}
+
+	private static void bindCacheable(
+			EntityTypeMetadata managedType,
+			PersistentClass typeBinding,
+			ModelBinders modelBinders,
+			BindingOptions options,
+			BindingState bindingState,
+			BindingContext bindingContext) {
+		final AnnotationUsage<Cacheable> cacheableAnn = managedType.getClassDetails().getAnnotationUsage( Cacheable.class );
+		final SharedCacheMode sharedCacheMode = bindingState.getMetadataBuildingContext()
+				.getBuildingOptions()
+				.getSharedCacheMode();
+		typeBinding.setCached( isCacheable( sharedCacheMode, cacheableAnn ) );
+	}
+
+	private static boolean isCacheable(SharedCacheMode sharedCacheMode, AnnotationUsage<Cacheable> explicitCacheableAnn) {
+		return switch ( sharedCacheMode ) {
+			// all entities should be cached
+			case ALL -> true;
+			// Hibernate defaults to ENABLE_SELECTIVE, the only sensible setting
+			// only entities with @Cacheable(true) should be cached
+			case ENABLE_SELECTIVE, UNSPECIFIED -> explicitCacheableAnn != null && explicitCacheableAnn.getBoolean( "value" );
+			// only entities with @Cacheable(false) should not be cached
+			case DISABLE_SELECTIVE -> explicitCacheableAnn == null || explicitCacheableAnn.getBoolean( "value" );
+			// treat both NONE and UNSPECIFIED the same
+			default -> false;
+		};
 	}
 
 	protected BasicValue getDiscriminatorMapping() {
@@ -582,7 +613,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		}
 	}
 
-	private void bindTenantId(
+	private static void bindTenantId(
 			EntityTypeMetadata managedType,
 			RootClass typeBinding,
 			ModelBinders modelBinders,
