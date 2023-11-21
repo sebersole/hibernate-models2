@@ -9,9 +9,12 @@ package org.hibernate.boot.models.bind.internal;
 import java.lang.annotation.Annotation;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.hibernate.boot.model.naming.Identifier;
+import org.hibernate.boot.model.naming.ObjectNameNormalizer;
 import org.hibernate.boot.models.bind.spi.BindingContext;
+import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 import org.hibernate.models.ModelsException;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
@@ -105,6 +108,53 @@ public class BindingHelper {
 		}
 
 		return ann.getAttributeValue( attributeName, defaultValue );
+	}
+
+	public static <T,A extends Annotation> T getValue(AnnotationUsage<A> ann, String attributeName, AnnotationDescriptor<A> descriptor) {
+		if ( ann == null ) {
+			//noinspection unchecked
+			return (T) descriptor.getAttribute( attributeName ).getAttributeMethod().getDefaultValue();
+		}
+
+		//noinspection unchecked
+		return getValue(
+				ann,
+				attributeName,
+				() -> (T) descriptor.getAttribute( attributeName ).getAttributeMethod().getDefaultValue()
+		);
+	}
+
+	public static <T,A extends Annotation> T getValue(AnnotationUsage<A> ann, String attributeName, Supplier<T> defaultValueSupplier) {
+		if ( ann == null ) {
+			return (T) defaultValueSupplier.get();
+		}
+
+		return ann.getAttributeValue( attributeName, defaultValueSupplier );
+	}
+
+	public static <A extends Annotation> String getGloballyQuotedValue(
+			AnnotationUsage<A> ann,
+			String attributeName,
+			Supplier<String> defaultValueSupplier,
+			BindingOptions bindingOptions,
+			BindingState bindingState) {
+		final String value = getValue( ann, attributeName, defaultValueSupplier );
+		return applyGlobalQuoting( value, QuotedIdentifierTarget.COLUMN_DEFINITION, bindingOptions, bindingState );
+	}
+
+	public static String applyGlobalQuoting(
+			String text,
+			QuotedIdentifierTarget target,
+			BindingOptions options,
+			BindingState bindingState) {
+		final boolean globallyQuoted = options.getGloballyQuotedIdentifierTargets().contains( target );
+		if ( !globallyQuoted ) {
+			return text;
+		}
+		final ObjectNameNormalizer objectNameNormalizer = bindingState
+				.getMetadataBuildingContext()
+				.getObjectNameNormalizer();
+		return objectNameNormalizer.applyGlobalQuoting( text );
 	}
 
 	public static void processSecondPassQueue(List<? extends SecondPass> secondPasses) {

@@ -184,9 +184,9 @@ public class BasicValueBinder {
 		if ( columnAnn != null ) {
 			final org.hibernate.mapping.Column column = (org.hibernate.mapping.Column) basicValue.getColumn();
 			column.setName( columnAnn.getString( "name", property.getName() + "_tz" ) );
-			column.setSqlType( columnAnn.getString( "columnDefinition", null ) );
+			column.setSqlType( columnAnn.getString( "columnDefinition", (String) null ) );
 
-			final var tableName = columnAnn.getString( "table", null );
+			final var tableName = columnAnn.getString( "table", (String) null );
 			TableReference tableByName = null;
 			if ( tableName != null ) {
 				final Identifier identifier = Identifier.toIdentifier( tableName );

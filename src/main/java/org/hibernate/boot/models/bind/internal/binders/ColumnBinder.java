@@ -8,9 +8,19 @@ package org.hibernate.boot.models.bind.internal.binders;
 
 import java.util.function.Supplier;
 
+import org.hibernate.annotations.DiscriminatorFormula;
 import org.hibernate.boot.models.bind.internal.BindingHelper;
+import org.hibernate.boot.models.bind.spi.BindingContext;
+import org.hibernate.boot.models.bind.spi.BindingOptions;
+import org.hibernate.boot.models.bind.spi.BindingState;
+import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Column;
+import org.hibernate.mapping.Formula;
+import org.hibernate.models.spi.AnnotationDescriptor;
 import org.hibernate.models.spi.AnnotationUsage;
+
+import jakarta.persistence.DiscriminatorColumn;
+import jakarta.persistence.DiscriminatorType;
 
 import static org.hibernate.internal.util.NullnessHelper.nullif;
 
@@ -61,7 +71,7 @@ public class ColumnBinder {
 
 		result.setUnique( BindingHelper.getValue( annotationUsage, "unique", uniqueByDefault ) );
 		result.setNullable( BindingHelper.getValue( annotationUsage, "nullable", nullableByDefault ) );
-		result.setSqlType( BindingHelper.getValue( annotationUsage, "columnDefinition", null ) );
+		result.setSqlType( BindingHelper.getValue( annotationUsage, "columnDefinition", (String) null ) );
 		result.setLength( BindingHelper.getValue( annotationUsage, "length", lengthByDefault ) );
 		result.setPrecision( BindingHelper.getValue( annotationUsage, "precision", precisionByDefault ) );
 		result.setScale( BindingHelper.getValue( annotationUsage, "scale", scaleByDefault ) );
@@ -69,7 +79,7 @@ public class ColumnBinder {
 	}
 
 
-	private static String columnName(
+	public static String columnName(
 			AnnotationUsage<?> columnAnnotation,
 			Supplier<String> defaultNameSupplier) {
 		if ( columnAnnotation == null ) {
@@ -80,5 +90,74 @@ public class ColumnBinder {
 	}
 
 	private ColumnBinder() {
+	}
+
+	static DiscriminatorType bindDiscriminatorColumn(
+			BindingContext bindingContext,
+			AnnotationUsage<DiscriminatorFormula> formulaAnn,
+			BasicValue value,
+			AnnotationUsage<DiscriminatorColumn> columnAnn,
+			BindingOptions bindingOptions,
+			BindingState bindingState) {
+		final DiscriminatorType discriminatorType;
+		if ( formulaAnn != null ) {
+			final Formula formula = new Formula( formulaAnn.getString( "value" ) );
+			value.addFormula( formula );
+
+			discriminatorType = formulaAnn.getEnum( "discriminatorType", DiscriminatorType.STRING );
+		}
+		else {
+			final Column column = new Column();
+			value.addColumn( column, true, false );
+			discriminatorType = BindingHelper.getValue( columnAnn, "discriminatorType", DiscriminatorType.STRING );
+
+			column.setName( columnName( columnAnn, () -> "dtype" ) );
+			column.setLength( (Integer) BindingHelper.getValue(
+					columnAnn,
+					"length",
+					() -> {
+						final AnnotationDescriptor<DiscriminatorColumn> descriptor;
+						if ( columnAnn != null ) {
+							descriptor = columnAnn.getAnnotationDescriptor();
+						}
+						else {
+							descriptor = bindingContext.getAnnotationDescriptorRegistry().getDescriptor( DiscriminatorColumn.class );
+						}
+						return descriptor.getAttribute( "length" ).getAttributeMethod().getDefaultValue();
+					}
+			) );
+			column.setSqlType( BindingHelper.getGloballyQuotedValue(
+					columnAnn,
+					"columnDefinition",
+					() -> {
+						final AnnotationDescriptor<DiscriminatorColumn> descriptor;
+						if ( columnAnn != null ) {
+							descriptor = columnAnn.getAnnotationDescriptor();
+						}
+						else {
+							descriptor = bindingContext.getAnnotationDescriptorRegistry().getDescriptor( DiscriminatorColumn.class );
+						}
+						return (String) descriptor.getAttribute( "columnDefinition" ).getAttributeMethod().getDefaultValue();
+					},
+					bindingOptions,
+					bindingState
+			) );
+			// todo : see https://hibernate.atlassian.net/browse/HHH-17449
+//			column.setOptions( (Integer) BindingHelper.getValue(
+//					columnAnn,
+//					"options",
+//					() -> {
+//						final AnnotationDescriptor<DiscriminatorColumn> descriptor;
+//						if ( columnAnn != null ) {
+//							descriptor = columnAnn.getAnnotationDescriptor();
+//						}
+//						else {
+//							descriptor = bindingContext.getAnnotationDescriptorRegistry().getDescriptor( DiscriminatorColumn.class );
+//						}
+//						return descriptor.getAttribute( "options" ).getAttributeMethod().getDefaultValue();
+//					}
+//			) );
+		}
+		return discriminatorType;
 	}
 }

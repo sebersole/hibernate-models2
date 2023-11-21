@@ -198,10 +198,38 @@ public class AttributeBinder {
 			BasicValueBinder.bindJavaType( member, property, basicValue, bindingOptions, bindingState, bindingContext );
 			BasicValueBinder.bindJdbcType( member, property, basicValue, bindingOptions, bindingState, bindingContext );
 			BasicValueBinder.bindLob( member, property, basicValue, bindingOptions, bindingState, bindingContext );
-			BasicValueBinder.bindNationalized( member, property, basicValue, bindingOptions, bindingState, bindingContext );
-			BasicValueBinder.bindEnumerated( member, property, basicValue, bindingOptions, bindingState, bindingContext );
-			BasicValueBinder.bindTemporalPrecision( member, property, basicValue, bindingOptions, bindingState, bindingContext );
-			BasicValueBinder.bindTimeZoneStorage( member, property, basicValue, bindingOptions, bindingState, bindingContext );
+			BasicValueBinder.bindNationalized(
+					member,
+					property,
+					basicValue,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			);
+			BasicValueBinder.bindEnumerated(
+					member,
+					property,
+					basicValue,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			);
+			BasicValueBinder.bindTemporalPrecision(
+					member,
+					property,
+					basicValue,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			);
+			BasicValueBinder.bindTimeZoneStorage(
+					member,
+					property,
+					basicValue,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			);
 
 			return true;
 		}
@@ -217,7 +245,7 @@ public class AttributeBinder {
 			final var column = ColumnBinder.bindColumn( columnAnn, property::getName );
 
 			if ( columnAnn != null ) {
-				final var tableName = columnAnn.getString( "table", null );
+				final var tableName = columnAnn.getString( "table", (String) null );
 				if ( tableName != null ) {
 					final Identifier identifier = Identifier.toIdentifier( tableName );
 					final TableReference tableByName = bindingState.getTableByName( identifier.getCanonicalName() );
@@ -250,7 +278,7 @@ public class AttributeBinder {
 			}
 
 			final ClassDetails converterClassDetails = convertAnn.getClassDetails( "converter" );
-			final Class<AttributeConverter<?,?>> javaClass = converterClassDetails.toJavaClass();
+			final Class<AttributeConverter<?, ?>> javaClass = converterClassDetails.toJavaClass();
 			basicValue.setJpaAttributeConverterDescriptor( new ClassBasedConverterDescriptor(
 					javaClass,
 					bindingContext.getClassmateContext()
@@ -266,37 +294,6 @@ public class AttributeBinder {
 			//noinspection deprecation
 			final TemporalType precision = temporalAnn.getEnum( "value" );
 			basicValue.setTemporalPrecision( precision );
-		}
-
-		private void processTimeZoneStorage(MemberDetails member, Property property, BasicValue basicValue) {
-			final AnnotationUsage<TimeZoneStorage> storageAnn = member.getAnnotationUsage( TimeZoneStorage.class );
-			final AnnotationUsage<TimeZoneColumn> columnAnn = member.getAnnotationUsage( TimeZoneColumn.class );
-			if ( storageAnn != null ) {
-				final TimeZoneStorageType strategy = storageAnn.getEnum( "value", AUTO );
-				if ( strategy != COLUMN && columnAnn != null ) {
-					throw new AnnotationPlacementException(
-							"Illegal combination of @TimeZoneStorage(" + strategy.name() + ") and @TimeZoneColumn"
-					);
-				}
-				basicValue.setTimeZoneStorageType( strategy );
-			}
-
-			if ( columnAnn != null ) {
-				final org.hibernate.mapping.Column column = (org.hibernate.mapping.Column) basicValue.getColumn();
-				column.setName( columnAnn.getString( "name", property.getName() + "_tz" ) );
-				column.setSqlType( columnAnn.getString( "columnDefinition", null ) );
-
-				final var tableName = columnAnn.getString( "table", null );
-				TableReference tableByName = null;
-				if ( tableName != null ) {
-					final Identifier identifier = Identifier.toIdentifier( tableName );
-					tableByName = bindingState.getTableByName( identifier.getCanonicalName() );
-					basicValue.setTable( tableByName.binding() );
-				}
-
-				property.setInsertable( columnAnn.getBoolean( "insertable", true ) );
-				property.setUpdateable( columnAnn.getBoolean( "updatable", true ) );
-			}
 		}
 	}
 }

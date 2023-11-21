@@ -7,11 +7,14 @@
 package org.hibernate.boot.models.bind.internal.binders;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import org.hibernate.MappingException;
+import org.hibernate.annotations.DiscriminatorFormula;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.OptimisticLockType;
 import org.hibernate.annotations.OptimisticLocking;
@@ -26,11 +29,14 @@ import org.hibernate.boot.models.bind.internal.SecondaryTable;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
-import org.hibernate.boot.models.categorize.spi.AggregatedKeyMapping;
-import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
-import org.hibernate.boot.models.categorize.spi.BasicKeyMapping;
-import org.hibernate.boot.models.categorize.spi.KeyMapping;
-import org.hibernate.boot.models.categorize.spi.NonAggregatedKeyMapping;
+import org.hibernate.boot.models.categorize.spi.CacheRegion;
+import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
+import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
+import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
+import org.hibernate.boot.models.categorize.spi.JpaEventListener;
+import org.hibernate.boot.models.categorize.spi.JpaEventListenerStyle;
+import org.hibernate.boot.models.categorize.spi.NaturalIdCacheRegion;
+import org.hibernate.boot.spi.MetadataBuildingOptions;
 import org.hibernate.engine.OptimisticLockStyle;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
@@ -45,8 +51,6 @@ import org.hibernate.mapping.Join;
 import org.hibernate.mapping.JoinedSubclass;
 import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
-import org.hibernate.mapping.PrimaryKey;
-import org.hibernate.mapping.Property;
 import org.hibernate.mapping.RootClass;
 import org.hibernate.mapping.SingleTableSubclass;
 import org.hibernate.mapping.Subclass;
@@ -54,21 +58,18 @@ import org.hibernate.mapping.Table;
 import org.hibernate.mapping.TableOwner;
 import org.hibernate.mapping.UnionSubclass;
 import org.hibernate.models.ModelsException;
-import org.hibernate.boot.models.categorize.spi.CacheRegion;
-import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
-import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
-import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
-import org.hibernate.boot.models.categorize.spi.JpaEventListener;
-import org.hibernate.boot.models.categorize.spi.JpaEventListenerStyle;
-import org.hibernate.boot.models.categorize.spi.NaturalIdCacheRegion;
 import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MethodDetails;
 
 import jakarta.persistence.Cacheable;
+import jakarta.persistence.DiscriminatorColumn;
+import jakarta.persistence.DiscriminatorType;
+import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.InheritanceType;
 
+import static org.hibernate.boot.models.bind.ModelBindingLogging.MODEL_BINDING_LOGGER;
 import static org.hibernate.boot.models.bind.internal.binders.IdentifierBinder.bindIdentifier;
 import static org.hibernate.internal.util.StringHelper.coalesce;
 
@@ -97,7 +98,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		this.binding = createBinding();
 
 		final AnnotationUsage<Entity> entityAnn = classDetails.getAnnotationUsage( Entity.class );
-		final String jpaEntityName = BindingHelper.getValue( entityAnn, "name", null );
+		final String jpaEntityName = BindingHelper.getValue( entityAnn, "name", (String) null );
 		final String entityName;
 		final String importName;
 
@@ -124,9 +125,11 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		state.registerTypeBinder( type, this );
 		state.getMetadataBuildingContext().getMetadataCollector().addImport( importName, entityName );
 
-		final var primaryTable = modelBinders.getTableBinder().bindPrimaryTable( getManagedType(), hierarchyRelation );
-		final var table = primaryTable.binding();
-		( (TableOwner) binding ).setTable( table );
+		if ( binding instanceof TableOwner ) {
+			final var primaryTable = modelBinders.getTableBinder().bindPrimaryTable( getManagedType(), hierarchyRelation );
+			final var table = primaryTable.binding();
+			( (TableOwner) binding ).setTable( table );
+		}
 
 		final var secondaryTables = modelBinders.getTableBinder().bindSecondaryTables( getManagedType() );
 		secondaryTables.forEach( this::processSecondaryTable );
@@ -134,9 +137,6 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		final IdentifiableTypeBinder superTypeBinder = getSuperTypeBinder();
 		final EntityTypeBinder superEntityBinder = getSuperEntityBinder();
 		if ( binding instanceof RootClass rootClass ) {
-			processSoftDelete( primaryTable.binding(), rootClass, classDetails, state, context );
-			processOptimisticLocking( primaryTable.binding(), rootClass, classDetails, state, context );
-			processCacheRegions( getManagedType(), rootClass, classDetails, state, context );
 
 			assert superEntityBinder == null;
 
@@ -443,23 +443,133 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 	protected void prepareBinding(ModelBinders modelBinders) {
 		if ( getHierarchyRelation() == EntityHierarchy.HierarchyRelation.ROOT ) {
 			prepareRootEntityBinding( (RootClass) getTypeBinding(), modelBinders );
+			if ( getManagedType().hasSubTypes() ) {
+				bindDiscriminatorValue( getManagedType(), getTypeBinding(), modelBinders, getBindingState(), getOptions(), getBindingContext() );
+			}
+		}
+		else {
+			bindDiscriminatorValue( getManagedType(), getTypeBinding(), modelBinders, getBindingState(), getOptions(), getBindingContext() );
 		}
 
 		super.prepareBinding( modelBinders );
+	}
+
+	protected BasicValue getDiscriminatorMapping() {
+		if ( binding instanceof RootClass rootClass ) {
+			return (BasicValue) rootClass.getDiscriminator();
+		}
+		return getSuperEntityBinder().getDiscriminatorMapping();
+	}
+
+	private void bindDiscriminatorValue(
+			EntityTypeMetadata managedType,
+			PersistentClass typeBinding,
+			ModelBinders modelBinders,
+			BindingState bindingState,
+			BindingOptions options,
+			BindingContext bindingContext) {
+		final BasicValue discriminatorMapping = getDiscriminatorMapping();
+		if ( discriminatorMapping == null ) {
+			return;
+		}
+
+		final AnnotationUsage<DiscriminatorValue> ann = managedType.getClassDetails().getAnnotationUsage( DiscriminatorValue.class );
+		if ( ann == null ) {
+			final Type resolvedJavaType = discriminatorMapping.resolve().getRelationalJavaType().getJavaType();
+			if ( resolvedJavaType == String.class ) {
+				typeBinding.setDiscriminatorValue( typeBinding.getEntityName() );
+			}
+			else {
+				typeBinding.setDiscriminatorValue( Integer.toString( typeBinding.getSubclassId() ) );
+			}
+		}
+		else {
+			typeBinding.setDiscriminatorValue( ann.getString( "value" ) );
+		}
 	}
 
 	private void prepareRootEntityBinding(RootClass typeBinding, ModelBinders modelBinders) {
 		// todo : possibly Hierarchy details - version, tenant-id, ...
 
 		bindIdentifier( getManagedType(), typeBinding, modelBinders, getBindingState(), getOptions(), getBindingContext() );
+		bindDiscriminator( getManagedType(), typeBinding, modelBinders, getOptions(), getBindingState(), getBindingContext() );
+
+		processSoftDelete( typeBinding.getIdentityTable(), typeBinding, getManagedType().getClassDetails() );
+		processOptimisticLocking( typeBinding, getManagedType().getClassDetails() );
+		processCacheRegions( getManagedType(), typeBinding, getManagedType().getClassDetails() );
+	}
+
+	private void bindDiscriminator(
+			EntityTypeMetadata managedType,
+			RootClass typeBinding,
+			ModelBinders modelBinders,
+			BindingOptions bindingOptions,
+			BindingState bindingState,
+			BindingContext bindingContext) {
+		final InheritanceType inheritanceType = managedType.getHierarchy().getInheritanceType();
+		final AnnotationUsage<DiscriminatorColumn> columnAnn = managedType.getClassDetails().getAnnotationUsage( DiscriminatorColumn.class );
+		final AnnotationUsage<DiscriminatorFormula> formulaAnn = managedType.getClassDetails().getAnnotationUsage( DiscriminatorFormula.class );
+
+		if ( columnAnn != null && formulaAnn != null ) {
+			throw new MappingException( "Entity defined both @DiscriminatorColumn and @DiscriminatorFormula - " + typeBinding.getEntityName() );
+		}
+
+		if ( inheritanceType == InheritanceType.TABLE_PER_CLASS ) {
+			// UnionSubclass cannot define a discriminator
+			return;
+		}
+
+		if ( inheritanceType == InheritanceType.JOINED ) {
+			// JoinedSubclass can define a discriminator in certain circumstances
+			final MetadataBuildingOptions buildingOptions = bindingState.getMetadataBuildingContext().getBuildingOptions();
+
+			if ( buildingOptions.ignoreExplicitDiscriminatorsForJoinedInheritance() ) {
+				if ( columnAnn != null || formulaAnn != null ) {
+					MODEL_BINDING_LOGGER.debugf( "Skipping explicit discriminator for JOINED hierarchy due to configuration - " + typeBinding.getEntityName() );
+				}
+				return;
+			}
+
+			if ( !buildingOptions.createImplicitDiscriminatorsForJoinedInheritance() ) {
+				if ( columnAnn == null && formulaAnn == null ) {
+					return;
+				}
+			}
+		}
+
+		if ( inheritanceType == InheritanceType.SINGLE_TABLE ) {
+			if ( !managedType.hasSubTypes() ) {
+				return;
+			}
+		}
+
+		final BasicValue value = new BasicValue( bindingState.getMetadataBuildingContext(), typeBinding.getIdentityTable() );
+		typeBinding.setDiscriminator( value );
+
+		final DiscriminatorType discriminatorType = ColumnBinder.bindDiscriminatorColumn(
+				bindingContext,
+				formulaAnn,
+				value,
+				columnAnn,
+				bindingOptions,
+				bindingState
+		);
+
+		final Class<?> discriminatorJavaType;
+		switch ( discriminatorType ) {
+			case STRING -> discriminatorJavaType = String.class;
+			case CHAR -> discriminatorJavaType = char.class;
+			case INTEGER -> discriminatorJavaType = int.class;
+			default -> throw new IllegalStateException( "Unexpected DiscriminatorType - " + discriminatorType );
+		}
+
+		value.setImplicitJavaTypeAccess( typeConfiguration -> discriminatorJavaType );
 	}
 
 	private void processSoftDelete(
 			Table primaryTable,
 			RootClass rootClass,
-			ClassDetails classDetails,
-			BindingState state,
-			BindingContext context) {
+			ClassDetails classDetails) {
 		final AnnotationUsage<SoftDelete> softDeleteConfig = getTypeBinding() instanceof RootClass
 				? classDetails.getAnnotationUsage( SoftDelete.class )
 				: null;
@@ -467,45 +577,36 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 			return;
 		}
 
-		final BasicValue softDeleteIndicatorValue = createSoftDeleteIndicatorValue( softDeleteConfig, primaryTable, state, context );
-		final Column softDeleteIndicatorColumn = createSoftDeleteIndicatorColumn(
-				softDeleteConfig,
-				softDeleteIndicatorValue,
-				state,
-				context
-		);
+		final BasicValue softDeleteIndicatorValue = createSoftDeleteIndicatorValue( softDeleteConfig, primaryTable );
+		final Column softDeleteIndicatorColumn = createSoftDeleteIndicatorColumn( softDeleteConfig, softDeleteIndicatorValue );
 		primaryTable.addColumn( softDeleteIndicatorColumn );
 		rootClass.enableSoftDelete( softDeleteIndicatorColumn );
 	}
 
-	private static BasicValue createSoftDeleteIndicatorValue(
+	private BasicValue createSoftDeleteIndicatorValue(
 			AnnotationUsage<SoftDelete> softDeleteAnn,
-			Table table,
-			BindingState state,
-			BindingContext context) {
+			Table table) {
 		assert softDeleteAnn != null;
 
 		final var converterClassDetails = softDeleteAnn.getClassDetails( "converter" );
 		final ClassBasedConverterDescriptor converterDescriptor = new ClassBasedConverterDescriptor(
 				converterClassDetails.toJavaClass(),
-				context.getBootstrapContext().getClassmateContext()
+				getBindingContext().getBootstrapContext().getClassmateContext()
 		);
 
-		final BasicValue softDeleteIndicatorValue = new BasicValue( state.getMetadataBuildingContext(), table );
+		final BasicValue softDeleteIndicatorValue = new BasicValue( getBindingState().getMetadataBuildingContext(), table );
 		softDeleteIndicatorValue.makeSoftDelete( softDeleteAnn.getEnum( "strategy" ) );
 		softDeleteIndicatorValue.setJpaAttributeConverterDescriptor( converterDescriptor );
 		softDeleteIndicatorValue.setImplicitJavaTypeAccess( (typeConfiguration) -> converterDescriptor.getRelationalValueResolvedType().getErasedType() );
 		return softDeleteIndicatorValue;
 	}
 
-	private static Column createSoftDeleteIndicatorColumn(
+	private Column createSoftDeleteIndicatorColumn(
 			AnnotationUsage<SoftDelete> softDeleteConfig,
-			BasicValue softDeleteIndicatorValue,
-			BindingState state,
-			BindingContext context) {
+			BasicValue softDeleteIndicatorValue) {
 		final Column softDeleteColumn = new Column();
 
-		applyColumnName( softDeleteColumn, softDeleteConfig, state, context );
+		applyColumnName( softDeleteColumn, softDeleteConfig, getBindingState(), getBindingContext() );
 
 		softDeleteColumn.setLength( 1 );
 		softDeleteColumn.setNullable( false );
@@ -537,12 +638,9 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		softDeleteColumn.setName( physicalColumnName.render( database.getDialect() ) );
 	}
 
-	private static void processOptimisticLocking(
-			Table binding,
+	private void processOptimisticLocking(
 			RootClass rootEntity,
-			ClassDetails classDetails,
-			BindingState state,
-			BindingContext context) {
+			ClassDetails classDetails) {
 		final var optimisticLocking = classDetails.getAnnotationUsage( OptimisticLocking.class );
 
 		if ( optimisticLocking != null ) {
@@ -551,12 +649,10 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		}
 	}
 
-	private static void processCacheRegions(
+	private void processCacheRegions(
 			EntityTypeMetadata source,
 			RootClass rootClass,
-			ClassDetails classDetails,
-			BindingState state,
-			BindingContext context) {
+			ClassDetails classDetails) {
 		final EntityHierarchy hierarchy = source.getHierarchy();
 		final CacheRegion cacheRegion = hierarchy.getCacheRegion();
 		final NaturalIdCacheRegion naturalIdCacheRegion = hierarchy.getNaturalIdCacheRegion();
@@ -591,7 +687,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		filters.forEach( (filter) -> {
 			binding.addFilter(
 					filter.getString( "name" ),
-					filter.getString( "condition", null ),
+					filter.getString( "condition", (String) null ),
 					filter.getAttributeValue( "deduceAliasInjectionPoints", true ),
 					extractFilterAliasTableMap( filter ),
 					extractFilterAliasEntityMap( filter )
