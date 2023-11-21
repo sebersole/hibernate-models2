@@ -29,6 +29,7 @@ import org.hibernate.boot.models.bind.internal.SecondaryTable;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
+import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
 import org.hibernate.boot.models.categorize.spi.CacheRegion;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
@@ -493,13 +494,27 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 
 		bindIdentifier( getManagedType(), typeBinding, modelBinders, getBindingState(), getOptions(), getBindingContext() );
 		bindDiscriminator( getManagedType(), typeBinding, modelBinders, getOptions(), getBindingState(), getBindingContext() );
+		bindVersion( getManagedType(), typeBinding, modelBinders, getOptions(), getBindingState(), getBindingContext() );
 
 		processSoftDelete( typeBinding.getIdentityTable(), typeBinding, getManagedType().getClassDetails() );
 		processOptimisticLocking( typeBinding, getManagedType().getClassDetails() );
 		processCacheRegions( getManagedType(), typeBinding, getManagedType().getClassDetails() );
 	}
 
-	private void bindDiscriminator(
+	private static void bindVersion(
+			EntityTypeMetadata managedType,
+			RootClass typeBinding,
+			ModelBinders modelBinders,
+			BindingOptions options,
+			BindingState bindingState,
+			BindingContext bindingContext) {
+		final AttributeMetadata versionAttribute = managedType.getHierarchy().getVersionAttribute();
+		if ( versionAttribute != null ) {
+			AttributeBinder.bindVersion( versionAttribute, managedType, typeBinding, options, bindingState, bindingContext );
+		}
+	}
+
+	private static void bindDiscriminator(
 			EntityTypeMetadata managedType,
 			RootClass typeBinding,
 			ModelBinders modelBinders,

@@ -13,6 +13,7 @@ import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
 import org.hibernate.boot.models.categorize.spi.FilterDefRegistration;
 import org.hibernate.boot.models.categorize.spi.ManagedTypeMetadata;
 import org.hibernate.boot.spi.MetadataBuildingContext;
+import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.internal.util.KeyedConsumer;
 import org.hibernate.models.spi.ClassDetails;
 
@@ -28,6 +29,8 @@ public interface BindingState {
 	default Database getDatabase() {
 		return getMetadataBuildingContext().getMetadataCollector().getDatabase();
 	}
+
+	JdbcServices getJdbcServices();
 
 	void apply(FilterDefRegistration registration);
 

@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 
 import org.hibernate.boot.model.naming.Identifier;
+import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.models.bind.internal.binders.EntityTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.IdentifiableTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
@@ -23,6 +24,7 @@ import org.hibernate.boot.models.categorize.spi.FilterDefRegistration;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.ManagedTypeMetadata;
 import org.hibernate.boot.spi.MetadataBuildingContext;
+import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.FilterDefinition;
 import org.hibernate.internal.util.KeyedConsumer;
 import org.hibernate.internal.util.collections.CollectionHelper;
@@ -36,6 +38,9 @@ import org.hibernate.type.spi.TypeConfiguration;
 public class BindingStateImpl implements BindingState {
 	private final MetadataBuildingContext metadataBuildingContext;
 
+	private final Database database;
+	private final JdbcServices jdbcServices;
+
 	private final Map<String, TableReference> tableMap = new HashMap<>();
 	private final Map<TableOwner, TableReference> tableByOwnerMap = new HashMap<>();
 
@@ -44,11 +49,23 @@ public class BindingStateImpl implements BindingState {
 
 	public BindingStateImpl(MetadataBuildingContext metadataBuildingContext) {
 		this.metadataBuildingContext = metadataBuildingContext;
+		this.database = metadataBuildingContext.getMetadataCollector().getDatabase();
+		this.jdbcServices = metadataBuildingContext.getBootstrapContext().getServiceRegistry().getService( JdbcServices.class );
 	}
 
 	@Override
 	public MetadataBuildingContext getMetadataBuildingContext() {
 		return metadataBuildingContext;
+	}
+
+	@Override
+	public Database getDatabase() {
+		return database;
+	}
+
+	@Override
+	public JdbcServices getJdbcServices() {
+		return jdbcServices;
 	}
 
 	@Override

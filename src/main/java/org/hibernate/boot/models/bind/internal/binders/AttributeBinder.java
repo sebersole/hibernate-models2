@@ -22,10 +22,13 @@ import org.hibernate.boot.models.bind.internal.SecondPass;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
+import org.hibernate.boot.models.bind.spi.QuotedIdentifierTarget;
 import org.hibernate.boot.models.bind.spi.TableReference;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
+import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Property;
+import org.hibernate.mapping.RootClass;
 import org.hibernate.mapping.Table;
 import org.hibernate.mapping.Value;
 import org.hibernate.models.ModelsException;
@@ -119,7 +122,7 @@ public class AttributeBinder {
 		bindOptimisticLocking( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
 		bindConversion( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
 
-		processColumn( member, binding, basicValue, primaryTable, bindingState, bindingContext );
+		processColumn( member, binding, basicValue, primaryTable, bindingOptions, bindingState, bindingContext );
 
 		BasicValueBinder.bindJavaType( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
 		BasicValueBinder.bindJdbcType( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
@@ -240,25 +243,21 @@ public class AttributeBinder {
 			Property property,
 			BasicValue basicValue,
 			Table primaryTable,
+			BindingOptions bindingOptions,
 			BindingState bindingState,
 			@SuppressWarnings("unused") BindingContext bindingContext) {
 		// todo : implicit column
 		final var columnAnn = member.getAnnotationUsage( Column.class );
 		final var column = ColumnBinder.bindColumn( columnAnn, property::getName );
 
-		if ( columnAnn != null ) {
-			final var tableName = columnAnn.getString( "table", (String) null );
-			if ( tableName != null ) {
-				final Identifier identifier = Identifier.toIdentifier( tableName );
-				final TableReference tableByName = bindingState.getTableByName( identifier.getCanonicalName() );
-				basicValue.setTable( tableByName.binding() );
-			}
-			else {
-				basicValue.setTable( primaryTable );
-			}
+		var tableName = BindingHelper.getValue( columnAnn, "table", (String) null );
+		if ( "".equals( tableName ) || tableName == null ) {
+			basicValue.setTable( primaryTable );
 		}
 		else {
-			basicValue.setTable( primaryTable );
+			final Identifier identifier = Identifier.toIdentifier( tableName );
+			final TableReference tableByName = bindingState.getTableByName( identifier.getCanonicalName() );
+			basicValue.setTable( tableByName.binding() );
 		}
 
 		basicValue.addColumn( column );
@@ -295,14 +294,23 @@ public class AttributeBinder {
 		) );
 	}
 
-	private void processTemporalPrecision(MemberDetails member, BasicValue basicValue) {
-		final AnnotationUsage<Temporal> temporalAnn = member.getAnnotationUsage( Temporal.class );
-		if ( temporalAnn == null ) {
-			return;
-		}
+	public static void bindVersion(
+			AttributeMetadata attributeMetadata,
+			EntityTypeMetadata managedType,
+			RootClass typeBinding,
+			BindingOptions bindingOptions,
+			BindingState bindingState,
+			BindingContext bindingContext) {
+		final Property property = new Property();
+		property.setName( attributeMetadata.getName() );
+		typeBinding.setVersion( property );
 
-		//noinspection deprecation
-		final TemporalType precision = temporalAnn.getEnum( "value" );
-		basicValue.setTemporalPrecision( precision );
+		final BasicValue basicValue = new BasicValue( bindingState.getMetadataBuildingContext(), typeBinding.getRootTable() );
+		property.setValue( basicValue );
+
+		final MemberDetails member = attributeMetadata.getMember();
+		bindImplicitJavaType( member, property, basicValue, bindingOptions, bindingState, bindingContext );
+
+		processColumn( member, property, basicValue, typeBinding.getRootTable(), bindingOptions, bindingState, bindingContext );
 	}
 }
