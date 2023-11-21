@@ -13,6 +13,7 @@ import org.hibernate.boot.models.bind.internal.BindingHelper;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
+import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Formula;
@@ -142,22 +143,19 @@ public class ColumnBinder {
 					bindingOptions,
 					bindingState
 			) );
-			// todo : see https://hibernate.atlassian.net/browse/HHH-17449
-//			column.setOptions( (Integer) BindingHelper.getValue(
-//					columnAnn,
-//					"options",
-//					() -> {
-//						final AnnotationDescriptor<DiscriminatorColumn> descriptor;
-//						if ( columnAnn != null ) {
-//							descriptor = columnAnn.getAnnotationDescriptor();
-//						}
-//						else {
-//							descriptor = bindingContext.getAnnotationDescriptorRegistry().getDescriptor( DiscriminatorColumn.class );
-//						}
-//						return descriptor.getAttribute( "options" ).getAttributeMethod().getDefaultValue();
-//					}
-//			) );
+			applyOptions( column, columnAnn );
 		}
 		return discriminatorType;
+	}
+
+	private static void applyOptions(Column column, AnnotationUsage<?> columnAnn) {
+		if ( columnAnn != null ) {
+			final String options = columnAnn.getString( "options" );
+			if ( StringHelper.isNotEmpty( options ) ) {
+				// todo : see https://hibernate.atlassian.net/browse/HHH-17449
+//				table.setOptions( options );
+				throw new UnsupportedOperationException( "Not yet implemented" );
+			}
+		}
 	}
 }

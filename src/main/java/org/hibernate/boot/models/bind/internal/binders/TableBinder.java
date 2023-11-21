@@ -36,6 +36,7 @@ import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.DenormalizedTable;
+import org.hibernate.mapping.Join;
 import org.hibernate.mapping.PrimaryKey;
 import org.hibernate.mapping.Table;
 import org.hibernate.models.spi.AnnotationUsage;
@@ -158,8 +159,8 @@ public class TableBinder {
 		return new UnionTable( logicalName, superTypeTable, binding, !type.hasSubTypes() );
 	}
 
-	public List<org.hibernate.boot.models.bind.internal.SecondaryTable> bindSecondaryTables(EntityTypeMetadata type) {
-		final ClassDetails typeClassDetails = type.getClassDetails();
+	public List<org.hibernate.boot.models.bind.internal.SecondaryTable> bindSecondaryTables(EntityTypeBinder entityBinder) {
+		final ClassDetails typeClassDetails = entityBinder.getManagedType().getClassDetails();
 
 		final List<AnnotationUsage<SecondaryTable>> secondaryTableAnns = typeClassDetails.getRepeatedAnnotationUsages( SecondaryTable.class );
 		final List<org.hibernate.boot.models.bind.internal.SecondaryTable> result = new ArrayList<>( secondaryTableAnns.size() );
@@ -170,7 +171,7 @@ public class TableBinder {
 					secondaryTableAnn.getString( "name" ),
 					"table"
 			);
-			final org.hibernate.boot.models.bind.internal.SecondaryTable binding = bindSecondaryTable( type, secondaryTableAnn, secondaryRowAnn );
+			final org.hibernate.boot.models.bind.internal.SecondaryTable binding = bindSecondaryTable( entityBinder, secondaryTableAnn, secondaryRowAnn );
 			result.add( binding );
 			bindingState.addSecondaryTable( binding );
 		} );
@@ -335,10 +336,10 @@ public class TableBinder {
 	}
 
 	private org.hibernate.boot.models.bind.internal.SecondaryTable bindSecondaryTable(
-			EntityTypeMetadata type,
+			EntityTypeBinder entityBinder,
 			AnnotationUsage<SecondaryTable> secondaryTableAnn,
 			AnnotationUsage<SecondaryRow> secondaryRowAnn) {
-		final Identifier logicalName = determineLogicalName( type, secondaryTableAnn );
+		final Identifier logicalName = determineLogicalName( entityBinder.getManagedType(), secondaryTableAnn );
 		final Identifier schemaName = resolveDatabaseIdentifier(
 				secondaryTableAnn,
 				"schema",
@@ -355,16 +356,23 @@ public class TableBinder {
 		);
 
 		final var binding = bindingState.getMetadataBuildingContext().getMetadataCollector().addTable(
-				schemaName.getCanonicalName(),
-				catalogName.getCanonicalName(),
+				toCanonicalName( schemaName ),
+				toCanonicalName( catalogName ),
 				logicalName.getCanonicalName(),
 				null,
 				false,
 				bindingState.getMetadataBuildingContext()
 		);
 
-		applyComment( binding, secondaryTableAnn, findCommentAnnotation( type, logicalName, false ) );
+		applyComment( binding, secondaryTableAnn, findCommentAnnotation( entityBinder.getManagedType(), logicalName, false ) );
 		applyOptions( binding, secondaryTableAnn );
+
+		final Join join = new Join();
+		join.setTable( binding );
+		join.setOptional( BindingHelper.getValue( secondaryRowAnn, "optional", true ) );
+		join.setInverse( !BindingHelper.getValue( secondaryRowAnn, "owned", true ) );
+		join.setPersistentClass( entityBinder.getTypeBinding() );
+		entityBinder.getTypeBinding().addJoin( join );
 
 		return new org.hibernate.boot.models.bind.internal.SecondaryTable(
 				logicalName,
@@ -379,7 +387,12 @@ public class TableBinder {
 		);
 	}
 
-
+	private String toCanonicalName(Identifier name) {
+		if ( name == null ) {
+			return null;
+		}
+		return name.getCanonicalName();
+	}
 
 	private <A extends Annotation> Identifier resolveDatabaseIdentifier(
 			AnnotationUsage<A> annotationUsage,

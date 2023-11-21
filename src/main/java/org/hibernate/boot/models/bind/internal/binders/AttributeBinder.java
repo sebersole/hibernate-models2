@@ -12,10 +12,8 @@ import java.util.List;
 
 import org.hibernate.annotations.Immutable;
 import org.hibernate.annotations.Mutability;
+import org.hibernate.annotations.NaturalId;
 import org.hibernate.annotations.OptimisticLock;
-import org.hibernate.annotations.TimeZoneColumn;
-import org.hibernate.annotations.TimeZoneStorage;
-import org.hibernate.annotations.TimeZoneStorageType;
 import org.hibernate.boot.model.convert.internal.ClassBasedConverterDescriptor;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.models.AnnotationPlacementException;
@@ -28,6 +26,8 @@ import org.hibernate.boot.models.bind.spi.TableReference;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Property;
+import org.hibernate.mapping.Table;
+import org.hibernate.mapping.Value;
 import org.hibernate.models.ModelsException;
 import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.ClassDetails;
@@ -40,8 +40,6 @@ import jakarta.persistence.Convert;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 
-import static org.hibernate.annotations.TimeZoneStorageType.AUTO;
-import static org.hibernate.annotations.TimeZoneStorageType.COLUMN;
 import static org.hibernate.boot.models.categorize.spi.AttributeMetadata.AttributeNature.BASIC;
 
 /**
@@ -54,11 +52,13 @@ public class AttributeBinder {
 	private final BindingContext bindingContext;
 
 	private final Property binding;
+	private final Table attributeTable;
 
 	private List<ValueSecondPass> valueSecondPasses;
 
 	public AttributeBinder(
 			AttributeMetadata attributeMetadata,
+			Table primaryTable,
 			BindingState bindingState,
 			BindingOptions bindingOptions,
 			BindingContext bindingContext) {
@@ -71,16 +71,32 @@ public class AttributeBinder {
 		binding.setName( attributeMetadata.getName() );
 
 		if ( attributeMetadata.getNature() == BASIC ) {
-			final var basicValue = createBasicValue();
+			final var basicValue = createBasicValue( primaryTable );
 			binding.setValue( basicValue );
+			attributeTable = basicValue.getTable();
 		}
 		else {
 			throw new UnsupportedOperationException( "Not yet implemented" );
 		}
+
+		applyNaturalId( attributeMetadata, binding );
 	}
 
 	public Property getBinding() {
 		return binding;
+	}
+
+	public Table getTable() {
+		return attributeTable;
+	}
+
+	private void applyNaturalId(AttributeMetadata attributeMetadata, Property property) {
+		final var naturalIdAnn = attributeMetadata.getMember().getAnnotationUsage( NaturalId.class );
+		if ( naturalIdAnn == null ) {
+			return;
+		}
+		property.setNaturalIdentifier( true );
+		property.setUpdateable( naturalIdAnn.getBoolean( "mutable" ) );
 	}
 
 	private void registerValueSecondPass(ValueSecondPass secondPass) {
@@ -94,10 +110,52 @@ public class AttributeBinder {
 		BindingHelper.processSecondPassQueue( valueSecondPasses );
 	}
 
-	private BasicValue createBasicValue() {
+	private BasicValue createBasicValue(Table primaryTable) {
 		final BasicValue basicValue = new BasicValue( bindingState.getMetadataBuildingContext() );
-		// probably we don't need this as a second pass...
-		registerValueSecondPass( new BasicValueSecondPass( attributeMetadata, getBinding(), basicValue, bindingOptions, bindingState, bindingContext ) );
+
+		final MemberDetails member = attributeMetadata.getMember();
+		bindImplicitJavaType( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
+		bindMutability( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
+		bindOptimisticLocking( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
+		bindConversion( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
+
+		processColumn( member, binding, basicValue, primaryTable, bindingState, bindingContext );
+
+		BasicValueBinder.bindJavaType( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
+		BasicValueBinder.bindJdbcType( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
+		BasicValueBinder.bindLob( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
+		BasicValueBinder.bindNationalized(
+				member,
+				binding,
+				basicValue,
+				bindingOptions,
+				bindingState,
+				bindingContext
+		);
+		BasicValueBinder.bindEnumerated(
+				member,
+				binding,
+				basicValue,
+				bindingOptions,
+				bindingState,
+				bindingContext
+		);
+		BasicValueBinder.bindTemporalPrecision(
+				member,
+				binding,
+				basicValue,
+				bindingOptions,
+				bindingState,
+				bindingContext
+		);
+		BasicValueBinder.bindTimeZoneStorage(
+				member,
+				binding,
+				basicValue,
+				bindingOptions,
+				bindingState,
+				bindingContext
+		);
 
 		return basicValue;
 	}
@@ -177,123 +235,74 @@ public class AttributeBinder {
 		}
 	}
 
-	private record BasicValueSecondPass(
-			AttributeMetadata attributeMetadata,
+	private static org.hibernate.mapping.Column processColumn(
+			MemberDetails member,
 			Property property,
 			BasicValue basicValue,
-			BindingOptions bindingOptions,
+			Table primaryTable,
 			BindingState bindingState,
-			BindingContext bindingContext) implements ValueSecondPass {
+			@SuppressWarnings("unused") BindingContext bindingContext) {
+		// todo : implicit column
+		final var columnAnn = member.getAnnotationUsage( Column.class );
+		final var column = ColumnBinder.bindColumn( columnAnn, property::getName );
 
-		@Override
-		public boolean processValue() {
-			final MemberDetails member = attributeMetadata.getMember();
-			bindImplicitJavaType( member, property, basicValue, bindingOptions, bindingState, bindingContext );
-			bindMutability( member, property, basicValue, bindingOptions, bindingState, bindingContext );
-			bindOptimisticLocking( member, property, basicValue, bindingOptions, bindingState, bindingContext );
-			bindConversion( member, property, basicValue, bindingOptions, bindingState, bindingContext );
-
-			processColumn( member, property, basicValue, bindingState, bindingContext );
-
-			BasicValueBinder.bindJavaType( member, property, basicValue, bindingOptions, bindingState, bindingContext );
-			BasicValueBinder.bindJdbcType( member, property, basicValue, bindingOptions, bindingState, bindingContext );
-			BasicValueBinder.bindLob( member, property, basicValue, bindingOptions, bindingState, bindingContext );
-			BasicValueBinder.bindNationalized(
-					member,
-					property,
-					basicValue,
-					bindingOptions,
-					bindingState,
-					bindingContext
-			);
-			BasicValueBinder.bindEnumerated(
-					member,
-					property,
-					basicValue,
-					bindingOptions,
-					bindingState,
-					bindingContext
-			);
-			BasicValueBinder.bindTemporalPrecision(
-					member,
-					property,
-					basicValue,
-					bindingOptions,
-					bindingState,
-					bindingContext
-			);
-			BasicValueBinder.bindTimeZoneStorage(
-					member,
-					property,
-					basicValue,
-					bindingOptions,
-					bindingState,
-					bindingContext
-			);
-
-			return true;
+		if ( columnAnn != null ) {
+			final var tableName = columnAnn.getString( "table", (String) null );
+			if ( tableName != null ) {
+				final Identifier identifier = Identifier.toIdentifier( tableName );
+				final TableReference tableByName = bindingState.getTableByName( identifier.getCanonicalName() );
+				basicValue.setTable( tableByName.binding() );
+			}
+			else {
+				basicValue.setTable( primaryTable );
+			}
+		}
+		else {
+			basicValue.setTable( primaryTable );
 		}
 
-		private static void processColumn(
-				MemberDetails member,
-				Property property,
-				BasicValue basicValue,
-				BindingState bindingState,
-				@SuppressWarnings("unused") BindingContext bindingContext) {
-			// todo : implicit column
-			final var columnAnn = member.getAnnotationUsage( Column.class );
-			final var column = ColumnBinder.bindColumn( columnAnn, property::getName );
+		basicValue.addColumn( column );
 
-			if ( columnAnn != null ) {
-				final var tableName = columnAnn.getString( "table", (String) null );
-				if ( tableName != null ) {
-					final Identifier identifier = Identifier.toIdentifier( tableName );
-					final TableReference tableByName = bindingState.getTableByName( identifier.getCanonicalName() );
-					basicValue.setTable( tableByName.binding() );
-				}
-			}
+		return column;
+	}
 
-			basicValue.addColumn( column );
+	private static void bindConversion(
+			MemberDetails member,
+			@SuppressWarnings("unused") Property property,
+			@SuppressWarnings("unused") BasicValue basicValue,
+			@SuppressWarnings("unused") BindingOptions bindingOptions,
+			@SuppressWarnings("unused") BindingState bindingState,
+			@SuppressWarnings("unused") BindingContext bindingContext) {
+		// todo : do we need to account for auto-applied converters here?
+		final var convertAnn = member.getAnnotationUsage( Convert.class );
+		if ( convertAnn == null ) {
+			return;
 		}
 
-		private static void bindConversion(
-				MemberDetails member,
-				@SuppressWarnings("unused") Property property,
-				@SuppressWarnings("unused") BasicValue basicValue,
-				@SuppressWarnings("unused") BindingOptions bindingOptions,
-				@SuppressWarnings("unused") BindingState bindingState,
-				@SuppressWarnings("unused") BindingContext bindingContext) {
-			// todo : do we need to account for auto-applied converters here?
-			final var convertAnn = member.getAnnotationUsage( Convert.class );
-			if ( convertAnn == null ) {
-				return;
-			}
-
-			if ( convertAnn.getBoolean( "disableConversion" ) ) {
-				return;
-			}
-
-			if ( convertAnn.getString( "attributeName" ) != null ) {
-				throw new ModelsException( "@Convert#attributeName should not be specified on basic mappings - " + member.getName() );
-			}
-
-			final ClassDetails converterClassDetails = convertAnn.getClassDetails( "converter" );
-			final Class<AttributeConverter<?, ?>> javaClass = converterClassDetails.toJavaClass();
-			basicValue.setJpaAttributeConverterDescriptor( new ClassBasedConverterDescriptor(
-					javaClass,
-					bindingContext.getClassmateContext()
-			) );
+		if ( convertAnn.getBoolean( "disableConversion" ) ) {
+			return;
 		}
 
-		private void processTemporalPrecision(MemberDetails member, BasicValue basicValue) {
-			final AnnotationUsage<Temporal> temporalAnn = member.getAnnotationUsage( Temporal.class );
-			if ( temporalAnn == null ) {
-				return;
-			}
-
-			//noinspection deprecation
-			final TemporalType precision = temporalAnn.getEnum( "value" );
-			basicValue.setTemporalPrecision( precision );
+		if ( convertAnn.getString( "attributeName" ) != null ) {
+			throw new ModelsException( "@Convert#attributeName should not be specified on basic mappings - " + member.getName() );
 		}
+
+		final ClassDetails converterClassDetails = convertAnn.getClassDetails( "converter" );
+		final Class<AttributeConverter<?, ?>> javaClass = converterClassDetails.toJavaClass();
+		basicValue.setJpaAttributeConverterDescriptor( new ClassBasedConverterDescriptor(
+				javaClass,
+				bindingContext.getClassmateContext()
+		) );
+	}
+
+	private void processTemporalPrecision(MemberDetails member, BasicValue basicValue) {
+		final AnnotationUsage<Temporal> temporalAnn = member.getAnnotationUsage( Temporal.class );
+		if ( temporalAnn == null ) {
+			return;
+		}
+
+		//noinspection deprecation
+		final TemporalType precision = temporalAnn.getEnum( "value" );
+		basicValue.setTemporalPrecision( precision );
 	}
 }

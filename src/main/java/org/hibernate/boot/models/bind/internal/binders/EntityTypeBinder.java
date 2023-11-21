@@ -131,7 +131,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 			( (TableOwner) binding ).setTable( table );
 		}
 
-		final var secondaryTables = modelBinders.getTableBinder().bindSecondaryTables( getManagedType() );
+		final var secondaryTables = modelBinders.getTableBinder().bindSecondaryTables( this );
 		secondaryTables.forEach( this::processSecondaryTable );
 
 		final IdentifiableTypeBinder superTypeBinder = getSuperTypeBinder();

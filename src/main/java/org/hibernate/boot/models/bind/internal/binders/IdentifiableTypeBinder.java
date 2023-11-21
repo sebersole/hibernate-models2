@@ -9,20 +9,16 @@ package org.hibernate.boot.models.bind.internal.binders;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.hibernate.annotations.NaturalId;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
-import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
-import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.IdentifiableTypeClass;
+import org.hibernate.mapping.Join;
 import org.hibernate.mapping.PersistentClass;
-import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
-import org.hibernate.mapping.Value;
 
 /**
  * @author Steve Ebersole
@@ -89,7 +85,7 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 
 	@Override
 	protected void prepareBinding(ModelBinders modelBinders) {
-		final var table = getTable();
+		final var primaryTable = getTable();
 		final var managedType = getManagedType();
 
 		managedType.forEachAttribute( (index, attributeMetadata) -> {
@@ -99,38 +95,37 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 
 			final var attributeBinder = new AttributeBinder(
 					attributeMetadata,
+					primaryTable,
 					getBindingState(),
 					getOptions(),
 					getBindingContext()
 			);
 
 			final var property = attributeBinder.getBinding();
-
 			final var value = property.getValue();
-			applyTable( value, table );
-
-			processNaturalId( attributeMetadata, property );
 
 			attributeBinders.add( attributeBinder );
-			getTypeBinding().applyProperty( property );
+			final Table attributeTable = value.getTable();
+			if ( attributeTable == primaryTable ) {
+				getTypeBinding().applyProperty( property );
+			}
+			else {
+				final Join join = findJoin( attributeTable );
+				join.addProperty( property );
+			}
 		} );
 
 		super.prepareBinding( modelBinders );
 	}
 
-	private void processNaturalId(AttributeMetadata attributeMetadata, Property property) {
-		final var naturalIdAnn = attributeMetadata.getMember().getAnnotationUsage( NaturalId.class );
-		if ( naturalIdAnn == null ) {
-			return;
+	private Join findJoin(Table attributeTable) {
+		final List<Join> joins = ( (PersistentClass) getTypeBinding() ).getJoinClosure();
+		for ( int i = 0; i < joins.size(); i++ ) {
+			if ( joins.get( i ).getTable() == attributeTable ) {
+				return joins.get( i );
+			}
 		}
-		property.setNaturalIdentifier( true );
-		property.setUpdateable( naturalIdAnn.getBoolean( "mutable" ) );
-	}
-
-	private void applyTable(Value value, Table table) {
-		if ( value instanceof BasicValue ) {
-			( (BasicValue) value ).setTable( table );
-		}
+		throw new IllegalArgumentException( "Could not locate Table for name - " + attributeTable.getName() );
 	}
 
 	@Override
