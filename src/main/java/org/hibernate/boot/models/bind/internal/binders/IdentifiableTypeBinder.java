@@ -89,7 +89,9 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 		final var managedType = getManagedType();
 
 		managedType.forEachAttribute( (index, attributeMetadata) -> {
-			if ( managedType.getHierarchy().getIdMapping().contains( attributeMetadata ) ) {
+			if ( managedType.getHierarchy().getIdMapping().contains( attributeMetadata )
+					|| managedType.getHierarchy().getVersionAttribute() == attributeMetadata
+					|| managedType.getHierarchy().getTenantIdAttribute() == attributeMetadata ) {
 				return;
 			}
 

@@ -495,23 +495,11 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		bindIdentifier( getManagedType(), typeBinding, modelBinders, getBindingState(), getOptions(), getBindingContext() );
 		bindDiscriminator( getManagedType(), typeBinding, modelBinders, getOptions(), getBindingState(), getBindingContext() );
 		bindVersion( getManagedType(), typeBinding, modelBinders, getOptions(), getBindingState(), getBindingContext() );
+		bindTenantId( getManagedType(), typeBinding, modelBinders, getOptions(), getBindingState(), getBindingContext() );
 
 		processSoftDelete( typeBinding.getIdentityTable(), typeBinding, getManagedType().getClassDetails() );
 		processOptimisticLocking( typeBinding, getManagedType().getClassDetails() );
 		processCacheRegions( getManagedType(), typeBinding, getManagedType().getClassDetails() );
-	}
-
-	private static void bindVersion(
-			EntityTypeMetadata managedType,
-			RootClass typeBinding,
-			ModelBinders modelBinders,
-			BindingOptions options,
-			BindingState bindingState,
-			BindingContext bindingContext) {
-		final AttributeMetadata versionAttribute = managedType.getHierarchy().getVersionAttribute();
-		if ( versionAttribute != null ) {
-			AttributeBinder.bindVersion( versionAttribute, managedType, typeBinding, options, bindingState, bindingContext );
-		}
 	}
 
 	private static void bindDiscriminator(
@@ -579,6 +567,33 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		}
 
 		value.setImplicitJavaTypeAccess( typeConfiguration -> discriminatorJavaType );
+	}
+
+	private static void bindVersion(
+			EntityTypeMetadata managedType,
+			RootClass typeBinding,
+			ModelBinders modelBinders,
+			BindingOptions options,
+			BindingState bindingState,
+			BindingContext bindingContext) {
+		final AttributeMetadata versionAttribute = managedType.getHierarchy().getVersionAttribute();
+		if ( versionAttribute != null ) {
+			VersionBinder.bindVersion( versionAttribute, managedType, typeBinding, options, bindingState, bindingContext );
+		}
+	}
+
+	private void bindTenantId(
+			EntityTypeMetadata managedType,
+			RootClass typeBinding,
+			ModelBinders modelBinders,
+			BindingOptions options,
+			BindingState bindingState,
+			BindingContext bindingContext) {
+		final AttributeMetadata tenantIdAttribute = managedType.getHierarchy().getTenantIdAttribute();
+		if ( tenantIdAttribute != null ) {
+			TenantIdBinder.bindTenantId( tenantIdAttribute, managedType, typeBinding, options, bindingState, bindingContext );
+		}
+
 	}
 
 	private void processSoftDelete(

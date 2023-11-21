@@ -22,17 +22,12 @@ import org.hibernate.boot.models.bind.internal.SecondPass;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
-import org.hibernate.boot.models.bind.spi.QuotedIdentifierTarget;
 import org.hibernate.boot.models.bind.spi.TableReference;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
-import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Property;
-import org.hibernate.mapping.RootClass;
 import org.hibernate.mapping.Table;
-import org.hibernate.mapping.Value;
 import org.hibernate.models.ModelsException;
-import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.type.descriptor.java.MutabilityPlan;
@@ -40,8 +35,6 @@ import org.hibernate.type.descriptor.java.MutabilityPlan;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
 
 import static org.hibernate.boot.models.categorize.spi.AttributeMetadata.AttributeNature.BASIC;
 
@@ -238,7 +231,7 @@ public class AttributeBinder {
 		}
 	}
 
-	private static org.hibernate.mapping.Column processColumn(
+	public static org.hibernate.mapping.Column processColumn(
 			MemberDetails member,
 			Property property,
 			BasicValue basicValue,
@@ -250,7 +243,7 @@ public class AttributeBinder {
 		final var columnAnn = member.getAnnotationUsage( Column.class );
 		final var column = ColumnBinder.bindColumn( columnAnn, property::getName );
 
-		var tableName = BindingHelper.getValue( columnAnn, "table", (String) null );
+		var tableName = BindingHelper.getValue( columnAnn, "table", "" );
 		if ( "".equals( tableName ) || tableName == null ) {
 			basicValue.setTable( primaryTable );
 		}
@@ -265,7 +258,7 @@ public class AttributeBinder {
 		return column;
 	}
 
-	private static void bindConversion(
+	public static void bindConversion(
 			MemberDetails member,
 			@SuppressWarnings("unused") Property property,
 			@SuppressWarnings("unused") BasicValue basicValue,
@@ -294,23 +287,4 @@ public class AttributeBinder {
 		) );
 	}
 
-	public static void bindVersion(
-			AttributeMetadata attributeMetadata,
-			EntityTypeMetadata managedType,
-			RootClass typeBinding,
-			BindingOptions bindingOptions,
-			BindingState bindingState,
-			BindingContext bindingContext) {
-		final Property property = new Property();
-		property.setName( attributeMetadata.getName() );
-		typeBinding.setVersion( property );
-
-		final BasicValue basicValue = new BasicValue( bindingState.getMetadataBuildingContext(), typeBinding.getRootTable() );
-		property.setValue( basicValue );
-
-		final MemberDetails member = attributeMetadata.getMember();
-		bindImplicitJavaType( member, property, basicValue, bindingOptions, bindingState, bindingContext );
-
-		processColumn( member, property, basicValue, typeBinding.getRootTable(), bindingOptions, bindingState, bindingContext );
-	}
 }
