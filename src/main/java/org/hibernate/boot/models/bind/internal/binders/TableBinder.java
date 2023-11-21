@@ -43,6 +43,7 @@ import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.ClassDetails;
 
 import jakarta.persistence.InheritanceType;
+import jakarta.persistence.JoinTable;
 import jakarta.persistence.SecondaryTable;
 
 /**
@@ -87,7 +88,18 @@ public class TableBinder {
 	public TableReference bindPrimaryTable(EntityTypeMetadata type, EntityHierarchy.HierarchyRelation hierarchyRelation) {
 		final ClassDetails typeClassDetails = type.getClassDetails();
 		final AnnotationUsage<jakarta.persistence.Table> tableAnn = typeClassDetails.getAnnotationUsage( jakarta.persistence.Table.class );
+		final AnnotationUsage<JoinTable> joinTableAnn = typeClassDetails.getAnnotationUsage( JoinTable.class );
 		final AnnotationUsage<Subselect> subselectAnn = typeClassDetails.getAnnotationUsage( Subselect.class );
+
+		if ( tableAnn != null && joinTableAnn != null ) {
+			throw new AnnotationPlacementException( "Illegal combination of @Table and @JoinTable on " + typeClassDetails.getName() );
+		}
+		if ( tableAnn != null && subselectAnn != null ) {
+			throw new AnnotationPlacementException( "Illegal combination of @Table and @Subselect on " + typeClassDetails.getName() );
+		}
+		if ( joinTableAnn != null && subselectAnn != null ) {
+			throw new AnnotationPlacementException( "Illegal combination of @JoinTable and @Subselect on " + typeClassDetails.getName() );
+		}
 
 		final TableReference tableReference;
 
@@ -95,30 +107,48 @@ public class TableBinder {
 			assert subselectAnn == null;
 
 			if ( hierarchyRelation == EntityHierarchy.HierarchyRelation.ROOT ) {
-				tableReference = bindPhysicalTable( type, tableAnn, true );
+				tableReference = bindPhysicalTable( type, tableAnn, jakarta.persistence.Table.class, true );
 			}
 			else {
 				tableReference = bindUnionTable( type, tableAnn );
 			}
 		}
-		else {
-			if ( subselectAnn != null ) {
-				if ( tableAnn != null ) {
-					throw new AnnotationPlacementException( "Illegal combination of @Table and @Subselect on " + typeClassDetails.getName() );
-				}
-				tableReference = bindVirtualTable( type, subselectAnn );
+		else if ( type.getHierarchy().getInheritanceType() == InheritanceType.SINGLE_TABLE ) {
+			if ( hierarchyRelation == EntityHierarchy.HierarchyRelation.ROOT ) {
+				tableReference = normalTableDetermination( type, subselectAnn, tableAnn, jakarta.persistence.Table.class, typeClassDetails );
 			}
 			else {
-				// either an explicit or implicit @Table
-				tableReference = bindPhysicalTable( type, tableAnn, true );
+				tableReference = null;
 			}
 		}
+		else {
+			tableReference = normalTableDetermination( type, subselectAnn, joinTableAnn, JoinTable.class, typeClassDetails );
+		}
 
-		bindingState.addTable( type, tableReference );
+		if ( tableReference != null ) {
+			bindingState.addTable( type, tableReference );
 
-		final PrimaryKey primaryKey = new PrimaryKey( tableReference.binding() );
-		tableReference.binding().setPrimaryKey( primaryKey );
+			final PrimaryKey primaryKey = new PrimaryKey( tableReference.binding() );
+			tableReference.binding().setPrimaryKey( primaryKey );
+		}
 
+		return tableReference;
+	}
+
+	private <A extends Annotation> TableReference normalTableDetermination(
+			EntityTypeMetadata type,
+			AnnotationUsage<Subselect> subselectAnn,
+			AnnotationUsage<A> tableAnn,
+			Class<A> annotationType,
+			ClassDetails typeClassDetails) {
+		final TableReference tableReference;
+		if ( subselectAnn != null ) {
+			tableReference = bindVirtualTable( type, subselectAnn );
+		}
+		else {
+			// either an explicit or implicit @Table
+			tableReference = bindPhysicalTable( type, tableAnn, annotationType, true );
+		}
 		return tableReference;
 	}
 
@@ -206,12 +236,13 @@ public class TableBinder {
 		);
 	}
 
-	private PhysicalTableReference bindPhysicalTable(
+	private <A extends Annotation> PhysicalTableReference bindPhysicalTable(
 			EntityTypeMetadata type,
-			AnnotationUsage<jakarta.persistence.Table> tableAnn,
+			AnnotationUsage<A> tableAnn,
+			Class<A> annotationType,
 			boolean isPrimary) {
 		if ( tableAnn != null ) {
-			return bindExplicitPhysicalTable( type, tableAnn, isPrimary );
+			return bindExplicitPhysicalTable( type, tableAnn, annotationType, isPrimary );
 		}
 		else {
 			return bindImplicitPhysicalTable( type, isPrimary );
@@ -292,22 +323,23 @@ public class TableBinder {
 		);
 	}
 
-	private PhysicalTable bindExplicitPhysicalTable(
+	private <A extends Annotation> PhysicalTable bindExplicitPhysicalTable(
 			EntityTypeMetadata type,
-			AnnotationUsage<jakarta.persistence.Table> tableAnn,
+			AnnotationUsage<A> tableAnn,
+			Class<A> annotationType,
 			boolean isPrimary) {
 		final Identifier logicalName = determineLogicalName( type, tableAnn );
 		final Identifier logicalSchemaName = resolveDatabaseIdentifier(
 				tableAnn,
 				"schema",
-				jakarta.persistence.Table.class,
+				annotationType,
 				bindingOptions.getDefaultSchemaName(),
 				QuotedIdentifierTarget.SCHEMA_NAME
 		);
 		final Identifier logicalCatalogName = resolveDatabaseIdentifier(
 				tableAnn,
 				"catalog",
-				jakarta.persistence.Table.class,
+				annotationType,
 				bindingOptions.getDefaultCatalogName(),
 				QuotedIdentifierTarget.CATALOG_NAME
 		);

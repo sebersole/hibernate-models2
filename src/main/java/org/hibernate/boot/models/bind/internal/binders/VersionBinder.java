@@ -35,6 +35,7 @@ public class VersionBinder {
 		final Property property = new Property();
 		property.setName( attributeMetadata.getName() );
 		typeBinding.setVersion( property );
+		typeBinding.addProperty( property );
 
 		final BasicValue basicValue = new BasicValue(
 				bindingState.getMetadataBuildingContext(),
