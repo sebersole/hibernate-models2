@@ -6,6 +6,9 @@
  */
 package org.hibernate.models.orm.bind.locking;
 
+import org.hibernate.annotations.OptimisticLockType;
+import org.hibernate.annotations.OptimisticLocking;
+import org.hibernate.engine.OptimisticLockStyle;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.PersistentClass;
 
@@ -64,6 +67,22 @@ public class OptimisticLockingTests {
 		);
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
+	@Test
+	@ServiceRegistry
+	void testDirtyVersioning(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					var metadataCollector = context.getMetadataCollector();
+					final PersistentClass entityBinding = metadataCollector.getEntityBinding( DirtyVersionedEntity.class.getName() );
+					assertThat( entityBinding.getOptimisticLockStyle() ).isEqualTo( OptimisticLockStyle.DIRTY );
+					assertThat( entityBinding.getVersion() ).isNull();
+				},
+				scope.getRegistry(),
+				DirtyVersionedEntity.class
+		);
+	}
+
 	@Entity(name="VersionedEntity")
 	@Table(name="versioned")
 	public static class VersionedEntity {
@@ -83,5 +102,14 @@ public class OptimisticLockingTests {
 		@Version
 		@Column(name = "revision")
 		private int version;
+	}
+
+	@Entity(name="DirtyVersionedEntity")
+	@Table(name="versioned3")
+	@OptimisticLocking(type = OptimisticLockType.DIRTY)
+	public static class DirtyVersionedEntity {
+		@Id
+		private Integer id;
+		private String name;
 	}
 }
