@@ -1,0 +1,250 @@
+= Design Considerations
+
+Design discussions and considerations...
+
+== Current SecondPass Implementations
+
+Andrea...
+== Binding
+
+Mainly a look at phases for processing the EntityHierarchy
+
+=== Phase 1
+
+Create, link and register "shells" -
+
+* PersistentClass
+    ** super type
+    ** class name
+    ** entity name
+    ** JPA entity name
+    ** table
+    ** secondary tables
+* MappedSuperclass
+    ** super type
+    ** class name
+* PrimaryKey
+    ** table
+* Column
+    ** name
+    ** value
+    ** really, almost everything can be eagerly initialized
+* Formula
+    ** expression
+    ** value
+* Property
+    ** name
+    ** value
+* Table ?
+    ** schema
+    ** catalog
+    ** name
+    ** primary key
+* Join ?
+    ** schema
+    ** catalog
+    ** name
+    ** primary key
+    ** foreign key (w/ callback to target pk)
+* BasicValue ?
+    ** table
+    ** ... - it should be possible to fully initialize BasicValues immediately
+* Value (in addition to BasicValue) ?
+    ** Component
+    ** ManyToOne
+        *** referencedEntityName
+        *** fetchMode
+        *** table
+    ** OneToOne
+        *** referencedEntityName
+        *** fetchMode
+        *** table
+    ** Any
+        *** table
+        *** discriminator
+    ** Array
+        *** owner
+        *** table
+    ** Bag
+        *** owner
+        *** table
+    ** IdentifierBag
+        *** owner
+        *** table
+    ** List
+        *** owner
+        *** table
+    ** Map
+        *** owner
+        *** table
+    ** Set
+        *** owner
+        *** table
+
+=== Phase 2
+
+Initialize identifiers, including PrimaryKey.  Trigger `PrimaryKey#resolved`.
+
+=== Phase 3
+
+Initialize Property/Value.  Trigger `Property#resolved`.
+
+Initialize collection tables, including `PrimaryKey` and `ForeignKey`.  Trigger `PrimaryKey#resolved` and `ForeignKey#resolved`.
+
+
+
+== Objects Allowing callbacks
+
+* `PersistentClass`
+* `MappedSuperclass`
+* `Component`
+* `PrimaryKey`
+* `ForeignKey`
+* `Property`
+* `Table` ?
+* `Join` ?
+* others ?
+
+
+
+
+
+== Mapping Model Changes (proposed)
+
+Some of these are nice-to-have.
+Some of these are "needed".
+
+=== Addition of callbacks
+
+The mapping model is built iteratively, meaning at any point it is unknown if a particular "piece" of the object is available.
+
+Starting with 7.0 we want to move to a more phase centric, reference-based approach (see <<Binding>>).
+Rather than relying on a heterogeneous set of SecondPasses, this means "targeted" callbacks.
+Consider processing a secondary table and needing to build the foreign-key.
+It would be much nicer to allow something like:
+
+```java
+final PrimaryKey pk = ...;
+pk.whenResolved( resolved -> {
+    // do stuff with the fully resolved PrimaryKey
+    //      - this might be immediately, if the PrimaryKey is already resolved
+    //      - or cached and executed later when the PrimaryKey is later resolved
+} );
+```
+
+This is the only "needed" one.
+There are other, messier ways to accomplish this, but this would make things so much easier.
+And I think this has zero effect on tooling.
+
+
+=== MappedSuperclass
+
+"Nice" to have...
+
+At the moment, `MappedSuperclass` is mapped awkwardly into the `PersistentClass` model.
+
+- `org.hibernate.mapping.PersistentClass#getSuperclass()`
+- `org.hibernate.mapping.PersistentClass#getSuperMappedSuperclass()`
+
+`PersistentClass`:: Models an `@Entity`
+* `getSuperclass()` returns the first super IdentifiableType which is an entity.
+* `getSuperMappedSuperclass()` returns the direct `MappedSuperclass`, if one.
+
+`MappedSuperclass`:: Models a `@MappedSuperclass`
+* `getSuperMappedSuperclass()` returns the direct `MappedSuperclass`, if one.
+* `getSuperPersistentClass()` returns the first super IdentifiableType which is an entity.
+
+JPA's `IdentifiableType` is the logical super-type for both of these, or between them - both `EntityType` and `MappedSuperclassType` extend from `IdentifiableType`
+
+
+```java
+@MappedSuperclass
+class RootMappedSuperclass {
+	...
+}
+
+@Entity
+class RootEntity extends RootMappedSuperclass {
+    ...
+}
+
+@MappedSuperclass
+class DivergentMappedSuperclass extends RootEntity {
+	...
+}
+
+@MappedSuperclass
+class ThingsMappedSuperclass extends DivergentMappedSuperclass {
+	...
+}
+
+@Entity
+class Thing1 extends ThingsMappedSuperclass {
+	...
+}
+
+@Entity
+class Thing2 extends Thing1 {
+	...
+}
+```
+
+MappedSuperclass(RootMappedSuperclass)::
+superPersistentClass == null
+superMappedSuperclass == null
+
+PersistentClass(RootEntity)::
+superclass == null // it's the root entity
+superMappedSuperclass == MappedSuperclass(RootMappedSuperclass)
+
+MappedSuperclass(DivergentMappedSuperclass)::
+superPersistentClass == PersistentClass(RootEntity)
+superMappedSuperclass == null
+
+MappedSuperclass(ThingsMappedSuperclass)::
+superPersistentClass == PersistentClass(RootEntity)
+superMappedSuperclass == MappedSuperclass(ThingsMappedSuperclass)
+
+PersistentClass(Thing1)::
+superclass == PersistentClass(RootEntity)
+superMappedSuperclass == MappedSuperclass(ThingsMappedSuperclass)
+
+PersistentClass(Thing2)::
+superclass == PersistentClass(Thing1)
+superMappedSuperclass == null
+
+This would be easier to build (and probably understand) to instead just model this more like JPA :
+
+MappedSuperclass(RootMappedSuperclass)::
+superType == null
+
+PersistentClass(RootEntity)::
+superType == MappedSuperclass(RootMappedSuperclass)
+
+MappedSuperclass(DivergentMappedSuperclass)::
+superType == PersistentClass(RootEntity)
+
+MappedSuperclass(ThingsMappedSuperclass)::
+superType == MappedSuperclass(DivergentMappedSuperclass)
+
+PersistentClass(Thing1)::
+superType == MappedSuperclass(ThingsMappedSuperclass)
+
+PersistentClass(Thing2)::
+superType == PersistentClass(Thing1)
+
+I think that tooling does not really deal with the notion of MappedSuperclass?
+It's uncertain whether the net effect on consuming this model (to build the persister model) is positive or negative.
+It's also yet another big change.
+
+=== SecondaryTable
+
+"Nice" to have...
+
+`org.hibernate.mapping.Join` models what JPA calls a SecondaryTable, but in a way that is a little awkward for building these from xml or annotations.
+Specifically, `Join` tracks the attributes mapped to it separate from the `PersistentClass` attributes.
+The attributes kept on `PersistentClass` are the ones mapped to the "root" table
+The complete set of attributes for an entity are the `PersistentClass` ones plus the ones for each of its `Join`s.
+
+There is a lot of benefit to modeling this how we do (even with the awkwardness), so maybe we just leave this one.
+
