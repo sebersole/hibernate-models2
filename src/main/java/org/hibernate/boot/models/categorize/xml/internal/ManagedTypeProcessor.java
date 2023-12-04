@@ -32,6 +32,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityOrMappedSuperclass;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbIdImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbManagedType;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbMappedSuperclassImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbNamedEntityGraphImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbOneToOneImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistentAttribute;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPluralAttribute;
@@ -59,6 +60,7 @@ import org.hibernate.property.access.spi.BuiltInPropertyAccessStrategies;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.NamedEntityGraph;
 
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
 import static org.hibernate.internal.util.NullnessHelper.nullif;
@@ -474,6 +476,11 @@ public class ManagedTypeProcessor {
 		XmlAnnotationHelper.applyRowId( jaxbEntity.getRowid(), classDetails, xmlDocumentContext );
 
 		applyTenantId( classDetails, jaxbEntity, classAccessType, xmlDocumentContext );
+
+		final List<JaxbNamedEntityGraphImpl> namedEntityGraphs = jaxbEntity.getNamedEntityGraphs();
+		for ( JaxbNamedEntityGraphImpl namedEntityGraph : namedEntityGraphs ) {
+			XmlAnnotationHelper.applyNamedEntityGraph( namedEntityGraph, classDetails, xmlDocumentContext );
+		}
 
 		// todo : secondary-tables
 	}
