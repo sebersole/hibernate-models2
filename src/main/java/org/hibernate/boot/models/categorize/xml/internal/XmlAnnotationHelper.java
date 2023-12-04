@@ -69,6 +69,9 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbLifecycleCallbackContainer;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbLobImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbMapKeyColumnImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbMapKeyJoinColumnImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbNamedAttributeNodeImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbNamedEntityGraphImpl;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbNamedSubgraphImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbNationalizedImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbNaturalId;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbSequenceGeneratorImpl;
@@ -125,6 +128,9 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.Lob;
 import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.MapKeyJoinColumn;
+import jakarta.persistence.NamedAttributeNode;
+import jakarta.persistence.NamedEntityGraph;
+import jakarta.persistence.NamedSubgraph;
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.PostPersist;
 import jakarta.persistence.PostRemove;
@@ -1351,5 +1357,143 @@ public class XmlAnnotationHelper {
 			}
 		}
 		return value;
+	}
+
+	static void applyNamedEntityGraph(
+			JaxbNamedEntityGraphImpl namedEntityGraph,
+			MutableClassDetails target,
+			XmlDocumentContext xmlDocumentContext) {
+		if ( namedEntityGraph != null ) {
+			final MutableAnnotationUsage<NamedEntityGraph> namedEntityGraphAnn = XmlProcessingHelper.getOrMakeAnnotation(
+					NamedEntityGraph.class,
+					target,
+					xmlDocumentContext
+			);
+
+			final AnnotationDescriptor<NamedEntityGraph> namedEntityGraphAnnotationDescriptor = namedEntityGraphAnn.getAnnotationDescriptor();
+			applyOr(
+					namedEntityGraph,
+					JaxbNamedEntityGraphImpl::getName,
+					"name",
+					namedEntityGraphAnn,
+					namedEntityGraphAnnotationDescriptor
+			);
+
+			applyOr(
+					namedEntityGraph,
+					JaxbNamedEntityGraphImpl::isIncludeAllAttributes,
+					"includeAllAttributes",
+					namedEntityGraphAnn,
+					namedEntityGraphAnnotationDescriptor
+			);
+
+			namedEntityGraphAnn.setAttributeValue(
+					"attributeNodes",
+					makeNamedAttributeNodes( namedEntityGraph.getNamedAttributeNode(), target, xmlDocumentContext )
+			);
+
+			namedEntityGraphAnn.setAttributeValue(
+					"subgraphs",
+					makeNamedSubgraphs(
+							target,
+							xmlDocumentContext,
+							namedEntityGraph.getSubgraph()
+					)
+			);
+
+			namedEntityGraphAnn.setAttributeValue(
+					"subclassSubgraphs",
+					makeNamedSubgraphs(
+							target,
+							xmlDocumentContext,
+							namedEntityGraph.getSubclassSubgraph()
+					)
+			);
+
+		}
+
+	}
+
+	private static List<MutableAnnotationUsage<NamedSubgraph>> makeNamedSubgraphs(
+			MutableClassDetails target,
+			XmlDocumentContext xmlDocumentContext,
+			List<JaxbNamedSubgraphImpl> subclassSubgraphNodes) {
+		final List<MutableAnnotationUsage<NamedSubgraph>> subgraphAnnotations =
+				new ArrayList<>( subclassSubgraphNodes.size() );
+		for ( JaxbNamedSubgraphImpl subclassSubgraphNode : subclassSubgraphNodes ) {
+			final String subGraphsNodeName = subclassSubgraphNode.getName();
+			final MutableAnnotationUsage<NamedSubgraph> namedSubgraphNodeAnn = XmlProcessingHelper.getOrMakeNamedAnnotation(
+					NamedSubgraph.class,
+					subGraphsNodeName,
+					target,
+					xmlDocumentContext
+			);
+			applyAttributeIfSpecified( namedSubgraphNodeAnn, "name", subGraphsNodeName );
+
+			final String clazz = subclassSubgraphNode.getClazz();
+			if ( clazz == null ) {
+				namedSubgraphNodeAnn.setAttributeValue(
+						"type",
+						resolveJavaType(
+								namedSubgraphNodeAnn.getAnnotationDescriptor()
+										.getAttribute( "type" )
+										.getAttributeMethod()
+										.getDefaultValue().toString(),
+								xmlDocumentContext
+						)
+				);
+			}
+			else {
+				namedSubgraphNodeAnn.setAttributeValue(
+						"type",
+						resolveJavaType( subclassSubgraphNode.getClazz(), xmlDocumentContext )
+
+				);
+			}
+			namedSubgraphNodeAnn.setAttributeValue(
+					"attributeNodes",
+					makeNamedAttributeNodes( subclassSubgraphNode.getNamedAttributeNode(), target, xmlDocumentContext )
+			);
+
+			subgraphAnnotations.add( namedSubgraphNodeAnn );
+		}
+		return subgraphAnnotations;
+	}
+
+	private static List<MutableAnnotationUsage<NamedAttributeNode>> makeNamedAttributeNodes(
+			List<JaxbNamedAttributeNodeImpl> namedAttributeNodes,
+			MutableClassDetails target,
+			XmlDocumentContext xmlDocumentContext) {
+		final List<MutableAnnotationUsage<NamedAttributeNode>> namedAttributeNodeAnnotations =
+				new ArrayList<>( namedAttributeNodes.size() );
+		for ( JaxbNamedAttributeNodeImpl namedAttributeNode : namedAttributeNodes ) {
+			final MutableAnnotationUsage<NamedAttributeNode> namedAttributeNodeAnn = XmlProcessingHelper.makeNestedAnnotation(
+					NamedAttributeNode.class,
+					target,
+					xmlDocumentContext
+			);
+			applyAttributeIfSpecified( namedAttributeNodeAnn, "value", namedAttributeNode.getName() );
+			final AnnotationDescriptor<NamedAttributeNode> namedAttributeNodeDescriptor = xmlDocumentContext
+					.getModelBuildingContext()
+					.getAnnotationDescriptorRegistry()
+					.getDescriptor( NamedAttributeNode.class );
+			applyOr(
+					namedAttributeNode,
+					JaxbNamedAttributeNodeImpl::getSubgraph,
+					"subgraph",
+					namedAttributeNodeAnn,
+					namedAttributeNodeDescriptor
+			);
+			applyOr(
+					namedAttributeNode,
+					JaxbNamedAttributeNodeImpl::getKeySubgraph,
+					"keySubgraph",
+					namedAttributeNodeAnn,
+					namedAttributeNodeDescriptor
+			);
+			namedAttributeNodeAnnotations.add( namedAttributeNodeAnn );
+
+		}
+		return namedAttributeNodeAnnotations;
 	}
 }
