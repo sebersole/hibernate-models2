@@ -1,8 +1,6 @@
 /*
- * Hibernate, Relational Persistence for Idiomatic Java
- *
  * SPDX-License-Identifier: Apache-2.0
- * Copyright: Red Hat Inc. and Hibernate Authors
+ * Copyright Red Hat Inc. and Hibernate Authors
  */
 package org.hibernate.boot.models.bind.internal;
 
@@ -14,7 +12,6 @@ import org.hibernate.boot.models.bind.spi.QuotedIdentifierTarget;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 import org.hibernate.models.ModelsException;
 
-import java.lang.annotation.Annotation;
 import java.util.Iterator;
 import java.util.List;
 
