@@ -25,6 +25,7 @@ import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MemberDetails;
 
 import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.AssociationOverride;
 import jakarta.persistence.Convert;
 
 /**
@@ -50,6 +51,7 @@ class ComponentBinder {
 			Table table,
 			BiFunction<String, MemberDetails, ColumnSource> columnSourceResolver,
 			BiFunction<String, MemberDetails, Convert> conversionResolver,
+			BiFunction<String, MemberDetails, AssociationOverride> associationOverrideResolver,
 			BiConsumer<MemberDetails, Column> columnConsumer,
 			boolean uniqueByDefault,
 			boolean nullableByDefault,
@@ -61,6 +63,7 @@ class ComponentBinder {
 				"",
 				columnSourceResolver,
 				conversionResolver,
+				associationOverrideResolver,
 				columnConsumer,
 				uniqueByDefault,
 				nullableByDefault,
@@ -75,6 +78,7 @@ class ComponentBinder {
 			String pathPrefix,
 			BiFunction<String, MemberDetails, ColumnSource> columnSourceResolver,
 			BiFunction<String, MemberDetails, Convert> conversionResolver,
+			BiFunction<String, MemberDetails, AssociationOverride> associationOverrideResolver,
 			BiConsumer<MemberDetails, Column> columnConsumer,
 			boolean uniqueByDefault,
 			boolean nullableByDefault,
@@ -84,6 +88,25 @@ class ComponentBinder {
 			validateMember( member );
 			final String attributeName = member.resolveAttributeName();
 			final String memberPath = pathPrefix + attributeName;
+
+			if ( isToOneMember( member ) ) {
+				final Property property = new Property();
+				property.setName( attributeName );
+				final var manyToOne = ToOneAttributeBinder.bindToOne(
+						componentType.getClassName(),
+						attributeName,
+						member,
+						property,
+						table,
+						associationOverrideResolver.apply( memberPath, member ),
+						state,
+						context
+				);
+				property.setValue( manyToOne );
+				component.addProperty( property );
+				columns.addAll( manyToOne.getColumns() );
+				return;
+			}
 
 			if ( isEmbeddedMember( member ) ) {
 				final Component nestedComponent = new Component( state.getMetadataBuildingContext(), component );
@@ -101,6 +124,7 @@ class ComponentBinder {
 						memberPath + ".",
 						columnSourceResolver,
 						conversionResolver,
+						associationOverrideResolver,
 						columnConsumer,
 						uniqueByDefault,
 						nullableByDefault,
@@ -130,8 +154,6 @@ class ComponentBinder {
 
 	private void validateMember(MemberDetails member) {
 		if ( member.isPlural()
-				|| member.hasDirectAnnotationUsage( jakarta.persistence.ManyToOne.class )
-				|| member.hasDirectAnnotationUsage( jakarta.persistence.OneToOne.class )
 				|| member.hasDirectAnnotationUsage( jakarta.persistence.OneToMany.class )
 				|| member.hasDirectAnnotationUsage( jakarta.persistence.ManyToMany.class )
 				|| member.hasDirectAnnotationUsage( jakarta.persistence.ElementCollection.class ) ) {
@@ -144,6 +166,11 @@ class ComponentBinder {
 	private boolean isEmbeddedMember(MemberDetails member) {
 		return member.hasDirectAnnotationUsage( jakarta.persistence.Embedded.class )
 				|| member.getType().determineRawClass().hasDirectAnnotationUsage( jakarta.persistence.Embeddable.class );
+	}
+
+	private boolean isToOneMember(MemberDetails member) {
+		return member.hasDirectAnnotationUsage( jakarta.persistence.ManyToOne.class )
+				|| member.hasDirectAnnotationUsage( jakarta.persistence.OneToOne.class );
 	}
 
 	private void bindConversion(

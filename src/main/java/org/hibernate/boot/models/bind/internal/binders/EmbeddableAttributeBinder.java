@@ -75,6 +75,7 @@ class EmbeddableAttributeBinder {
 				componentTable,
 				this::resolveColumnSource,
 				this::resolveConversion,
+				this::resolveAssociationOverride,
 				(ignored, column) -> {
 				},
 				false,
@@ -89,24 +90,36 @@ class EmbeddableAttributeBinder {
 	private Table resolveComponentTable(MemberDetails attributeMember) {
 		final Table[] result = { primaryTable };
 		visitColumnSources( attributeMember.getType().determineRawClass(), "", (path, member) -> {
-			final ColumnSource columnSource = resolveColumnSource( path, member );
-			if ( columnSource == null || StringHelper.isEmpty( columnSource.table() ) ) {
-				return;
+			if ( member.hasDirectAnnotationUsage( jakarta.persistence.ManyToOne.class )
+					|| member.hasDirectAnnotationUsage( jakarta.persistence.OneToOne.class ) ) {
+				ToOneAttributeBinder.resolveJoinColumns( member, resolveAssociationOverride( path, member ) ).forEach( (joinColumn) -> {
+					if ( StringHelper.isNotEmpty( joinColumn.table() ) ) {
+						applyTable( attributeMember, joinColumn.table(), result );
+					}
+				} );
 			}
-
-			final Identifier identifier = Identifier.toIdentifier( columnSource.table() );
-			final TableReference tableReference = bindingState.getTableByName( identifier.getCanonicalName() );
-			final Table table = tableReference.binding();
-			if ( result[0] != primaryTable && result[0] != table ) {
-				throw new MappingException( String.format( Locale.ROOT,
-						"Embeddable attributes cannot span multiple tables - %s.%s",
-						attributeMember.getDeclaringType().getName(),
-						attributeMetadata.getName()
-				) );
+			else {
+				final ColumnSource columnSource = resolveColumnSource( path, member );
+				if ( columnSource != null && StringHelper.isNotEmpty( columnSource.table() ) ) {
+					applyTable( attributeMember, columnSource.table(), result );
+				}
 			}
-			result[0] = table;
 		} );
 		return result[0];
+	}
+
+	private void applyTable(MemberDetails attributeMember, String tableName, Table[] result) {
+		final Identifier identifier = Identifier.toIdentifier( tableName );
+		final TableReference tableReference = bindingState.getTableByName( identifier.getCanonicalName() );
+		final Table table = tableReference.binding();
+		if ( result[0] != primaryTable && result[0] != table ) {
+			throw new MappingException( String.format( Locale.ROOT,
+					"Embeddable attributes cannot span multiple tables - %s.%s",
+					attributeMember.getDeclaringType().getName(),
+					attributeMetadata.getName()
+			) );
+		}
+		result[0] = table;
 	}
 
 	private void visitColumnSources(
@@ -146,5 +159,9 @@ class EmbeddableAttributeBinder {
 		return directConversion != null && StringHelper.isEmpty( directConversion.attributeName() )
 				? directConversion
 				: null;
+	}
+
+	private jakarta.persistence.AssociationOverride resolveAssociationOverride(String memberPath, MemberDetails member) {
+		return overrideAndConverterCollector.locateAssociationOverride( memberPath );
 	}
 }

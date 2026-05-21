@@ -189,6 +189,7 @@ public class IdentifierBinder {
 				table,
 				(path, member) -> ColumnSource.from( member.getDirectAnnotationUsage( Column.class ) ),
 				(path, member) -> null,
+				(path, member) -> null,
 				(member, column) -> table.getPrimaryKey().addColumn( column ),
 				true,
 				false,
