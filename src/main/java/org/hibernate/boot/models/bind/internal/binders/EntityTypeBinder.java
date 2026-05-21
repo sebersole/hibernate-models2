@@ -49,14 +49,11 @@ import org.hibernate.jpa.event.spi.CallbackDefinition;
 import org.hibernate.jpa.event.spi.CallbackType;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Column;
-import org.hibernate.mapping.DependantValue;
 import org.hibernate.mapping.IdentifiableTypeClass;
 import org.hibernate.mapping.Join;
 import org.hibernate.mapping.JoinedSubclass;
-import org.hibernate.mapping.KeyValue;
 import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
-import org.hibernate.mapping.PrimaryKey;
 import org.hibernate.mapping.RootClass;
 import org.hibernate.mapping.SingleTableSubclass;
 import org.hibernate.mapping.Subclass;
@@ -235,6 +232,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 					getOptions(),
 					getBindingContext()
 			);
+			getBindingState().addIdentifierBinding( getManagedType(), identifierBinding );
 		}
 	}
 
@@ -248,11 +246,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 	/// wrap the root identifier.  Keeping this in its own phase lets table shells be
 	/// created before identifiers while still avoiding constructor-time key binding.
 	public void bindTableKeys() {
-		if ( getTypeBinding() instanceof JoinedSubclass joinedSubclass ) {
-			bindJoinedSubclassKey( joinedSubclass );
-		}
-
-		getTypeBinding().getJoins().forEach( this::bindSecondaryTableKey );
+		new TableKeyBinder( this ).bindTableKeys();
 	}
 
 	/// Bind discriminator, version, tenant id, and persistent attributes.
@@ -394,73 +388,6 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 	private void processListenerCallbacks(JpaEventListener listener) {
 		final Class<?> listenerClass = listener.getCallbackClass().toJavaClass();
 		processJpaEventCallbacks( listenerClass, listener, JpaEventListenerStyle.LISTENER, getManagedType().getClassDetails().toJavaClass() );
-	}
-
-	private void bindJoinedSubclassKey(JoinedSubclass joinedSubclass) {
-		final IdentifierBinding rootIdentifierBinding = resolveIdentifierBinding();
-		final DependantValue key = createDependentKeyValue( joinedSubclass.getTable(), rootIdentifierBinding );
-		joinedSubclass.setKey( key );
-		createPrimaryKey( joinedSubclass.getTable(), key );
-		key.createForeignKeyOfEntity( getSuperEntityBinder().getTypeBinding().getEntityName() );
-	}
-
-	private void bindSecondaryTableKey(Join join) {
-		final IdentifierBinding rootIdentifierBinding = resolveIdentifierBinding();
-		final DependantValue key = createDependentKeyValue( join.getTable(), rootIdentifierBinding );
-		join.setKey( key );
-		join.createPrimaryKey();
-		if ( !join.isInverse() ) {
-			join.createForeignKey();
-		}
-	}
-
-	private IdentifierBinding resolveIdentifierBinding() {
-		final EntityTypeBinder rootEntityBinder = getRootEntityBinder();
-		final IdentifierBinding identifierBinding = rootEntityBinder.getIdentifierBinding();
-		if ( identifierBinding == null ) {
-			throw new ModelsException( "Identifier binding not available for " + rootEntityBinder.getManagedType().getEntityName() );
-		}
-		return identifierBinding;
-	}
-
-	private EntityTypeBinder getRootEntityBinder() {
-		EntityTypeBinder check = this;
-		while ( check.getSuperEntityBinder() != null ) {
-			check = check.getSuperEntityBinder();
-		}
-		return check;
-	}
-
-	private DependantValue createDependentKeyValue(Table table, IdentifierBinding identifierBinding) {
-		final DependantValue key = new DependantValue(
-				getBindingState().getMetadataBuildingContext(),
-				table,
-				identifierBinding.value()
-		);
-		key.setNullable( false );
-		key.setUpdateable( false );
-		for ( Column identifierColumn : identifierBinding.columns() ) {
-			key.addColumn( copyKeyColumn( identifierColumn ), true, false );
-		}
-		return key;
-	}
-
-	private Column copyKeyColumn(Column source) {
-		// todo : is this enough detail?
-		final Column result = new Column( source.getName() );
-		result.setLength( source.getLength() );
-		result.setPrecision( source.getPrecision() );
-		result.setScale( source.getScale() );
-		result.setSqlType( source.getSqlType() );
-		result.setNullable( false );
-		result.setUnique( source.isUnique() );
-		return result;
-	}
-
-	private void createPrimaryKey(Table table, KeyValue key) {
-		final PrimaryKey primaryKey = new PrimaryKey( table );
-		table.setPrimaryKey( primaryKey );
-		key.getColumns().forEach( primaryKey::addColumn );
 	}
 
 	private Method findCallbackMethod(
