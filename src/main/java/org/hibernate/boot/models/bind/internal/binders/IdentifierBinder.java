@@ -125,6 +125,8 @@ public class IdentifierBinder {
 		typeBinding.setIdentifierProperty( idProperty );
 
 		final List<org.hibernate.mapping.Column> columns = bindComponentIdentifierProperties(
+				type,
+				typeBinding,
 				aggregatedKeyMapping.getKeyType(),
 				idValue,
 				table
@@ -180,10 +182,14 @@ public class IdentifierBinder {
 	}
 
 	private List<org.hibernate.mapping.Column> bindComponentIdentifierProperties(
+			EntityTypeMetadata type,
+			RootClass typeBinding,
 			ClassDetails embeddableType,
 			Component idValue,
 			Table table) {
 		return new ComponentBinder( state, options, context ).bindBasicProperties(
+				type,
+				typeBinding,
 				embeddableType,
 				idValue,
 				table,

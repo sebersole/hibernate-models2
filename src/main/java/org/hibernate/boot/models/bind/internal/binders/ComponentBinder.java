@@ -14,10 +14,12 @@ import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
+import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Component;
+import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
 import org.hibernate.models.ModelsException;
@@ -46,6 +48,8 @@ class ComponentBinder {
 	}
 
 	List<Column> bindBasicProperties(
+			IdentifiableTypeMetadata ownerType,
+			PersistentClass ownerBinding,
 			ClassDetails componentType,
 			Component component,
 			Table table,
@@ -57,6 +61,8 @@ class ComponentBinder {
 			boolean nullableByDefault,
 			boolean updatable) {
 		return bindProperties(
+				ownerType,
+				ownerBinding,
 				componentType,
 				component,
 				table,
@@ -72,6 +78,8 @@ class ComponentBinder {
 	}
 
 	private List<Column> bindProperties(
+			IdentifiableTypeMetadata ownerType,
+			PersistentClass ownerBinding,
 			ClassDetails componentType,
 			Component component,
 			Table table,
@@ -93,8 +101,8 @@ class ComponentBinder {
 				final Property property = new Property();
 				property.setName( attributeName );
 				final var manyToOne = ToOneAttributeBinder.bindToOne(
-						null,
-						null,
+						ownerType,
+						ownerBinding,
 						componentType.getClassName(),
 						attributeName,
 						member,
@@ -121,6 +129,8 @@ class ComponentBinder {
 				final Property property = createProperty( attributeName, nestedComponent );
 				component.addProperty( property );
 				columns.addAll( bindProperties(
+						ownerType,
+						ownerBinding,
 						member.getType().determineRawClass(),
 						nestedComponent,
 						table,
