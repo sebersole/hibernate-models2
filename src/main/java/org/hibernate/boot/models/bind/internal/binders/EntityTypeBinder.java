@@ -13,7 +13,6 @@ import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
 import jakarta.persistence.SharedCacheMode;
 import org.hibernate.MappingException;
 import org.hibernate.annotations.DiscriminatorFormula;
@@ -29,8 +28,6 @@ import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.naming.PhysicalNamingStrategy;
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.models.bind.internal.SecondaryTable;
-import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
-import org.hibernate.boot.models.bind.internal.sources.ForeignKeySource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
@@ -52,9 +49,11 @@ import org.hibernate.jpa.event.spi.CallbackDefinition;
 import org.hibernate.jpa.event.spi.CallbackType;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Column;
+import org.hibernate.mapping.DependantValue;
 import org.hibernate.mapping.IdentifiableTypeClass;
 import org.hibernate.mapping.Join;
 import org.hibernate.mapping.JoinedSubclass;
+import org.hibernate.mapping.KeyValue;
 import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.PrimaryKey;
@@ -71,24 +70,53 @@ import org.hibernate.models.spi.MethodDetails;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 import static org.hibernate.boot.models.bind.ModelBindingLogging.MODEL_BINDING_LOGGER;
-import static org.hibernate.boot.models.bind.internal.binders.IdentifierBinder.bindIdentifier;
 import static org.hibernate.internal.util.StringHelper.coalesce;
 
-/**
- * Binder for binding a {@linkplain PersistentClass} from a {@linkplain EntityTypeMetadata}
- *
- * @author Steve Ebersole
- */
-public class EntityTypeBinder extends IdentifiableTypeBinder {
+/// Binder for binding an entity type to a {@link PersistentClass}.
+///
+/// Construction intentionally creates only the local {@link PersistentClass} shell.
+/// The coordinator then drives the public binding phases across all types in a
+/// hierarchy.  This split keeps construction from accidentally depending on tables,
+/// identifiers, or super-type keys that are produced by later phases.
+/// The current phases for entity binders are:
+///
+/// 1. Construction - create the local {@link PersistentClass} shell.
+/// 2. {@link #bindTypeSkeleton()} - assign stable entity names, register this
+/// binder with {@link BindingState}, publish the mapping shell to the metadata
+/// collector, and add the entity import.
+/// 3. {@link #bindTables()} - create and attach primary and secondary table shells.
+/// 4. {@link #bindSuperType()} - wire the mapping type to its resolved super
+/// entity or mapped-superclass.
+/// 5. {@link #bindEntityMetadata()} - bind entity-level metadata such as caching,
+/// filters, and callbacks.
+/// 6. {@link #bindIdentifier()} - bind the root identifier shape for the hierarchy.
+/// 7. {@link #bindTableKeys()} - bind joined-subclass and secondary-table keys
+/// that depend on the root identifier shape.
+/// 8. {@link #bindMembers()} - bind the remaining currently coarse member phase:
+/// discriminator, version, tenant id, and persistent attributes.
+///
+/// The implemented {@link TypeBindingPhase} contracts identify which phases this
+/// binder participates in.  The coordinator owns the ordering while this class
+/// documents what each phase makes available to later phases.
+///
+/// @author Steve Ebersole
+public class EntityTypeBinder extends IdentifiableTypeBinder
+		implements TypeBindingPhase.TypeSkeleton,
+				TypeBindingPhase.Tables,
+				TypeBindingPhase.SuperType,
+				TypeBindingPhase.EntityMetadata,
+				TypeBindingPhase.Identifiers,
+				TypeBindingPhase.TableKeys,
+				TypeBindingPhase.Members {
 	private final PersistentClass binding;
 
 	private final ModelBinders modelBinders;
+	private IdentifierBinding identifierBinding;
 
 	public EntityTypeBinder(
 			EntityTypeMetadata type,
@@ -101,9 +129,16 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		super( type, superType, hierarchyRelation, state, options, context );
 		this.modelBinders = modelBinders;
 
-		final ClassDetails classDetails = type.getClassDetails();
 		this.binding = createBinding();
+	}
 
+	/// Finish the minimal type skeleton and publish it for other binders to resolve.
+	///
+	/// After this phase the entity has stable entity/import names and is registered
+	/// with both {@link BindingState} and the metadata collector.  It should still
+	/// not have tables, identifiers, attributes, or foreign keys bound here.
+	public void bindTypeSkeleton() {
+		final ClassDetails classDetails = getManagedType().getClassDetails();
 		final Entity entityAnn = classDetails.getDirectAnnotationUsage( Entity.class );
 		final String jpaEntityName = entityAnn.name();
 		final String entityName;
@@ -129,18 +164,31 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		binding.setEntityName( entityName );
 		binding.setJpaEntityName( importName );
 
-		state.registerTypeBinder( type, this );
-		state.getMetadataBuildingContext().getMetadataCollector().addImport( importName, entityName );
+		getBindingState().registerTypeBinder( getManagedType(), this );
+		getBindingState().getMetadataBuildingContext().getMetadataCollector().addImport( importName, entityName );
+	}
 
+	/// Bind table shells owned directly by this entity.
+	///
+	/// This phase attaches the primary table for roots, joined subclasses, and
+	/// table-per-class subclasses, and creates secondary table joins.  It deliberately
+	/// does not bind identifier columns or table foreign keys.
+	public void bindTables() {
 		if ( binding instanceof TableOwner ) {
-			final var primaryTable = modelBinders.getTableBinder().bindPrimaryTable( getManagedType(), hierarchyRelation );
+			final var primaryTable = modelBinders.getTableBinder().bindPrimaryTable( getManagedType(), getHierarchyRelation() );
 			final var table = primaryTable.binding();
 			( (TableOwner) binding ).setTable( table );
 		}
 
 		final var secondaryTables = modelBinders.getTableBinder().bindSecondaryTables( this );
 		secondaryTables.forEach( this::processSecondaryTable );
+	}
 
+	/// Wire the Hibernate mapping type to its resolved entity or mapped-superclass super type.
+	///
+	/// This phase runs after all type skeletons are registered, so superclass binders
+	/// can be resolved without forcing table or member binding into construction.
+	public void bindSuperType() {
 		final IdentifiableTypeBinder superTypeBinder = getSuperTypeBinder();
 		final EntityTypeBinder superEntityBinder = getSuperEntityBinder();
 		if ( binding instanceof RootClass rootClass ) {
@@ -161,11 +209,57 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 				subclass.setSuperMappedSuperclass( (MappedSuperclass) superTypeBinder.getTypeBinding() );
 			}
 		}
+	}
 
-		processCaching( classDetails, state, context );
-		processFilters( classDetails, state, context );
-		processJpaEventListeners( type, state, context );
+	/// Bind entity-level metadata that does not require member value binding.
+	///
+	/// Examples include cacheability, filters, and JPA callback definitions.
+	public void bindEntityMetadata() {
+		final ClassDetails classDetails = getManagedType().getClassDetails();
+		processCaching( classDetails, getBindingState(), getBindingContext() );
+		processFilters( classDetails, getBindingState(), getBindingContext() );
+		processJpaEventListeners( getManagedType(), getBindingState(), getBindingContext() );
+	}
 
+	/// Bind the root identifier and retain its local binding state.
+	///
+	/// Only root entity binders participate in this phase.  Subclasses consume the
+	/// completed root identifier shape in later key/FK phases.
+	public void bindIdentifier() {
+		if ( getHierarchyRelation() == EntityHierarchy.HierarchyRelation.ROOT ) {
+			identifierBinding = IdentifierBinder.bindIdentifier(
+					getManagedType(),
+					(RootClass) getTypeBinding(),
+					modelBinders,
+					getBindingState(),
+					getOptions(),
+					getBindingContext()
+			);
+		}
+	}
+
+	public IdentifierBinding getIdentifierBinding() {
+		return identifierBinding;
+	}
+
+	/// Bind table keys that depend on a completed root identifier shape.
+	///
+	/// Joined-subclass tables and secondary tables use dependent key values that
+	/// wrap the root identifier.  Keeping this in its own phase lets table shells be
+	/// created before identifiers while still avoiding constructor-time key binding.
+	public void bindTableKeys() {
+		if ( getTypeBinding() instanceof JoinedSubclass joinedSubclass ) {
+			bindJoinedSubclassKey( joinedSubclass );
+		}
+
+		getTypeBinding().getJoins().forEach( this::bindSecondaryTableKey );
+	}
+
+	/// Bind discriminator, version, tenant id, and persistent attributes.
+	///
+	/// This is still a coarse phase today.  Later refactoring steps are expected to
+	/// split table keys, foreign keys, and attributes into more focused phases.
+	public void bindMembers() {
 		prepareBinding( modelBinders );
 	}
 
@@ -302,6 +396,73 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		processJpaEventCallbacks( listenerClass, listener, JpaEventListenerStyle.LISTENER, getManagedType().getClassDetails().toJavaClass() );
 	}
 
+	private void bindJoinedSubclassKey(JoinedSubclass joinedSubclass) {
+		final IdentifierBinding rootIdentifierBinding = resolveIdentifierBinding();
+		final DependantValue key = createDependentKeyValue( joinedSubclass.getTable(), rootIdentifierBinding );
+		joinedSubclass.setKey( key );
+		createPrimaryKey( joinedSubclass.getTable(), key );
+		key.createForeignKeyOfEntity( getSuperEntityBinder().getTypeBinding().getEntityName() );
+	}
+
+	private void bindSecondaryTableKey(Join join) {
+		final IdentifierBinding rootIdentifierBinding = resolveIdentifierBinding();
+		final DependantValue key = createDependentKeyValue( join.getTable(), rootIdentifierBinding );
+		join.setKey( key );
+		join.createPrimaryKey();
+		if ( !join.isInverse() ) {
+			join.createForeignKey();
+		}
+	}
+
+	private IdentifierBinding resolveIdentifierBinding() {
+		final EntityTypeBinder rootEntityBinder = getRootEntityBinder();
+		final IdentifierBinding identifierBinding = rootEntityBinder.getIdentifierBinding();
+		if ( identifierBinding == null ) {
+			throw new ModelsException( "Identifier binding not available for " + rootEntityBinder.getManagedType().getEntityName() );
+		}
+		return identifierBinding;
+	}
+
+	private EntityTypeBinder getRootEntityBinder() {
+		EntityTypeBinder check = this;
+		while ( check.getSuperEntityBinder() != null ) {
+			check = check.getSuperEntityBinder();
+		}
+		return check;
+	}
+
+	private DependantValue createDependentKeyValue(Table table, IdentifierBinding identifierBinding) {
+		final DependantValue key = new DependantValue(
+				getBindingState().getMetadataBuildingContext(),
+				table,
+				identifierBinding.value()
+		);
+		key.setNullable( false );
+		key.setUpdateable( false );
+		for ( Column identifierColumn : identifierBinding.columns() ) {
+			key.addColumn( copyKeyColumn( identifierColumn ), true, false );
+		}
+		return key;
+	}
+
+	private Column copyKeyColumn(Column source) {
+		// todo : is this enough detail?
+		final Column result = new Column( source.getName() );
+		result.setLength( source.getLength() );
+		result.setPrecision( source.getPrecision() );
+		result.setScale( source.getScale() );
+		result.setSqlType( source.getSqlType() );
+		result.setNullable( false );
+		result.setUnique( source.isUnique() );
+		return result;
+	}
+
+	private void createPrimaryKey(Table table, KeyValue key) {
+		final PrimaryKey primaryKey = new PrimaryKey( table );
+		table.setPrimaryKey( primaryKey );
+		key.getColumns().forEach( primaryKey::addColumn );
+	}
+
 	private Method findCallbackMethod(
 			Class<?> callbackTarget,
 			MethodDetails callbackMethod,
@@ -418,70 +579,6 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 			);
 			joinedSubclass.setSuperMappedSuperclass( (MappedSuperclass) superTypeBinding );
 		}
-
-		final var joinTableReference = modelBinders.getTableBinder().bindPrimaryTable(
-				getManagedType(),
-				EntityHierarchy.HierarchyRelation.SUB
-		);
-		joinedSubclass.setTable( joinTableReference.binding() );
-
-		final PrimaryKey primaryKey = new PrimaryKey( joinTableReference.binding() );
-		joinTableReference.binding().setPrimaryKey( primaryKey );
-
-		final var targetTable = superEntityTypeBinding.getIdentityTable();
-		if ( targetTable.getPrimaryKey() != null && targetTable.getPrimaryKey().getColumnSpan() > 0 ) {
-			// we can create the foreign key immediately
-			final var joinTableAnn = getManagedType().getClassDetails().getDirectAnnotationUsage( JoinTable.class );
-
-			final List<JoinColumn> joinColumnAnns = joinTableAnn == null
-					? Collections.emptyList()
-					: List.of( joinTableAnn.joinColumns() );
-			final List<JoinColumn> inverseJoinColumnAnns = joinTableAnn == null
-					? Collections.emptyList()
-					: List.of( joinTableAnn.inverseJoinColumns() );
-
-			for ( int i = 0; i < targetTable.getPrimaryKey().getColumnSpan(); i++ ) {
-				final Column targetColumn = targetTable.getPrimaryKey().getColumns().get( i );
-				final Column pkColumn;
-				if ( !inverseJoinColumnAnns.isEmpty() ) {
-					final var joinColumnAnn = resolveMatchingJoinColumnAnn(
-							inverseJoinColumnAnns,
-							targetColumn,
-							joinColumnAnns
-					);
-					pkColumn = ColumnBinder.bindColumn( ColumnSource.from( joinColumnAnn ), targetColumn::getName, true, false );
-				}
-				else {
-					pkColumn = ColumnBinder.bindColumn( null, targetColumn::getName, true, false );
-				}
-				primaryKey.addColumn( pkColumn );
-			}
-
-			final ForeignKeySource foreignKeySource = ForeignKeySource.from( joinTableAnn );
-			final String foreignKeyName = foreignKeySource == null
-					? ""
-					: foreignKeySource.name();
-			final String foreignKeyDefinition = foreignKeySource == null
-					? ""
-					: foreignKeySource.definition();
-
-			final org.hibernate.mapping.ForeignKey foreignKey = targetTable.createForeignKey(
-					foreignKeyName,
-					primaryKey.getColumns(),
-					findSuperEntity().getEntityName(),
-					foreignKeyDefinition,
-					null,
-					targetTable.getPrimaryKey().getColumns()
-			);
-			foreignKey.setReferencedTable( targetTable );
-		}
-		else {
-			throw new UnsupportedOperationException( "Delayed foreign key creation not yet implemented" );
-		}
-
-		// todo : bind foreign-key
-		// todo : do same for secondary tables
-		//		- in both cases we can immediately process the fk if
 
 		return joinedSubclass;
 	}
@@ -618,7 +715,6 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 	private void prepareRootEntityBinding(RootClass typeBinding, ModelBinders modelBinders) {
 		// todo : possibly Hierarchy details - version, tenant-id, ...
 
-		bindIdentifier( getManagedType(), typeBinding, modelBinders, getBindingState(), getOptions(), getBindingContext() );
 		bindDiscriminator( getManagedType(), typeBinding, modelBinders, getOptions(), getBindingState(), getBindingContext() );
 		bindVersion( getManagedType(), typeBinding, modelBinders, getOptions(), getBindingState(), getBindingContext() );
 		bindTenantId( getManagedType(), typeBinding, modelBinders, getOptions(), getBindingState(), getBindingContext() );

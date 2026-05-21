@@ -9,7 +9,6 @@ package org.hibernate.models.orm.bind.joined;
 import org.hibernate.mapping.JoinedSubclass;
 import org.hibernate.mapping.RootClass;
 
-import org.hibernate.testing.orm.junit.FailureExpected;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.ServiceRegistryScope;
 import org.junit.jupiter.api.Test;
@@ -39,10 +38,6 @@ public class SimpleJoinedTests {
 	@SuppressWarnings("JUnitMalformedDeclaration")
 	@Test
 	@ServiceRegistry
-	@FailureExpected(
-			reason = "Binding the primary key is done twice by 2 'owners' overwriting details. " +
-					"Might be case for distinct, sequential root key and secondary key (secondary tables, subclass tables) binding phases."
-	)
 	void simpleTest(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {

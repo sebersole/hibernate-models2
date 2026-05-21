@@ -48,6 +48,8 @@ public class SecondaryTableTests {
 					// owned == false -> inverse == true
 					assertThat( join.isInverse() ).isTrue();
 					assertThat( join.getPersistentClass() ).isSameAs( entityBinding );
+					assertThat( join.getKey() ).isNotNull();
+					assertThat( join.getKey().getColumns() ).hasSize( 1 );
 
 					assertThat( entityBinding.getUnjoinedProperties() ).hasSize( 2 );
 					assertThat( join.getProperties() ).hasSize( 1 );

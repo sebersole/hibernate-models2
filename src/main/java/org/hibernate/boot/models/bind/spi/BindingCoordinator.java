@@ -6,6 +6,10 @@
  */
 package org.hibernate.boot.models.bind.spi;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.JoinTable;
@@ -22,6 +26,7 @@ import org.hibernate.boot.models.bind.internal.binders.EntityTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.MappedSuperTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.ModelBinders;
+import org.hibernate.boot.models.bind.internal.binders.TypeBindingPhase;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
@@ -125,11 +130,29 @@ public class BindingCoordinator {
 	}
 
 	private void processHierarchy(int index, EntityHierarchy hierarchy) {
-		hierarchy.forEachType( this::processIdentifiableType );
+		final List<ManagedTypeBinder> binders = new ArrayList<>();
+		hierarchy.forEachType( (type, superType, entityHierarchy, relation) -> {
+			binders.add( createIdentifiableTypeBinder( type, superType, entityHierarchy, relation ) );
+		} );
+
+		runPhase( binders, TypeBindingPhase.Tables.class, TypeBindingPhase.Tables::bindTables );
+		runPhase( binders, TypeBindingPhase.SuperType.class, TypeBindingPhase.SuperType::bindSuperType );
+		runPhase( binders, TypeBindingPhase.EntityMetadata.class, TypeBindingPhase.EntityMetadata::bindEntityMetadata );
+		runPhase( binders, TypeBindingPhase.Identifiers.class, TypeBindingPhase.Identifiers::bindIdentifier );
+		runPhase( binders, TypeBindingPhase.TableKeys.class, TypeBindingPhase.TableKeys::bindTableKeys );
+		runPhase( binders, TypeBindingPhase.Members.class, TypeBindingPhase.Members::bindMembers );
+	}
+
+	private <P> void runPhase(List<ManagedTypeBinder> binders, Class<P> phaseType, Consumer<P> phaseAction) {
+		binders.forEach( (binder) -> {
+			if ( phaseType.isInstance( binder ) ) {
+				phaseAction.accept( phaseType.cast( binder ) );
+			}
+		} );
 	}
 
 
-	private void processIdentifiableType(
+	private ManagedTypeBinder createIdentifiableTypeBinder(
 			IdentifiableTypeMetadata type,
 			IdentifiableTypeMetadata superType,
 			EntityHierarchy hierarchy,
@@ -146,6 +169,8 @@ public class BindingCoordinator {
 					bindingOptions,
 					bindingContext
 			);
+			bindTypeSkeleton( binder );
+			return binder;
 		}
 		else {
 			assert type.getManagedTypeKind() == ManagedTypeMetadata.Kind.MAPPED_SUPER;
@@ -157,7 +182,13 @@ public class BindingCoordinator {
 					bindingOptions,
 					bindingContext
 			);
+			bindTypeSkeleton( binder );
+			return binder;
 		}
+	}
+
+	private void bindTypeSkeleton(ManagedTypeBinder binder) {
+		( (TypeBindingPhase.TypeSkeleton) binder ).bindTypeSkeleton();
 	}
 
 	private void processGenerators(GlobalRegistrations globalRegistrations) {
