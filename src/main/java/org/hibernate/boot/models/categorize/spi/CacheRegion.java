@@ -1,8 +1,6 @@
 /*
- * Hibernate, Relational Persistence for Idiomatic Java
- *
  * SPDX-License-Identifier: Apache-2.0
- * Copyright: Red Hat Inc. and Hibernate Authors
+ * Copyright Red Hat Inc. and Hibernate Authors
  */
 package org.hibernate.boot.models.categorize.spi;
 
@@ -11,7 +9,6 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.boot.CacheRegionDefinition;
 import org.hibernate.cache.spi.access.AccessType;
 import org.hibernate.internal.util.StringHelper;
-import org.hibernate.models.ModelsException;
 
 /// Categorized cache-region options for an entity, natural-id, or collection.
 ///

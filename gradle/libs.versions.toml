@@ -2,16 +2,16 @@
 hibernateOrm = "7.4.0.CR1"
 hibernateModels = "1.1.1"
 
-checkerFramework = "3.53.1"
-
 jbossLogging = "3.6.1.Final"
 jbossLoggingTool = "3.0.4.Final"
 
 junitJupiter = "6.0.1"
 assertj = "3.27.7"
-
 h2 = "2.4.240"
 log4j = "2.25.4"
+
+spotless = "8.3.0"
+checkerFramework = "3.53.1"
 
 
 [libraries]
@@ -31,3 +31,7 @@ assertj = { group = "org.assertj", name = "assertj-core", version.ref = "assertj
 
 h2 = { group = "com.h2database", name = "h2", version.ref = "h2" }
 log4j2 = { group = "org.apache.logging.log4j", name = "log4j-core", version.ref = "log4j" }
+
+
+[plugins]
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

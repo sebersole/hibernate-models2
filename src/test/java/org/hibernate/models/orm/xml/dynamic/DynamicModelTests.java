@@ -1,13 +1,10 @@
 /*
- * Hibernate, Relational Persistence for Idiomatic Java
- *
  * SPDX-License-Identifier: Apache-2.0
- * Copyright: Red Hat Inc. and Hibernate Authors
+ * Copyright Red Hat Inc. and Hibernate Authors
  */
 package org.hibernate.models.orm.xml.dynamic;
 
 import java.util.List;
-import java.util.Set;
 import java.util.SortedSet;
 
 import org.hibernate.annotations.Cascade;
@@ -28,7 +25,6 @@ import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
-import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.FieldDetails;
 
 import org.junit.jupiter.api.Test;

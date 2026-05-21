@@ -1,20 +1,16 @@
 /*
- * Hibernate, Relational Persistence for Idiomatic Java
- *
  * SPDX-License-Identifier: Apache-2.0
- * Copyright: Red Hat Inc. and Hibernate Authors
+ * Copyright Red Hat Inc. and Hibernate Authors
  */
 package org.hibernate.models.orm.bind.tables;
 
 import java.util.List;
 
 import org.hibernate.annotations.SecondaryRow;
-import org.hibernate.boot.internal.InFlightMetadataCollectorImpl;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Join;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
-import org.hibernate.mapping.Value;
 
 import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.ServiceRegistryScope;

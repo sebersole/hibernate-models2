@@ -1,8 +1,6 @@
 /*
- * Hibernate, Relational Persistence for Idiomatic Java
- *
  * SPDX-License-Identifier: Apache-2.0
- * Copyright: Red Hat Inc. and Hibernate Authors
+ * Copyright Red Hat Inc. and Hibernate Authors
  */
 package org.hibernate.models.orm.xml.attr;
 
@@ -32,7 +30,6 @@ import org.junit.jupiter.api.Test;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinColumns;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 

@@ -1,14 +1,10 @@
 /*
- * Hibernate, Relational Persistence for Idiomatic Java
- *
  * SPDX-License-Identifier: Apache-2.0
- * Copyright: Red Hat Inc. and Hibernate Authors
+ * Copyright Red Hat Inc. and Hibernate Authors
  */
-
 package org.hibernate.boot.models.categorize.spi;
 
 import java.lang.annotation.Annotation;
-import java.util.Objects;
 
 import org.hibernate.annotations.ConverterRegistration;
 import org.hibernate.boot.model.convert.spi.ConverterDescriptor;
