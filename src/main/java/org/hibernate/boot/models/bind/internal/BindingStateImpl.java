@@ -14,12 +14,14 @@ import java.util.function.BiConsumer;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.models.bind.internal.binders.EntityTypeBinder;
+import org.hibernate.boot.models.bind.internal.binders.IdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifiableTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.MappedSuperTypeBinder;
 import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.boot.models.bind.spi.TableOwner;
 import org.hibernate.boot.models.bind.spi.TableReference;
+import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.FilterDefRegistration;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.ManagedTypeMetadata;
@@ -46,6 +48,7 @@ public class BindingStateImpl implements BindingState {
 
 	private final Map<ClassDetails, ManagedTypeBinder> typeBinders = new HashMap<>();
 	private final Map<ClassDetails, IdentifiableTypeBinder> typeBindersBySuper = new HashMap<>();
+	private final Map<EntityTypeMetadata, IdentifierBinding> identifierBindings = new HashMap<>();
 
 	public BindingStateImpl(MetadataBuildingContext metadataBuildingContext) {
 		this.metadataBuildingContext = metadataBuildingContext;
@@ -100,6 +103,16 @@ public class BindingStateImpl implements BindingState {
 	@Override
 	public IdentifiableTypeBinder getSuperTypeBinder(ClassDetails type) {
 		return typeBindersBySuper.get( type );
+	}
+
+	@Override
+	public void addIdentifierBinding(EntityTypeMetadata rootType, IdentifierBinding identifierBinding) {
+		identifierBindings.put( rootType, identifierBinding );
+	}
+
+	@Override
+	public IdentifierBinding getIdentifierBinding(EntityTypeMetadata rootType) {
+		return identifierBindings.get( rootType );
 	}
 
 	@Override

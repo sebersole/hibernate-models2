@@ -8,8 +8,10 @@ package org.hibernate.boot.models.bind.spi;
 
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.models.bind.internal.SecondaryTable;
+import org.hibernate.boot.models.bind.internal.binders.IdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifiableTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
+import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.FilterDefRegistration;
 import org.hibernate.boot.models.categorize.spi.ManagedTypeMetadata;
 import org.hibernate.boot.spi.MetadataBuildingContext;
@@ -58,6 +60,12 @@ public interface BindingState {
 
 	/// Register a secondary table reference.
 	void addSecondaryTable(SecondaryTable table);
+
+	/// Register the identifier binding produced for an entity hierarchy root.
+	void addIdentifierBinding(EntityTypeMetadata rootType, IdentifierBinding identifierBinding);
+
+	/// Resolve the identifier binding for an entity hierarchy root.
+	IdentifierBinding getIdentifierBinding(EntityTypeMetadata rootType);
 
 
 	/// Register the binder responsible for a categorized managed type.
