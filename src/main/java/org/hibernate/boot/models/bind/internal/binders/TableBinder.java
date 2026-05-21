@@ -6,8 +6,8 @@
  */
 package org.hibernate.boot.models.bind.internal.binders;
 
-import java.lang.annotation.Annotation;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.hibernate.annotations.Comment;
@@ -23,6 +23,7 @@ import org.hibernate.boot.models.bind.internal.BindingHelper;
 import org.hibernate.boot.models.bind.internal.InLineView;
 import org.hibernate.boot.models.bind.internal.PhysicalTable;
 import org.hibernate.boot.models.bind.internal.SecondPass;
+import org.hibernate.boot.models.bind.internal.sources.TableSource;
 import org.hibernate.boot.models.bind.internal.UnionTable;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
@@ -39,7 +40,6 @@ import org.hibernate.mapping.DenormalizedTable;
 import org.hibernate.mapping.Join;
 import org.hibernate.mapping.PrimaryKey;
 import org.hibernate.mapping.Table;
-import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.ClassDetails;
 
 import jakarta.persistence.InheritanceType;
@@ -87,9 +87,9 @@ public class TableBinder {
 
 	public TableReference bindPrimaryTable(EntityTypeMetadata type, EntityHierarchy.HierarchyRelation hierarchyRelation) {
 		final ClassDetails typeClassDetails = type.getClassDetails();
-		final AnnotationUsage<jakarta.persistence.Table> tableAnn = typeClassDetails.getAnnotationUsage( jakarta.persistence.Table.class );
-		final AnnotationUsage<JoinTable> joinTableAnn = typeClassDetails.getAnnotationUsage( JoinTable.class );
-		final AnnotationUsage<Subselect> subselectAnn = typeClassDetails.getAnnotationUsage( Subselect.class );
+		final jakarta.persistence.Table tableAnn = typeClassDetails.getDirectAnnotationUsage( jakarta.persistence.Table.class );
+		final JoinTable joinTableAnn = typeClassDetails.getDirectAnnotationUsage( JoinTable.class );
+		final Subselect subselectAnn = typeClassDetails.getDirectAnnotationUsage( Subselect.class );
 
 		if ( tableAnn != null && joinTableAnn != null ) {
 			throw new AnnotationPlacementException( "Illegal combination of @Table and @JoinTable on " + typeClassDetails.getName() );
@@ -107,22 +107,22 @@ public class TableBinder {
 			assert subselectAnn == null;
 
 			if ( hierarchyRelation == EntityHierarchy.HierarchyRelation.ROOT ) {
-				tableReference = bindPhysicalTable( type, tableAnn, jakarta.persistence.Table.class, true );
+				tableReference = bindPhysicalTable( type, TableSource.from( tableAnn ), true );
 			}
 			else {
-				tableReference = bindUnionTable( type, tableAnn );
+				tableReference = bindUnionTable( type, TableSource.from( tableAnn ) );
 			}
 		}
 		else if ( type.getHierarchy().getInheritanceType() == InheritanceType.SINGLE_TABLE ) {
 			if ( hierarchyRelation == EntityHierarchy.HierarchyRelation.ROOT ) {
-				tableReference = normalTableDetermination( type, subselectAnn, tableAnn, jakarta.persistence.Table.class, typeClassDetails );
+				tableReference = normalTableDetermination( type, subselectAnn, TableSource.from( tableAnn ) );
 			}
 			else {
 				tableReference = null;
 			}
 		}
 		else {
-			tableReference = normalTableDetermination( type, subselectAnn, joinTableAnn, JoinTable.class, typeClassDetails );
+			tableReference = normalTableDetermination( type, subselectAnn, TableSource.from( joinTableAnn ) );
 		}
 
 		if ( tableReference != null ) {
@@ -135,43 +135,37 @@ public class TableBinder {
 		return tableReference;
 	}
 
-	private <A extends Annotation> TableReference normalTableDetermination(
+	private TableReference normalTableDetermination(
 			EntityTypeMetadata type,
-			AnnotationUsage<Subselect> subselectAnn,
-			AnnotationUsage<A> tableAnn,
-			Class<A> annotationType,
-			ClassDetails typeClassDetails) {
+			Subselect subselectAnn,
+			TableSource tableSource) {
 		final TableReference tableReference;
 		if ( subselectAnn != null ) {
 			tableReference = bindVirtualTable( type, subselectAnn );
 		}
 		else {
 			// either an explicit or implicit @Table
-			tableReference = bindPhysicalTable( type, tableAnn, annotationType, true );
+			tableReference = bindPhysicalTable( type, tableSource, true );
 		}
 		return tableReference;
 	}
 
 	private TableReference bindUnionTable(
 			EntityTypeMetadata type,
-			AnnotationUsage<jakarta.persistence.Table> tableAnn) {
+			TableSource tableSource) {
 		assert type.getSuperType() != null;
 
 		final TableReference superTypeTable = bindingState.getTableByOwner( type.getSuperType() );
 		final Table unionBaseTable = superTypeTable.binding();
 
-		final Identifier logicalName = determineLogicalName( type, tableAnn );
+		final Identifier logicalName = determineLogicalName( type, tableSource );
 		final Identifier logicalSchemaName = resolveDatabaseIdentifier(
-				tableAnn,
-				"schema",
-				jakarta.persistence.Table.class,
+				tableSource == null ? null : tableSource.schema(),
 				bindingOptions.getDefaultSchemaName(),
 				QuotedIdentifierTarget.SCHEMA_NAME
 		);
 		final Identifier logicalCatalogName = resolveDatabaseIdentifier(
-				tableAnn,
-				"catalog",
-				jakarta.persistence.Table.class,
+				tableSource == null ? null : tableSource.catalog(),
 				bindingOptions.getDefaultCatalogName(),
 				QuotedIdentifierTarget.CATALOG_NAME
 		);
@@ -192,14 +186,18 @@ public class TableBinder {
 	public List<org.hibernate.boot.models.bind.internal.SecondaryTable> bindSecondaryTables(EntityTypeBinder entityBinder) {
 		final ClassDetails typeClassDetails = entityBinder.getManagedType().getClassDetails();
 
-		final List<AnnotationUsage<SecondaryTable>> secondaryTableAnns = typeClassDetails.getRepeatedAnnotationUsages( SecondaryTable.class );
+		final List<SecondaryTable> secondaryTableAnns = Arrays.asList( typeClassDetails.getRepeatedAnnotationUsages(
+				SecondaryTable.class,
+				bindingContext.getBootstrapContext().getModelsContext()
+		) );
 		final List<org.hibernate.boot.models.bind.internal.SecondaryTable> result = new ArrayList<>( secondaryTableAnns.size() );
 
 		secondaryTableAnns.forEach( (secondaryTableAnn) -> {
-			final AnnotationUsage<SecondaryRow> secondaryRowAnn = typeClassDetails.getNamedAnnotationUsage(
+			final SecondaryRow secondaryRowAnn = typeClassDetails.getNamedAnnotationUsage(
 					SecondaryRow.class,
-					secondaryTableAnn.getString( "name" ),
-					"table"
+					secondaryTableAnn.name(),
+					"table",
+					bindingContext.getBootstrapContext().getModelsContext()
 			);
 			final org.hibernate.boot.models.bind.internal.SecondaryTable binding = bindSecondaryTable( entityBinder, secondaryTableAnn, secondaryRowAnn );
 			result.add( binding );
@@ -208,7 +206,7 @@ public class TableBinder {
 		return result;
 	}
 
-	private InLineView bindVirtualTable(EntityTypeMetadata type, AnnotationUsage<Subselect> subselectAnn) {
+	private InLineView bindVirtualTable(EntityTypeMetadata type, Subselect subselectAnn) {
 		final Identifier logicalName = implicitNamingStrategy.determinePrimaryTableName(
 				new ImplicitEntityNameSource() {
 					@Override
@@ -229,20 +227,20 @@ public class TableBinder {
 						null,
 						null,
 						logicalName.getCanonicalName(),
-						BindingHelper.getString( subselectAnn, "value", Subselect.class, bindingContext ),
+						subselectAnn.value(),
 						true,
-						bindingState.getMetadataBuildingContext()
+						bindingState.getMetadataBuildingContext(),
+						false
 				)
 		);
 	}
 
-	private <A extends Annotation> PhysicalTableReference bindPhysicalTable(
+	private PhysicalTableReference bindPhysicalTable(
 			EntityTypeMetadata type,
-			AnnotationUsage<A> tableAnn,
-			Class<A> annotationType,
+			TableSource tableSource,
 			boolean isPrimary) {
-		if ( tableAnn != null ) {
-			return bindExplicitPhysicalTable( type, tableAnn, annotationType, isPrimary );
+		if ( tableSource != null ) {
+			return bindExplicitPhysicalTable( type, tableSource, isPrimary );
 		}
 		else {
 			return bindImplicitPhysicalTable( type, isPrimary );
@@ -258,7 +256,8 @@ public class TableBinder {
 				logicalName.getCanonicalName(),
 				null,
 				type.isAbstract(),
-				bindingState.getMetadataBuildingContext()
+				bindingState.getMetadataBuildingContext(),
+				false
 		);
 
 		applyComment(
@@ -278,15 +277,16 @@ public class TableBinder {
 		);
 	}
 
-	private AnnotationUsage<Comment> findCommentAnnotation(
+	private Comment findCommentAnnotation(
 			EntityTypeMetadata type,
 			Identifier logicalTableName,
 			boolean isPrimary) {
 		if ( isPrimary ) {
-			final AnnotationUsage<Comment> unnamed = type.getClassDetails().getNamedAnnotationUsage(
+			final Comment unnamed = type.getClassDetails().getNamedAnnotationUsage(
 					Comment.class,
 					"",
-					"on"
+					"on",
+					bindingContext.getBootstrapContext().getModelsContext()
 			);
 			if ( unnamed != null ) {
 				return unnamed;
@@ -296,13 +296,14 @@ public class TableBinder {
 		return type.getClassDetails().getNamedAnnotationUsage(
 				Comment.class,
 				logicalTableName.getCanonicalName(),
-				"on"
+				"on",
+				bindingContext.getBootstrapContext().getModelsContext()
 		);
 	}
 
-	private Identifier determineLogicalName(EntityTypeMetadata type, AnnotationUsage<?> tableAnn) {
-		if ( tableAnn != null ) {
-			final String name = StringHelper.nullIfEmpty( tableAnn.getString( "name" ) );
+	private Identifier determineLogicalName(EntityTypeMetadata type, TableSource tableSource) {
+		if ( tableSource != null ) {
+			final String name = tableSource.nonEmptyName();
 			if ( name != null ) {
 				return BindingHelper.toIdentifier( name, QuotedIdentifierTarget.TABLE_NAME, bindingOptions, jdbcEnvironment );
 			}
@@ -323,23 +324,18 @@ public class TableBinder {
 		);
 	}
 
-	private <A extends Annotation> PhysicalTable bindExplicitPhysicalTable(
+	private PhysicalTable bindExplicitPhysicalTable(
 			EntityTypeMetadata type,
-			AnnotationUsage<A> tableAnn,
-			Class<A> annotationType,
+			TableSource tableSource,
 			boolean isPrimary) {
-		final Identifier logicalName = determineLogicalName( type, tableAnn );
+		final Identifier logicalName = determineLogicalName( type, tableSource );
 		final Identifier logicalSchemaName = resolveDatabaseIdentifier(
-				tableAnn,
-				"schema",
-				annotationType,
+				tableSource.schema(),
 				bindingOptions.getDefaultSchemaName(),
 				QuotedIdentifierTarget.SCHEMA_NAME
 		);
 		final Identifier logicalCatalogName = resolveDatabaseIdentifier(
-				tableAnn,
-				"catalog",
-				annotationType,
+				tableSource.catalog(),
 				bindingOptions.getDefaultCatalogName(),
 				QuotedIdentifierTarget.CATALOG_NAME
 		);
@@ -350,11 +346,12 @@ public class TableBinder {
 				logicalName.getCanonicalName(),
 				null,
 				type.isAbstract(),
-				bindingState.getMetadataBuildingContext()
+				bindingState.getMetadataBuildingContext(),
+				false
 		);
 
-		applyComment( binding, tableAnn, findCommentAnnotation( type, logicalName, isPrimary ) );
-		applyOptions( binding, tableAnn );
+		applyComment( binding, tableSource, findCommentAnnotation( type, logicalName, isPrimary ) );
+		applyOptions( binding, tableSource );
 
 		return new PhysicalTable(
 				logicalName,
@@ -369,20 +366,17 @@ public class TableBinder {
 
 	private org.hibernate.boot.models.bind.internal.SecondaryTable bindSecondaryTable(
 			EntityTypeBinder entityBinder,
-			AnnotationUsage<SecondaryTable> secondaryTableAnn,
-			AnnotationUsage<SecondaryRow> secondaryRowAnn) {
-		final Identifier logicalName = determineLogicalName( entityBinder.getManagedType(), secondaryTableAnn );
+			SecondaryTable secondaryTableAnn,
+			SecondaryRow secondaryRowAnn) {
+		final TableSource tableSource = TableSource.from( secondaryTableAnn );
+		final Identifier logicalName = determineLogicalName( entityBinder.getManagedType(), tableSource );
 		final Identifier schemaName = resolveDatabaseIdentifier(
-				secondaryTableAnn,
-				"schema",
-				SecondaryTable.class,
+				tableSource.schema(),
 				bindingOptions.getDefaultSchemaName(),
 				QuotedIdentifierTarget.SCHEMA_NAME
 		);
 		final Identifier catalogName = resolveDatabaseIdentifier(
-				secondaryTableAnn,
-				"catalog",
-				SecondaryTable.class,
+				tableSource.catalog(),
 				bindingOptions.getDefaultCatalogName(),
 				QuotedIdentifierTarget.CATALOG_NAME
 		);
@@ -393,16 +387,19 @@ public class TableBinder {
 				logicalName.getCanonicalName(),
 				null,
 				false,
-				bindingState.getMetadataBuildingContext()
+				bindingState.getMetadataBuildingContext(),
+				false
 		);
 
-		applyComment( binding, secondaryTableAnn, findCommentAnnotation( entityBinder.getManagedType(), logicalName, false ) );
-		applyOptions( binding, secondaryTableAnn );
+		applyComment( binding, tableSource, findCommentAnnotation( entityBinder.getManagedType(), logicalName, false ) );
+		applyOptions( binding, tableSource );
 
 		final Join join = new Join();
 		join.setTable( binding );
-		join.setOptional( BindingHelper.getValue( secondaryRowAnn, "optional", true ) );
-		join.setInverse( !BindingHelper.getValue( secondaryRowAnn, "owned", true ) );
+		final boolean optional = secondaryRowAnn == null || secondaryRowAnn.optional();
+		final boolean owned = secondaryRowAnn == null || secondaryRowAnn.owned();
+		join.setOptional( optional );
+		join.setInverse( !owned );
 		join.setPersistentClass( entityBinder.getTypeBinding() );
 		entityBinder.getTypeBinding().addJoin( join );
 
@@ -413,8 +410,8 @@ public class TableBinder {
 				physicalNamingStrategy.toPhysicalTableName( logicalName, jdbcEnvironment ),
 				physicalNamingStrategy.toPhysicalCatalogName( catalogName, jdbcEnvironment ),
 				physicalNamingStrategy.toPhysicalSchemaName( schemaName, jdbcEnvironment ),
-				BindingHelper.getValue( secondaryRowAnn, "optional", true ),
-				BindingHelper.getValue( secondaryRowAnn, "owned", true ),
+				optional,
+				owned,
 				binding
 		);
 	}
@@ -426,13 +423,10 @@ public class TableBinder {
 		return name.getCanonicalName();
 	}
 
-	private <A extends Annotation> Identifier resolveDatabaseIdentifier(
-			AnnotationUsage<A> annotationUsage,
-			String attributeName,
-			Class<A> annotationType,
+	private Identifier resolveDatabaseIdentifier(
+			String explicit,
 			Identifier fallback,
 			QuotedIdentifierTarget target) {
-		final String explicit = BindingHelper.getStringOrNull( annotationUsage, attributeName );
 		if ( StringHelper.isNotEmpty( explicit ) ) {
 			return BindingHelper.toIdentifier( explicit, target, bindingOptions, jdbcEnvironment );
 		}
@@ -441,8 +435,7 @@ public class TableBinder {
 			return fallback;
 		}
 
-		final String defaultValue = BindingHelper.getDefaultValue( attributeName, annotationType, bindingContext );
-		return BindingHelper.toIdentifier(defaultValue, target, bindingOptions, jdbcEnvironment );
+		return null;
 	}
 
 
@@ -460,21 +453,21 @@ public class TableBinder {
 		BindingHelper.processSecondPassQueue( secondPasses );
 	}
 
-	private void applyComment(Table table, AnnotationUsage<?> tableAnn, AnnotationUsage<Comment> commentAnn) {
+	private void applyComment(Table table, TableSource tableSource, Comment commentAnn) {
 		if ( commentAnn != null ) {
-			table.setComment( commentAnn.getString( "value" ) );
+			table.setComment( commentAnn.value() );
 		}
-		else if ( tableAnn != null ) {
-			final String comment = tableAnn.getString( "comment" );
+		else if ( tableSource != null ) {
+			final String comment = tableSource.comment();
 			if ( StringHelper.isNotEmpty( comment ) ) {
 				table.setComment( comment );
 			}
 		}
 	}
 
-	private void applyOptions(Table table, AnnotationUsage<?> tableAnn) {
-		if ( tableAnn != null ) {
-			final String options = tableAnn.getString( "options" );
+	private void applyOptions(Table table, TableSource tableSource) {
+		if ( tableSource != null ) {
+			final String options = tableSource.options();
 			if ( StringHelper.isNotEmpty( options ) ) {
 //				table.setOptions( options );
 				throw new UnsupportedOperationException( "Not yet implemented" );

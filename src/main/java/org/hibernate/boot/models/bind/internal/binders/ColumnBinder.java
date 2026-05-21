@@ -10,6 +10,7 @@ import java.util.function.Supplier;
 
 import org.hibernate.annotations.DiscriminatorFormula;
 import org.hibernate.boot.models.bind.internal.BindingHelper;
+import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
@@ -17,8 +18,6 @@ import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Formula;
-import org.hibernate.models.spi.AnnotationDescriptor;
-import org.hibernate.models.spi.AnnotationUsage;
 
 import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.DiscriminatorType;
@@ -30,10 +29,10 @@ import static org.hibernate.internal.util.NullnessHelper.nullif;
  */
 public class ColumnBinder {
 	public static Column bindColumn(
-			AnnotationUsage<?> annotationUsage,
+			ColumnSource columnSource,
 			Supplier<String> defaultNameSupplier) {
 		return bindColumn(
-				annotationUsage,
+				columnSource,
 				defaultNameSupplier,
 				false,
 				true,
@@ -44,12 +43,12 @@ public class ColumnBinder {
 	}
 
 	public static Column bindColumn(
-			AnnotationUsage<?> annotationUsage,
+			ColumnSource columnSource,
 			Supplier<String> defaultNameSupplier,
 			boolean uniqueByDefault,
 			boolean nullableByDefault) {
 		return bindColumn(
-				annotationUsage,
+				columnSource,
 				defaultNameSupplier,
 				uniqueByDefault,
 				nullableByDefault,
@@ -60,7 +59,7 @@ public class ColumnBinder {
 	}
 
 	public static Column bindColumn(
-			AnnotationUsage<?> annotationUsage,
+			ColumnSource columnSource,
 			Supplier<String> defaultNameSupplier,
 			boolean uniqueByDefault,
 			boolean nullableByDefault,
@@ -68,26 +67,26 @@ public class ColumnBinder {
 			int precisionByDefault,
 			int scaleByDefault) {
 		final Column result = new Column();
-		result.setName( columnName( annotationUsage, defaultNameSupplier ) );
+		result.setName( columnName( columnSource, defaultNameSupplier ) );
 
-		result.setUnique( BindingHelper.getValue( annotationUsage, "unique", uniqueByDefault ) );
-		result.setNullable( BindingHelper.getValue( annotationUsage, "nullable", nullableByDefault ) );
-		result.setSqlType( BindingHelper.getValue( annotationUsage, "columnDefinition", (String) null ) );
-		result.setLength( BindingHelper.getValue( annotationUsage, "length", lengthByDefault ) );
-		result.setPrecision( BindingHelper.getValue( annotationUsage, "precision", precisionByDefault ) );
-		result.setScale( BindingHelper.getValue( annotationUsage, "scale", scaleByDefault ) );
+		result.setUnique( columnSource == null ? uniqueByDefault : columnSource.unique( uniqueByDefault ) );
+		result.setNullable( columnSource == null ? nullableByDefault : columnSource.nullable( nullableByDefault ) );
+		result.setSqlType( columnSource == null ? null : columnSource.columnDefinition() );
+		result.setLength( columnSource == null ? lengthByDefault : columnSource.length( lengthByDefault ) );
+		result.setPrecision( columnSource == null ? precisionByDefault : columnSource.precision( precisionByDefault ) );
+		result.setScale( columnSource == null ? scaleByDefault : columnSource.scale( scaleByDefault ) );
 		return result;
 	}
 
 
 	public static String columnName(
-			AnnotationUsage<?> columnAnnotation,
+			ColumnSource columnSource,
 			Supplier<String> defaultNameSupplier) {
-		if ( columnAnnotation == null ) {
+		if ( columnSource == null ) {
 			return defaultNameSupplier.get();
 		}
 
-		return nullif( columnAnnotation.getAttributeValue( "name" ), defaultNameSupplier );
+		return nullif( columnSource.nonEmptyName(), defaultNameSupplier );
 	}
 
 	private ColumnBinder() {
@@ -95,62 +94,40 @@ public class ColumnBinder {
 
 	static DiscriminatorType bindDiscriminatorColumn(
 			BindingContext bindingContext,
-			AnnotationUsage<DiscriminatorFormula> formulaAnn,
+			DiscriminatorFormula formulaAnn,
 			BasicValue value,
-			AnnotationUsage<DiscriminatorColumn> columnAnn,
+			DiscriminatorColumn columnAnn,
 			BindingOptions bindingOptions,
 			BindingState bindingState) {
+		final ColumnSource columnSource = ColumnSource.from( columnAnn );
 		final DiscriminatorType discriminatorType;
 		if ( formulaAnn != null ) {
-			final Formula formula = new Formula( formulaAnn.getString( "value" ) );
+			final Formula formula = new Formula( formulaAnn.value() );
 			value.addFormula( formula );
 
-			discriminatorType = formulaAnn.getEnum( "discriminatorType", DiscriminatorType.STRING );
+			discriminatorType = formulaAnn.discriminatorType();
 		}
 		else {
 			final Column column = new Column();
 			value.addColumn( column, true, false );
-			discriminatorType = BindingHelper.getValue( columnAnn, "discriminatorType", DiscriminatorType.STRING );
+			discriminatorType = columnAnn == null ? DiscriminatorType.STRING : columnAnn.discriminatorType();
 
-			column.setName( columnName( columnAnn, () -> "dtype" ) );
-			column.setLength( (Integer) BindingHelper.getValue(
-					columnAnn,
-					"length",
-					() -> {
-						final AnnotationDescriptor<DiscriminatorColumn> descriptor;
-						if ( columnAnn != null ) {
-							descriptor = columnAnn.getAnnotationDescriptor();
-						}
-						else {
-							descriptor = bindingContext.getAnnotationDescriptorRegistry().getDescriptor( DiscriminatorColumn.class );
-						}
-						return descriptor.getAttribute( "length" ).getAttributeMethod().getDefaultValue();
-					}
-			) );
-			column.setSqlType( BindingHelper.getGloballyQuotedValue(
-					columnAnn,
-					"columnDefinition",
-					() -> {
-						final AnnotationDescriptor<DiscriminatorColumn> descriptor;
-						if ( columnAnn != null ) {
-							descriptor = columnAnn.getAnnotationDescriptor();
-						}
-						else {
-							descriptor = bindingContext.getAnnotationDescriptorRegistry().getDescriptor( DiscriminatorColumn.class );
-						}
-						return (String) descriptor.getAttribute( "columnDefinition" ).getAttributeMethod().getDefaultValue();
-					},
+			column.setName( columnName( columnSource, () -> "dtype" ) );
+			column.setLength( columnSource == null ? 31 : columnSource.length( 31 ) );
+			column.setSqlType( BindingHelper.applyGlobalQuoting(
+					columnSource == null ? "" : columnSource.columnDefinition(),
+					org.hibernate.boot.models.bind.spi.QuotedIdentifierTarget.COLUMN_DEFINITION,
 					bindingOptions,
 					bindingState
 			) );
-			applyOptions( column, columnAnn );
+			applyOptions( column, columnSource );
 		}
 		return discriminatorType;
 	}
 
-	private static void applyOptions(Column column, AnnotationUsage<?> columnAnn) {
-		if ( columnAnn != null ) {
-			final String options = columnAnn.getString( "options" );
+	private static void applyOptions(Column column, ColumnSource columnSource) {
+		if ( columnSource != null ) {
+			final String options = columnSource.options();
 			if ( StringHelper.isNotEmpty( options ) ) {
 				// todo : see https://hibernate.atlassian.net/browse/HHH-17449
 //				table.setOptions( options );

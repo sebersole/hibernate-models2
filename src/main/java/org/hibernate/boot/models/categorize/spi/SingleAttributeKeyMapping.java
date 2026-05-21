@@ -8,18 +8,23 @@ package org.hibernate.boot.models.categorize.spi;
 
 import org.hibernate.models.spi.ClassDetails;
 
-/**
- * @author Steve Ebersole
- */
+/// Key mapping represented by one persistent attribute.
+///
+/// The attribute may be a simple value, as with {@link BasicKeyMapping}, or an
+/// embeddable value, as with {@link AggregatedKeyMapping}.
+///
+/// @author Steve Ebersole
 public interface SingleAttributeKeyMapping extends KeyMapping {
+	/// The persistent attribute that represents this key.
 	AttributeMetadata getAttribute();
 
+	/// The name of the persistent attribute that represents this key.
 	default String getAttributeName() {
 		return getAttribute().getName();
 	}
 
 	default ClassDetails getKeyType() {
-		return getAttribute().getMember().getType();
+		return getAttribute().getMember().getType().determineRawClass();
 	}
 
 	@Override

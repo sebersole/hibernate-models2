@@ -8,21 +8,21 @@ package org.hibernate.models.orm.xml.globals;
 
 import java.util.List;
 
-import org.hibernate.boot.internal.BootstrapContextImpl;
-import org.hibernate.boot.internal.MetadataBuilderImpl;
-import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.models.internal.jdk.VoidClassDetails;
-import org.hibernate.models.orm.process.ManagedResourcesImpl;
+import org.hibernate.jpa.HibernatePersistenceConfiguration;
+import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.JpaEventListener;
+import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MethodDetails;
 
 import org.junit.jupiter.api.Test;
 
+import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
+
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor.processManagedResources;
 
 /**
  * @author Steve Ebersole
@@ -30,18 +30,17 @@ import static org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor
 public class JpaEventListenerTests {
 	@Test
 	void testGlobalRegistration() {
-		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
-				.addXmlMappings( "mappings/globals.xml" )
-				.build();
-
 		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
-			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl(
-					serviceRegistry,
-					new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry )
+			final MetadataBuildingContextTestingImpl metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
+			final HibernatePersistenceConfiguration persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+			persistenceConfiguration.mappingFile( "mappings/globals.xml" );
+			final AvailableResources availableResources = AvailableResources.from(
+					persistenceConfiguration,
+					metadataBuildingContext
 			);
-			final CategorizedDomainModel categorizedDomainModel = processManagedResources(
-					managedResources,
-					bootstrapContext
+			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
+					availableResources,
+					metadataBuildingContext
 			);
 			final List<JpaEventListener> registrations = categorizedDomainModel
 					.getGlobalRegistrations()
@@ -50,7 +49,7 @@ public class JpaEventListenerTests {
 			final JpaEventListener registration = registrations.get( 0 );
 			final MethodDetails postPersistMethod = registration.getPostPersistMethod();
 			assertThat( postPersistMethod ).isNotNull();
-			assertThat( postPersistMethod.getReturnType() ).isEqualTo( VoidClassDetails.VOID_CLASS_DETAILS );
+			assertThat( postPersistMethod.getReturnType() ).isEqualTo( ClassDetails.VOID_CLASS_DETAILS );
 			assertThat( postPersistMethod.getArgumentTypes() ).hasSize( 1 );
 		}
 	}

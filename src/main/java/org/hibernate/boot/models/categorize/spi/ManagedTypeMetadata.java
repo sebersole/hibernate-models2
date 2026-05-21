@@ -13,41 +13,32 @@ import org.hibernate.models.spi.ClassDetails;
 
 import jakarta.persistence.AccessType;
 
-/**
- * Metadata about a {@linkplain jakarta.persistence.metamodel.ManagedType managed type}
- *
- * @author Steve Ebersole
- */
+/// Categorized metadata about a {@linkplain jakarta.persistence.metamodel.ManagedType managed type}.
+///
+/// This contract describes the information shared by entity, mapped-superclass,
+/// and embeddable types after annotation and XML sources have been interpreted.
+///
+/// @author Steve Ebersole
 public interface ManagedTypeMetadata {
 
 	enum Kind { ENTITY, MAPPED_SUPER, EMBEDDABLE }
 
 	Kind getManagedTypeKind();
 
-	/**
-	 * The underlying managed-class
-	 */
+	/// The underlying managed-class
 	ClassDetails getClassDetails();
 
-	/**
-	 * The class-level access type
-	 */
+	/// The class-level access type
 	AccessType getAccessType();
 
-	/**
-	 * Get the number of declared attributes
-	 */
+	/// Get the number of declared attributes
 	int getNumberOfAttributes();
 
-	/**
-	 * Get the declared attributes
-	 */
+	/// Get the declared attributes
 	Collection<AttributeMetadata> getAttributes();
 
 	AttributeMetadata findAttribute(String name);
 
-	/**
-	 * Visit each declared attributes
-	 */
+	/// Visit each declared attributes
 	void forEachAttribute(IndexedConsumer<AttributeMetadata> consumer);
 }

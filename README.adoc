@@ -1,31 +1,104 @@
-:fn-reusability: footnote:[This is a nice-to-have, as opposed to a hard goal]
-== Boot models
+= Hibernate boot models
 
-A work-in-progress look at a more phased approach to how Hibernate reads annotation
-and XML based mapping information.  Specifically here we are looking at the process
-used to build the `org.hibernate.mapping` model - the so-called boot model.
+This project is a work-in-progress exploration of using Hibernate Models to
+build Hibernate ORM's boot-time mapping model, `org.hibernate.mapping`.
 
-See https://hibernate.atlassian.net/browse/HHH-16114[HHH-16114] for details and discussion.
+The goal is to make boot processing more explicit and better phased than the
+current second-pass-heavy flow in ORM.  The current shape separates the work
+into source collection, model categorization, and binding.
 
-There are a few inter-related goals for this work -
+See https://hibernate.atlassian.net/browse/HHH-16114[HHH-16114] for background
+and discussion.
 
-1. More phased approach compared to the current "second pass" approach
-2. Replace HCANN with Jandex for low-level annotation reading
-3. Extended orm.xml support (drop hbm.xml)
-4. Better leverage of "temp class loader"
-5. Re-usability across projects{fn-reusability}
+This work is intended to replace `org.hibernate.mapping` building as part of ORM 9.0.
 
-=== The modules
 
-hibernate-models-common::
-    Common stuff - duh
-hibernate-models-source::
-    An abstraction over reflection and annotation
-hibernate-models-intermediate::
-    First set of phases to categorize a domain model -
-        1. Simple categorization of entity v. embeddable v. “simple” class
-        2. Light categorization of attributes
-        3. Application of XML via JAXB - overlay and override
-        4. Normalization of values
+== Current shape
 
-Definitely need a better name for `hibernate-models-intermediate`
+The implementation is organized around three phases.
+
+=== Source discovery
+
+Source discovery collects the inputs that should be considered during boot:
+
+* managed class descriptors
+* package descriptors
+* XML mapping bindings
+
+These are represented by `org.hibernate.boot.models.source.AvailableResources`.
+`AvailableResources` can be built from ORM boot inputs such as
+`PersistenceUnitDescriptor` or `HibernatePersistenceConfiguration`.
+
+XML handling lives under `org.hibernate.boot.models.source.xml`.  The local
+contracts keep the source phase explicit while delegating the XML internals to
+the upstream Hibernate Models XML processor where possible.
+
+=== Categorization
+
+Categorization consumes `AvailableResources` and produces
+`org.hibernate.boot.models.categorize.spi.CategorizedDomainModel`.
+
+The categorized model describes the domain model at the level later binders need:
+
+* entity hierarchies
+* visible mapped-superclasses
+* embeddables
+* persistent attributes
+* identifier and natural-id key mappings
+* persistence-unit scoped global registrations
+
+The public entry point is
+`org.hibernate.boot.models.categorize.spi.DomainModelCategorizer`.
+
+Categorization uses Hibernate Models infrastructure such as class and annotation
+descriptor registries through `CategorizationContext`.
+
+=== Binding
+
+Binding consumes `CategorizedDomainModel` and produces Hibernate's boot-time
+mapping model.
+
+The public coordination point is
+`org.hibernate.boot.models.bind.spi.BindingCoordinator`.  Binding state, options,
+context services, table references, and table ownership contracts live in
+`org.hibernate.boot.models.bind.spi`.
+
+Binders should work from categorized contracts and binding source abstractions,
+not directly from unrelated concrete annotations when a logical mapping concept
+can be shared.  Examples include:
+
+* `ColumnSource`
+* `TableSource`
+* `ForeignKeySource`
+
+== Design notes
+
+`AvailableResources` is intentionally small.  It is the list of resources
+available to categorization, not a processor and not a binding result.
+
+`CategorizedDomainModel` is the categorization result.  It should expose the
+interpreted model that binding needs, but not the bootstrap registries used to
+create that result.
+
+`CategorizationContext` and `BindingContext` expose phase-specific services.
+They are working contexts, not domain-model results.
+
+`ManagedTypeInheritanceState` models the visible inheritance relationships used
+while creating entity hierarchies.  A mapped-superclass can be discovered in the
+persistence unit without being visible from a particular entity hierarchy.
+
+`MappedSuperclassTracker` tracks mapped-superclasses that are visited while
+building hierarchies so unused mapped-superclasses can be reported from the
+hierarchy-building phase.
+
+== Build
+
+Use the Gradle wrapper:
+
+[source, bash]
+----
+./gradlew compileJava --no-daemon
+./gradlew test --no-daemon
+----
+
+The project currently targets Java 17.

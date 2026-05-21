@@ -6,6 +6,7 @@
  */
 package org.hibernate.boot.models.categorize.internal;
 
+import org.hibernate.boot.models.AttributeNature;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
 import org.hibernate.models.spi.MemberDetails;
 

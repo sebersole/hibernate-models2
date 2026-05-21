@@ -16,13 +16,15 @@ import org.hibernate.annotations.NaturalId;
 import org.hibernate.annotations.NaturalIdCache;
 import org.hibernate.annotations.OptimisticLocking;
 import org.hibernate.annotations.TenantId;
+import org.hibernate.boot.models.AttributeNature;
 import org.hibernate.models.ModelsException;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.KeyMapping;
-import org.hibernate.models.spi.AnnotationUsage;
+import org.hibernate.boot.models.categorize.spi.MappedSuperclassTypeMetadata;
+import org.hibernate.boot.models.categorize.spi.CategorizationContext;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MemberDetails;
 
@@ -32,44 +34,47 @@ import jakarta.persistence.IdClass;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.Version;
 
-import static org.hibernate.boot.models.categorize.ModelCategorizationLogging.MODEL_CATEGORIZATION_LOGGER;
+import static org.hibernate.boot.models.categorize.CategorizationLogging.CATEGORIZATION_LOGGER;
 
 /**
  * Used to collect useful details about a hierarchy as we build its metadata
  *
- * @implNote The HierarchyTypeConsumer is called from root down.  We make use
+ * @implNote Types are collected from root down.  We make use
  * of that detail in a number of places here in the code.
  *
  * @author Steve Ebersole
  */
-public class HierarchyMetadataCollector implements HierarchyTypeConsumer {
+public class HierarchyMetadataCollector {
 	private final EntityHierarchy entityHierarchy;
 	private final ClassDetails rootEntityClassDetails;
-	private final HierarchyTypeConsumer delegateConsumer;
+	private final CategorizationContext modelContext;
+	private final MappedSuperclassTracker mappedSuperclassTracker;
 
 	private boolean belowRootEntity;
 
 	private EntityTypeMetadata rootEntityMetadata;
-	private AnnotationUsage<Inheritance> inheritanceAnnotation;
-	private AnnotationUsage<OptimisticLocking> optimisticLockingAnnotation;
-	private AnnotationUsage<Cache> cacheAnnotation;
-	private AnnotationUsage<NaturalIdCache> naturalIdCacheAnnotation;
+	private Inheritance inheritanceAnnotation;
+	private OptimisticLocking optimisticLockingAnnotation;
+	private Cache cacheAnnotation;
+	private NaturalIdCache naturalIdCacheAnnotation;
 
 	private KeyMapping idMapping;
 	private AttributeMetadata versionAttribute;
 	private AttributeMetadata tenantIdAttribute;
 
-	private AnnotationUsage<IdClass> idClassAnnotation;
+	private IdClass idClassAnnotation;
 	private Object collectedIdAttributes;
 	private Object collectedNaturalIdAttributes;
 
 	public HierarchyMetadataCollector(
 			EntityHierarchy entityHierarchy,
 			ClassDetails rootEntityClassDetails,
-			HierarchyTypeConsumer delegateConsumer) {
+			CategorizationContext modelContext,
+			MappedSuperclassTracker mappedSuperclassTracker) {
 		this.entityHierarchy = entityHierarchy;
 		this.rootEntityClassDetails = rootEntityClassDetails;
-		this.delegateConsumer = delegateConsumer;
+		this.modelContext = modelContext;
+		this.mappedSuperclassTracker = mappedSuperclassTracker;
 	}
 
 	public EntityTypeMetadata getRootEntityMetadata() {
@@ -84,7 +89,7 @@ public class HierarchyMetadataCollector implements HierarchyTypeConsumer {
 		return idMapping;
 	}
 
-	public AnnotationUsage<Inheritance> getInheritanceAnnotation() {
+	public Inheritance getInheritanceAnnotation() {
 		return inheritanceAnnotation;
 	}
 
@@ -96,15 +101,15 @@ public class HierarchyMetadataCollector implements HierarchyTypeConsumer {
 		return tenantIdAttribute;
 	}
 
-	public AnnotationUsage<OptimisticLocking> getOptimisticLockingAnnotation() {
+	public OptimisticLocking getOptimisticLockingAnnotation() {
 		return optimisticLockingAnnotation;
 	}
 
-	public AnnotationUsage<Cache> getCacheAnnotation() {
+	public Cache getCacheAnnotation() {
 		return cacheAnnotation;
 	}
 
-	public AnnotationUsage<NaturalIdCache> getNaturalIdCacheAnnotation() {
+	public NaturalIdCache getNaturalIdCacheAnnotation() {
 		return naturalIdCacheAnnotation;
 	}
 
@@ -117,18 +122,18 @@ public class HierarchyMetadataCollector implements HierarchyTypeConsumer {
 				idClassDetails = null;
 			}
 			else {
-				idClassDetails = idClassAnnotation.getAttributeValue( "value" );
+				idClassDetails = classDetails( idClassAnnotation.value() );
 			}
 			return new NonAggregatedKeyMappingImpl( idAttributes, idClassDetails );
 		}
 
 		final AttributeMetadata idAttribute = (AttributeMetadata) collectedIdAttributes;
 
-		if ( idAttribute.getNature() == AttributeMetadata.AttributeNature.BASIC ) {
+		if ( idAttribute.getNature() == AttributeNature.BASIC ) {
 			return new BasicKeyMappingImpl( idAttribute );
 		}
 
-		if ( idAttribute.getNature() == AttributeMetadata.AttributeNature.EMBEDDED ) {
+		if ( idAttribute.getNature() == AttributeNature.EMBEDDED ) {
 			return new AggregatedKeyMappingImpl( idAttribute );
 		}
 
@@ -155,11 +160,11 @@ public class HierarchyMetadataCollector implements HierarchyTypeConsumer {
 
 		final AttributeMetadata attribute = (AttributeMetadata) collectedNaturalIdAttributes;
 
-		if ( attribute.getNature() == AttributeMetadata.AttributeNature.BASIC ) {
+		if ( attribute.getNature() == AttributeNature.BASIC ) {
 			return new BasicKeyMappingImpl( attribute );
 		}
 
-		if ( attribute.getNature() == AttributeMetadata.AttributeNature.EMBEDDED ) {
+		if ( attribute.getNature() == AttributeNature.EMBEDDED ) {
 			return new AggregatedKeyMappingImpl( attribute );
 		}
 
@@ -173,10 +178,9 @@ public class HierarchyMetadataCollector implements HierarchyTypeConsumer {
 		);
 	}
 
-	@Override
-	public void acceptType(IdentifiableTypeMetadata typeMetadata) {
-		if ( delegateConsumer != null ) {
-			delegateConsumer.acceptType( typeMetadata );
+	public void collectType(IdentifiableTypeMetadata typeMetadata) {
+		if ( typeMetadata instanceof MappedSuperclassTypeMetadata mappedSuperclass ) {
+			mappedSuperclassTracker.markVisited( mappedSuperclass );
 		}
 
 		if ( belowRootEntity ) {
@@ -203,29 +207,27 @@ public class HierarchyMetadataCollector implements HierarchyTypeConsumer {
 				final MemberDetails attributeMember = attributeMetadata.getMember();
 
 				if ( collectIds ) {
-					final AnnotationUsage<EmbeddedId> eIdAnn = attributeMember.getAnnotationUsage( EmbeddedId.class );
-					if ( eIdAnn != null ) {
+					if ( attributeMember.getDirectAnnotationUsage( EmbeddedId.class ) != null ) {
 						collectIdAttribute( attributeMetadata );
 					}
 
-					final AnnotationUsage<Id> idAnn = attributeMember.getAnnotationUsage( Id.class );
-					if ( idAnn != null ) {
+					if ( attributeMember.getDirectAnnotationUsage( Id.class ) != null ) {
 						collectIdAttribute( attributeMetadata );
 					}
 				}
 
-				if ( attributeMember.getAnnotationUsage( NaturalId.class ) != null ) {
+				if ( attributeMember.getDirectAnnotationUsage( NaturalId.class ) != null ) {
 					collectNaturalIdAttribute( attributeMetadata );
 				}
 
 				if ( versionAttribute == null ) {
-					if ( attributeMember.getAnnotationUsage( Version.class ) != null ) {
+					if ( attributeMember.getDirectAnnotationUsage( Version.class ) != null ) {
 						versionAttribute = attributeMetadata;
 					}
 				}
 
 				if ( tenantIdAttribute == null ) {
-					if ( attributeMember.getAnnotationUsage( TenantId.class ) != null ) {
+					if ( attributeMember.getDirectAnnotationUsage( TenantId.class ) != null ) {
 						tenantIdAttribute = attributeMetadata;
 					}
 				}
@@ -233,23 +235,29 @@ public class HierarchyMetadataCollector implements HierarchyTypeConsumer {
 		}
 	}
 
-	private <A extends Annotation> AnnotationUsage<A> applyLocalAnnotation(Class<A> annotationType, ClassDetails classDetails, AnnotationUsage<A> currentValue) {
-		final AnnotationUsage<A> localInheritanceAnnotation = classDetails.getAnnotationUsage( annotationType );
-		if ( localInheritanceAnnotation != null ) {
+	private <A extends Annotation> A applyLocalAnnotation(Class<A> annotationType, ClassDetails classDetails, A currentValue) {
+		final A localAnnotation = classDetails.getDirectAnnotationUsage( annotationType );
+		if ( localAnnotation != null ) {
 			if ( currentValue != null ) {
-				MODEL_CATEGORIZATION_LOGGER.debugf(
+				CATEGORIZATION_LOGGER.debugf(
 						"Ignoring @%s from %s in favor of usage from %s",
 						annotationType.getSimpleName(),
 						classDetails.getName(),
-						currentValue.getAnnotationTarget().getName()
+						currentValue.annotationType().getName()
 				);
 			}
 
 			// the one "closest" to the root-entity should win
-			return localInheritanceAnnotation;
+			return localAnnotation;
 		}
 
 		return currentValue;
+	}
+
+	private ClassDetails classDetails(Class<?> javaClass) {
+		return modelContext
+				.getClassDetailsRegistry()
+				.resolveClassDetails( javaClass.getName() );
 	}
 
 	public void collectIdAttribute(AttributeMetadata member) {

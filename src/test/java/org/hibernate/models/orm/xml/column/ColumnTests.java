@@ -6,15 +6,12 @@
  */
 package org.hibernate.models.orm.xml.column;
 
-import org.hibernate.boot.internal.BootstrapContextImpl;
-import org.hibernate.boot.internal.MetadataBuilderImpl;
-import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
-import org.hibernate.models.orm.process.ManagedResourcesImpl;
-import org.hibernate.models.spi.AnnotationUsage;
+import org.hibernate.jpa.HibernatePersistenceConfiguration;
+import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
 import org.hibernate.models.spi.FieldDetails;
 
 import org.hibernate.testing.orm.junit.ServiceRegistry;
@@ -23,8 +20,10 @@ import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.Column;
 
+import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
+
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor.processManagedResources;
 
 /**
  * @author Steve Ebersole
@@ -33,17 +32,17 @@ import static org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor
 public class ColumnTests {
 	@Test
 	void testCompleteColumn(ServiceRegistryScope scope) {
-		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
-				.addXmlMappings( "mappings/column/complete.xml" )
-				.build();
 		final StandardServiceRegistry serviceRegistry = scope.getRegistry();
-		final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl(
-				serviceRegistry,
-				new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry )
+		final MetadataBuildingContextTestingImpl metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
+		final HibernatePersistenceConfiguration persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+		persistenceConfiguration.mappingFile( "mappings/column/complete.xml" );
+		final AvailableResources availableResources = AvailableResources.from(
+				persistenceConfiguration,
+				metadataBuildingContext
 		);
-		final CategorizedDomainModel categorizedDomainModel = processManagedResources(
-				managedResources,
-				bootstrapContext
+		final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
+				availableResources,
+				metadataBuildingContext
 		);
 
 		assertThat( categorizedDomainModel.getEntityHierarchies() ).hasSize( 1 );
@@ -54,29 +53,28 @@ public class ColumnTests {
 		assertThat( root.getNumberOfAttributes() ).isEqualTo( 2 );
 		final FieldDetails nameField = root.getClassDetails().findFieldByName( "name" );
 		assertThat( nameField ).isNotNull();
-		final AnnotationUsage<Column> annotationUsage = nameField.getAnnotationUsage( Column.class );
-		assertThat( annotationUsage.getString( "name" ) ).isEqualTo( "nombre" );
-		assertThat( annotationUsage.getInteger( "length" ) ).isEqualTo( 256 );
-		assertThat( annotationUsage.getString( "comment" ) ).isEqualTo( "The name column" );
-		assertThat( annotationUsage.getString( "table" ) ).isEqualTo( "tbl" );
-		assertThat( annotationUsage.getString( "options" ) ).isEqualTo( "the options" );
-		assertThat( annotationUsage.getList( "check" ) ).isNotEmpty();
+		final Column annotationUsage = nameField.getDirectAnnotationUsage( Column.class );
+		assertThat( annotationUsage.name() ).isEqualTo( "nombre" );
+		assertThat( annotationUsage.length() ).isEqualTo( 256 );
+		assertThat( annotationUsage.comment() ).isEqualTo( "The name column" );
+		assertThat( annotationUsage.table() ).isEqualTo( "tbl" );
+		assertThat( annotationUsage.options() ).isEqualTo( "the options" );
+		assertThat( annotationUsage.check() ).isNotEmpty();
 	}
 
 	@Test
 	void testOverrideColumn(ServiceRegistryScope scope) {
-		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
-				.addXmlMappings( "mappings/column/override.xml" )
-				.build();
-
 		final StandardServiceRegistry serviceRegistry = scope.getRegistry();
-		final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl(
-				serviceRegistry,
-				new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry )
+		final MetadataBuildingContextTestingImpl metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
+		final HibernatePersistenceConfiguration persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+		persistenceConfiguration.mappingFile( "mappings/column/override.xml" );
+		final AvailableResources availableResources = AvailableResources.from(
+				persistenceConfiguration,
+				metadataBuildingContext
 		);
-		final CategorizedDomainModel categorizedDomainModel = processManagedResources(
-				managedResources,
-				bootstrapContext
+		final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
+				availableResources,
+				metadataBuildingContext
 		);
 
 		assertThat( categorizedDomainModel.getEntityHierarchies() ).hasSize( 1 );
@@ -88,8 +86,8 @@ public class ColumnTests {
 		assertThat( root.getNumberOfAttributes() ).isEqualTo( 2 );
 		final FieldDetails nameField = root.getClassDetails().findFieldByName( "name" );
 		assertThat( nameField ).isNotNull();
-		final AnnotationUsage<Column> columnAnn = nameField.getAnnotationUsage( Column.class );
+		final Column columnAnn = nameField.getDirectAnnotationUsage( Column.class );
 		assertThat( columnAnn ).isNotNull();
-		assertThat( columnAnn.getString( "name" ) ).isEqualTo( "nombre" );
+		assertThat( columnAnn.name() ).isEqualTo( "nombre" );
 	}
 }

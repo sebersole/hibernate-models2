@@ -6,12 +6,10 @@
  */
 package org.hibernate.models.orm.xml.complete;
 
-import org.hibernate.boot.internal.BootstrapContextImpl;
-import org.hibernate.boot.internal.MetadataBuilderImpl;
-import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.models.orm.process.ManagedResourcesImpl;
+import org.hibernate.jpa.HibernatePersistenceConfiguration;
+import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
@@ -25,9 +23,10 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.Id;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.boot.models.categorize.spi.AttributeMetadata.AttributeNature.BASIC;
-import static org.hibernate.boot.models.categorize.spi.AttributeMetadata.AttributeNature.EMBEDDED;
-import static org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor.processManagedResources;
+import static org.hibernate.boot.models.AttributeNature.BASIC;
+import static org.hibernate.boot.models.AttributeNature.EMBEDDED;
+import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
 
 /**
  * @author Steve Ebersole
@@ -35,18 +34,17 @@ import static org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor
 public class CompleteXmlWithEmbeddableTests {
 	@Test
 	void testIt() {
-		final ManagedResourcesImpl.Builder managedResourcesBuilder = new ManagedResourcesImpl.Builder();
-		managedResourcesBuilder.addXmlMappings( "mappings/complete/simple-person.xml" );
-		final ManagedResources managedResources = managedResourcesBuilder.build();
-
 		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
-			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl(
-					serviceRegistry,
-					new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry )
+			final MetadataBuildingContextTestingImpl metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
+			final HibernatePersistenceConfiguration persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+			persistenceConfiguration.mappingFile( "mappings/complete/simple-person.xml" );
+			final AvailableResources availableResources = AvailableResources.from(
+					persistenceConfiguration,
+					metadataBuildingContext
 			);
-			final CategorizedDomainModel categorizedDomainModel = processManagedResources(
-					managedResources,
-					bootstrapContext
+			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
+					availableResources,
+					metadataBuildingContext
 			);
 
 			assertThat( categorizedDomainModel.getEntityHierarchies() ).hasSize( 1 );
@@ -59,12 +57,12 @@ public class CompleteXmlWithEmbeddableTests {
 
 			final AttributeMetadata idAttribute = personMetadata.findAttribute( "id" );
 			assertThat( idAttribute.getNature() ).isEqualTo( BASIC );
-			assertThat( idAttribute.getMember().getAnnotationUsage( Basic.class ) ).isNotNull();
-			assertThat( idAttribute.getMember().getAnnotationUsage( Id.class ) ).isNotNull();
+			assertThat( idAttribute.getMember().getDirectAnnotationUsage( Basic.class ) ).isNotNull();
+			assertThat( idAttribute.getMember().getDirectAnnotationUsage( Id.class ) ).isNotNull();
 
 			final AttributeMetadata nameAttribute = personMetadata.findAttribute( "name" );
 			assertThat( nameAttribute.getNature() ).isEqualTo( EMBEDDED );
-			assertThat( nameAttribute.getMember().getAnnotationUsage( Embedded.class ) ).isNotNull();
+			assertThat( nameAttribute.getMember().getDirectAnnotationUsage( Embedded.class ) ).isNotNull();
 		}
 	}
 }

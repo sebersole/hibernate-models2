@@ -8,6 +8,7 @@ package org.hibernate.models.orm.xml.dynamic;
 
 import java.util.List;
 import java.util.Set;
+import java.util.SortedSet;
 
 import org.hibernate.annotations.Cascade;
 import org.hibernate.annotations.CascadeType;
@@ -17,19 +18,16 @@ import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.SortNatural;
-import org.hibernate.boot.internal.BootstrapContextImpl;
 import org.hibernate.boot.internal.CollectionClassification;
 import org.hibernate.boot.internal.LimitedCollectionClassification;
-import org.hibernate.boot.internal.MetadataBuilderImpl;
 import org.hibernate.boot.internal.Target;
-import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.models.orm.process.ManagedResourcesImpl;
+import org.hibernate.jpa.HibernatePersistenceConfiguration;
+import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
-import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.FieldDetails;
 
@@ -45,8 +43,10 @@ import jakarta.persistence.IdClass;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 
+import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
+
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor.processManagedResources;
 
 /**
  * @author Steve Ebersole
@@ -54,17 +54,17 @@ import static org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor
 public class DynamicModelTests {
 	@Test
 	void testSimpleDynamicModel() {
-		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
-				.addXmlMappings( "mappings/dynamic/dynamic-simple.xml" )
-				.build();
 		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
-			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl(
-					serviceRegistry,
-					new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry )
+			final MetadataBuildingContextTestingImpl metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
+			final HibernatePersistenceConfiguration persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+			persistenceConfiguration.mappingFile( "mappings/dynamic/dynamic-simple.xml" );
+			final AvailableResources availableResources = AvailableResources.from(
+					persistenceConfiguration,
+					metadataBuildingContext
 			);
-			final CategorizedDomainModel categorizedDomainModel = processManagedResources(
-					managedResources,
-					bootstrapContext
+			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
+					availableResources,
+					metadataBuildingContext
 			);
 
 			assertThat( categorizedDomainModel.getEntityHierarchies() ).hasSize( 1 );
@@ -74,30 +74,30 @@ public class DynamicModelTests {
 			assertThat( rootEntity.getClassDetails().getName() ).isEqualTo( "SimpleEntity" );
 
 			final FieldDetails idField = rootEntity.getClassDetails().findFieldByName( "id" );
-			assertThat( idField.getType().getClassName() ).isEqualTo( Integer.class.getName() );
+			assertThat( idField.getType().determineRawClass().getName() ).isEqualTo( Integer.class.getName() );
 
 			final FieldDetails nameField = rootEntity.getClassDetails().findFieldByName( "name" );
-			assertThat( nameField.getType().getClassName() ).isEqualTo( Object.class.getName() );
-			assertThat( nameField.getAnnotationUsage( JavaType.class ) ).isNotNull();
+			assertThat( nameField.getType().determineRawClass().getName() ).isEqualTo( String.class.getName() );
+			assertThat( nameField.getDirectAnnotationUsage( JavaType.class ) ).isNotNull();
 
 			final FieldDetails qtyField = rootEntity.getClassDetails().findFieldByName( "quantity" );
-			assertThat( qtyField.getType().getClassName() ).isEqualTo( int.class.getName() );
+			assertThat( qtyField.getType().determineRawClass().getName() ).isEqualTo( int.class.getName() );
 		}
 	}
 
 	@Test
 	void testSemiSimpleDynamicModel() {
-		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
-				.addXmlMappings( "mappings/dynamic/dynamic-semi-simple.xml" )
-				.build();
 		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
-			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl(
-					serviceRegistry,
-					new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry )
+			final MetadataBuildingContextTestingImpl metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
+			final HibernatePersistenceConfiguration persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+			persistenceConfiguration.mappingFile( "mappings/dynamic/dynamic-semi-simple.xml" );
+			final AvailableResources availableResources = AvailableResources.from(
+					persistenceConfiguration,
+					metadataBuildingContext
 			);
-			final CategorizedDomainModel categorizedDomainModel = processManagedResources(
-					managedResources,
-					bootstrapContext
+			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
+					availableResources,
+					metadataBuildingContext
 			);
 
 			assertThat( categorizedDomainModel.getEntityHierarchies() ).hasSize( 1 );
@@ -107,44 +107,44 @@ public class DynamicModelTests {
 			assertThat( rootEntity.getClassDetails().getName() ).isEqualTo( "Contact" );
 
 			final FieldDetails idField = rootEntity.getClassDetails().findFieldByName( "id" );
-			assertThat( idField.getType().getClassName() ).isEqualTo( Integer.class.getName() );
+			assertThat( idField.getType().determineRawClass().getName() ).isEqualTo( Integer.class.getName() );
 
 			final FieldDetails nameField = rootEntity.getClassDetails().findFieldByName( "name" );
-			assertThat( nameField.getType().getClassName() ).isNull();
+			assertThat( nameField.getType().determineRawClass().getClassName() ).isNull();
 			assertThat( nameField.getType().getName() ).isEqualTo( "Name" );
-			assertThat( nameField.getAnnotationUsage( Target.class ) ).isNotNull();
-			assertThat( nameField.getAnnotationUsage( Target.class ).getString( "value" ) ).isEqualTo( "Name" );
+			assertThat( nameField.getDirectAnnotationUsage( Target.class ) ).isNotNull();
+			assertThat( nameField.getDirectAnnotationUsage( Target.class ).value() ).isEqualTo( "Name" );
 
-			assertThat( nameField.getType().getFields() ).hasSize( 2 );
+			assertThat( nameField.getType().determineRawClass().getFields() ).hasSize( 2 );
 
 			final FieldDetails labels = rootEntity.getClassDetails().findFieldByName( "labels" );
-			assertThat( labels.getType().getClassName() ).isEqualTo( Set.class.getName() );
-			final AnnotationUsage<ElementCollection> elementCollection = labels.getAnnotationUsage( ElementCollection.class );
-			assertThat( elementCollection.<ClassDetails>getAttributeValue( "targetClass" ).getName() ).isEqualTo( String.class.getName() );
-			final AnnotationUsage<CollectionClassification> collectionClassification = labels.getAnnotationUsage( CollectionClassification.class );
-			assertThat( collectionClassification.<LimitedCollectionClassification>getAttributeValue( "value" ) ).isEqualTo( LimitedCollectionClassification.SET );
-			final AnnotationUsage<CollectionTable> collectionTable = labels.getAnnotationUsage( CollectionTable.class );
-			assertThat( collectionTable.<String>getAttributeValue( "name" ) ).isEqualTo( "labels" );
-			assertThat( labels.getAnnotationUsage( SortNatural.class ) ).isNotNull();
-			final List<AnnotationUsage<JoinColumn>> joinColumns = collectionTable.getList( "joinColumns" );
+			assertThat( labels.getType().determineRawClass().getName() ).isEqualTo( SortedSet.class.getName() );
+			final ElementCollection elementCollection = labels.getDirectAnnotationUsage( ElementCollection.class );
+			assertThat( elementCollection.targetClass().getName() ).isEqualTo( String.class.getName() );
+			final CollectionClassification collectionClassification = labels.getDirectAnnotationUsage( CollectionClassification.class );
+			assertThat( collectionClassification.value() ).isEqualTo( LimitedCollectionClassification.SET );
+			final CollectionTable collectionTable = labels.getDirectAnnotationUsage( CollectionTable.class );
+			assertThat( collectionTable.name() ).isEqualTo( "labels" );
+			assertThat( labels.getDirectAnnotationUsage( SortNatural.class ) ).isNotNull();
+			final JoinColumn[] joinColumns = collectionTable.joinColumns();
 			assertThat( joinColumns ).hasSize( 1 );
-			assertThat( joinColumns.get( 0 ).<String>getAttributeValue( "name" ) ).isEqualTo( "contact_fk" );
+			assertThat( joinColumns[0].name() ).isEqualTo( "contact_fk" );
 		}
 	}
 
 	@Test
 	void testIdClass() {
-		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
-				.addXmlMappings( "mappings/dynamic/dynamic-id-class.xml" )
-				.build();
 		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
-			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl(
-					serviceRegistry,
-					new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry )
+			final MetadataBuildingContextTestingImpl metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
+			final HibernatePersistenceConfiguration persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+			persistenceConfiguration.mappingFile( "mappings/dynamic/dynamic-id-class.xml" );
+			final AvailableResources availableResources = AvailableResources.from(
+					persistenceConfiguration,
+					metadataBuildingContext
 			);
-			final CategorizedDomainModel categorizedDomainModel = processManagedResources(
-					managedResources,
-					bootstrapContext
+			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
+					availableResources,
+					metadataBuildingContext
 			);
 
 			assertThat( categorizedDomainModel.getEntityHierarchies() ).hasSize( 1 );
@@ -152,26 +152,25 @@ public class DynamicModelTests {
 			final EntityTypeMetadata rootEntity = hierarchy.getRoot();
 			assertThat( rootEntity.getClassDetails().getName() ).isEqualTo( Employee.class.getName() );
 
-			final AnnotationUsage<IdClass> idClass = rootEntity.getClassDetails().getAnnotationUsage( IdClass.class );
+			final IdClass idClass = rootEntity.getClassDetails().getDirectAnnotationUsage( IdClass.class );
 			assertThat( idClass ).isNotNull();
-			assertThat( idClass.<ClassDetails>getAttributeValue( "value" )
-								.getName() ).isEqualTo( EmployeePK.class.getName() );
+			assertThat( idClass.value().getName() ).isEqualTo( EmployeePK.class.getName() );
 		}
 	}
 
 	@Test
 	void testOneToMany() {
-		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
-				.addXmlMappings( "mappings/dynamic/dynamic-plurals.xml" )
-				.build();
 		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
-			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl(
-					serviceRegistry,
-					new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry )
+			final MetadataBuildingContextTestingImpl metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
+			final HibernatePersistenceConfiguration persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+			persistenceConfiguration.mappingFile( "mappings/dynamic/dynamic-plurals.xml" );
+			final AvailableResources availableResources = AvailableResources.from(
+					persistenceConfiguration,
+					metadataBuildingContext
 			);
-			final CategorizedDomainModel categorizedDomainModel = processManagedResources(
-					managedResources,
-					bootstrapContext
+			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
+					availableResources,
+					metadataBuildingContext
 			);
 
 			assertThat( categorizedDomainModel.getEntityHierarchies() ).hasSize( 1 );
@@ -179,25 +178,28 @@ public class DynamicModelTests {
 			assertThat( rootEntity.getClassDetails().getName() ).isEqualTo( Employee.class.getName() );
 
 			final FieldDetails oneToMany = rootEntity.getClassDetails().findFieldByName( "oneToMany" );
-			assertThat( oneToMany.getType().getClassName() ).isEqualTo( List.class.getName() );
-			final AnnotationUsage<OneToMany> oneToManyAnn = oneToMany.getAnnotationUsage( OneToMany.class );
-			assertThat( oneToManyAnn.<FetchType>getAttributeValue( "fetch" ) ).isEqualTo( FetchType.EAGER );
-			assertThat( oneToMany.getAnnotationUsage( NotFound.class )
-								.<NotFoundAction>getAttributeValue( "action" ) ).isEqualTo( NotFoundAction.IGNORE );
-			assertThat( oneToMany.getAnnotationUsage( OnDelete.class )
-								.<OnDeleteAction>getAttributeValue( "action" ) ).isEqualTo( OnDeleteAction.CASCADE );
-			final AnnotationUsage<JoinColumn> joinColumn = oneToMany.getAnnotationUsage( JoinColumn.class );
-			assertThat( joinColumn.<String>getAttributeValue( "name" ) ).isEqualTo( "employee_id" );
-			assertThat( joinColumn.<Boolean>getAttributeValue( "insertable" ) ).isEqualTo( Boolean.FALSE );
-			assertThat( joinColumn.<Boolean>getAttributeValue( "updatable" ) ).isEqualTo( Boolean.FALSE );
-			final AnnotationUsage<ForeignKey> foreignKey = joinColumn.getAttributeValue( "foreignKey" );
-			assertThat( foreignKey.<String>getAttributeValue( "name" ) ).isEqualTo( "employee_fk" );
-			assertThat( foreignKey.<ConstraintMode>getAttributeValue( "value" ) ).isEqualTo( ConstraintMode.NO_CONSTRAINT );
-			final List<AnnotationUsage<CheckConstraint>> checkConstraints = joinColumn.getList( "check" );
+			assertThat( oneToMany.getType().determineRawClass().getName() ).isEqualTo( List.class.getName() );
+			final OneToMany oneToManyAnn = oneToMany.getDirectAnnotationUsage( OneToMany.class );
+			assertThat( oneToManyAnn.fetch() ).isEqualTo( FetchType.EAGER );
+			assertThat( oneToMany.getDirectAnnotationUsage( NotFound.class ).action() ).isEqualTo( NotFoundAction.IGNORE );
+			assertThat( oneToMany.getDirectAnnotationUsage( OnDelete.class ).action() ).isEqualTo( OnDeleteAction.CASCADE );
+			final JoinColumn[] joinColumns = oneToMany.getRepeatedAnnotationUsages(
+					JoinColumn.class,
+					metadataBuildingContext.getBootstrapContext().getModelsContext()
+			);
+			assertThat( joinColumns ).hasSize( 1 );
+			final JoinColumn joinColumn = joinColumns[0];
+			assertThat( joinColumn.name() ).isEqualTo( "employee_id" );
+			assertThat( joinColumn.insertable() ).isFalse();
+			assertThat( joinColumn.updatable() ).isFalse();
+			final ForeignKey foreignKey = joinColumn.foreignKey();
+			assertThat( foreignKey.name() ).isEqualTo( "employee_fk" );
+			assertThat( foreignKey.value() ).isEqualTo( ConstraintMode.NO_CONSTRAINT );
+			final CheckConstraint[] checkConstraints = joinColumn.check();
 			assertThat( checkConstraints ).hasSize( 1 );
-			assertThat( checkConstraints.get( 0 ).<String>getAttributeValue( "name" ) ).isEqualTo( "employee_id_nn" );
-			assertThat( checkConstraints.get( 0 ).<String>getAttributeValue( "constraint" ) ).isEqualTo( "employee_id is not null" );
-			assertThat( oneToMany.getAnnotationUsage( Cascade.class ).getList( "value" ) )
+			assertThat( checkConstraints[0].name() ).isEqualTo( "employee_id_nn" );
+			assertThat( checkConstraints[0].constraint() ).isEqualTo( "employee_id is not null" );
+			assertThat( oneToMany.getDirectAnnotationUsage( Cascade.class ).value() )
 					.contains( CascadeType.PERSIST, CascadeType.REMOVE, CascadeType.LOCK );
 		}
 	}

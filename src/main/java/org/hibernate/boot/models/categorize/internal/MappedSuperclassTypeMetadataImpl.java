@@ -11,11 +11,9 @@ import java.util.List;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.models.categorize.spi.MappedSuperclassTypeMetadata;
-import org.hibernate.boot.models.categorize.spi.ModelCategorizationContext;
+import org.hibernate.boot.models.categorize.spi.CategorizationContext;
 import org.hibernate.boot.models.categorize.spi.JpaEventListener;
 import org.hibernate.models.spi.ClassDetails;
-
-import jakarta.persistence.AccessType;
 
 /**
  * @author Steve Ebersole
@@ -31,33 +29,34 @@ public class MappedSuperclassTypeMetadataImpl
 	public MappedSuperclassTypeMetadataImpl(
 			ClassDetails classDetails,
 			EntityHierarchy hierarchy,
-			AccessType defaultAccessType,
-			HierarchyTypeConsumer typeConsumer,
-			ModelCategorizationContext modelContext) {
-		super( classDetails, hierarchy, defaultAccessType, modelContext );
+			ManagedTypeInheritanceState inheritanceState,
+			HierarchyMetadataCollector metadataCollector,
+			CategorizationContext modelContext) {
+		super( classDetails, hierarchy, inheritanceState, modelContext );
 
 		final LifecycleCallbackCollector lifecycleCallbackCollector = new LifecycleCallbackCollector( classDetails, modelContext );
 		this.attributeList = resolveAttributes( lifecycleCallbackCollector );
 		this.hierarchyEventListeners = collectHierarchyEventListeners( lifecycleCallbackCollector.resolve() );
 		this.completeEventListeners = collectCompleteEventListeners( modelContext );
 
-		postInstantiate( typeConsumer );
+		postInstantiate( metadataCollector );
 	}
 
 	public MappedSuperclassTypeMetadataImpl(
 			ClassDetails classDetails,
 			EntityHierarchy hierarchy,
 			AbstractIdentifiableTypeMetadata superType,
-			HierarchyTypeConsumer typeConsumer,
-			ModelCategorizationContext modelContext) {
-		super( classDetails, hierarchy, superType, modelContext );
+			ManagedTypeInheritanceState inheritanceState,
+			HierarchyMetadataCollector metadataCollector,
+			CategorizationContext modelContext) {
+		super( classDetails, hierarchy, superType, inheritanceState, modelContext );
 
 		final LifecycleCallbackCollector lifecycleCallbackCollector = new LifecycleCallbackCollector( classDetails, modelContext );
 		this.attributeList = resolveAttributes( lifecycleCallbackCollector );
 		this.hierarchyEventListeners = collectHierarchyEventListeners( lifecycleCallbackCollector.resolve() );
 		this.completeEventListeners = collectCompleteEventListeners( modelContext );
 
-		postInstantiate( typeConsumer );
+		postInstantiate( metadataCollector );
 	}
 
 	@Override

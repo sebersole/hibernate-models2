@@ -48,8 +48,8 @@ public class TenantIdBinder {
 		final TypeConfiguration typeConfiguration = collector.getTypeConfiguration();
 
 		final MemberDetails memberDetails = attributeMetadata.getMember();
-		final String returnedClassName = memberDetails.getType().getClassName();
-		final BasicType<Object> tenantIdType = typeConfiguration
+		final String returnedClassName = memberDetails.getType().determineRawClass().getClassName();
+		final BasicType<?> tenantIdType = typeConfiguration
 				.getBasicTypeRegistry()
 				.getRegisteredType( returnedClassName );
 

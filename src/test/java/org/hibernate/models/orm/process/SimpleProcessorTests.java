@@ -9,32 +9,23 @@ package org.hibernate.models.orm.process;
 import java.util.Iterator;
 import java.util.Map;
 
-import org.hibernate.boot.internal.MetadataBuilderImpl;
-import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.models.orm.BootstrapContextTesting;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.FilterDefRegistration;
-import org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor;
-import org.hibernate.models.orm.SourceModelTestHelper;
+import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
+import org.hibernate.jpa.HibernatePersistenceConfiguration;
+import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
 import org.hibernate.models.spi.ClassDetails;
-import org.hibernate.type.CharBooleanConverter;
-import org.hibernate.type.YesNoConverter;
-import org.hibernate.type.descriptor.converter.spi.BasicValueConverter;
-import org.hibernate.type.descriptor.java.AbstractClassJavaType;
-import org.hibernate.type.descriptor.java.StringJavaType;
 
 import org.junit.jupiter.api.Test;
-
-import org.jboss.jandex.Index;
 
 import jakarta.persistence.InheritanceType;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.models.orm.SimpleClassLoading.SIMPLE_CLASS_LOADING;
 
 /**
  * @author Steve Ebersole
@@ -42,45 +33,22 @@ import static org.hibernate.models.orm.SimpleClassLoading.SIMPLE_CLASS_LOADING;
 public class SimpleProcessorTests {
 	@Test
 	void testSimpleUsage() {
-
-		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		// ManagedResources is built by scanning and from explicit resources
-		// during ORM bootstrap
-		final ManagedResourcesImpl.Builder managedResourcesBuilder = new ManagedResourcesImpl.Builder();
-		managedResourcesBuilder
-				.addLoadedClasses( Person.class, Root.class, Sub.class, MyStringConverter.class, MyUuidConverter.class )
-				.addPackages( "org.hibernate.models.orm.process" );
-		final ManagedResources managedResources = managedResourcesBuilder.build();
-		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		// The Jandex index would generally (1) be built by WF and passed
-		// to ORM or (2) be built by ORM
-		final Index jandexIndex = SourceModelTestHelper.buildJandexIndex(
-				SIMPLE_CLASS_LOADING,
-				Person.class,
-				Root.class,
-				Sub.class,
-				MyStringConverter.class,
-				MyUuidConverter.class,
-				YesNoConverter.class,
-				CharBooleanConverter.class,
-				BasicValueConverter.class,
-				StringJavaType.class,
-				AbstractClassJavaType.class
-		);
-		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		// Above here is work done before hibernate-models.
-		// Below here is work done by hibernate-models.
-		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
-			final MetadataBuilderImpl.MetadataBuildingOptionsImpl metadataBuildingOptions = new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry );
-			final BootstrapContextTesting bootstrapContext = new BootstrapContextTesting( jandexIndex, serviceRegistry, metadataBuildingOptions );
-			final CategorizedDomainModel categorizedDomainModel = ManagedResourcesProcessor.processManagedResources( managedResources, bootstrapContext );
+			final MetadataBuildingContextTestingImpl metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
+			final HibernatePersistenceConfiguration persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+			persistenceConfiguration.managedClass( Person.class );
+			persistenceConfiguration.managedClass( Root.class );
+			persistenceConfiguration.managedClass( Sub.class );
+			persistenceConfiguration.managedClass( MyStringConverter.class );
+			persistenceConfiguration.managedClass( MyUuidConverter.class );
+			final AvailableResources availableResources = AvailableResources.from(
+					persistenceConfiguration,
+					metadataBuildingContext
+			);
+			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
+					availableResources,
+					metadataBuildingContext
+			);
 
 			assertThat( categorizedDomainModel.getEntityHierarchies() ).hasSize( 2 );
 			final Iterator<EntityHierarchy> hierarchies = categorizedDomainModel.getEntityHierarchies().iterator();
@@ -140,8 +108,8 @@ public class SimpleProcessorTests {
 		assertThat( filterDefRegistrations ).hasSize( 1 );
 		assertThat( filterDefRegistrations ).containsKey( "name_filter" );
 		final FilterDefRegistration nameFilter = filterDefRegistrations.get( "name_filter" );
-		assertThat( nameFilter.getDefaultCondition() ).isEqualTo( "name = :name" );
-		final Map<String, ClassDetails> parameters = nameFilter.getParameters();
+		assertThat( nameFilter.defaultCondition() ).isEqualTo( "name = :name" );
+		final Map<String, ClassDetails> parameters = nameFilter.parameters();
 		assertThat( parameters ).hasSize( 1 );
 		assertThat( parameters ).containsKey( "name" );
 		assertThat( parameters.get( "name" ).getName() ).isEqualTo( String.class.getName() );

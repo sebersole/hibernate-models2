@@ -5,23 +5,15 @@
  * Copyright: Red Hat Inc. and Hibernate Authors
  */
 
-/**
- * Support for processing an application's domain model, as known through
- * {@linkplain org.hibernate.boot.model.process.spi.ManagedResources} and ultimately
- * producing a mildly {@linkplain org.hibernate.boot.models.categorize.spi.CategorizedDomainModel categorized model}
- * representing entities, embeddables, etc.
- * <p/>
- * Happens in 2 steps -<ol>
- *     <li>
- *         Create the "source metamodel" ({@linkplain org.hibernate.models.spi.ClassDetails classes},
- *         {@linkplain org.hibernate.models.spi.AnnotationUsage annotations},
- *         {@linkplain org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl XML}, etc.)
- *     </li>
- *     <li>
- *         Process this "source metamodel" and produce the {@linkplain org.hibernate.boot.models.categorize.spi.CategorizedDomainModel categorized model}
- *     </li>
- * </ol>
- *
- * @author Steve Ebersole
- */
+/// Support for categorizing available ORM mapping sources into a domain model that
+/// later binding steps can consume.
+///
+/// Categorization starts from {@link org.hibernate.boot.models.source.AvailableResources}
+/// and interprets class, package, annotation, and XML inputs through Hibernate
+/// Models.  The result is a
+/// {@link org.hibernate.boot.models.categorize.spi.CategorizedDomainModel}
+/// representing entity hierarchies, visible mapped-superclasses, embeddables,
+/// persistent attributes, key mappings, and global registrations.
+///
+/// @author Steve Ebersole
 package org.hibernate.boot.models.categorize;

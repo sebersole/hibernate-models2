@@ -6,29 +6,13 @@
  */
 package org.hibernate.boot.models.categorize.spi;
 
-import org.hibernate.models.spi.AnnotationUsage;
-
 import jakarta.persistence.SequenceGenerator;
 
-/**
- * Global registration of a sequence generator
- *
- * @author Steve Ebersole
- */
-public class SequenceGeneratorRegistration {
-	private final String name;
-	private final AnnotationUsage<SequenceGenerator> configuration;
-
-	public SequenceGeneratorRegistration(String name, AnnotationUsage<SequenceGenerator> configuration) {
-		this.name = name;
-		this.configuration = configuration;
-	}
-
-	public String getName() {
-		return name;
-	}
-
-	public AnnotationUsage<SequenceGenerator> getConfiguration() {
-		return configuration;
-	}
+/// Global registration of a sequence-based identifier generator.
+///
+/// @param name The generator name
+/// @param configuration The generator configuration
+///
+/// @author Steve Ebersole
+public record SequenceGeneratorRegistration(String name, SequenceGenerator configuration) {
 }

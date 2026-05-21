@@ -11,63 +11,46 @@ import java.util.function.Consumer;
 
 import org.hibernate.boot.models.bind.spi.TableOwner;
 
-/**
- * Metadata about an {@linkplain jakarta.persistence.metamodel.IdentifiableType identifiable type}
- *
- * @author Steve Ebersole
- */
+/// Categorized metadata about an {@linkplain jakarta.persistence.metamodel.IdentifiableType identifiable type}.
+///
+/// Identifiable types are entities and mapped-superclasses that participate in an
+/// entity hierarchy.  The hierarchy links exposed here are limited to the visible
+/// types considered during categorization.
+///
+/// @author Steve Ebersole
 public interface IdentifiableTypeMetadata extends ManagedTypeMetadata, TableOwner {
-	/**
-	 * The hierarchy in which this IdentifiableType occurs.
-	 */
+	/// The hierarchy in which this IdentifiableType occurs.
 	EntityHierarchy getHierarchy();
 
-	/**
-	 * The super-type, if one
-	 */
-
+	/// The super-type, if one
 	IdentifiableTypeMetadata getSuperType();
 
-	/**
-	 * Whether this type is considered abstract.
-	 */
+	/// Whether this type is considered abstract.
 	default boolean isAbstract() {
 		return getClassDetails().isAbstract();
 	}
 
-	/**
-	 * Whether this type has subtypes
-	 */
+	/// Whether this type has subtypes
 	boolean hasSubTypes();
 
-	/**
-	 * Get the number of direct subtypes
-	 */
+	/// Get the number of direct subtypes
 	int getNumberOfSubTypes();
 
-	/**
-	 * Get the direct subtypes
-	 */
+	/// Get the direct subtypes
 	Iterable<IdentifiableTypeMetadata> getSubTypes();
 
-	/**
-	 * Visit each direct subtype
-	 */
+	/// Visit each direct subtype
 	void forEachSubType(Consumer<IdentifiableTypeMetadata> consumer);
 
-	/**
-	 * Event listeners in effect for this type, minus
-	 * {@linkplain jakarta.persistence.ExcludeDefaultListeners default listeners}.
-	 *
-	 * @apiNote Kept separate from {@linkplain #getCompleteJpaEventListeners()}
-	 * to facilitate types building their complete set with their
-	 * {@linkplain jakarta.persistence.ExcludeSuperclassListeners superclass listeners}.
-	 */
+	/// Event listeners in effect for this type, minus
+	/// {@linkplain jakarta.persistence.ExcludeDefaultListeners default listeners}.
+	///
+	/// @apiNote Kept separate from {@linkplain #getCompleteJpaEventListeners()}
+	/// to facilitate types building their complete set with their
+	/// {@linkplain jakarta.persistence.ExcludeSuperclassListeners superclass listeners}.
 	List<JpaEventListener> getHierarchyJpaEventListeners();
 
-	/**
-	 * Event listeners in effect for this type, including
-	 * {@linkplain jakarta.persistence.ExcludeDefaultListeners default listeners}
-	 */
+	/// Event listeners in effect for this type, including
+	/// {@linkplain jakarta.persistence.ExcludeDefaultListeners default listeners}
 	List<JpaEventListener> getCompleteJpaEventListeners();
 }

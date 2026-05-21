@@ -6,8 +6,12 @@
  */
 package org.hibernate.boot.models.bind.spi;
 
-/**
- * @author Steve Ebersole
- */
+/// Table reference backed by a persistent relational object.
+///
+/// Persistent table references have catalog and schema names and may be exported to
+/// schema tooling.  Inline views are table references, but they are not persistent
+/// table references.
+///
+/// @author Steve Ebersole
 public interface PersistentTableReference extends TableReference, SchemaAware {
 }

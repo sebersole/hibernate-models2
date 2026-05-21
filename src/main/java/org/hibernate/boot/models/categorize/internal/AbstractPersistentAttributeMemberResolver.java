@@ -12,9 +12,8 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import org.hibernate.boot.models.JpaAnnotations;
 import org.hibernate.boot.models.categorize.spi.AllMemberConsumer;
-import org.hibernate.boot.models.categorize.spi.ModelCategorizationContext;
+import org.hibernate.boot.models.categorize.spi.CategorizationContext;
 import org.hibernate.boot.models.categorize.spi.PersistentAttributeMemberResolver;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.FieldDetails;
@@ -22,6 +21,7 @@ import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.models.spi.MethodDetails;
 
 import jakarta.persistence.AccessType;
+import jakarta.persistence.Transient;
 
 /**
  * "Template" support for writing PersistentAttributeMemberResolver
@@ -52,14 +52,14 @@ public abstract class AbstractPersistentAttributeMemberResolver implements Persi
 			Function<MethodDetails,Boolean> transientMethodChecker,
 			ClassDetails classDetails,
 			AccessType classLevelAccessType,
-			ModelCategorizationContext processingContext);
+			CategorizationContext processingContext);
 
 	@Override
 	public List<MemberDetails> resolveAttributesMembers(
 			ClassDetails classDetails,
 			AccessType classLevelAccessType,
 			AllMemberConsumer memberConsumer,
-			ModelCategorizationContext processingContext) {
+			CategorizationContext processingContext) {
 
 		final Set<FieldDetails> transientFields = new HashSet<>();
 		final Set<MethodDetails> transientMethods = new HashSet<>();
@@ -85,12 +85,12 @@ public abstract class AbstractPersistentAttributeMemberResolver implements Persi
 			final Consumer<MethodDetails> transientMethodConsumer,
 			ClassDetails classDetails,
 			AllMemberConsumer memberConsumer,
-			@SuppressWarnings("unused") ModelCategorizationContext processingContext) {
+			@SuppressWarnings("unused") CategorizationContext processingContext) {
 		final List<FieldDetails> fields = classDetails.getFields();
 		for ( int i = 0; i < fields.size(); i++ ) {
 			final FieldDetails fieldDetails = fields.get( i );
 			memberConsumer.acceptMember( fieldDetails );
-			if ( fieldDetails.getAnnotationUsage( JpaAnnotations.TRANSIENT ) != null ) {
+			if ( fieldDetails.hasDirectAnnotationUsage( Transient.class ) ) {
 				transientFieldConsumer.accept( fieldDetails );
 			}
 		}
@@ -99,7 +99,7 @@ public abstract class AbstractPersistentAttributeMemberResolver implements Persi
 		for ( int i = 0; i < methods.size(); i++ ) {
 			final MethodDetails methodDetails = methods.get( i );
 			memberConsumer.acceptMember( methodDetails );
-			if ( methodDetails.getAnnotationUsage( JpaAnnotations.TRANSIENT ) != null ) {
+			if ( methodDetails.hasDirectAnnotationUsage( Transient.class ) ) {
 				transientMethodConsumer.accept( methodDetails );
 			}
 		}

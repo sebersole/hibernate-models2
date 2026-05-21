@@ -13,28 +13,33 @@ import org.hibernate.boot.models.bind.internal.InLineView;
 import org.hibernate.boot.models.bind.internal.PhysicalTable;
 import org.hibernate.boot.models.bind.internal.SecondaryTable;
 
-/**
- * Following the SQL "table reference" rule, will be one of <ul>
- *     <li>a {@linkplain PhysicalTable physical table}</li>
- *     <li>a {@linkplain SecondaryTable secondary table}</li>
- *     <li>a {@linkplain PhysicalView physical view}</li>
- *     <li>a {@linkplain InLineView in-line view}</li>
- * </ul>
- *
- * @author Steve Ebersole
- */
+/// Binding-time reference to a relational table expression.
+///
+/// Following the SQL table-reference idea, a reference may represent a physical
+/// table, secondary table, physical view, or inline view.  The reference carries the
+/// logical name used by mapping sources and the Hibernate {@link Table} binding
+/// created for later boot phases.
+///
+/// Known implementations include:
+/// <ul>
+///     <li>{@link PhysicalTable}</li>
+///     <li>{@link SecondaryTable}</li>
+///     <li>{@link PhysicalView}</li>
+///     <li>{@link InLineView}</li>
+/// </ul>
+///
+/// @author Steve Ebersole
 public interface TableReference {
-	/**
-	 * The name used across the metamodel sources (in the annotations, XML, etc...).
-	 * In the case of physical tables and views, the logical name might not be the same
-	 * as the table or view name (through {@linkplain org.hibernate.boot.model.naming.PhysicalNamingStrategy}, e.g.).
-	 */
+	/// The name used across mapping sources such as annotations and XML.
+	///
+	/// For physical tables and views, the logical name might differ from the final
+	/// physical name after the {@linkplain org.hibernate.boot.model.naming.PhysicalNamingStrategy}
+	/// is applied.
 	Identifier logicalName();
 
-	/**
-	 * Should this "table" be exposed to schema tooling?
-	 */
+	/// Whether this table reference should be exposed to schema tooling.
 	boolean exportable();
 
+	/// The Hibernate mapping table object represented by this reference.
 	Table binding();
 }

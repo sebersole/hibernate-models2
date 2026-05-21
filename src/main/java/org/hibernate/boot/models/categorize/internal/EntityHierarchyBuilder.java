@@ -10,21 +10,24 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.hibernate.boot.models.JpaAnnotations;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
-import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
-import org.hibernate.boot.models.categorize.spi.ModelCategorizationContext;
+import org.hibernate.boot.models.categorize.spi.CategorizationContext;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.boot.models.AccessTypeDeterminationException;
-import org.hibernate.boot.models.JpaAnnotations;
 import org.hibernate.models.spi.AnnotationTarget;
-import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.ClassDetailsRegistry;
 import org.hibernate.models.spi.FieldDetails;
+import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.models.spi.MethodDetails;
 
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 
 /**
  * Builds {@link EntityHierarchy} references from
@@ -34,50 +37,22 @@ import jakarta.persistence.AccessType;
  */
 public class EntityHierarchyBuilder {
 
-	/**
-	 * Pre-processes the annotated entities from the index and create a set of entity hierarchies which can be bound
-	 * to the metamodel.
-	 *
-	 * @param typeConsumer Callback for any identifiable-type metadata references
-	 * @param buildingContext The binding context, giving access to needed services and information
-	 *
-	 * @return a set of {@code EntityHierarchySource} instances.
-	 */
 	public static Set<EntityHierarchy> createEntityHierarchies(
-			Set<ClassDetails> rootEntities,
-			HierarchyTypeConsumer typeConsumer,
-			ModelCategorizationContext buildingContext) {
-		return new EntityHierarchyBuilder( buildingContext ).process( rootEntities, typeConsumer );
+			ManagedTypeInheritanceState inheritanceState,
+			CategorizationContext buildingContext) {
+		return new EntityHierarchyBuilder( buildingContext ).process( inheritanceState );
 	}
 
-	/**
-	 * Pre-processes the annotated entities from the index and create a set of entity hierarchies which can be bound
-	 * to the metamodel.
-	 *
-	 * @param typeConsumer Callback for any identifiable-type metadata references
-	 * @param buildingContext The binding context, giving access to needed services and information
-	 *
-	 * @return a set of {@code EntityHierarchySource} instances.
-	 */
-	public static Set<EntityHierarchy> createEntityHierarchies(
-			HierarchyTypeConsumer typeConsumer,
-			ModelCategorizationContext buildingContext) {
-		return createEntityHierarchies(
-				collectRootEntityTypes( buildingContext.getClassDetailsRegistry() ),
-				typeConsumer,
-				buildingContext
-		);
-	}
+	private final CategorizationContext modelContext;
 
-	private final ModelCategorizationContext modelContext;
-
-	public EntityHierarchyBuilder(ModelCategorizationContext modelContext) {
+	public EntityHierarchyBuilder(CategorizationContext modelContext) {
 		this.modelContext = modelContext;
 	}
 
 	private Set<EntityHierarchy> process(
-			Set<ClassDetails> rootEntities,
-			HierarchyTypeConsumer typeConsumer) {
+			ManagedTypeInheritanceState inheritanceState,
+			MappedSuperclassTracker mappedSuperclassTracker) {
+		final Set<ClassDetails> rootEntities = inheritanceState.getRootEntities();
 		final Set<EntityHierarchy> hierarchies = CollectionHelper.setOfSize( rootEntities.size() );
 
 		rootEntities.forEach( (rootEntity) -> {
@@ -86,7 +61,8 @@ public class EntityHierarchyBuilder {
 					rootEntity,
 					defaultAccessType,
 					org.hibernate.cache.spi.access.AccessType.TRANSACTIONAL,
-					typeConsumer,
+					inheritanceState,
+					mappedSuperclassTracker,
 					modelContext
 			) );
 		} );
@@ -94,49 +70,64 @@ public class EntityHierarchyBuilder {
 		return hierarchies;
 	}
 
+	private Set<EntityHierarchy> process(ManagedTypeInheritanceState inheritanceState) {
+		final MappedSuperclassTracker mappedSuperclassTracker = new MappedSuperclassTracker( inheritanceState );
+		final Set<EntityHierarchy> entityHierarchies = process(
+				inheritanceState,
+				mappedSuperclassTracker
+		);
+		mappedSuperclassTracker.warnAboutUnusedMappedSuperclasses();
+		return entityHierarchies;
+	}
+
+	@NonNull
 	private AccessType determineDefaultAccessTypeForHierarchy(ClassDetails rootEntityType) {
 		assert rootEntityType != null;
 
 		ClassDetails current = rootEntityType;
 		while ( current != null ) {
 			// look for `@Access` on the class
-			final AnnotationUsage<Access> accessAnnotation = current.getAnnotationUsage( JpaAnnotations.ACCESS );
-			if ( accessAnnotation != null ) {
-				return accessAnnotation.getAttributeValue( "value" );
-			}
+			final Access accessAnnotation = current.getDirectAnnotationUsage( JpaAnnotations.ACCESS );
+			if ( accessAnnotation == null ) {
+				var inclusiveMember = findDefaultedMember( current );
+				if ( inclusiveMember == null ) {
+					current = current.getSuperClass();
+					continue;
+				}
 
-			// look for `@Id` or `@EmbeddedId`
-			final AnnotationTarget idMember = determineIdMember( current );
-			if ( idMember != null ) {
-				switch ( idMember.getKind() ) {
-					case FIELD: {
-						return AccessType.FIELD;
-					}
-					case METHOD: {
-						return AccessType.PROPERTY;
-					}
-					default: {
-						throw new IllegalStateException( "@Id / @EmbeddedId found on target other than field or method : " + idMember );
-					}
+				if ( inclusiveMember.getKind() == AnnotationTarget.Kind.FIELD ) {
+					return AccessType.FIELD;
+				}
+				else if ( inclusiveMember.getKind() == AnnotationTarget.Kind.METHOD
+						  && inclusiveMember.asMethodDetails().getMethodKind() == MethodDetails.MethodKind.GETTER ) {
+					return AccessType.PROPERTY;
+				}
+				else {
+					// this should never happen because of the nature of the checks in findDefaultedMember()...
+					throw new AccessTypeDeterminationException( rootEntityType );
 				}
 			}
 
-			current = current.getSuperType();
+			current = current.getSuperClass();
 		}
 
-		// 2.3.1 Default Access Type
-		//    It is an error if a default access type cannot be determined and an access type is not explicitly specified
-		//    by means of annotations or the XML descriptor.
-
-		throw new AccessTypeDeterminationException( rootEntityType );
+		return modelContext.getEffectiveMappingDefaults().getDefaultPropertyAccessType();
 	}
 
-	private AnnotationTarget determineIdMember(ClassDetails current) {
+	protected MemberDetails findDefaultedMember(ClassDetails current) {
+		// For now, keep using the old approach of looking for id.
+		// But ultimately we may want to pivot away to a more JPA way
+		// looking for any attribute without `@Access` (identifiers could
+		// have `@Access` which should in theory exclude them from consideration).
+		return determineIdMember( current );
+	}
+
+	private MemberDetails determineIdMember(ClassDetails current) {
 		final List<MethodDetails> methods = current.getMethods();
 		for ( int i = 0; i < methods.size(); i++ ) {
 			final MethodDetails methodDetails = methods.get( i );
-			if ( methodDetails.getAnnotationUsage( JpaAnnotations.ID ) != null
-					|| methodDetails.getAnnotationUsage( JpaAnnotations.EMBEDDED_ID ) != null ) {
+			if ( methodDetails.hasDirectAnnotationUsage( Id.class )
+					|| methodDetails.hasDirectAnnotationUsage( EmbeddedId.class ) ) {
 				return methodDetails;
 			}
 		}
@@ -144,8 +135,8 @@ public class EntityHierarchyBuilder {
 		final List<FieldDetails> fields = current.getFields();
 		for ( int i = 0; i < fields.size(); i++ ) {
 			final FieldDetails fieldDetails = fields.get( i );
-			if ( fieldDetails.getAnnotationUsage( JpaAnnotations.ID ) != null
-					|| fieldDetails.getAnnotationUsage( JpaAnnotations.EMBEDDED_ID ) != null ) {
+			if ( fieldDetails.hasDirectAnnotationUsage( Id.class )
+					|| fieldDetails.hasDirectAnnotationUsage( EmbeddedId.class ) ) {
 				return fieldDetails;
 			}
 		}
@@ -161,7 +152,7 @@ public class EntityHierarchyBuilder {
 		final Set<ClassDetails> collectedTypes = new HashSet<>();
 
 		classDetailsRegistry.forEachClassDetails( (managedType) -> {
-			if ( managedType.getAnnotationUsage( JpaAnnotations.ENTITY ) != null
+			if ( managedType.hasDirectAnnotationUsage( Entity.class )
 					&& isRoot( managedType ) ) {
 				collectedTypes.add( managedType );
 			}
@@ -177,33 +168,20 @@ public class EntityHierarchyBuilder {
 		// 		1) it has no super-types
 		//		2) its super types contain no entities (MappedSuperclasses are allowed)
 
-		if ( classInfo.getSuperType() == null ) {
+		if ( classInfo.getSuperClass() == null ) {
 			return true;
 		}
 
-		ClassDetails current = classInfo.getSuperType();
+		ClassDetails current = classInfo.getSuperClass();
 		while (  current != null ) {
-			if ( current.getAnnotationUsage( JpaAnnotations.ENTITY ) != null ) {
+			if ( current.hasDirectAnnotationUsage( Entity.class ) ) {
 				// a super type has `@Entity`, cannot be root
 				return false;
 			}
-			current = current.getSuperType();
+			current = current.getSuperClass();
 		}
 
 		// if we hit no opt-outs we have a root
 		return true;
 	}
-
-
-	/**
-	 * Used in tests
-	 */
-	public static Set<EntityHierarchy> createEntityHierarchies(ModelCategorizationContext processingContext) {
-		return new EntityHierarchyBuilder( processingContext ).process(
-				collectRootEntityTypes( processingContext.getClassDetailsRegistry() ),
-				EntityHierarchyBuilder::ignore
-		);
-	}
-
-	private static void ignore(IdentifiableTypeMetadata it) {}
 }

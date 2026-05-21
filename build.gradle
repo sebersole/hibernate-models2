@@ -4,31 +4,27 @@ plugins {
 	id "checkstyle"
 }
 
-group = "org.hibernate.models"
+group = "org.hibernate.orm9"
 version = "1.0.0-SNAPSHOT"
 
 dependencies {
-	implementation platform( libs.hibernatePlatform )
-	implementation libs.hibernateCore
+	implementation libs.hibernateOrm
 	implementation libs.hibernateModels
-	implementation libs.jandex
-	implementation libs.classmate
 	implementation libs.logging
 
-	implementation libs.hcann
-
+	compileOnly libs.checkerFramework
 	compileOnly libs.loggingAnnotations
 
 	annotationProcessor libs.loggingProcessor
 	annotationProcessor libs.logging
 	annotationProcessor libs.loggingAnnotations
 
-	testImplementation testLibs.junit5Api
-	testImplementation testLibs.assertjCore
+	testImplementation libs.junitJupiterApi
+	testImplementation libs.assertj
 	testImplementation libs.hibernateTesting
 
-	testRuntimeOnly testLibs.junit5Engine
-	testRuntimeOnly testLibs.h2
+	testRuntimeOnly libs.junitJupiterEngine
+	testRuntimeOnly libs.h2
 }
 
 java {

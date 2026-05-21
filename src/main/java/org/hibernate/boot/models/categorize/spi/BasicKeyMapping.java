@@ -6,8 +6,8 @@
  */
 package org.hibernate.boot.models.categorize.spi;
 
-/**
- * @author Steve Ebersole
- */
+/// Key mapping represented by a single non-composite persistent attribute.
+///
+/// @author Steve Ebersole
 public interface BasicKeyMapping extends SingleAttributeKeyMapping {
 }

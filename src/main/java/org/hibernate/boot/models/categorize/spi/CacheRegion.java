@@ -12,21 +12,24 @@ import org.hibernate.boot.CacheRegionDefinition;
 import org.hibernate.cache.spi.access.AccessType;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.models.ModelsException;
-import org.hibernate.models.spi.AnnotationUsage;
 
-/**
- * Models the caching options for an entity, natural-id, or collection.
- *
- * @author Steve Ebersole
- * @author Hardy Ferentschik
- */
+/// Categorized cache-region options for an entity, natural-id, or collection.
+///
+/// The region combines explicit annotation/XML values with implicit boot defaults.
+/// Binding may still overlay settings from external cache-region definitions before
+/// applying the final cache configuration.
+///
+/// @author Steve Ebersole
+/// @author Hardy Ferentschik
 public class CacheRegion {
 	private String regionName;
 	private AccessType accessType;
 	private boolean cacheLazyProperties;
 
+	/// Create a cache-region descriptor from an optional {@link Cache} annotation
+	/// and implicit cache settings.
 	public CacheRegion(
-			AnnotationUsage<Cache> cacheAnnotation,
+			Cache cacheAnnotation,
 			AccessType implicitCacheAccessType,
 			String implicitRegionName) {
 		if ( cacheAnnotation == null ) {
@@ -35,20 +38,12 @@ public class CacheRegion {
 			cacheLazyProperties = true;
 		}
 		else {
-			final String explicitRegionName = cacheAnnotation.getString( "region" );
+			final String explicitRegionName = cacheAnnotation.region();
 			regionName = StringHelper.isEmpty( explicitRegionName ) ? implicitRegionName : explicitRegionName;
 
-			accessType = interpretAccessStrategy( cacheAnnotation.getAttributeValue( "usage" ) );
+			accessType = interpretAccessStrategy( cacheAnnotation.usage() );
 
-			final Boolean explicitIncludeLazy = cacheAnnotation.getBoolean( "includeLazy" );
-			if ( explicitIncludeLazy != null ) {
-				cacheLazyProperties = explicitIncludeLazy;
-			}
-			else {
-				final String include = cacheAnnotation.getAttributeValue( "include" );
-				assert "all".equals( include ) || "non-lazy".equals( include );
-				cacheLazyProperties = include.equals( "all" );
-			}
+			cacheLazyProperties = cacheAnnotation.includeLazy();
 		}
 	}
 
@@ -56,26 +51,13 @@ public class CacheRegion {
 		if ( usage == null ) {
 			return null;
 		}
-		switch ( usage ) {
-			case NONE: {
-				return null;
-			}
-			case READ_ONLY: {
-				return AccessType.READ_ONLY;
-			}
-			case READ_WRITE: {
-				return AccessType.READ_WRITE;
-			}
-			case NONSTRICT_READ_WRITE: {
-				return AccessType.NONSTRICT_READ_WRITE;
-			}
-			case TRANSACTIONAL: {
-				return AccessType.TRANSACTIONAL;
-			}
-			default: {
-				throw new ModelsException( "Unexpected cache concurrency strategy specified - " + usage );
-			}
-		}
+		return switch ( usage ) {
+			case NONE -> null;
+			case READ_ONLY -> AccessType.READ_ONLY;
+			case READ_WRITE -> AccessType.READ_WRITE;
+			case NONSTRICT_READ_WRITE -> AccessType.NONSTRICT_READ_WRITE;
+			case TRANSACTIONAL -> AccessType.TRANSACTIONAL;
+		};
 	}
 
 	public String getRegionName() {
@@ -102,6 +84,7 @@ public class CacheRegion {
 		this.cacheLazyProperties = cacheLazyProperties;
 	}
 
+	/// Overlay settings from an externally supplied cache-region definition.
 	public void overlay(CacheRegionDefinition overrides) {
 		if ( overrides == null ) {
 			return;
@@ -115,6 +98,7 @@ public class CacheRegion {
 		cacheLazyProperties = overrides.isCacheLazy();
 	}
 
+	/// Overlay settings from another categorized cache-region descriptor.
 	public void overlay(CacheRegion overrides) {
 		if ( overrides == null ) {
 			return;

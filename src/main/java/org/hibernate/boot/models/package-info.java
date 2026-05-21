@@ -5,23 +5,24 @@
  * Copyright: Red Hat Inc. and Hibernate Authors
  */
 
-/**
- * Overall, this module is responsible for taking a
- * {@linkplain org.hibernate.boot.model.process.spi.ManagedResources managed-resources} and
- * binding them into Hibernate's {@linkplain org.hibernate.mapping boot-time model}.
- * <p/>
- * Works in 2 broad phases -<ol>
- *     <li>
- *         First we {@linkplain org.hibernate.models.orm.categorize categorize} the application's domain model,
- *         as understood through {@linkplain org.hibernate.boot.model.process.spi.ManagedResources},
- *         and produce a {@linkplain org.hibernate.boot.models.categorize.spi.CategorizedDomainModel}
- *     </li>
- *     <li>
- *         Finally, the categorized metamodel is {@linkplain org.hibernate.models.orm.bind bound}
- *         into Hibernate's {@linkplain org.hibernate.mapping boot-time model}.
- *     </li>
- * </ol>
- *
- * @author Steve Ebersole
- */
+/// Support for interpreting ORM mapping sources through Hibernate Models and
+/// binding the result into Hibernate's boot-time mapping model.
+///
+/// The module works in three broad phases:
+/// <ol>
+///     <li>
+///         Gather available managed classes, packages, and XML mappings as
+///         {@link org.hibernate.boot.models.source.AvailableResources}.
+///     </li>
+///     <li>
+///         Categorize those sources into a
+///         {@link org.hibernate.boot.models.categorize.spi.CategorizedDomainModel}.
+///     </li>
+///     <li>
+///         Bind the categorized model into Hibernate's {@code org.hibernate.mapping}
+///         boot-time mapping model.
+///     </li>
+/// </ol>
+///
+/// @author Steve Ebersole
 package org.hibernate.boot.models;

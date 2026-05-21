@@ -6,21 +6,17 @@
  */
 package org.hibernate.models.orm.xml.attr;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Arrays;
 
 import org.hibernate.annotations.Any;
 import org.hibernate.annotations.AnyDiscriminator;
+import org.hibernate.boot.internal.AnyKeyType;
 import org.hibernate.annotations.AnyDiscriminatorValue;
-import org.hibernate.boot.models.bind.internal.AnyKeyType;
-import org.hibernate.boot.internal.BootstrapContextImpl;
-import org.hibernate.boot.internal.MetadataBuilderImpl;
-import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
-import org.hibernate.models.orm.process.ManagedResourcesImpl;
-import org.hibernate.models.spi.AnnotationUsage;
+import org.hibernate.jpa.HibernatePersistenceConfiguration;
+import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
 import org.hibernate.models.spi.FieldDetails;
 
 import org.hibernate.testing.orm.junit.ServiceRegistry;
@@ -33,8 +29,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 
+import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
+
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor.processManagedResources;
 
 /**
  * @author Steve Ebersole
@@ -45,19 +43,19 @@ public class AnyTests {
 	@SuppressWarnings("JUnitMalformedDeclaration")
 	void testSimpleAnyAttribute(ServiceRegistryScope scope) {
 		final StandardServiceRegistry serviceRegistry = scope.getRegistry();
-		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
-				.addLoadedClasses( Entity1.class )
-				.addLoadedClasses( Entity2.class )
-				.addXmlMappings( "mappings/attr/any/simple.xml" )
-				.build();
+		final MetadataBuildingContextTestingImpl metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
 
-		final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl(
-				serviceRegistry,
-				new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry )
+		final HibernatePersistenceConfiguration persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+		persistenceConfiguration.managedClass( Entity1.class );
+		persistenceConfiguration.managedClass( Entity2.class );
+		persistenceConfiguration.mappingFile( "mappings/attr/any/simple.xml" );
+		final AvailableResources availableResources = AvailableResources.from(
+				persistenceConfiguration,
+				metadataBuildingContext
 		);
-		final CategorizedDomainModel categorizedDomainModel = processManagedResources(
-				managedResources,
-				bootstrapContext
+		final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
+				availableResources,
+				metadataBuildingContext
 		);
 
 		assertThat( categorizedDomainModel.getEntityHierarchies() ).hasSize( 3 );
@@ -70,27 +68,33 @@ public class AnyTests {
 
 		final FieldDetails associationField = entity3Hierarchy.getRoot().getClassDetails().findFieldByName( "association" );
 		assertThat( associationField ).isNotNull();
-		assertThat( associationField.getAnnotationUsage( Any.class ) ).isNotNull();
+		assertThat( associationField.getDirectAnnotationUsage( Any.class ) ).isNotNull();
 
-		final AnnotationUsage<AnyDiscriminator> discrimAnn = associationField.getAnnotationUsage( AnyDiscriminator.class );
+		final AnyDiscriminator discrimAnn = associationField.getDirectAnnotationUsage( AnyDiscriminator.class );
 		assertThat( discrimAnn ).isNotNull();
-		assertThat( discrimAnn.<DiscriminatorType>getEnum( "value" ) ).isEqualTo( DiscriminatorType.INTEGER );
+		assertThat( discrimAnn.value() ).isEqualTo( DiscriminatorType.INTEGER );
 
-		final List<AnnotationUsage<AnyDiscriminatorValue>> discriminatorMappings = associationField.getRepeatedAnnotationUsages( AnyDiscriminatorValue.class );
+		final AnyDiscriminatorValue[] discriminatorMappings = associationField.getRepeatedAnnotationUsages(
+				AnyDiscriminatorValue.class,
+				metadataBuildingContext.getBootstrapContext().getModelsContext()
+		);
 		assertThat( discriminatorMappings ).hasSize( 2 );
 
-		final List<String> mappedEntityNames = discriminatorMappings.stream()
-				.map( (valueAnn) -> valueAnn.getClassDetails( "entity" ).getName() )
-				.collect( Collectors.toList() );
+		final String[] mappedEntityNames = Arrays.stream( discriminatorMappings )
+				.map( (valueAnn) -> valueAnn.entity().getName() )
+				.toArray( String[]::new );
 		assertThat( mappedEntityNames ).containsExactly( Entity1.class.getName(), Entity2.class.getName() );
 
-		final AnnotationUsage<AnyKeyType> keyTypeAnn = associationField.getAnnotationUsage( AnyKeyType.class );
+		final AnyKeyType keyTypeAnn = associationField.getDirectAnnotationUsage( AnyKeyType.class );
 		assertThat( keyTypeAnn ).isNotNull();
-		assertThat( keyTypeAnn.getString( "value" ) ).isEqualTo( "integer" );
+		assertThat( keyTypeAnn.value() ).isEqualTo( "integer" );
 
-		final AnnotationUsage<JoinColumn> keyColumn = associationField.getAnnotationUsage( JoinColumn.class );
-		assertThat( keyColumn ).isNotNull();
-		assertThat( keyColumn.getString( "name" ) ).isEqualTo( "association_fk" );
+		final JoinColumn[] keyColumns = associationField.getRepeatedAnnotationUsages(
+				JoinColumn.class,
+				metadataBuildingContext.getBootstrapContext().getModelsContext()
+		);
+		assertThat( keyColumns ).hasSize( 1 );
+		assertThat( keyColumns[0].name() ).isEqualTo( "association_fk" );
 	}
 
 	@Entity(name="Entity1")

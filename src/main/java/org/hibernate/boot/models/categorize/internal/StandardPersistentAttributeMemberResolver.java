@@ -13,9 +13,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import org.hibernate.boot.models.AccessTypePlacementException;
-import org.hibernate.boot.models.JpaAnnotations;
-import org.hibernate.boot.models.categorize.spi.ModelCategorizationContext;
-import org.hibernate.models.spi.AnnotationUsage;
+import org.hibernate.boot.models.categorize.spi.CategorizationContext;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.FieldDetails;
 import org.hibernate.models.spi.MemberDetails;
@@ -42,7 +40,7 @@ public class StandardPersistentAttributeMemberResolver extends AbstractPersisten
 			Function<MethodDetails,Boolean> transientMethodChecker,
 			ClassDetails classDetails,
 			AccessType classLevelAccessType,
-			ModelCategorizationContext processingContext) {
+			CategorizationContext processingContext) {
 		assert classLevelAccessType != null;
 
 		final LinkedHashMap<String,MemberDetails> results = new LinkedHashMap<>();
@@ -73,7 +71,7 @@ public class StandardPersistentAttributeMemberResolver extends AbstractPersisten
 			Function<FieldDetails,Boolean> transientFieldChecker,
 			Function<MethodDetails,Boolean> transientMethodChecker,
 			ClassDetails classDetails,
-			ModelCategorizationContext processingContext) {
+			CategorizationContext processingContext) {
 		final List<FieldDetails> fields = classDetails.getFields();
 		for ( int i = 0; i < fields.size(); i++ ) {
 			final FieldDetails fieldDetails = fields.get( i );
@@ -92,13 +90,13 @@ public class StandardPersistentAttributeMemberResolver extends AbstractPersisten
 			BiConsumer<String,MemberDetails> memberConsumer,
 			Function<M,Boolean> transiencyChecker,
 			ClassDetails classDetails,
-			ModelCategorizationContext processingContext) {
-		final AnnotationUsage<Access> access = memberDetails.getAnnotationUsage( JpaAnnotations.ACCESS );
+			CategorizationContext processingContext) {
+		final Access access = memberDetails.getDirectAnnotationUsage( Access.class );
 		if ( access == null  ) {
 			return;
 		}
 
-		final AccessType attributeAccessType = access.getAttributeValue( "value" );
+		final AccessType attributeAccessType = access.value();
 
 		validateAttributeLevelAccess(
 				memberDetails,
@@ -119,7 +117,7 @@ public class StandardPersistentAttributeMemberResolver extends AbstractPersisten
 			MemberDetails annotationTarget,
 			AccessType attributeAccessType,
 			ClassDetails classDetails,
-			ModelCategorizationContext processingContext) {
+			CategorizationContext processingContext) {
 		// Apply the checks defined in section `2.3.2 Explicit Access Type` of the persistence specification
 
 		// Mainly, it is never legal to:
@@ -139,7 +137,7 @@ public class StandardPersistentAttributeMemberResolver extends AbstractPersisten
 			Function<MethodDetails,Boolean> transientMethodChecker,
 			ClassDetails classDetails,
 			AccessType classLevelAccessType,
-			@SuppressWarnings("unused") ModelCategorizationContext processingContext) {
+			@SuppressWarnings("unused") CategorizationContext processingContext) {
 		if ( classLevelAccessType == AccessType.FIELD ) {
 			final List<FieldDetails> fields = classDetails.getFields();
 			for ( int i = 0; i < fields.size(); i++ ) {

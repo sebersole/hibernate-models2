@@ -6,28 +6,6 @@
  */
 package org.hibernate.boot.models.bind.spi;
 
-import java.util.List;
-
-import org.hibernate.annotations.Any;
-import org.hibernate.annotations.ManyToAny;
-import org.hibernate.boot.models.bind.ModelBindingLogging;
-import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
-import org.hibernate.mapping.RootClass;
-import org.hibernate.boot.models.AnnotationPlacementException;
-import org.hibernate.boot.models.bind.internal.binders.ModelBinders;
-import org.hibernate.boot.models.bind.internal.binders.EntityTypeBinder;
-import org.hibernate.boot.models.bind.internal.binders.MappedSuperTypeBinder;
-import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
-import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
-import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
-import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
-import org.hibernate.boot.models.categorize.spi.GlobalRegistrations;
-import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
-import org.hibernate.boot.models.categorize.spi.ManagedTypeMetadata;
-import org.hibernate.boot.models.categorize.spi.MappedSuperclassTypeMetadata;
-import org.hibernate.models.spi.AnnotationUsage;
-import org.hibernate.models.spi.ClassDetails;
-
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.JoinTable;
@@ -36,13 +14,34 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.TableGenerator;
+import org.hibernate.annotations.Any;
+import org.hibernate.annotations.ManyToAny;
+import org.hibernate.boot.models.AnnotationPlacementException;
+import org.hibernate.boot.models.bind.ModelBindingLogging;
+import org.hibernate.boot.models.bind.internal.binders.EntityTypeBinder;
+import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
+import org.hibernate.boot.models.bind.internal.binders.MappedSuperTypeBinder;
+import org.hibernate.boot.models.bind.internal.binders.ModelBinders;
+import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
+import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
+import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
+import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
+import org.hibernate.boot.models.categorize.spi.GlobalRegistrations;
+import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
+import org.hibernate.boot.models.categorize.spi.ManagedTypeMetadata;
+import org.hibernate.boot.models.categorize.spi.MappedSuperclassTypeMetadata;
+import org.hibernate.mapping.RootClass;
+import org.hibernate.models.spi.ClassDetails;
 
-/**
- * Responsible for processing {@linkplain org.hibernate.boot.model.process.spi.ManagedResources managed-resources}
- * and binding them into Hibernate's {@linkplain org.hibernate.mapping boot-time model}.
- *
- * @author Steve Ebersole
- */
+/// Coordinates binding of a categorized domain model into Hibernate's boot-time
+/// mapping model.
+///
+/// The coordinator is the entry point for the binding phase.  It applies global
+/// registrations, visits each categorized entity hierarchy, creates the appropriate
+/// type binders, and then runs binding second passes that require tables or types to
+/// be known first.
+///
+/// @author Steve Ebersole
 public class BindingCoordinator {
 	private final CategorizedDomainModel categorizedDomainModel;
 	private final BindingState bindingState;
@@ -51,6 +50,7 @@ public class BindingCoordinator {
 
 	private final ModelBinders modelBinders;
 
+	/// Create a binding coordinator for a categorized model.
 	public BindingCoordinator(
 			CategorizedDomainModel categorizedDomainModel,
 			BindingState bindingState,
@@ -64,13 +64,12 @@ public class BindingCoordinator {
 		this.modelBinders = new ModelBinders( bindingState, bindingOptions, bindingContext );
 	}
 
-	/**
-	 * Main entry point into this binding coordination
-	 *
-	 * @param categorizedDomainModel The model to be processed
-	 * @param options Options for the binding
-	 * @param bindingContext Access to needed information and delegates
-	 */
+	/// Main entry point for binding a categorized domain model.
+	///
+	/// @param categorizedDomainModel The categorized model to bind
+	/// @param state Mutable binding state and produced mapping objects
+	/// @param options Binding options in effect
+	/// @param bindingContext Access to binding services and shared categorization state
 	public static void coordinateBinding(
 			CategorizedDomainModel categorizedDomainModel,
 			BindingState state,
@@ -209,15 +208,15 @@ public class BindingCoordinator {
 	}
 
 	private void processTables(AttributeMetadata attribute) {
-		final AnnotationUsage<JoinTable> joinTableAnn = attribute.getMember().getAnnotationUsage( JoinTable.class );
-		final AnnotationUsage<CollectionTable> collectionTableAnn = attribute.getMember().getAnnotationUsage( CollectionTable.class );
+		final JoinTable joinTableAnn = attribute.getMember().getDirectAnnotationUsage( JoinTable.class );
+		final CollectionTable collectionTableAnn = attribute.getMember().getDirectAnnotationUsage( CollectionTable.class );
 
-		final AnnotationUsage<OneToOne> oneToOneAnn = attribute.getMember().getAnnotationUsage( OneToOne.class );
-		final AnnotationUsage<ManyToOne> manyToOneAnn = attribute.getMember().getAnnotationUsage( ManyToOne.class );
-		final AnnotationUsage<ElementCollection> elementCollectionAnn = attribute.getMember().getAnnotationUsage( ElementCollection.class );
-		final AnnotationUsage<OneToMany> oneToManyAnn = attribute.getMember().getAnnotationUsage( OneToMany.class );
-		final AnnotationUsage<Any> anyAnn = attribute.getMember().getAnnotationUsage( Any.class );
-		final AnnotationUsage<ManyToAny> manyToAnyAnn = attribute.getMember().getAnnotationUsage( ManyToAny.class );
+		final OneToOne oneToOneAnn = attribute.getMember().getDirectAnnotationUsage( OneToOne.class );
+		final ManyToOne manyToOneAnn = attribute.getMember().getDirectAnnotationUsage( ManyToOne.class );
+		final ElementCollection elementCollectionAnn = attribute.getMember().getDirectAnnotationUsage( ElementCollection.class );
+		final OneToMany oneToManyAnn = attribute.getMember().getDirectAnnotationUsage( OneToMany.class );
+		final Any anyAnn = attribute.getMember().getDirectAnnotationUsage( Any.class );
+		final ManyToAny manyToAnyAnn = attribute.getMember().getDirectAnnotationUsage( ManyToAny.class );
 
 		final boolean hasAnyTableAnnotations = joinTableAnn != null
 				|| collectionTableAnn != null;
@@ -263,15 +262,21 @@ public class BindingCoordinator {
 	private void processGenerators(IdentifiableTypeMetadata type) {
 		final ClassDetails typeClassDetails = type.getClassDetails();
 
-		final List<AnnotationUsage<TableGenerator>> tableGenerators = typeClassDetails.getRepeatedAnnotationUsages( TableGenerator.class );
-		tableGenerators.forEach( (tableGeneratorAnn) -> {
+		final TableGenerator[] tableGenerators = typeClassDetails.getRepeatedAnnotationUsages(
+				TableGenerator.class,
+				bindingContext.getBootstrapContext().getModelsContext()
+		);
+		for ( TableGenerator tableGeneratorAnn : tableGenerators ) {
 			// process both the table and the generator
-		} );
+		}
 
-		final List<AnnotationUsage<SequenceGenerator>> sequenceGenerators = typeClassDetails.getRepeatedAnnotationUsages( SequenceGenerator.class );
-		sequenceGenerators.forEach( (sequenceGeneratorAnn) -> {
+		final SequenceGenerator[] sequenceGenerators = typeClassDetails.getRepeatedAnnotationUsages(
+				SequenceGenerator.class,
+				bindingContext.getBootstrapContext().getModelsContext()
+		);
+		for ( SequenceGenerator sequenceGeneratorAnn : sequenceGenerators ) {
 			// process both the sequence and the generator
-		} );
+		}
 
 	}
 

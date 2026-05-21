@@ -6,30 +6,20 @@
  */
 package org.hibernate.boot.models.categorize.spi;
 
+import org.hibernate.annotations.CompositeTypeRegistration;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbCompositeUserTypeRegistrationImpl;
 import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.usertype.CompositeUserType;
 
-/**
- * Registration for a {@linkplain org.hibernate.usertype.CompositeUserType}
- *
- * @see org.hibernate.annotations.CompositeTypeRegistration
- * @see org.hibernate.boot.jaxb.mapping.spi.JaxbCompositeUserTypeRegistrationImpl
- *
- * @author Steve Ebersole
- */
-public class CompositeUserTypeRegistration {
-	private final ClassDetails embeddableClass;
-	private final ClassDetails userTypeClass;
-
-	public CompositeUserTypeRegistration(ClassDetails embeddableClass, ClassDetails userTypeClass) {
-		this.embeddableClass = embeddableClass;
-		this.userTypeClass = userTypeClass;
-	}
-
-	public ClassDetails getEmbeddableClass() {
-		return embeddableClass;
-	}
-
-	public ClassDetails getUserTypeClass() {
-		return userTypeClass;
-	}
+/// Global registration for a {@linkplain CompositeUserType composite user type}.
+///
+/// @param embeddableClass The embeddable class handled by the composite user type
+/// @param userTypeClass The composite user type class
+///
+/// @author Steve Ebersole
+/// @see CompositeTypeRegistration
+/// @see JaxbCompositeUserTypeRegistrationImpl
+public record CompositeUserTypeRegistration(
+		ClassDetails embeddableClass,
+		ClassDetails userTypeClass) {
 }

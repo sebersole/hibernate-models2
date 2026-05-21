@@ -9,17 +9,20 @@ package org.hibernate.models.orm.xml;
 import java.util.List;
 import java.util.Map;
 
+import org.hibernate.boot.jaxb.spi.Binding;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
+import org.hibernate.boot.models.xml.internal.XmlDocumentImpl;
+import org.hibernate.boot.models.xml.internal.XmlPreProcessingResultImpl;
+import org.hibernate.boot.models.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.boot.models.categorize.internal.DomainModelCategorizationCollector;
 import org.hibernate.boot.models.categorize.internal.GlobalRegistrationsImpl;
 import org.hibernate.boot.models.categorize.spi.FilterDefRegistration;
-import org.hibernate.boot.models.categorize.xml.internal.XmlDocumentImpl;
-import org.hibernate.boot.models.categorize.xml.internal.XmlPreProcessingResultImpl;
-import org.hibernate.boot.models.categorize.xml.spi.PersistenceUnitMetadata;
-import org.hibernate.models.orm.SourceModelTestHelper;
 import org.hibernate.models.internal.StringTypeDescriptor;
 import org.hibernate.models.spi.ClassDetails;
-import org.hibernate.models.spi.SourceModelBuildingContext;
+import org.hibernate.models.spi.ModelsContext;
+import org.hibernate.boot.registry.StandardServiceRegistry;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
 import org.hibernate.type.descriptor.jdbc.ClobJdbcType;
 
 import org.junit.jupiter.api.Test;
@@ -29,7 +32,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.annotations.CascadeType.LOCK;
 import static org.hibernate.annotations.CascadeType.PERSIST;
 import static org.hibernate.annotations.CascadeType.REMOVE;
-import static org.hibernate.models.orm.SimpleClassLoading.SIMPLE_CLASS_LOADING;
 import static org.hibernate.models.orm.XmlHelper.loadMapping;
 
 /**
@@ -39,15 +41,15 @@ public class XmlProcessingSmokeTests {
 	@Test
 	void testGlobals() {
 		final XmlPreProcessingResultImpl collector = new XmlPreProcessingResultImpl();
-		collector.addDocument( loadMapping( "mappings/globals.xml", SIMPLE_CLASS_LOADING ) );
+		collector.addDocument( loadMapping( "mappings/globals.xml" ) );
 	}
 
 	@Test
 	void testPersistenceUnitDefaults1() {
 		final XmlPreProcessingResultImpl collector = new XmlPreProcessingResultImpl();
 
-		final JaxbEntityMappingsImpl simple1 = loadMapping( "mappings/simple1.xml", SIMPLE_CLASS_LOADING );
-		final JaxbEntityMappingsImpl simple2 = loadMapping( "mappings/simple2.xml", SIMPLE_CLASS_LOADING );
+		final Binding<JaxbEntityMappingsImpl> simple1 = loadMapping( "mappings/simple1.xml" );
+		final Binding<JaxbEntityMappingsImpl> simple2 = loadMapping( "mappings/simple2.xml" );
 		collector.addDocument( simple1 );
 		collector.addDocument( simple2);
 
@@ -71,8 +73,8 @@ public class XmlProcessingSmokeTests {
 	void testPersistenceUnitDefaults2() {
 		final XmlPreProcessingResultImpl collector = new XmlPreProcessingResultImpl();
 
-		collector.addDocument( loadMapping( "mappings/simple2.xml", SIMPLE_CLASS_LOADING ) );
-		collector.addDocument( loadMapping( "mappings/simple1.xml", SIMPLE_CLASS_LOADING ) );
+		collector.addDocument( loadMapping( "mappings/simple2.xml" ) );
+		collector.addDocument( loadMapping( "mappings/simple1.xml" ) );
 
 		final PersistenceUnitMetadata metadata = collector.getPersistenceUnitMetadata();
 		// xml-mappings-complete is a gated flag - once we see a true, it should always be considered true
@@ -94,8 +96,8 @@ public class XmlProcessingSmokeTests {
 	void testSimpleXmlDocumentBuilding() {
 		final XmlPreProcessingResultImpl collector = new XmlPreProcessingResultImpl();
 
-		final JaxbEntityMappingsImpl simple1 = loadMapping( "mappings/simple1.xml", SIMPLE_CLASS_LOADING );
-		final JaxbEntityMappingsImpl simple2 = loadMapping( "mappings/simple2.xml", SIMPLE_CLASS_LOADING );
+		final Binding<JaxbEntityMappingsImpl> simple1 = loadMapping( "mappings/simple1.xml" );
+		final Binding<JaxbEntityMappingsImpl> simple2 = loadMapping( "mappings/simple2.xml" );
 		collector.addDocument( simple1 );
 		collector.addDocument( simple2 );
 
@@ -118,52 +120,56 @@ public class XmlProcessingSmokeTests {
 
 	@Test
 	void testSimpleGlobalXmlProcessing() {
-		final SourceModelBuildingContext buildingContext = SourceModelTestHelper.createBuildingContext( StringTypeDescriptor.class );
-		final XmlPreProcessingResultImpl collectedXmlResources = new XmlPreProcessingResultImpl();
+		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
+			final MetadataBuildingContextTestingImpl metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
+			final ModelsContext buildingContext = metadataBuildingContext.getBootstrapContext().getModelsContext();
+			buildingContext.getClassDetailsRegistry().resolveClassDetails( StringTypeDescriptor.class.getName() );
 
-		final JaxbEntityMappingsImpl xmlMapping = loadMapping( "mappings/globals.xml", SIMPLE_CLASS_LOADING );
-		collectedXmlResources.addDocument( xmlMapping );
+			final XmlPreProcessingResultImpl collectedXmlResources = new XmlPreProcessingResultImpl();
 
-		final DomainModelCategorizationCollector collector = new DomainModelCategorizationCollector(
-				false,
-				buildingContext.getClassDetailsRegistry(),
-				buildingContext.getAnnotationDescriptorRegistry()
-		);
-		collectedXmlResources.getDocuments().forEach( collector::apply );
+			final Binding<JaxbEntityMappingsImpl> xmlMapping = loadMapping( "mappings/globals.xml" );
+			collectedXmlResources.addDocument( xmlMapping );
 
-		final GlobalRegistrationsImpl globalRegistrations = collector.getGlobalRegistrations();
-		assertThat( globalRegistrations.getJavaTypeRegistrations() ).hasSize( 1 );
-		assertThat( globalRegistrations.getJavaTypeRegistrations().get(0).getDescriptor().getClassName() )
-				.isEqualTo( StringTypeDescriptor.class.getName() );
+			final DomainModelCategorizationCollector collector = new DomainModelCategorizationCollector(
+					false,
+					buildingContext
+			);
+			collectedXmlResources.getDocuments().forEach( (document) -> collector.apply( document.getRoot() ) );
 
-		assertThat( globalRegistrations.getJdbcTypeRegistrations() ).hasSize( 1 );
-		assertThat( globalRegistrations.getJdbcTypeRegistrations().get(0).getDescriptor().getClassName() )
-				.isEqualTo( ClobJdbcType.class.getName() );
+			final GlobalRegistrationsImpl globalRegistrations = collector.getGlobalRegistrations();
+			assertThat( globalRegistrations.getJavaTypeRegistrations() ).hasSize( 1 );
+			assertThat( globalRegistrations.getJavaTypeRegistrations().get(0).descriptor().getClassName() )
+					.isEqualTo( StringTypeDescriptor.class.getName() );
 
-		assertThat( globalRegistrations.getUserTypeRegistrations() ).hasSize( 1 );
-		assertThat( globalRegistrations.getUserTypeRegistrations().get(0).getUserTypeClass().getClassName() )
-				.isEqualTo( MyUserType.class.getName() );
+			assertThat( globalRegistrations.getJdbcTypeRegistrations() ).hasSize( 1 );
+			assertThat( globalRegistrations.getJdbcTypeRegistrations().get(0).descriptor().getClassName() )
+					.isEqualTo( ClobJdbcType.class.getName() );
 
-		assertThat( globalRegistrations.getConverterRegistrations() ).hasSize( 1 );
-		assertThat( globalRegistrations.getConverterRegistrations().get(0).getConverterType().getClassName() )
-				.isEqualTo( org.hibernate.type.YesNoConverter.class.getName() );
+			assertThat( globalRegistrations.getUserTypeRegistrations() ).hasSize( 1 );
+			assertThat( globalRegistrations.getUserTypeRegistrations().get(0).userTypeClass().getClassName() )
+					.isEqualTo( MyUserType.class.getName() );
 
-		validateFilterDefs( globalRegistrations.getFilterDefRegistrations() );
+			assertThat( globalRegistrations.getConverterRegistrations() ).hasSize( 1 );
+			assertThat( globalRegistrations.getConverterRegistrations().get(0).converterType().getClassName() )
+					.isEqualTo( org.hibernate.type.YesNoConverter.class.getName() );
+
+			validateFilterDefs( globalRegistrations.getFilterDefRegistrations() );
+		}
 	}
 
 	private void validateFilterDefs(Map<String, FilterDefRegistration> filterDefRegistrations) {
 		assertThat( filterDefRegistrations ).hasSize( 2 );
 
 		final FilterDefRegistration amountFilter = filterDefRegistrations.get( "amount_filter" );
-		assertThat( amountFilter.getDefaultCondition() ).isEqualTo( "amount = :amount" );
-		assertThat( amountFilter.getParameters() ).hasSize( 1 );
-		final ClassDetails amountParameterType = amountFilter.getParameters().get( "amount" );
+		assertThat( amountFilter.defaultCondition() ).isEqualTo( "amount = :amount" );
+		assertThat( amountFilter.parameters() ).hasSize( 1 );
+		final ClassDetails amountParameterType = amountFilter.parameters().get( "amount" );
 		assertThat( amountParameterType.getClassName() ).isEqualTo( int.class.getName() );
 
 		final FilterDefRegistration nameFilter = filterDefRegistrations.get( "name_filter" );
-		assertThat( nameFilter.getDefaultCondition() ).isEqualTo( "name = :name" );
-		assertThat( nameFilter.getParameters() ).hasSize( 1 );
-		final ClassDetails nameParameterType = nameFilter.getParameters().get( "name" );
+		assertThat( nameFilter.defaultCondition() ).isEqualTo( "name = :name" );
+		assertThat( nameFilter.parameters() ).hasSize( 1 );
+		final ClassDetails nameParameterType = nameFilter.parameters().get( "name" );
 		assertThat( nameParameterType.getClassName() ).isEqualTo( String.class.getName() );
 	}
 }

@@ -3,36 +3,35 @@ package org.hibernate.models.orm.xml.dynamic;
 import java.util.Set;
 
 import org.hibernate.annotations.RowId;
-import org.hibernate.boot.internal.BootstrapContextImpl;
-import org.hibernate.boot.internal.MetadataBuilderImpl;
-import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
-import org.hibernate.models.orm.process.ManagedResourcesImpl;
-import org.hibernate.models.spi.AnnotationUsage;
+import org.hibernate.jpa.HibernatePersistenceConfiguration;
+import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
 
 import org.junit.jupiter.api.Test;
 
+import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
+
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor.processManagedResources;
 
 public class RowIdTest {
 	@Test
 	void testSimpleDynamicModel() {
-		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
-				.addXmlMappings( "mappings/dynamic/dynamic-rowid.xml" )
-				.build();
 		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
-			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl(
-					serviceRegistry,
-					new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry )
+			final MetadataBuildingContextTestingImpl metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
+			final HibernatePersistenceConfiguration persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+			persistenceConfiguration.mappingFile( "mappings/dynamic/dynamic-rowid.xml" );
+			final AvailableResources availableResources = AvailableResources.from(
+					persistenceConfiguration,
+					metadataBuildingContext
 			);
-			final CategorizedDomainModel categorizedDomainModel = processManagedResources(
-					managedResources,
-					bootstrapContext
+			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
+					availableResources,
+					metadataBuildingContext
 			);
 
 			final Set<EntityHierarchy> entityHierarchies = categorizedDomainModel.getEntityHierarchies();
@@ -41,7 +40,7 @@ public class RowIdTest {
 			entityHierarchies.forEach(
 					entityHierarchy -> {
 						final EntityTypeMetadata root = entityHierarchy.getRoot();
-						final AnnotationUsage<RowId> rowIdAnnotationUsage = root.getClassDetails().getAnnotationUsage(
+						final RowId rowIdAnnotationUsage = root.getClassDetails().getDirectAnnotationUsage(
 								RowId.class );
 						final String entityName = root.getEntityName();
 						if ( entityName.equals( "EntityWithoutRowId" ) ) {
@@ -49,9 +48,9 @@ public class RowIdTest {
 						}
 						else {
 							assertThat( rowIdAnnotationUsage ).isNotNull();
-							final String value = rowIdAnnotationUsage.getString( "value" );
+							final String value = rowIdAnnotationUsage.value();
 							if ( entityName.equals( "EntityWithRowIdNoValue" ) ) {
-								assertThat( value ).isNull();
+								assertThat( value ).isEmpty();
 							}
 							else {
 								assertThat( value ).isEqualTo( "ROW_ID" );

@@ -6,14 +6,15 @@
  */
 package org.hibernate.boot.models.bind.internal.binders;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
+import jakarta.persistence.Cacheable;
+import jakarta.persistence.DiscriminatorColumn;
+import jakarta.persistence.DiscriminatorType;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.SharedCacheMode;
 import org.hibernate.MappingException;
 import org.hibernate.annotations.DiscriminatorFormula;
 import org.hibernate.annotations.Filter;
@@ -21,12 +22,15 @@ import org.hibernate.annotations.OptimisticLockType;
 import org.hibernate.annotations.OptimisticLocking;
 import org.hibernate.annotations.SoftDelete;
 import org.hibernate.annotations.SoftDeleteType;
-import org.hibernate.boot.model.convert.internal.ClassBasedConverterDescriptor;
+import org.hibernate.annotations.SqlFragmentAlias;
+import org.hibernate.boot.model.convert.spi.ConverterDescriptor;
+import org.hibernate.boot.model.convert.spi.RegisteredConversion;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.naming.PhysicalNamingStrategy;
 import org.hibernate.boot.model.relational.Database;
-import org.hibernate.boot.models.bind.internal.BindingHelper;
 import org.hibernate.boot.models.bind.internal.SecondaryTable;
+import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
+import org.hibernate.boot.models.bind.internal.sources.ForeignKeySource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
@@ -61,20 +65,16 @@ import org.hibernate.mapping.Table;
 import org.hibernate.mapping.TableOwner;
 import org.hibernate.mapping.UnionSubclass;
 import org.hibernate.models.ModelsException;
-import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MethodDetails;
 
-import jakarta.persistence.Cacheable;
-import jakarta.persistence.DiscriminatorColumn;
-import jakarta.persistence.DiscriminatorType;
-import jakarta.persistence.DiscriminatorValue;
-import jakarta.persistence.Entity;
-import jakarta.persistence.ForeignKey;
-import jakarta.persistence.InheritanceType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.SharedCacheMode;
+import java.lang.reflect.Method;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 import static org.hibernate.boot.models.bind.ModelBindingLogging.MODEL_BINDING_LOGGER;
 import static org.hibernate.boot.models.bind.internal.binders.IdentifierBinder.bindIdentifier;
@@ -104,8 +104,8 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		final ClassDetails classDetails = type.getClassDetails();
 		this.binding = createBinding();
 
-		final AnnotationUsage<Entity> entityAnn = classDetails.getAnnotationUsage( Entity.class );
-		final String jpaEntityName = BindingHelper.getValue( entityAnn, "name", (String) null );
+		final Entity entityAnn = classDetails.getDirectAnnotationUsage( Entity.class );
+		final String jpaEntityName = entityAnn.name();
 		final String entityName;
 		final String importName;
 
@@ -431,18 +431,14 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		final var targetTable = superEntityTypeBinding.getIdentityTable();
 		if ( targetTable.getPrimaryKey() != null && targetTable.getPrimaryKey().getColumnSpan() > 0 ) {
 			// we can create the foreign key immediately
-			final var joinTableAnn = getManagedType().getClassDetails().getAnnotationUsage( JoinTable.class );
+			final var joinTableAnn = getManagedType().getClassDetails().getDirectAnnotationUsage( JoinTable.class );
 
-			final List<AnnotationUsage<JoinColumn>> joinColumnAnns = BindingHelper.getValue(
-					joinTableAnn,
-					"joinColumns",
-					Collections.emptyList()
-			);
-			final List<AnnotationUsage<JoinColumn>> inverseJoinColumnAnns = BindingHelper.getValue(
-					joinTableAnn,
-					"inverseJoinColumns",
-					Collections.emptyList()
-			);
+			final List<JoinColumn> joinColumnAnns = joinTableAnn == null
+					? Collections.emptyList()
+					: List.of( joinTableAnn.joinColumns() );
+			final List<JoinColumn> inverseJoinColumnAnns = joinTableAnn == null
+					? Collections.emptyList()
+					: List.of( joinTableAnn.inverseJoinColumns() );
 
 			for ( int i = 0; i < targetTable.getPrimaryKey().getColumnSpan(); i++ ) {
 				final Column targetColumn = targetTable.getPrimaryKey().getColumns().get( i );
@@ -453,7 +449,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 							targetColumn,
 							joinColumnAnns
 					);
-					pkColumn = ColumnBinder.bindColumn( joinColumnAnn, targetColumn::getName, true, false );
+					pkColumn = ColumnBinder.bindColumn( ColumnSource.from( joinColumnAnn ), targetColumn::getName, true, false );
 				}
 				else {
 					pkColumn = ColumnBinder.bindColumn( null, targetColumn::getName, true, false );
@@ -461,19 +457,20 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 				primaryKey.addColumn( pkColumn );
 			}
 
-			final AnnotationUsage<ForeignKey> foreignKeyAnn = BindingHelper.getValue( joinTableAnn, "foreignKey", (AnnotationUsage<ForeignKey>) null );
-			final String foreignKeyName = foreignKeyAnn == null
+			final ForeignKeySource foreignKeySource = ForeignKeySource.from( joinTableAnn );
+			final String foreignKeyName = foreignKeySource == null
 					? ""
-					: BindingHelper.getString( foreignKeyAnn, "name", ForeignKey.class, getBindingContext() );
-			final String foreignKeyDefinition = foreignKeyAnn == null
+					: foreignKeySource.name();
+			final String foreignKeyDefinition = foreignKeySource == null
 					? ""
-					: BindingHelper.getString( foreignKeyAnn, "foreignKeyDefinition", ForeignKey.class, getBindingContext() );
+					: foreignKeySource.definition();
 
 			final org.hibernate.mapping.ForeignKey foreignKey = targetTable.createForeignKey(
 					foreignKeyName,
 					primaryKey.getColumns(),
 					findSuperEntity().getEntityName(),
 					foreignKeyDefinition,
+					null,
 					targetTable.getPrimaryKey().getColumns()
 			);
 			foreignKey.setReferencedTable( targetTable );
@@ -489,14 +486,14 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		return joinedSubclass;
 	}
 
-	private AnnotationUsage<JoinColumn> resolveMatchingJoinColumnAnn(
-			List<AnnotationUsage<JoinColumn>> inverseJoinColumnAnns,
+	private JoinColumn resolveMatchingJoinColumnAnn(
+			List<JoinColumn> inverseJoinColumnAnns,
 			Column pkColumn,
-			List<AnnotationUsage<JoinColumn>> joinColumnAnns) {
+			List<JoinColumn> joinColumnAnns) {
 		int matchPosition = -1;
 		for ( int j = 0; j < inverseJoinColumnAnns.size(); j++ ) {
 			final var inverseJoinColumnAnn = inverseJoinColumnAnns.get( j );
-			final String name = inverseJoinColumnAnn.getString( "name" );
+			final String name = inverseJoinColumnAnn.name();
 			if ( pkColumn.getName().equals( name ) ) {
 				matchPosition = j;
 				break;
@@ -563,22 +560,22 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 			BindingOptions options,
 			BindingState bindingState,
 			BindingContext bindingContext) {
-		final AnnotationUsage<Cacheable> cacheableAnn = managedType.getClassDetails().getAnnotationUsage( Cacheable.class );
+		final Cacheable cacheableAnn = managedType.getClassDetails().getDirectAnnotationUsage( Cacheable.class );
 		final SharedCacheMode sharedCacheMode = bindingState.getMetadataBuildingContext()
 				.getBuildingOptions()
 				.getSharedCacheMode();
 		typeBinding.setCached( isCacheable( sharedCacheMode, cacheableAnn ) );
 	}
 
-	private static boolean isCacheable(SharedCacheMode sharedCacheMode, AnnotationUsage<Cacheable> explicitCacheableAnn) {
+	private static boolean isCacheable(SharedCacheMode sharedCacheMode, Cacheable explicitCacheableAnn) {
 		return switch ( sharedCacheMode ) {
 			// all entities should be cached
 			case ALL -> true;
 			// Hibernate defaults to ENABLE_SELECTIVE, the only sensible setting
 			// only entities with @Cacheable(true) should be cached
-			case ENABLE_SELECTIVE, UNSPECIFIED -> explicitCacheableAnn != null && explicitCacheableAnn.getBoolean( "value" );
+			case ENABLE_SELECTIVE, UNSPECIFIED -> explicitCacheableAnn != null && explicitCacheableAnn.value();
 			// only entities with @Cacheable(false) should not be cached
-			case DISABLE_SELECTIVE -> explicitCacheableAnn == null || explicitCacheableAnn.getBoolean( "value" );
+			case DISABLE_SELECTIVE -> explicitCacheableAnn == null || explicitCacheableAnn.value();
 			// treat both NONE and UNSPECIFIED the same
 			default -> false;
 		};
@@ -603,7 +600,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 			return;
 		}
 
-		final AnnotationUsage<DiscriminatorValue> ann = managedType.getClassDetails().getAnnotationUsage( DiscriminatorValue.class );
+		final DiscriminatorValue ann = managedType.getClassDetails().getDirectAnnotationUsage( DiscriminatorValue.class );
 		if ( ann == null ) {
 			final Type resolvedJavaType = discriminatorMapping.resolve().getRelationalJavaType().getJavaType();
 			if ( resolvedJavaType == String.class ) {
@@ -614,7 +611,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 			}
 		}
 		else {
-			typeBinding.setDiscriminatorValue( ann.getString( "value" ) );
+			typeBinding.setDiscriminatorValue( ann.value() );
 		}
 	}
 
@@ -639,8 +636,8 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 			BindingState bindingState,
 			BindingContext bindingContext) {
 		final InheritanceType inheritanceType = managedType.getHierarchy().getInheritanceType();
-		final AnnotationUsage<DiscriminatorColumn> columnAnn = managedType.getClassDetails().getAnnotationUsage( DiscriminatorColumn.class );
-		final AnnotationUsage<DiscriminatorFormula> formulaAnn = managedType.getClassDetails().getAnnotationUsage( DiscriminatorFormula.class );
+		final DiscriminatorColumn columnAnn = managedType.getClassDetails().getDirectAnnotationUsage( DiscriminatorColumn.class );
+		final DiscriminatorFormula formulaAnn = managedType.getClassDetails().getDirectAnnotationUsage( DiscriminatorFormula.class );
 
 		if ( columnAnn != null && formulaAnn != null ) {
 			throw new MappingException( "Entity defined both @DiscriminatorColumn and @DiscriminatorFormula - " + typeBinding.getEntityName() );
@@ -729,8 +726,8 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 			Table primaryTable,
 			RootClass rootClass,
 			ClassDetails classDetails) {
-		final AnnotationUsage<SoftDelete> softDeleteConfig = getTypeBinding() instanceof RootClass
-				? classDetails.getAnnotationUsage( SoftDelete.class )
+		final SoftDelete softDeleteConfig = getTypeBinding() instanceof RootClass
+				? classDetails.getDirectAnnotationUsage( SoftDelete.class )
 				: null;
 		if ( softDeleteConfig == null ) {
 			return;
@@ -739,29 +736,29 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 		final BasicValue softDeleteIndicatorValue = createSoftDeleteIndicatorValue( softDeleteConfig, primaryTable );
 		final Column softDeleteIndicatorColumn = createSoftDeleteIndicatorColumn( softDeleteConfig, softDeleteIndicatorValue );
 		primaryTable.addColumn( softDeleteIndicatorColumn );
-		rootClass.enableSoftDelete( softDeleteIndicatorColumn );
+		rootClass.enableSoftDelete( softDeleteIndicatorColumn, softDeleteConfig.strategy() );
 	}
 
 	private BasicValue createSoftDeleteIndicatorValue(
-			AnnotationUsage<SoftDelete> softDeleteAnn,
+			SoftDelete softDeleteAnn,
 			Table table) {
 		assert softDeleteAnn != null;
 
-		final var converterClassDetails = softDeleteAnn.getClassDetails( "converter" );
-		final ClassBasedConverterDescriptor converterDescriptor = new ClassBasedConverterDescriptor(
-				converterClassDetails.toJavaClass(),
-				getBindingContext().getBootstrapContext().getClassmateContext()
-		);
+		final ConverterDescriptor<?, ?> converterDescriptor = new RegisteredConversion(
+				null,
+				softDeleteAnn.converter(),
+				false
+		).getConverterDescriptor();
 
 		final BasicValue softDeleteIndicatorValue = new BasicValue( getBindingState().getMetadataBuildingContext(), table );
-		softDeleteIndicatorValue.makeSoftDelete( softDeleteAnn.getEnum( "strategy" ) );
+		softDeleteIndicatorValue.makeSoftDelete( softDeleteAnn.strategy() );
 		softDeleteIndicatorValue.setJpaAttributeConverterDescriptor( converterDescriptor );
-		softDeleteIndicatorValue.setImplicitJavaTypeAccess( (typeConfiguration) -> converterDescriptor.getRelationalValueResolvedType().getErasedType() );
+		softDeleteIndicatorValue.setImplicitJavaTypeAccess( (typeConfiguration) -> (Class<?>) converterDescriptor.getRelationalValueResolvedType() );
 		return softDeleteIndicatorValue;
 	}
 
 	private Column createSoftDeleteIndicatorColumn(
-			AnnotationUsage<SoftDelete> softDeleteConfig,
+			SoftDelete softDeleteConfig,
 			BasicValue softDeleteIndicatorValue) {
 		final Column softDeleteColumn = new Column();
 
@@ -780,15 +777,15 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 
 	private static void applyColumnName(
 			Column softDeleteColumn,
-			AnnotationUsage<SoftDelete> softDeleteConfig,
+			SoftDelete softDeleteConfig,
 			BindingState state,
 			BindingContext context) {
 		final Database database = state.getMetadataBuildingContext().getMetadataCollector().getDatabase();
 		final PhysicalNamingStrategy namingStrategy = state.getMetadataBuildingContext().getBuildingOptions().getPhysicalNamingStrategy();
-		final SoftDeleteType strategy = softDeleteConfig.getEnum( "strategy" );
+		final SoftDeleteType strategy = softDeleteConfig.strategy();
 		final String logicalColumnName = coalesce(
 				strategy.getDefaultColumnName(),
-				softDeleteConfig.getString( "columnName" )
+				softDeleteConfig.columnName()
 		);
 		final Identifier physicalColumnName = namingStrategy.toPhysicalColumnName(
 				database.toIdentifier( logicalColumnName ),
@@ -800,10 +797,10 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 	private void processOptimisticLocking(
 			RootClass rootEntity,
 			ClassDetails classDetails) {
-		final var optimisticLocking = classDetails.getAnnotationUsage( OptimisticLocking.class );
+		final var optimisticLocking = classDetails.getDirectAnnotationUsage( OptimisticLocking.class );
 
 		if ( optimisticLocking != null ) {
-			final var optimisticLockingType = optimisticLocking.getEnum( "type", OptimisticLockType.VERSION );
+			final var optimisticLockingType = optimisticLocking.type() == null ? OptimisticLockType.VERSION : optimisticLocking.type();
 			rootEntity.setOptimisticLockStyle( OptimisticLockStyle.valueOf( optimisticLockingType.name() ) );
 		}
 	}
@@ -828,38 +825,61 @@ public class EntityTypeBinder extends IdentifiableTypeBinder {
 	}
 
 	private void processCaching(ClassDetails classDetails, BindingState state, BindingContext context) {
-		final var cacheableAnn = classDetails.getAnnotationUsage( Cacheable.class );
+		final var cacheableAnn = classDetails.getDirectAnnotationUsage( Cacheable.class );
 		if ( cacheableAnn == null ) {
 			return;
 		}
 
-		final boolean cacheable = cacheableAnn.getBoolean( "value", true );
+		final boolean cacheable = cacheableAnn.value();
 		binding.setCached( cacheable );
 	}
 
 	private void processFilters(ClassDetails classDetails, BindingState state, BindingContext context) {
-		final List<AnnotationUsage<Filter>> filters = classDetails.getRepeatedAnnotationUsages( Filter.class );
-		if ( CollectionHelper.isEmpty( filters ) ) {
+		final Filter[] filters = classDetails.getRepeatedAnnotationUsages(
+				Filter.class,
+				context.getBootstrapContext().getModelsContext()
+		);
+		if ( filters.length == 0 ) {
 			return;
 		}
 
-		filters.forEach( (filter) -> {
+		for ( Filter filter : filters ) {
 			binding.addFilter(
-					filter.getString( "name" ),
-					filter.getString( "condition", (String) null ),
-					filter.getAttributeValue( "deduceAliasInjectionPoints", true ),
+					filter.name(),
+					StringHelper.nullIfEmpty( filter.condition() ),
+					filter.deduceAliasInjectionPoints(),
 					extractFilterAliasTableMap( filter ),
 					extractFilterAliasEntityMap( filter )
 			);
-		} );
+		}
 	}
 
-	private Map<String, String> extractFilterAliasTableMap(AnnotationUsage<Filter> filter) {
-		return null;
+	private Map<String, String> extractFilterAliasTableMap(Filter filter) {
+		final SqlFragmentAlias[] aliases = filter.aliases();
+		if ( aliases.length == 0 ) {
+			return null;
+		}
+		final Map<String,String> result = CollectionHelper.mapOfSize( aliases.length );
+		for ( SqlFragmentAlias alias : aliases ) {
+			if ( StringHelper.isNotEmpty( alias.table() ) ) {
+				result.put( alias.alias(), alias.table() );
+			}
+		}
+		return result.isEmpty() ? null : result;
 	}
 
-	private Map<String, String> extractFilterAliasEntityMap(AnnotationUsage<Filter> filter) {
-		return null;
+	private Map<String, String> extractFilterAliasEntityMap(Filter filter) {
+		final SqlFragmentAlias[] aliases = filter.aliases();
+		if ( aliases.length == 0 ) {
+			return null;
+		}
+		final Map<String,String> result = CollectionHelper.mapOfSize( aliases.length );
+		for ( SqlFragmentAlias alias : aliases ) {
+			if ( alias.entity() != void.class ) {
+				result.put( alias.alias(), alias.entity().getName() );
+			}
+		}
+		return result.isEmpty() ? null : result;
 	}
 
 	@Override

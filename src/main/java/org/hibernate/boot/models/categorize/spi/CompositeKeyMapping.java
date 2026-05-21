@@ -6,11 +6,12 @@
  */
 package org.hibernate.boot.models.categorize.spi;
 
-/**
- * Id-mapping which is embeddable - either {@linkplain AggregatedKeyMapping physically}
- * or {@linkplain NonAggregatedKeyMapping virtually}.
- *
- * @author Steve Ebersole
- */
+/// Key mapping whose key type is composite.
+///
+/// A composite key can be represented by a physical embeddable attribute, as with
+/// {@link AggregatedKeyMapping}, or by multiple id attributes that are virtually
+/// composed through an id-class, as with {@link NonAggregatedKeyMapping}.
+///
+/// @author Steve Ebersole
 public interface CompositeKeyMapping extends KeyMapping {
 }

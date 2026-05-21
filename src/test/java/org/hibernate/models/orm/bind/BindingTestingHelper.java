@@ -8,13 +8,11 @@ package org.hibernate.models.orm.bind;
 
 import java.util.Set;
 
-import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.internal.BootstrapContextImpl;
 import org.hibernate.boot.internal.InFlightMetadataCollectorImpl;
 import org.hibernate.boot.internal.MetadataBuilderImpl;
 import org.hibernate.boot.internal.MetadataBuildingContextRootImpl;
-import org.hibernate.boot.model.process.spi.ManagedResources;
-import org.hibernate.boot.model.process.spi.MetadataBuildingProcess;
+import org.hibernate.boot.internal.RootMappingDefaults;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.models.bind.internal.BindingContextImpl;
@@ -22,9 +20,12 @@ import org.hibernate.boot.models.bind.internal.BindingOptionsImpl;
 import org.hibernate.boot.models.bind.internal.BindingStateImpl;
 import org.hibernate.boot.models.bind.spi.BindingCoordinator;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
-import org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor;
+import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.models.orm.process.ManagedResourcesImpl;
+import org.hibernate.boot.spi.MetadataBuildingContext;
+import org.hibernate.jpa.HibernatePersistenceConfiguration;
+import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
 
 /**
  * @author Steve Ebersole
@@ -36,26 +37,26 @@ public class BindingTestingHelper {
 			Class<?>... domainClasses) {
 		final BootstrapContextImpl bootstrapContext = buildBootstrapContext(
 				serviceRegistry );
-		final ManagedResources managedResources = buildManagedResources(
-				domainClasses,
-				bootstrapContext
-		);
 
 		final InFlightMetadataCollectorImpl metadataCollector = new InFlightMetadataCollectorImpl(
 				bootstrapContext,
 				bootstrapContext.getMetadataBuildingOptions()
 		);
 
-		final CategorizedDomainModel categorizedDomainModel = ManagedResourcesProcessor.processManagedResources(
-				managedResources,
-				bootstrapContext
-		);
-
 		final MetadataBuildingContextRootImpl metadataBuildingContext = new MetadataBuildingContextRootImpl(
 				"models",
 				bootstrapContext,
 				bootstrapContext.getMetadataBuildingOptions(),
-				metadataCollector
+				metadataCollector,
+				new RootMappingDefaults(
+						bootstrapContext.getMetadataBuildingOptions().getMappingDefaults(),
+						metadataCollector.getPersistenceUnitMetadata()
+					)
+			);
+		final AvailableResources availableResources = buildAvailableResources( metadataBuildingContext, domainClasses );
+		final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
+				availableResources,
+				metadataBuildingContext
 		);
 		final BindingStateImpl bindingState = new BindingStateImpl( metadataBuildingContext );
 		final BindingOptionsImpl bindingOptions = new BindingOptionsImpl( metadataBuildingContext );
@@ -101,28 +102,25 @@ public class BindingTestingHelper {
 		return bootstrapContext;
 	}
 
-	private static ManagedResources buildManagedResources(
-			Class<?>[] domainClasses,
-			BootstrapContextImpl bootstrapContext) {
-		final MetadataSources metadataSources = new MetadataSources( bootstrapContext.getServiceRegistry() );
-		for ( int i = 0; i < domainClasses.length; i++ ) {
-			metadataSources.addAnnotatedClass( domainClasses[i] );
+	private static AvailableResources buildAvailableResources(MetadataBuildingContext metadataBuildingContext, Class<?>... classes) {
+		final HibernatePersistenceConfiguration persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+		for ( Class<?> clazz : classes ) {
+			persistenceConfiguration.managedClass( clazz );
 		}
-		return MetadataBuildingProcess.prepare( metadataSources, bootstrapContext );
+		return AvailableResources.from(
+				persistenceConfiguration,
+				metadataBuildingContext
+		);
 	}
 
 	public static Set<EntityHierarchy> buildHierarchyMetadata(Class<?>... classes) {
-		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
-				.addLoadedClasses(classes)
-				.build();
-
 		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
-			final MetadataBuilderImpl.MetadataBuildingOptionsImpl metadataBuildingOptions = new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry );
-			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl( serviceRegistry, metadataBuildingOptions );
+			final MetadataBuildingContext metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
+			final AvailableResources availableResources = buildAvailableResources( metadataBuildingContext, classes );
 
-			final CategorizedDomainModel categorizedDomainModel = ManagedResourcesProcessor.processManagedResources(
-					managedResources,
-					bootstrapContext
+			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
+					availableResources,
+					metadataBuildingContext
 			);
 
 			return categorizedDomainModel.getEntityHierarchies();
@@ -130,15 +128,11 @@ public class BindingTestingHelper {
 	}
 
 	public static CategorizedDomainModel buildCategorizedDomainModel(Class<?>... classes) {
-		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
-				.addLoadedClasses(classes)
-				.build();
-
 		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
-			final MetadataBuilderImpl.MetadataBuildingOptionsImpl metadataBuildingOptions = new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry );
-			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl( serviceRegistry, metadataBuildingOptions );
+			final MetadataBuildingContext metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
+			final AvailableResources availableResources = buildAvailableResources( metadataBuildingContext, classes );
 
-			return ManagedResourcesProcessor.processManagedResources( managedResources, bootstrapContext );
+			return DomainModelCategorizer.categorize( availableResources, metadataBuildingContext );
 		}
 	}
 }

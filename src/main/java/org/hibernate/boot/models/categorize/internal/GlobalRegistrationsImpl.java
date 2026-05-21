@@ -7,6 +7,8 @@
 package org.hibernate.boot.models.categorize.internal;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -46,19 +48,15 @@ import org.hibernate.boot.models.categorize.spi.JpaEventListenerStyle;
 import org.hibernate.boot.models.categorize.spi.SequenceGeneratorRegistration;
 import org.hibernate.boot.models.categorize.spi.TableGeneratorRegistration;
 import org.hibernate.boot.models.categorize.spi.UserTypeRegistration;
-import org.hibernate.boot.models.categorize.xml.internal.XmlAnnotationHelper;
+import org.hibernate.boot.models.xml.internal.XmlAnnotationHelper;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.CollectionClassification;
-import org.hibernate.models.internal.MutableAnnotationUsage;
-import org.hibernate.models.internal.dynamic.DynamicAnnotationUsage;
-import org.hibernate.models.spi.AnnotationDescriptor;
 import org.hibernate.models.spi.AnnotationDescriptorRegistry;
 import org.hibernate.models.spi.AnnotationTarget;
-import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.ClassDetailsRegistry;
-import org.hibernate.models.spi.SourceModelContext;
+import org.hibernate.models.spi.ModelsContext;
 
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.TableGenerator;
@@ -66,19 +64,11 @@ import jakarta.persistence.TableGenerator;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static org.hibernate.internal.util.collections.CollectionHelper.isEmpty;
-import static org.hibernate.boot.models.HibernateAnnotations.COLLECTION_TYPE_REG;
-import static org.hibernate.boot.models.HibernateAnnotations.COMPOSITE_TYPE_REG;
-import static org.hibernate.boot.models.HibernateAnnotations.CONVERTER_REG;
-import static org.hibernate.boot.models.HibernateAnnotations.EMBEDDABLE_INSTANTIATOR_REG;
-import static org.hibernate.boot.models.HibernateAnnotations.FILTER_DEF;
-import static org.hibernate.boot.models.HibernateAnnotations.JAVA_TYPE_REG;
-import static org.hibernate.boot.models.HibernateAnnotations.JDBC_TYPE_REG;
-import static org.hibernate.boot.models.HibernateAnnotations.TYPE_REG;
-
 /**
  * @author Steve Ebersole
  */
 public class GlobalRegistrationsImpl implements GlobalRegistrations {
+	private final ModelsContext modelsContext;
 	private final ClassDetailsRegistry classDetailsRegistry;
 	private final AnnotationDescriptorRegistry descriptorRegistry;
 
@@ -96,11 +86,15 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	private Map<String, TableGeneratorRegistration> tableGeneratorRegistrations;
 	private Map<String, GenericGeneratorRegistration> genericGeneratorRegistrations;
 
-	public GlobalRegistrationsImpl(SourceModelContext sourceModelContext) {
-		this( sourceModelContext.getClassDetailsRegistry(), sourceModelContext.getAnnotationDescriptorRegistry() );
+	public GlobalRegistrationsImpl(ModelsContext modelsContext) {
+		this( modelsContext, modelsContext.getClassDetailsRegistry(), modelsContext.getAnnotationDescriptorRegistry() );
 	}
 
-	public GlobalRegistrationsImpl(ClassDetailsRegistry classDetailsRegistry, AnnotationDescriptorRegistry descriptorRegistry) {
+	public GlobalRegistrationsImpl(
+			ModelsContext modelsContext,
+			ClassDetailsRegistry classDetailsRegistry,
+			AnnotationDescriptorRegistry descriptorRegistry) {
+		this.modelsContext = modelsContext;
 		this.classDetailsRegistry = classDetailsRegistry;
 		this.descriptorRegistry = descriptorRegistry;
 	}
@@ -169,9 +163,9 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	// JavaTypeRegistration
 
 	public void collectJavaTypeRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachAnnotationUsage( JAVA_TYPE_REG, (usage) -> collectJavaTypeRegistration(
-				usage.getAttributeValue( "javaType" ),
-				usage.getAttributeValue( "descriptorClass" )
+		annotationTarget.forEachAnnotationUsage( org.hibernate.annotations.JavaTypeRegistration.class, modelsContext, (usage) -> collectJavaTypeRegistration(
+				classDetailsRegistry.resolveClassDetails( usage.javaType().getName() ),
+				classDetailsRegistry.resolveClassDetails( usage.descriptorClass().getName() )
 		) );
 	}
 
@@ -202,9 +196,9 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	// JdbcTypeRegistration
 
 	public void collectJdbcTypeRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachAnnotationUsage( JDBC_TYPE_REG, (usage) -> collectJdbcTypeRegistration(
-				usage.getAttributeValue( "registrationCode" ),
-				usage.getAttributeValue( "value" )
+		annotationTarget.forEachAnnotationUsage( org.hibernate.annotations.JdbcTypeRegistration.class, modelsContext, (usage) -> collectJdbcTypeRegistration(
+				usage.registrationCode(),
+				classDetailsRegistry.resolveClassDetails( usage.value().getName() )
 		) );
 	}
 
@@ -231,11 +225,12 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	// ConversionRegistration
 
 	public void collectConverterRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachAnnotationUsage( CONVERTER_REG, (usage) -> {
-			final ClassDetails domainType = usage.getAttributeValue( "domainType" );
-			final ClassDetails converterType = usage.getAttributeValue( "converter" );
-			final boolean autoApply = usage.getAttributeValue( "autoApply" );
-			collectConverterRegistration( new ConversionRegistration( domainType, converterType, autoApply, CONVERTER_REG ) );
+		annotationTarget.forEachAnnotationUsage( org.hibernate.annotations.ConverterRegistration.class, modelsContext, (usage) -> {
+			final ClassDetails domainType = usage.domainType() == void.class
+					? null
+					: classDetailsRegistry.resolveClassDetails( usage.domainType().getName() );
+			final ClassDetails converterType = classDetailsRegistry.resolveClassDetails( usage.converter().getName() );
+			collectConverterRegistration( new ConversionRegistration( domainType, converterType, usage.autoApply(), descriptorRegistry.getDescriptor( org.hibernate.annotations.ConverterRegistration.class ) ) );
 		} );
 	}
 
@@ -255,7 +250,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 			}
 			final ClassDetails converterType = classDetailsRegistry.resolveClassDetails( registration.getConverter() );
 			final boolean autoApply = registration.isAutoApply();
-			collectConverterRegistration( new ConversionRegistration( explicitDomainType, converterType, autoApply, CONVERTER_REG ) );
+			collectConverterRegistration( new ConversionRegistration( explicitDomainType, converterType, autoApply, descriptorRegistry.getDescriptor( org.hibernate.annotations.ConverterRegistration.class ) ) );
 		} );
 	}
 
@@ -271,9 +266,9 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	// UserTypeRegistration
 
 	public void collectUserTypeRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachAnnotationUsage( TYPE_REG, (usage) -> collectUserTypeRegistration(
-				usage.getAttributeValue( "basicClass" ),
-				usage.getAttributeValue( "userType" )
+		annotationTarget.forEachAnnotationUsage( org.hibernate.annotations.TypeRegistration.class, modelsContext, (usage) -> collectUserTypeRegistration(
+				classDetailsRegistry.resolveClassDetails( usage.basicClass().getName() ),
+				classDetailsRegistry.resolveClassDetails( usage.userType().getName() )
 		) );
 	}
 
@@ -301,9 +296,9 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	// CompositeUserTypeRegistration
 
 	public void collectCompositeUserTypeRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachAnnotationUsage( COMPOSITE_TYPE_REG, (usage) -> collectCompositeUserTypeRegistration(
-				usage.getAttributeValue( "embeddableClass" ),
-				usage.getAttributeValue( "userType" )
+		annotationTarget.forEachAnnotationUsage( org.hibernate.annotations.CompositeTypeRegistration.class, modelsContext, (usage) -> collectCompositeUserTypeRegistration(
+				classDetailsRegistry.resolveClassDetails( usage.embeddableClass().getName() ),
+				classDetailsRegistry.resolveClassDetails( usage.userType().getName() )
 		) );
 	}
 
@@ -330,22 +325,21 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	// CollectionTypeRegistration
 
 	public void collectCollectionTypeRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachAnnotationUsage( COLLECTION_TYPE_REG, (usage) -> collectCollectionTypeRegistration(
-				usage.getAttributeValue( "classification" ),
-				usage.getAttributeValue( "type" ),
+		annotationTarget.forEachAnnotationUsage( org.hibernate.annotations.CollectionTypeRegistration.class, modelsContext, (usage) -> collectCollectionTypeRegistration(
+				usage.classification(),
+				classDetailsRegistry.resolveClassDetails( usage.type().getName() ),
 				extractParameterMap( usage )
 		) );
 	}
 
-	private Map<String,String> extractParameterMap(AnnotationUsage<? extends Annotation> source) {
-		final List<AnnotationUsage<Parameter>> parameters = source.getAttributeValue( "parameters" );
-
+	private Map<String,String> extractParameterMap(org.hibernate.annotations.CollectionTypeRegistration source) {
+		final Parameter[] parameters = source.parameters();
+		if ( parameters.length == 0 ) {
+			return Collections.emptyMap();
+		}
 		final Map<String,String> result = new HashMap<>();
-		for ( AnnotationUsage<Parameter> parameter : parameters ) {
-			result.put(
-					parameter.getAttributeValue( "name" ),
-					parameter.getAttributeValue( "value" )
-			);
+		for ( Parameter parameter : parameters ) {
+			result.put( parameter.name(), parameter.value() );
 		}
 		return result;
 	}
@@ -387,9 +381,9 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	// EmbeddableInstantiatorRegistration
 
 	public void collectEmbeddableInstantiatorRegistrations(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachAnnotationUsage( EMBEDDABLE_INSTANTIATOR_REG, (usage) -> collectEmbeddableInstantiatorRegistration(
-				usage.getAttributeValue( "embeddableClass" ),
-				usage.getAttributeValue( "instantiator" )
+		annotationTarget.forEachAnnotationUsage( org.hibernate.annotations.EmbeddableInstantiatorRegistration.class, modelsContext, (usage) -> collectEmbeddableInstantiatorRegistration(
+				classDetailsRegistry.resolveClassDetails( usage.embeddableClass().getName() ),
+				classDetailsRegistry.resolveClassDetails( usage.instantiator().getName() )
 		) );
 	}
 
@@ -416,22 +410,22 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	// Filter-defs
 
 	public void collectFilterDefinitions(AnnotationTarget annotationTarget) {
-		annotationTarget.forEachAnnotationUsage( FILTER_DEF, (usage) -> collectFilterDefinition(
-				usage.getAttributeValue( "name" ),
-				usage.getAttributeValue( "defaultCondition" ),
+		annotationTarget.forEachAnnotationUsage( FilterDef.class, modelsContext, (usage) -> collectFilterDefinition(
+				usage.name(),
+				usage.defaultCondition(),
 				extractFilterParameters( usage )
 		) );
 	}
 
-	private Map<String, ClassDetails> extractFilterParameters(AnnotationUsage<FilterDef> source) {
-		final List<AnnotationUsage<ParamDef>> parameters = source.getAttributeValue( "parameters" );
-		if ( isEmpty( parameters ) ) {
+	private Map<String, ClassDetails> extractFilterParameters(FilterDef source) {
+		final ParamDef[] parameters = source.parameters();
+		if ( parameters.length == 0 ) {
 			return null;
 		}
 
-		final Map<String, ClassDetails> result = new HashMap<>( parameters.size() );
-		for ( AnnotationUsage<ParamDef> parameter : parameters ) {
-			result.put( parameter.getAttributeValue( "name" ), parameter.getAttributeValue( "type" ) );
+		final Map<String, ClassDetails> result = new HashMap<>( parameters.length );
+		for ( ParamDef parameter : parameters ) {
+			result.put( parameter.name(), classDetailsRegistry.resolveClassDetails( parameter.type().getName() ) );
 		}
 		return result;
 	}
@@ -518,9 +512,9 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	}
 
 	public void collectIdGenerators(ClassDetails classDetails) {
-		classDetails.forEachAnnotationUsage( SequenceGenerator.class, this::collectSequenceGenerator );
-		classDetails.forEachAnnotationUsage( TableGenerator.class, this::collectTableGenerator );
-		classDetails.forEachAnnotationUsage( GenericGenerator.class, this::collectGenericGenerator );
+		classDetails.forEachAnnotationUsage( SequenceGenerator.class, modelsContext, this::collectSequenceGenerator );
+		classDetails.forEachAnnotationUsage( TableGenerator.class, modelsContext, this::collectTableGenerator );
+		classDetails.forEachAnnotationUsage( GenericGenerator.class, modelsContext, this::collectGenericGenerator );
 	}
 
 
@@ -533,25 +527,24 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		}
 
 		sequenceGenerators.forEach( (generator) -> {
-			final MutableAnnotationUsage<SequenceGenerator> annotationUsage = makeAnnotation( SequenceGenerator.class );
-			annotationUsage.setAttributeValue( "name", generator.getName() );
-			annotationUsage.setAttributeValue( "sequenceName", generator.getSequenceName() );
-			annotationUsage.setAttributeValue( "catalog", generator.getCatalog() );
-			annotationUsage.setAttributeValue( "schema", generator.getSchema() );
-			annotationUsage.setAttributeValue( "initialValue", generator.getInitialValue() );
-			annotationUsage.setAttributeValue( "allocationSize", generator.getAllocationSize() );
+			final SequenceGenerator annotationUsage = makeAnnotation(
+					SequenceGenerator.class,
+					Map.of(
+							"name", generator.getName(),
+							"sequenceName", generator.getSequenceName(),
+							"catalog", generator.getCatalog(),
+							"schema", generator.getSchema(),
+							"initialValue", generator.getInitialValue(),
+							"allocationSize", generator.getAllocationSize()
+					)
+			);
 
 			collectSequenceGenerator( new SequenceGeneratorRegistration( generator.getName(), annotationUsage ) );
 		} );
 	}
 
-	private <A extends Annotation> MutableAnnotationUsage<A> makeAnnotation(Class<A> annotationType) {
-		final AnnotationDescriptor<A> descriptor = descriptorRegistry.getDescriptor( annotationType );
-		return new DynamicAnnotationUsage<>( descriptor );
-	}
-
-	public void collectSequenceGenerator(AnnotationUsage<SequenceGenerator> usage) {
-		collectSequenceGenerator( new SequenceGeneratorRegistration( usage.getAttributeValue( "name" ), usage ) );
+	public void collectSequenceGenerator(SequenceGenerator usage) {
+		collectSequenceGenerator( new SequenceGeneratorRegistration( usage.name(), usage ) );
 	}
 
 	public void collectSequenceGenerator(SequenceGeneratorRegistration generatorRegistration) {
@@ -559,7 +552,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 			sequenceGeneratorRegistrations = new HashMap<>();
 		}
 
-		sequenceGeneratorRegistrations.put( generatorRegistration.getName(), generatorRegistration );
+		sequenceGeneratorRegistrations.put( generatorRegistration.name(), generatorRegistration );
 	}
 
 
@@ -572,23 +565,27 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		}
 
 		tableGenerators.forEach( (generator) -> {
-			final MutableAnnotationUsage<TableGenerator> annotationUsage = makeAnnotation( TableGenerator.class );
-			annotationUsage.setAttributeValue( "name", generator.getName() );
-			annotationUsage.setAttributeValue( "table", generator.getTable() );
-			annotationUsage.setAttributeValue( "catalog", generator.getCatalog() );
-			annotationUsage.setAttributeValue( "schema", generator.getSchema() );
-			annotationUsage.setAttributeValue( "pkColumnName", generator.getPkColumnName() );
-			annotationUsage.setAttributeValue( "valueColumnName", generator.getValueColumnName() );
-			annotationUsage.setAttributeValue( "pkColumnValue", generator.getPkColumnValue() );
-			annotationUsage.setAttributeValue( "initialValue", generator.getInitialValue() );
-			annotationUsage.setAttributeValue( "allocationSize", generator.getAllocationSize() );
+			final TableGenerator annotationUsage = makeAnnotation(
+					TableGenerator.class,
+					Map.of(
+							"name", generator.getName(),
+							"table", generator.getTable(),
+							"catalog", generator.getCatalog(),
+							"schema", generator.getSchema(),
+							"pkColumnName", generator.getPkColumnName(),
+							"valueColumnName", generator.getValueColumnName(),
+							"pkColumnValue", generator.getPkColumnValue(),
+							"initialValue", generator.getInitialValue(),
+							"allocationSize", generator.getAllocationSize()
+					)
+			);
 
 			collectTableGenerator( new TableGeneratorRegistration( generator.getName(), annotationUsage ) );
 		} );
 	}
 
-	public void collectTableGenerator(AnnotationUsage<TableGenerator> usage) {
-		collectTableGenerator( new TableGeneratorRegistration( usage.getAttributeValue( "name" ), usage ) );
+	public void collectTableGenerator(TableGenerator usage) {
+		collectTableGenerator( new TableGeneratorRegistration( usage.name(), usage ) );
 	}
 
 	public void collectTableGenerator(TableGeneratorRegistration generatorRegistration) {
@@ -596,7 +593,7 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 			tableGeneratorRegistrations = new HashMap<>();
 		}
 
-		tableGeneratorRegistrations.put( generatorRegistration.getName(), generatorRegistration );
+		tableGeneratorRegistrations.put( generatorRegistration.name(), generatorRegistration );
 	}
 
 
@@ -609,9 +606,13 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		}
 
 		genericGenerators.forEach( (generator) -> {
-			final MutableAnnotationUsage<GenericGenerator> annotationUsage = makeAnnotation( GenericGenerator.class );
-			annotationUsage.setAttributeValue( "name", generator.getName() );
-			annotationUsage.setAttributeValue( "strategy", generator.getClazz() );
+			final GenericGenerator annotationUsage = makeAnnotation(
+					GenericGenerator.class,
+					Map.of(
+							"name", generator.getName(),
+							"strategy", generator.getClazz()
+					)
+			);
 
 			// todo : update the mapping.xsd to account for new @GenericGenerator definition
 
@@ -619,8 +620,8 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		} );
 	}
 
-	public void collectGenericGenerator(AnnotationUsage<GenericGenerator> usage) {
-		collectGenericGenerator( new GenericGeneratorRegistration( usage.getAttributeValue( "name" ), usage ) );
+	public void collectGenericGenerator(GenericGenerator usage) {
+		collectGenericGenerator( new GenericGeneratorRegistration( usage.name(), usage ) );
 	}
 
 	public void collectGenericGenerator(GenericGeneratorRegistration generatorRegistration) {
@@ -628,6 +629,36 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 			genericGeneratorRegistrations = new HashMap<>();
 		}
 
-		genericGeneratorRegistrations.put( generatorRegistration.getName(), generatorRegistration );
+		genericGeneratorRegistrations.put( generatorRegistration.name(), generatorRegistration );
+	}
+
+	@SuppressWarnings("unchecked")
+	private static <A extends Annotation> A makeAnnotation(Class<A> annotationType, Map<String, ?> values) {
+		final InvocationHandler handler = (proxy, method, args) -> {
+			final String name = method.getName();
+			if ( method.getParameterCount() == 0 ) {
+				if ( name.equals( "annotationType" ) ) {
+					return annotationType;
+				}
+				if ( values.containsKey( name ) && values.get( name ) != null ) {
+					return values.get( name );
+				}
+				final Object defaultValue = method.getDefaultValue();
+				if ( defaultValue != null ) {
+					return defaultValue;
+				}
+			}
+			if ( name.equals( "toString" ) ) {
+				return annotationType.getName() + values;
+			}
+			if ( name.equals( "hashCode" ) ) {
+				return values.hashCode();
+			}
+			if ( name.equals( "equals" ) ) {
+				return proxy == args[0];
+			}
+			throw new UnsupportedOperationException( "No value available for " + annotationType.getName() + "." + name );
+		};
+		return (A) Proxy.newProxyInstance( annotationType.getClassLoader(), new Class<?>[] { annotationType }, handler );
 	}
 }

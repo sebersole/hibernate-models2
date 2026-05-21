@@ -12,7 +12,7 @@ import org.jboss.logging.BasicLogger;
 import org.jboss.logging.Logger;
 
 /**
- * todo : find the proper min/max id range
+ * todo : find the proper min/max id range and make message-logger
  *
  * @author Steve Ebersole
  */

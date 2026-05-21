@@ -6,28 +6,24 @@
  */
 package org.hibernate.boot.models.categorize.internal;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.function.Consumer;
-
-import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
-import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
-import org.hibernate.boot.models.categorize.spi.ModelCategorizationContext;
-import org.hibernate.internal.util.collections.CollectionHelper;
-import org.hibernate.boot.models.JpaAnnotations;
-import org.hibernate.boot.models.categorize.spi.JpaEventListener;
-import org.hibernate.boot.models.categorize.spi.JpaEventListenerStyle;
-import org.hibernate.models.spi.AnnotationUsage;
-import org.hibernate.models.spi.ClassDetails;
-import org.hibernate.models.spi.ClassDetailsRegistry;
-
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.ExcludeDefaultListeners;
 import jakarta.persistence.ExcludeSuperclassListeners;
+import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
+import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
+import org.hibernate.boot.models.categorize.spi.JpaEventListener;
+import org.hibernate.boot.models.categorize.spi.JpaEventListenerStyle;
+import org.hibernate.boot.models.categorize.spi.CategorizationContext;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.ClassDetailsRegistry;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
 
 
 /**
@@ -37,26 +33,26 @@ public abstract class AbstractIdentifiableTypeMetadata
 		extends AbstractManagedTypeMetadata
 		implements IdentifiableTypeMetadata {
 	private final EntityHierarchy hierarchy;
+	private final ManagedTypeInheritanceState inheritanceState;
 	private final AbstractIdentifiableTypeMetadata superType;
 	private final Set<IdentifiableTypeMetadata> subTypes = new HashSet<>();
 	private final AccessType accessType;
 
 	/**
 	 * Used when creating the hierarchy root-root
-	 *
-	 * @param accessType This is the hierarchy default
 	 */
 	public AbstractIdentifiableTypeMetadata(
 			ClassDetails classDetails,
 			EntityHierarchy hierarchy,
-			AccessType accessType,
-			ModelCategorizationContext processingContext) {
+			ManagedTypeInheritanceState inheritanceState,
+			CategorizationContext processingContext) {
 		super( classDetails, processingContext );
 
 		this.hierarchy = hierarchy;
+		this.inheritanceState = inheritanceState;
 		this.superType = null;
 
-		this.accessType = determineAccessType( accessType );
+		this.accessType = determineAccessType();
 	}
 
 
@@ -64,22 +60,24 @@ public abstract class AbstractIdentifiableTypeMetadata
 			ClassDetails classDetails,
 			EntityHierarchy hierarchy,
 			AbstractIdentifiableTypeMetadata superType,
-			ModelCategorizationContext processingContext) {
+			ManagedTypeInheritanceState inheritanceState,
+			CategorizationContext processingContext) {
 		super( classDetails, processingContext );
 
 		assert superType != null;
 
 		this.hierarchy = hierarchy;
+		this.inheritanceState = inheritanceState;
 		this.superType = superType;
 
-		this.accessType = determineAccessType( superType.getAccessType() );
+		this.accessType = determineAccessType();
 	}
 
-	protected void postInstantiate(HierarchyTypeConsumer typeConsumer) {
-		typeConsumer.acceptType( this );
+	protected void postInstantiate(HierarchyMetadataCollector metadataCollector) {
+		metadataCollector.collectType( this );
 
 		// now we can effectively walk subs
-		walkSubclasses( typeConsumer );
+		walkSubclasses( metadataCollector );
 
 		// the idea here is to collect up class-level annotations and to apply
 		// the maps from supers
@@ -88,49 +86,63 @@ public abstract class AbstractIdentifiableTypeMetadata
 		collectAssociationOverrides();
 	}
 
-	private void walkSubclasses(HierarchyTypeConsumer typeConsumer) {
-		walkSubclasses( getClassDetails(), typeConsumer );
+	private void walkSubclasses(HierarchyMetadataCollector metadataCollector) {
+		walkSubclasses( getClassDetails(), metadataCollector );
 	}
 
-	private void walkSubclasses(ClassDetails base, HierarchyTypeConsumer typeConsumer) {
+	private void walkSubclasses(ClassDetails base, HierarchyMetadataCollector metadataCollector) {
+		if ( inheritanceState != null ) {
+			inheritanceState.forEachSubType( base, (subClassDetails) -> processSubclass( subClassDetails, metadataCollector ) );
+			return;
+		}
+
 		final ClassDetailsRegistry classDetailsRegistry = getModelContext().getClassDetailsRegistry();
 		classDetailsRegistry.forEachDirectSubType( base.getName(), (subClassDetails) -> {
-			final AbstractIdentifiableTypeMetadata subTypeMetadata;
-			if ( CategorizationHelper.isEntity( subClassDetails ) ) {
-				subTypeMetadata = new EntityTypeMetadataImpl(
-						subClassDetails,
-						getHierarchy(),
-						this,
-						typeConsumer,
-						getModelContext()
-				);
-				addSubclass( subTypeMetadata );
-			}
-			else if ( CategorizationHelper.isMappedSuperclass( subClassDetails ) ) {
-				subTypeMetadata = new MappedSuperclassTypeMetadataImpl(
-						subClassDetails,
-						getHierarchy(),
-						this,
-						typeConsumer,
-						getModelContext()
-				);
-				addSubclass( subTypeMetadata );
-			}
-			else {
+			if ( !processSubclass( subClassDetails, metadataCollector ) ) {
 				// skip over "intermediate" sub-types
-				walkSubclasses( subClassDetails, typeConsumer );
+				walkSubclasses( subClassDetails, metadataCollector );
 			}
 		} );
 
 	}
 
-	private AccessType determineAccessType(AccessType defaultAccessType) {
-		final AnnotationUsage<Access> annotation = getClassDetails().getAnnotationUsage( JpaAnnotations.ACCESS );
-		if ( annotation != null ) {
-			return annotation.getAttributeValue( "value" );
+	private boolean processSubclass(ClassDetails subClassDetails, HierarchyMetadataCollector metadataCollector) {
+		final AbstractIdentifiableTypeMetadata subTypeMetadata;
+		if ( CategorizationHelper.isEntity( subClassDetails ) ) {
+			subTypeMetadata = new EntityTypeMetadataImpl(
+					subClassDetails,
+					getHierarchy(),
+					this,
+					inheritanceState,
+					metadataCollector,
+					getModelContext()
+			);
+			addSubclass( subTypeMetadata );
+			return true;
+		}
+		else if ( CategorizationHelper.isMappedSuperclass( subClassDetails ) ) {
+			subTypeMetadata = new MappedSuperclassTypeMetadataImpl(
+					subClassDetails,
+					getHierarchy(),
+					this,
+					inheritanceState,
+					metadataCollector,
+					getModelContext()
+			);
+			addSubclass( subTypeMetadata );
+			return true;
 		}
 
-		return defaultAccessType;
+		return false;
+	}
+
+	private AccessType determineAccessType() {
+		final Access annotation = getClassDetails().getDirectAnnotationUsage( Access.class );
+		if ( annotation != null ) {
+			return annotation.value();
+		}
+
+		return hierarchy.getDefaultAccessType();
 	}
 
 	private void addSubclass(IdentifiableTypeMetadata subclass) {
@@ -197,7 +209,7 @@ public abstract class AbstractIdentifiableTypeMetadata
 
 		final List<JpaEventListener> combined = new ArrayList<>();
 
-		if ( classDetails.getAnnotationUsage( ExcludeSuperclassListeners.class ) == null ) {
+		if ( classDetails.getDirectAnnotationUsage( ExcludeSuperclassListeners.class ) == null ) {
 			final IdentifiableTypeMetadata superType = getSuperType();
 			if ( superType != null ) {
 				combined.addAll( superType.getHierarchyJpaEventListeners() );
@@ -216,24 +228,27 @@ public abstract class AbstractIdentifiableTypeMetadata
 	private void applyLocalEventListeners(Consumer<JpaEventListener> consumer) {
 		final ClassDetails classDetails = getClassDetails();
 
-		final AnnotationUsage<EntityListeners> entityListenersAnnotation = classDetails.getAnnotationUsage( EntityListeners.class );
+		final EntityListeners entityListenersAnnotation = classDetails.getDirectAnnotationUsage( EntityListeners.class );
 		if ( entityListenersAnnotation == null ) {
 			return;
 		}
 
-		final List<ClassDetails> entityListenerClasses = entityListenersAnnotation.getAttributeValue( "value" );
-		if ( CollectionHelper.isEmpty( entityListenerClasses ) ) {
+		final Class<?>[] entityListenerClasses = entityListenersAnnotation.value();
+		if ( entityListenerClasses == null || entityListenerClasses.length == 0 ) {
 			return;
 		}
 
-		entityListenerClasses.forEach( (listenerClass) -> {
-			consumer.accept( JpaEventListener.from( JpaEventListenerStyle.LISTENER, listenerClass ) );
-		} );
+		for ( Class<?> listenerClass : entityListenerClasses ) {
+			consumer.accept( JpaEventListener.from(
+					JpaEventListenerStyle.LISTENER,
+					getModelContext().getClassDetailsRegistry().resolveClassDetails( listenerClass.getName() )
+			) );
+		}
 	}
 
-	protected List<JpaEventListener> collectCompleteEventListeners(ModelCategorizationContext modelContext) {
+	protected List<JpaEventListener> collectCompleteEventListeners(CategorizationContext modelContext) {
 		final ClassDetails classDetails = getClassDetails();
-		if ( classDetails.getAnnotationUsage( ExcludeDefaultListeners.class ) != null ) {
+		if ( classDetails.getDirectAnnotationUsage( ExcludeDefaultListeners.class ) != null ) {
 			return getHierarchyJpaEventListeners();
 		}
 

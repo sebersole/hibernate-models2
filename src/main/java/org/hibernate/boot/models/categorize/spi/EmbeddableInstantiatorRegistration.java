@@ -6,30 +6,17 @@
  */
 package org.hibernate.boot.models.categorize.spi;
 
+import org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddableInstantiatorRegistrationImpl;
+import org.hibernate.metamodel.spi.EmbeddableInstantiator;
 import org.hibernate.models.spi.ClassDetails;
 
-/**
- * Registered {@linkplain org.hibernate.metamodel.spi.EmbeddableInstantiator}
- *
- * @see org.hibernate.annotations.EmbeddableInstantiatorRegistration
- * @see org.hibernate.boot.jaxb.mapping.spi.JaxbEmbeddableInstantiatorRegistrationImpl
- *
- * @author Steve Ebersole
- */
-public class EmbeddableInstantiatorRegistration {
-	private final org.hibernate.models.spi.ClassDetails embeddableClass;
-	private final ClassDetails instantiator;
-
-	public EmbeddableInstantiatorRegistration(ClassDetails embeddableClass, ClassDetails instantiator) {
-		this.embeddableClass = embeddableClass;
-		this.instantiator = instantiator;
-	}
-
-	public ClassDetails getEmbeddableClass() {
-		return embeddableClass;
-	}
-
-	public ClassDetails getInstantiator() {
-		return instantiator;
-	}
+/// Global registration for an {@linkplain EmbeddableInstantiator embeddable instantiator}.
+///
+/// @param embeddableClass The embeddable class handled by the instantiator
+/// @param instantiator The instantiator class
+///
+/// @author Steve Ebersole
+/// @see org.hibernate.annotations.EmbeddableInstantiatorRegistration
+/// @see JaxbEmbeddableInstantiatorRegistrationImpl
+public record EmbeddableInstantiatorRegistration(ClassDetails embeddableClass, ClassDetails instantiator) {
 }

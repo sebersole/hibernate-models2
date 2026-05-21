@@ -8,9 +8,12 @@ package org.hibernate.boot.models.categorize.spi;
 
 import org.hibernate.internal.util.IndexedConsumer;
 
-/**
- * @author Steve Ebersole
- */
+/// Indexed visitor for persistent attributes.
+///
+/// The index is relative to the collection being visited, such as the declared
+/// attributes of a managed type or the attributes that make up a key mapping.
+///
+/// @author Steve Ebersole
 @FunctionalInterface
 public interface AttributeConsumer extends IndexedConsumer<AttributeMetadata> {
 

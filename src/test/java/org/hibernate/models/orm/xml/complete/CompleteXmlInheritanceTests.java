@@ -6,28 +6,24 @@
  */
 package org.hibernate.models.orm.xml.complete;
 
-import org.hibernate.boot.internal.MetadataBuilderImpl.MetadataBuildingOptionsImpl;
-import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.models.orm.BootstrapContextTesting;
-import org.hibernate.models.orm.process.ManagedResourcesImpl;
+import org.hibernate.jpa.HibernatePersistenceConfiguration;
+import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
-import org.hibernate.models.orm.SourceModelTestHelper;
 
 import org.junit.jupiter.api.Test;
 
-import org.jboss.jandex.Index;
-
 import jakarta.persistence.Id;
+
+import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
 
 import static jakarta.persistence.InheritanceType.JOINED;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.models.orm.SimpleClassLoading.SIMPLE_CLASS_LOADING;
-import static org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor.processManagedResources;
 
 /**
  * @author Steve Ebersole
@@ -36,23 +32,18 @@ public class CompleteXmlInheritanceTests {
 	@Test
 	void testIt() {
 
-		final ManagedResourcesImpl.Builder managedResourcesBuilder = new ManagedResourcesImpl.Builder();
-		managedResourcesBuilder.addXmlMappings( "mappings/complete/simple-inherited.xml" );
-		final ManagedResources managedResources = managedResourcesBuilder.build();
-
-		final Index jandexIndex = SourceModelTestHelper.buildJandexIndex(
-				SIMPLE_CLASS_LOADING,
-				Root.class,
-				Sub.class
-		);
-
 		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
-			final BootstrapContextTesting bootstrapContext = new BootstrapContextTesting(
-					jandexIndex,
-					serviceRegistry,
-					new MetadataBuildingOptionsImpl( serviceRegistry )
+			final MetadataBuildingContextTestingImpl metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
+			final HibernatePersistenceConfiguration persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+			persistenceConfiguration.mappingFile( "mappings/complete/simple-inherited.xml" );
+			final AvailableResources availableResources = AvailableResources.from(
+					persistenceConfiguration,
+					metadataBuildingContext
 			);
-			final CategorizedDomainModel categorizedDomainModel = processManagedResources( managedResources, bootstrapContext );
+			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
+					availableResources,
+					metadataBuildingContext
+			);
 
 			assertThat( categorizedDomainModel.getEntityHierarchies() ).hasSize( 1 );
 			final EntityHierarchy hierarchy = categorizedDomainModel.getEntityHierarchies().iterator().next();
@@ -61,7 +52,7 @@ public class CompleteXmlInheritanceTests {
 			final EntityTypeMetadata rootMetadata = hierarchy.getRoot();
 			assertThat( rootMetadata.getClassDetails().getClassName() ).isEqualTo( Root.class.getName() );
 			final AttributeMetadata idAttr = rootMetadata.findAttribute( "id" );
-			assertThat( idAttr.getMember().getAnnotationUsage( Id.class ) ).isNotNull();
+			assertThat( idAttr.getMember().getDirectAnnotationUsage( Id.class ) ).isNotNull();
 		}
 	}
 }

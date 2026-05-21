@@ -43,14 +43,14 @@ public class MappedSuperclassTests {
 
 		assertThat( entityHierarchy.getIdMapping() ).isNotNull();
 		final BasicKeyMapping idMapping = (BasicKeyMapping) entityHierarchy.getIdMapping();
-		assertThat( idMapping.getAttribute().getMember().getAnnotationUsage( Id.class ) ).isNotNull();
-		assertThat( idMapping.getAttribute().getMember().getAnnotationUsage( EmbeddedId.class ) ).isNull();
+		assertThat( idMapping.getAttribute().getMember().getDirectAnnotationUsage( Id.class ) ).isNotNull();
+		assertThat( idMapping.getAttribute().getMember().getDirectAnnotationUsage( EmbeddedId.class ) ).isNull();
 
 		assertThat( entityHierarchy.getVersionAttribute() ).isNotNull();
-		assertThat( entityHierarchy.getVersionAttribute().getMember().getAnnotationUsage( Version.class ) ).isNotNull();
+		assertThat( entityHierarchy.getVersionAttribute().getMember().getDirectAnnotationUsage( Version.class ) ).isNotNull();
 
 		assertThat( entityHierarchy.getTenantIdAttribute() ).isNotNull();
-		assertThat( entityHierarchy.getTenantIdAttribute().getMember().getAnnotationUsage( TenantId.class ) ).isNotNull();
+		assertThat( entityHierarchy.getTenantIdAttribute().getMember().getDirectAnnotationUsage( TenantId.class ) ).isNotNull();
 
 		assertThat( entityHierarchy.getCacheRegion() ).isNotNull();
 		assertThat( entityHierarchy.getCacheRegion().getAccessType() ).isEqualTo( AccessType.READ_ONLY );

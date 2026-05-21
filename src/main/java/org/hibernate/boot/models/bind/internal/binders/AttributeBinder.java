@@ -14,21 +14,22 @@ import org.hibernate.annotations.Immutable;
 import org.hibernate.annotations.Mutability;
 import org.hibernate.annotations.NaturalId;
 import org.hibernate.annotations.OptimisticLock;
-import org.hibernate.boot.model.convert.internal.ClassBasedConverterDescriptor;
+import org.hibernate.boot.model.convert.spi.RegisteredConversion;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.models.AnnotationPlacementException;
 import org.hibernate.boot.models.bind.internal.BindingHelper;
 import org.hibernate.boot.models.bind.internal.SecondPass;
+import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.boot.models.bind.spi.TableReference;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
+import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
 import org.hibernate.models.ModelsException;
-import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.type.descriptor.java.MutabilityPlan;
 
@@ -36,7 +37,7 @@ import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 
-import static org.hibernate.boot.models.categorize.spi.AttributeMetadata.AttributeNature.BASIC;
+import static org.hibernate.boot.models.AttributeNature.BASIC;
 
 /**
  * @author Steve Ebersole
@@ -87,12 +88,12 @@ public class AttributeBinder {
 	}
 
 	private void applyNaturalId(AttributeMetadata attributeMetadata, Property property) {
-		final var naturalIdAnn = attributeMetadata.getMember().getAnnotationUsage( NaturalId.class );
+		final var naturalIdAnn = attributeMetadata.getMember().getDirectAnnotationUsage( NaturalId.class );
 		if ( naturalIdAnn == null ) {
 			return;
 		}
 		property.setNaturalIdentifier( true );
-		property.setUpdateable( naturalIdAnn.getBoolean( "mutable" ) );
+		property.setUpdateable( naturalIdAnn.mutable() );
 	}
 
 	private void registerValueSecondPass(ValueSecondPass secondPass) {
@@ -163,7 +164,7 @@ public class AttributeBinder {
 			@SuppressWarnings("unused") BindingOptions bindingOptions,
 			@SuppressWarnings("unused") BindingState bindingState,
 			@SuppressWarnings("unused") BindingContext bindingContext) {
-		basicValue.setImplicitJavaTypeAccess( (typeConfiguration) -> member.getType().toJavaClass() );
+		basicValue.setImplicitJavaTypeAccess( (typeConfiguration) -> member.getType().determineRawClass().toJavaClass() );
 	}
 
 	public static void bindOptimisticLocking(
@@ -173,9 +174,9 @@ public class AttributeBinder {
 			@SuppressWarnings("unused") BindingOptions bindingOptions,
 			@SuppressWarnings("unused") BindingState bindingState,
 			@SuppressWarnings("unused") BindingContext bindingContext) {
-		final var annotationUsage = member.getAnnotationUsage( OptimisticLock.class );
+		final var annotationUsage = member.getDirectAnnotationUsage( OptimisticLock.class );
 		if ( annotationUsage != null ) {
-			if ( annotationUsage.getBoolean( "excluded" ) ) {
+			if ( annotationUsage.excluded() ) {
 				property.setOptimisticLocked( false );
 				return;
 			}
@@ -191,8 +192,8 @@ public class AttributeBinder {
 			@SuppressWarnings("unused") BindingOptions bindingOptions,
 			@SuppressWarnings("unused") BindingState bindingState,
 			@SuppressWarnings("unused") BindingContext bindingContext) {
-		final var mutabilityAnn = member.getAnnotationUsage( Mutability.class );
-		final var immutableAnn = member.getAnnotationUsage( Immutable.class );
+		final var mutabilityAnn = member.getDirectAnnotationUsage( Mutability.class );
+		final var immutableAnn = member.getDirectAnnotationUsage( Immutable.class );
 
 		if ( immutableAnn != null ) {
 			if ( mutabilityAnn != null ) {
@@ -205,8 +206,7 @@ public class AttributeBinder {
 		}
 		else if ( mutabilityAnn != null ) {
 			basicValue.setExplicitMutabilityPlanAccess( (typeConfiguration) -> {
-				final ClassDetails classDetails = mutabilityAnn.getClassDetails( "value" );
-				final Class<MutabilityPlan<?>> javaClass = classDetails.toJavaClass();
+				final Class<MutabilityPlan<?>> javaClass = (Class<MutabilityPlan<?>>) mutabilityAnn.value();
 				try {
 					return javaClass.getConstructor().newInstance();
 				}
@@ -240,10 +240,10 @@ public class AttributeBinder {
 			BindingState bindingState,
 			@SuppressWarnings("unused") BindingContext bindingContext) {
 		// todo : implicit column
-		final var columnAnn = member.getAnnotationUsage( Column.class );
-		final var column = ColumnBinder.bindColumn( columnAnn, property::getName );
+		final var columnAnn = member.getDirectAnnotationUsage( Column.class );
+		final var column = ColumnBinder.bindColumn( ColumnSource.from( columnAnn ), property::getName );
 
-		var tableName = BindingHelper.getValue( columnAnn, "table", "" );
+		var tableName = columnAnn == null ? "" : columnAnn.table();
 		if ( "".equals( tableName ) || tableName == null ) {
 			basicValue.setTable( primaryTable );
 		}
@@ -266,25 +266,23 @@ public class AttributeBinder {
 			@SuppressWarnings("unused") BindingState bindingState,
 			@SuppressWarnings("unused") BindingContext bindingContext) {
 		// todo : do we need to account for auto-applied converters here?
-		final var convertAnn = member.getAnnotationUsage( Convert.class );
+		final var convertAnn = member.getDirectAnnotationUsage( Convert.class );
 		if ( convertAnn == null ) {
 			return;
 		}
 
-		if ( convertAnn.getBoolean( "disableConversion" ) ) {
+		if ( convertAnn.disableConversion() ) {
 			return;
 		}
 
-		if ( convertAnn.getString( "attributeName" ) != null ) {
+		if ( StringHelper.isNotEmpty( convertAnn.attributeName() ) ) {
 			throw new ModelsException( "@Convert#attributeName should not be specified on basic mappings - " + member.getName() );
 		}
 
-		final ClassDetails converterClassDetails = convertAnn.getClassDetails( "converter" );
-		final Class<AttributeConverter<?, ?>> javaClass = converterClassDetails.toJavaClass();
-		basicValue.setJpaAttributeConverterDescriptor( new ClassBasedConverterDescriptor(
-				javaClass,
-				bindingContext.getClassmateContext()
-		) );
+		final Class<AttributeConverter<?, ?>> javaClass = (Class<AttributeConverter<?, ?>>) convertAnn.converter();
+		basicValue.setJpaAttributeConverterDescriptor(
+				new RegisteredConversion( null, javaClass, false ).getConverterDescriptor()
+		);
 	}
 
 }

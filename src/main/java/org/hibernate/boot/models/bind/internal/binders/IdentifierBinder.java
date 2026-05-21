@@ -6,6 +6,7 @@
  */
 package org.hibernate.boot.models.bind.internal.binders;
 
+import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
@@ -23,7 +24,6 @@ import org.hibernate.mapping.PrimaryKey;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.RootClass;
 import org.hibernate.mapping.Table;
-import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.MemberDetails;
 
 import jakarta.persistence.Column;
@@ -100,9 +100,9 @@ public class IdentifierBinder {
 		final PrimaryKey primaryKey = new PrimaryKey( table );
 		table.setPrimaryKey( primaryKey );
 
-		final AnnotationUsage<Column> idColumnAnn = idAttributeMember.getAnnotationUsage( Column.class );
+		final Column idColumnAnn = idAttributeMember.getDirectAnnotationUsage( Column.class );
 		final org.hibernate.mapping.Column column = ColumnBinder.bindColumn(
-				idColumnAnn,
+				ColumnSource.from( idColumnAnn ),
 				() -> "id",
 				true,
 				false

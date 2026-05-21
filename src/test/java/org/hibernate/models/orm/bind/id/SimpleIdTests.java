@@ -39,20 +39,20 @@ public class SimpleIdTests {
 
 		assertThat( entityHierarchy.getIdMapping() ).isNotNull();
 		final BasicKeyMapping idMapping = (BasicKeyMapping) entityHierarchy.getIdMapping();
-		assertThat( idMapping.getAttribute().getMember().getAnnotationUsage( Id.class ) ).isNotNull();
-		assertThat( idMapping.getAttribute().getMember().getAnnotationUsage( EmbeddedId.class ) ).isNull();
+		assertThat( idMapping.getAttribute().getMember().getDirectAnnotationUsage( Id.class ) ).isNotNull();
+		assertThat( idMapping.getAttribute().getMember().getDirectAnnotationUsage( EmbeddedId.class ) ).isNull();
 
 		assertThat( entityHierarchy.getNaturalIdMapping() ).isNotNull();
 		final BasicKeyMapping naturalIdMapping = (BasicKeyMapping) entityHierarchy.getNaturalIdMapping();
-		assertThat( naturalIdMapping.getAttribute().getMember().getAnnotationUsage( NaturalId.class ) ).isNotNull();
-		assertThat( naturalIdMapping.getAttribute().getMember().getAnnotationUsage( Id.class ) ).isNull();
-		assertThat( naturalIdMapping.getAttribute().getMember().getAnnotationUsage( EmbeddedId.class ) ).isNull();
+		assertThat( naturalIdMapping.getAttribute().getMember().getDirectAnnotationUsage( NaturalId.class ) ).isNotNull();
+		assertThat( naturalIdMapping.getAttribute().getMember().getDirectAnnotationUsage( Id.class ) ).isNull();
+		assertThat( naturalIdMapping.getAttribute().getMember().getDirectAnnotationUsage( EmbeddedId.class ) ).isNull();
 
 		assertThat( entityHierarchy.getVersionAttribute() ).isNotNull();
-		assertThat( entityHierarchy.getVersionAttribute().getMember().getAnnotationUsage( Version.class ) ).isNotNull();
+		assertThat( entityHierarchy.getVersionAttribute().getMember().getDirectAnnotationUsage( Version.class ) ).isNotNull();
 
 		assertThat( entityHierarchy.getTenantIdAttribute() ).isNotNull();
-		assertThat( entityHierarchy.getTenantIdAttribute().getMember().getAnnotationUsage( TenantId.class ) ).isNotNull();
+		assertThat( entityHierarchy.getTenantIdAttribute().getMember().getDirectAnnotationUsage( TenantId.class ) ).isNotNull();
 	}
 
 	@Test
@@ -63,21 +63,21 @@ public class SimpleIdTests {
 
 		assertThat( entityHierarchy.getIdMapping() ).isNotNull();
 		final AggregatedKeyMapping idMapping = (AggregatedKeyMapping) entityHierarchy.getIdMapping();
-		assertThat( idMapping.getAttribute().getMember().getAnnotationUsage( Id.class ) ).isNull();
-		assertThat( idMapping.getAttribute().getMember().getAnnotationUsage( EmbeddedId.class ) ).isNotNull();
+		assertThat( idMapping.getAttribute().getMember().getDirectAnnotationUsage( Id.class ) ).isNull();
+		assertThat( idMapping.getAttribute().getMember().getDirectAnnotationUsage( EmbeddedId.class ) ).isNotNull();
 
 		assertThat( entityHierarchy.getNaturalIdMapping() ).isNotNull();
 		assertThat( entityHierarchy.getNaturalIdMapping() ).isInstanceOf( AggregatedKeyMapping.class );
 		final AggregatedKeyMapping naturalIdMapping = (AggregatedKeyMapping) entityHierarchy.getNaturalIdMapping();
-		assertThat( naturalIdMapping.getAttribute().getMember().getAnnotationUsage( Id.class ) ).isNull();
-		assertThat( naturalIdMapping.getAttribute().getMember().getAnnotationUsage( EmbeddedId.class ) ).isNull();
-		assertThat( naturalIdMapping.getAttribute().getMember().getAnnotationUsage( NaturalId.class ) ).isNotNull();
+		assertThat( naturalIdMapping.getAttribute().getMember().getDirectAnnotationUsage( Id.class ) ).isNull();
+		assertThat( naturalIdMapping.getAttribute().getMember().getDirectAnnotationUsage( EmbeddedId.class ) ).isNull();
+		assertThat( naturalIdMapping.getAttribute().getMember().getDirectAnnotationUsage( NaturalId.class ) ).isNotNull();
 
 		assertThat( entityHierarchy.getVersionAttribute() ).isNotNull();
-		assertThat( entityHierarchy.getVersionAttribute().getMember().getAnnotationUsage( Version.class ) ).isNotNull();
+		assertThat( entityHierarchy.getVersionAttribute().getMember().getDirectAnnotationUsage( Version.class ) ).isNotNull();
 
 		assertThat( entityHierarchy.getTenantIdAttribute() ).isNotNull();
-		assertThat( entityHierarchy.getTenantIdAttribute().getMember().getAnnotationUsage( TenantId.class ) ).isNotNull();
+		assertThat( entityHierarchy.getTenantIdAttribute().getMember().getDirectAnnotationUsage( TenantId.class ) ).isNotNull();
 	}
 
 	@Test
@@ -98,10 +98,10 @@ public class SimpleIdTests {
 		assertThat( naturalIdMapping.getIdAttributes().stream().map( AttributeMetadata::getName ) ).containsExactly( "naturalKey1", "naturalKey2" );
 
 		assertThat( entityHierarchy.getVersionAttribute() ).isNotNull();
-		assertThat( entityHierarchy.getVersionAttribute().getMember().getAnnotationUsage( Version.class ) ).isNotNull();
+		assertThat( entityHierarchy.getVersionAttribute().getMember().getDirectAnnotationUsage( Version.class ) ).isNotNull();
 
 		assertThat( entityHierarchy.getTenantIdAttribute() ).isNotNull();
-		assertThat( entityHierarchy.getTenantIdAttribute().getMember().getAnnotationUsage( TenantId.class ) ).isNotNull();
+		assertThat( entityHierarchy.getTenantIdAttribute().getMember().getDirectAnnotationUsage( TenantId.class ) ).isNotNull();
 
 		assertThat( entityHierarchy.getCacheRegion() ).isNotNull();
 		assertThat( entityHierarchy.getCacheRegion().getAccessType() ).isEqualTo( AccessType.TRANSACTIONAL );

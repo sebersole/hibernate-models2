@@ -1,0 +1,33 @@
+[versions]
+hibernateOrm = "7.4.0.CR1"
+hibernateModels = "1.1.1"
+
+checkerFramework = "3.53.1"
+
+jbossLogging = "3.6.1.Final"
+jbossLoggingTool = "3.0.4.Final"
+
+junitJupiter = "6.0.1"
+assertj = "3.27.7"
+
+h2 = "2.4.240"
+log4j = "2.25.4"
+
+
+[libraries]
+hibernateOrm = { group = "org.hibernate.orm", name = "hibernate-core", version.ref = "hibernateOrm" }
+hibernateTesting = { group = "org.hibernate.orm", name = "hibernate-testing", version.ref = "hibernateOrm" }
+hibernateModels = { group = "org.hibernate.models", name = "hibernate-models", version.ref = "hibernateModels" }
+
+checkerFramework = { group = "org.checkerframework", name = "checker-qual-android", version.ref = "checkerFramework" }
+
+logging = { group = "org.jboss.logging", name = "jboss-logging", version.ref = "jbossLogging" }
+loggingAnnotations = { group = "org.jboss.logging", name = "jboss-logging-annotations", version.ref = "jbossLoggingTool" }
+loggingProcessor = { group = "org.jboss.logging", name = "jboss-logging-processor", version.ref = "jbossLoggingTool" }
+
+junitJupiterApi = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.ref = "junitJupiter" }
+junitJupiterEngine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junitJupiter" }
+assertj = { group = "org.assertj", name = "assertj-core", version.ref = "assertj" }
+
+h2 = { group = "com.h2database", name = "h2", version.ref = "h2" }
+log4j2 = { group = "org.apache.logging.log4j", name = "log4j-core", version.ref = "log4j" }

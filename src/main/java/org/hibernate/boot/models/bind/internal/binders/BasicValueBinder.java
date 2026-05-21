@@ -24,7 +24,6 @@ import org.hibernate.boot.models.bind.spi.TableReference;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Property;
 import org.hibernate.models.ModelsException;
-import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.type.descriptor.java.BasicJavaType;
 
@@ -50,14 +49,13 @@ public class BasicValueBinder {
 			BindingState bindingState,
 			BindingContext bindingContext) {
 		// todo : do we need to account for JavaTypeRegistration here?
-		final var javaTypeAnn = member.getAnnotationUsage( JavaType.class );
+		final var javaTypeAnn = member.getDirectAnnotationUsage( JavaType.class );
 		if ( javaTypeAnn == null ) {
 			return;
 		}
 
 		basicValue.setExplicitJavaTypeAccess( (typeConfiguration) -> {
-			final var classDetails = javaTypeAnn.getClassDetails( "value" );
-			final Class<BasicJavaType<?>> javaClass = classDetails.toJavaClass();
+			final Class<BasicJavaType<?>> javaClass = (Class<BasicJavaType<?>>) javaTypeAnn.value();
 			try {
 				return javaClass.getConstructor().newInstance();
 			}
@@ -77,8 +75,8 @@ public class BasicValueBinder {
 			BindingState bindingState,
 			BindingContext bindingContext) {
 		// todo : do we need to account for JdbcTypeRegistration here?
-		final var jdbcTypeAnn = member.getAnnotationUsage( JdbcType.class );
-		final var jdbcTypeCodeAnn = member.getAnnotationUsage( JdbcTypeCode.class );
+		final var jdbcTypeAnn = member.getDirectAnnotationUsage( JdbcType.class );
+		final var jdbcTypeCodeAnn = member.getDirectAnnotationUsage( JdbcTypeCode.class );
 
 		if ( jdbcTypeAnn != null ) {
 			if ( jdbcTypeCodeAnn != null ) {
@@ -88,8 +86,7 @@ public class BasicValueBinder {
 			}
 
 			basicValue.setExplicitJdbcTypeAccess( (typeConfiguration) -> {
-				final var classDetails = jdbcTypeAnn.getClassDetails( "value" );
-				final Class<org.hibernate.type.descriptor.jdbc.JdbcType> javaClass = classDetails.toJavaClass();
+				final Class<org.hibernate.type.descriptor.jdbc.JdbcType> javaClass = (Class<org.hibernate.type.descriptor.jdbc.JdbcType>) jdbcTypeAnn.value();
 				try {
 					return javaClass.getConstructor().newInstance();
 				}
@@ -101,8 +98,7 @@ public class BasicValueBinder {
 			} );
 		}
 		else if ( jdbcTypeCodeAnn != null ) {
-			final Integer typeCode = jdbcTypeCodeAnn.getInteger( "value" );
-			basicValue.setExplicitJdbcTypeCode( typeCode );
+			basicValue.setExplicitJdbcTypeCode( jdbcTypeCodeAnn.value() );
 		}
 	}
 
@@ -113,7 +109,7 @@ public class BasicValueBinder {
 			BindingOptions bindingOptions,
 			BindingState bindingState,
 			BindingContext bindingContext) {
-		if ( member.getAnnotationUsage( Nationalized.class ) != null ) {
+		if ( member.hasDirectAnnotationUsage( Nationalized.class ) ) {
 			basicValue.makeNationalized();
 		}
 	}
@@ -125,7 +121,7 @@ public class BasicValueBinder {
 			BindingOptions bindingOptions,
 			BindingState bindingState,
 			BindingContext bindingContext) {
-		if ( member.getAnnotationUsage( Lob.class ) != null ) {
+		if ( member.hasDirectAnnotationUsage( Lob.class ) ) {
 			basicValue.makeLob();
 		}
 	}
@@ -137,12 +133,12 @@ public class BasicValueBinder {
 			BindingOptions bindingOptions,
 			BindingState bindingState,
 			BindingContext bindingContext) {
-		final AnnotationUsage<Enumerated> enumerated = member.getAnnotationUsage( Enumerated.class );
+		final Enumerated enumerated = member.getDirectAnnotationUsage( Enumerated.class );
 		if ( enumerated == null ) {
 			return;
 		}
 
-		basicValue.setEnumerationStyle( enumerated.getEnum( "value", ORDINAL ) );
+		basicValue.setEnumerationStyle( enumerated.value() == null ? ORDINAL : enumerated.value() );
 	}
 
 	public static void bindTemporalPrecision(
@@ -152,13 +148,13 @@ public class BasicValueBinder {
 			BindingOptions bindingOptions,
 			BindingState bindingState,
 			BindingContext bindingContext) {
-		final AnnotationUsage<Temporal> temporalAnn = member.getAnnotationUsage( Temporal.class );
+		final Temporal temporalAnn = member.getDirectAnnotationUsage( Temporal.class );
 		if ( temporalAnn == null ) {
 			return;
 		}
 
 		//noinspection deprecation
-		final TemporalType precision = temporalAnn.getEnum( "value" );
+		final TemporalType precision = temporalAnn.value();
 		basicValue.setTemporalPrecision( precision );
 	}
 
@@ -169,10 +165,10 @@ public class BasicValueBinder {
 			BindingOptions bindingOptions,
 			BindingState bindingState,
 			BindingContext bindingContext) {
-		final AnnotationUsage<TimeZoneStorage> storageAnn = member.getAnnotationUsage( TimeZoneStorage.class );
-		final AnnotationUsage<TimeZoneColumn> columnAnn = member.getAnnotationUsage( TimeZoneColumn.class );
+		final TimeZoneStorage storageAnn = member.getDirectAnnotationUsage( TimeZoneStorage.class );
+		final TimeZoneColumn columnAnn = member.getDirectAnnotationUsage( TimeZoneColumn.class );
 		if ( storageAnn != null ) {
-			final TimeZoneStorageType strategy = storageAnn.getEnum( "value", AUTO );
+			final TimeZoneStorageType strategy = storageAnn.value() == null ? AUTO : storageAnn.value();
 			if ( strategy != COLUMN && columnAnn != null ) {
 				throw new AnnotationPlacementException(
 						"Illegal combination of @TimeZoneStorage(" + strategy.name() + ") and @TimeZoneColumn"
@@ -183,10 +179,10 @@ public class BasicValueBinder {
 
 		if ( columnAnn != null ) {
 			final org.hibernate.mapping.Column column = (org.hibernate.mapping.Column) basicValue.getColumn();
-			column.setName( columnAnn.getString( "name", property.getName() + "_tz" ) );
-			column.setSqlType( columnAnn.getString( "columnDefinition", (String) null ) );
+			column.setName( columnAnn.name().isEmpty() ? property.getName() + "_tz" : columnAnn.name() );
+			column.setSqlType( columnAnn.columnDefinition().isEmpty() ? null : columnAnn.columnDefinition() );
 
-			final var tableName = columnAnn.getString( "table", (String) null );
+			final var tableName = columnAnn.table().isEmpty() ? null : columnAnn.table();
 			TableReference tableByName = null;
 			if ( tableName != null ) {
 				final Identifier identifier = Identifier.toIdentifier( tableName );
@@ -194,8 +190,8 @@ public class BasicValueBinder {
 				basicValue.setTable( tableByName.binding() );
 			}
 
-			property.setInsertable( columnAnn.getBoolean( "insertable", true ) );
-			property.setUpdateable( columnAnn.getBoolean( "updatable", true ) );
+			property.setInsertable( columnAnn.insertable() );
+			property.setUpdateable( columnAnn.updatable() );
 		}
 	}
 

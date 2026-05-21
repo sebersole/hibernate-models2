@@ -7,30 +7,15 @@
 package org.hibernate.boot.models.categorize.spi;
 
 import org.hibernate.annotations.GenericGenerator;
-import org.hibernate.models.spi.AnnotationUsage;
+import org.hibernate.boot.jaxb.mapping.spi.JaxbGenericIdGeneratorImpl;
 
-/**
- * Global registration of a generic generator
- *
- * @see GenericGenerator
- * @see org.hibernate.boot.jaxb.mapping.spi.JaxbGenericIdGeneratorImpl
- *
- * @author Steve Ebersole
- */
-public class GenericGeneratorRegistration {
-	private final String name;
-	private final AnnotationUsage<GenericGenerator> configuration;
-
-	public GenericGeneratorRegistration(String name, AnnotationUsage<GenericGenerator> configuration) {
-		this.name = name;
-		this.configuration = configuration;
-	}
-
-	public String getName() {
-		return name;
-	}
-
-	public AnnotationUsage<GenericGenerator> getConfiguration() {
-		return configuration;
-	}
+/// Global registration of a Hibernate generic identifier generator.
+///
+/// @param name The generator name
+/// @param configuration The generator configuration
+///
+/// @author Steve Ebersole
+/// @see GenericGenerator
+/// @see JaxbGenericIdGeneratorImpl
+public record GenericGeneratorRegistration(String name, GenericGenerator configuration) {
 }

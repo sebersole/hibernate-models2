@@ -8,10 +8,6 @@ package org.hibernate.boot.models.categorize.internal;
 
 import java.lang.annotation.Annotation;
 
-import org.hibernate.boot.models.HibernateAnnotations;
-import org.hibernate.boot.models.JpaAnnotations;
-import org.hibernate.models.spi.AnnotationUsage;
-
 /**
  * @see JpaAnnotations#NAMED_QUERY
  * @see JpaAnnotations#NAMED_NATIVE_QUERY
@@ -31,9 +27,9 @@ public class NamedQueryRegistration {
 	private final String name;
 	private final Kind kind;
 	private final boolean isJpa;
-	private final AnnotationUsage<? extends Annotation> configuration;
+	private final Annotation configuration;
 
-	public NamedQueryRegistration(String name, Kind kind, boolean isJpa, AnnotationUsage<? extends Annotation> configuration) {
+	public NamedQueryRegistration(String name, Kind kind, boolean isJpa, Annotation configuration) {
 		this.name = name;
 		this.kind = kind;
 		this.isJpa = isJpa;
@@ -52,7 +48,7 @@ public class NamedQueryRegistration {
 		return isJpa;
 	}
 
-	public AnnotationUsage<? extends Annotation> getConfiguration() {
+	public Annotation getConfiguration() {
 		return configuration;
 	}
 }

@@ -6,30 +6,18 @@
  */
 package org.hibernate.boot.models.categorize.spi;
 
+import org.hibernate.boot.jaxb.mapping.spi.JaxbJavaTypeRegistrationImpl;
 import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.type.descriptor.java.JavaType;
 
-/**
- * {@linkplain org.hibernate.type.descriptor.java.JavaType} registration
- *
- * @see org.hibernate.annotations.JavaTypeRegistration
- * @see org.hibernate.boot.jaxb.mapping.spi.JaxbJavaTypeRegistrationImpl
- *
- * @author Steve Ebersole
- */
-public class JavaTypeRegistration {
-	private final ClassDetails domainType;
-	private final ClassDetails descriptor;
-
-	public JavaTypeRegistration(ClassDetails domainType, ClassDetails descriptor) {
-		this.domainType = domainType;
-		this.descriptor = descriptor;
-	}
-
-	public ClassDetails getDomainType() {
-		return domainType;
-	}
-
-	public ClassDetails getDescriptor() {
-		return descriptor;
-	}
+/// Global registration for a {@linkplain JavaType Java type descriptor}.
+///
+/// @param domainType The Java type handled by the descriptor
+/// @param descriptor The Java type descriptor class
+///
+/// @see org.hibernate.annotations.JavaTypeRegistration
+/// @see JaxbJavaTypeRegistrationImpl
+///
+/// @author Steve Ebersole
+public record JavaTypeRegistration(ClassDetails domainType, ClassDetails descriptor) {
 }

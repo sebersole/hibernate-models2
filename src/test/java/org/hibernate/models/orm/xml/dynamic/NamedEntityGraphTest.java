@@ -1,19 +1,14 @@
 package org.hibernate.models.orm.xml.dynamic;
 
-import java.util.List;
 import java.util.Set;
 
-import org.hibernate.boot.internal.BootstrapContextImpl;
-import org.hibernate.boot.internal.MetadataBuilderImpl;
-import org.hibernate.boot.model.process.spi.ManagedResources;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.models.orm.process.ManagedResourcesImpl;
-import org.hibernate.models.spi.AnnotationUsage;
-import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.jpa.HibernatePersistenceConfiguration;
+import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
 
 import org.junit.jupiter.api.Test;
 
@@ -21,23 +16,25 @@ import jakarta.persistence.NamedAttributeNode;
 import jakarta.persistence.NamedEntityGraph;
 import jakarta.persistence.NamedSubgraph;
 
+import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
+
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor.processManagedResources;
 
 public class NamedEntityGraphTest {
 	@Test
 	void testNamedEntityGraph() {
-		final ManagedResources managedResources = new ManagedResourcesImpl.Builder()
-				.addXmlMappings( "mappings/dynamic/dynamic-named-entity-graph.xml" )
-				.build();
 		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
-			final BootstrapContextImpl bootstrapContext = new BootstrapContextImpl(
-					serviceRegistry,
-					new MetadataBuilderImpl.MetadataBuildingOptionsImpl( serviceRegistry )
+			final MetadataBuildingContextTestingImpl metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
+			final HibernatePersistenceConfiguration persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+			persistenceConfiguration.mappingFile( "mappings/dynamic/dynamic-named-entity-graph.xml" );
+			final AvailableResources availableResources = AvailableResources.from(
+					persistenceConfiguration,
+					metadataBuildingContext
 			);
-			final CategorizedDomainModel categorizedDomainModel = processManagedResources(
-					managedResources,
-					bootstrapContext
+			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
+					availableResources,
+					metadataBuildingContext
 			);
 
 			final Set<EntityHierarchy> entityHierarchies = categorizedDomainModel.getEntityHierarchies();
@@ -48,68 +45,65 @@ public class NamedEntityGraphTest {
 						final EntityTypeMetadata root = entityHierarchy.getRoot();
 						final String entityName = root.getEntityName();
 
-						final AnnotationUsage<NamedEntityGraph> namedEntityGraphAnnotationUsage = root.getClassDetails()
-								.getAnnotationUsage( NamedEntityGraph.class );
+						final NamedEntityGraph[] namedEntityGraphAnnotationUsages = root.getClassDetails()
+								.getRepeatedAnnotationUsages(
+										NamedEntityGraph.class,
+										metadataBuildingContext.getBootstrapContext().getModelsContext()
+								);
 
 						if ( entityName.equals( "Address" ) ) {
-							assertThat( namedEntityGraphAnnotationUsage ).isNull();
+							assertThat( namedEntityGraphAnnotationUsages ).isEmpty();
 						}
 						else {
+							assertThat( namedEntityGraphAnnotationUsages ).hasSize( 1 );
+							final NamedEntityGraph namedEntityGraphAnnotationUsage = namedEntityGraphAnnotationUsages[0];
 							assertThat( namedEntityGraphAnnotationUsage ).isNotNull();
 
-							final String graphName = namedEntityGraphAnnotationUsage.getAttributeValue( "name" );
+							final String graphName = namedEntityGraphAnnotationUsage.name();
 							assertThat( graphName ).isEqualTo( "employee" );
 
-							final boolean includeAllAttributes = namedEntityGraphAnnotationUsage.getAttributeValue(
-									"includeAllAttributes" );
-							assertThat( includeAllAttributes ).isTrue();
+							assertThat( namedEntityGraphAnnotationUsage.includeAllAttributes() ).isTrue();
 
-							List<AnnotationUsage<NamedAttributeNode>> namedAttributeNodeUsage = namedEntityGraphAnnotationUsage
-									.getAttributeValue( "attributeNodes" );
-							assertThat( namedAttributeNodeUsage ).size().isEqualTo( 2 );
+							NamedAttributeNode[] namedAttributeNodeUsage = namedEntityGraphAnnotationUsage.attributeNodes();
+							assertThat( namedAttributeNodeUsage ).hasSize( 2 );
 
 							// check NamedEntityGraph attributeNodes
 
-							AnnotationUsage<NamedAttributeNode> firstAttributeNode = namedAttributeNodeUsage.get( 0 );
+							NamedAttributeNode firstAttributeNode = namedAttributeNodeUsage[0];
 							checkAttributeNode( firstAttributeNode, "name", "", "" );
 
-							AnnotationUsage<NamedAttributeNode> secondAttributeNode = namedAttributeNodeUsage.get( 1 );
+							NamedAttributeNode secondAttributeNode = namedAttributeNodeUsage[1];
 							checkAttributeNode( secondAttributeNode, "address", "employee.address", "" );
 
 							// check NamedEntityGraph subgraphs
-							final List<AnnotationUsage<NamedSubgraph>> subgraphUsages = namedEntityGraphAnnotationUsage
-									.getAttributeValue( "subgraphs" );
-							assertThat( subgraphUsages ).size().isEqualTo( 2 );
+							final NamedSubgraph[] subgraphUsages = namedEntityGraphAnnotationUsage.subgraphs();
+							assertThat( subgraphUsages ).hasSize( 2 );
 
-							AnnotationUsage<NamedSubgraph> firstSubgraph = subgraphUsages.get( 0 );
-							assertThat( firstSubgraph.getString( "name" ) ).isEqualTo( "first.subgraph" );
-							assertThat( firstSubgraph.<ClassDetails>getAttributeValue( "type" ).getName() )
-									.isEqualTo( void.class.getName() );
+							NamedSubgraph firstSubgraph = subgraphUsages[0];
+							assertThat( firstSubgraph.name() ).isEqualTo( "first.subgraph" );
+							assertThat( firstSubgraph.type() ).isEqualTo( void.class );
 
 							// check first NamedSubgraph attributeNodes
 
-							namedAttributeNodeUsage = firstSubgraph.getAttributeValue( "attributeNodes" );
-							assertThat( namedAttributeNodeUsage ).size().isEqualTo( 1 );
+							namedAttributeNodeUsage = firstSubgraph.attributeNodes();
+							assertThat( namedAttributeNodeUsage ).hasSize( 1 );
 
-							checkAttributeNode( namedAttributeNodeUsage.get( 0 ), "city", "", "" );
+							checkAttributeNode( namedAttributeNodeUsage[0], "city", "", "" );
 
-							AnnotationUsage<NamedSubgraph> secondSubgraph = subgraphUsages.get( 1 );
-							assertThat( secondSubgraph.getString( "name" ) ).isEqualTo( "second.subgraph" );
-							assertThat( secondSubgraph.<ClassDetails>getAttributeValue( "type" ).getName() )
-									.isEqualTo( String.class.getName() );
+							NamedSubgraph secondSubgraph = subgraphUsages[1];
+							assertThat( secondSubgraph.name() ).isEqualTo( "second.subgraph" );
+							assertThat( secondSubgraph.type() ).isEqualTo( String.class );
 
-							namedAttributeNodeUsage = secondSubgraph.getAttributeValue( "attributeNodes" );
-							assertThat( namedAttributeNodeUsage ).size().isEqualTo( 3 );
+							namedAttributeNodeUsage = secondSubgraph.attributeNodes();
+							assertThat( namedAttributeNodeUsage ).hasSize( 3 );
 
 							// check second NamedSubgraph attributeNodes
-							checkAttributeNode( namedAttributeNodeUsage.get( 0 ), "city", "sub1", "" );
-							checkAttributeNode( namedAttributeNodeUsage.get( 1 ), "name", "sub", "" );
-							checkAttributeNode( namedAttributeNodeUsage.get( 2 ), "surname", "", "" );
+							checkAttributeNode( namedAttributeNodeUsage[0], "city", "sub1", "" );
+							checkAttributeNode( namedAttributeNodeUsage[1], "name", "sub", "" );
+							checkAttributeNode( namedAttributeNodeUsage[2], "surname", "", "" );
 
 
-							final List<AnnotationUsage<NamedSubgraph>> subClassSubgraphUsages = namedEntityGraphAnnotationUsage
-									.getAttributeValue( "subclassSubgraphs" );
-							assertThat( subClassSubgraphUsages ).size().isEqualTo( 0 );
+							assertThat( namedEntityGraphAnnotationUsage.subclassSubgraphs() ).isEmpty();
 
 						}
 					}
@@ -118,12 +112,12 @@ public class NamedEntityGraphTest {
 	}
 
 	private static void checkAttributeNode(
-			AnnotationUsage<NamedAttributeNode> firstAttributeNode,
+			NamedAttributeNode firstAttributeNode,
 			String expectedValueName,
 			String expectedSubgraph,
 			String expectedKeySubgraph) {
-		assertThat( firstAttributeNode.getString( "value" ) ).isEqualTo( expectedValueName );
-		assertThat( firstAttributeNode.getString( "subgraph" ) ).isEqualTo( expectedSubgraph );
-		assertThat( firstAttributeNode.getString( "keySubgraph" ) ).isEqualTo( expectedKeySubgraph );
+		assertThat( firstAttributeNode.value() ).isEqualTo( expectedValueName );
+		assertThat( firstAttributeNode.subgraph() ).isEqualTo( expectedSubgraph );
+		assertThat( firstAttributeNode.keySubgraph() ).isEqualTo( expectedKeySubgraph );
 	}
 }

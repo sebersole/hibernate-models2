@@ -17,10 +17,8 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitDefaultsImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitMetadataImpl;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
-import org.hibernate.boot.models.categorize.spi.ManagedResourcesProcessor;
-import org.hibernate.models.spi.AnnotationDescriptorRegistry;
 import org.hibernate.models.spi.ClassDetails;
-import org.hibernate.models.spi.ClassDetailsRegistry;
+import org.hibernate.models.spi.ModelsContext;
 
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
@@ -29,13 +27,14 @@ import jakarta.persistence.MappedSuperclass;
 /**
  * In-flight holder for various types of "global" registrations.  Also acts as the
  * {@linkplain #createResult builder} for {@linkplain CategorizedDomainModel} as returned
- * by {@linkplain ManagedResourcesProcessor#processManagedResources}
+ * by {@linkplain org.hibernate.boot.models.categorize.spi.DomainModelCategorizer#categorize}
  *
  * @author Steve Ebersole
  */
 
 public class DomainModelCategorizationCollector {
 	private final boolean areIdGeneratorsGlobal;
+	private final Set<ClassDetails> sourcePersistentTypes = new HashSet<>();
 	private final Set<ClassDetails> rootEntities = new HashSet<>();
 	private final Map<String,ClassDetails> mappedSuperclasses = new HashMap<>();
 	private final Map<String,ClassDetails> embeddables = new HashMap<>();
@@ -43,14 +42,17 @@ public class DomainModelCategorizationCollector {
 
 	public DomainModelCategorizationCollector(
 			boolean areIdGeneratorsGlobal,
-			ClassDetailsRegistry classDetailsRegistry,
-			AnnotationDescriptorRegistry descriptorRegistry) {
+			ModelsContext modelsContext) {
 		this.areIdGeneratorsGlobal = areIdGeneratorsGlobal;
-		this.globalRegistrations = new GlobalRegistrationsImpl( classDetailsRegistry, descriptorRegistry );
+		this.globalRegistrations = new GlobalRegistrationsImpl( modelsContext );
 	}
 
 	public Set<ClassDetails> getRootEntities() {
 		return rootEntities;
+	}
+
+	public Set<ClassDetails> getSourcePersistentTypes() {
+		return sourcePersistentTypes;
 	}
 
 	public Map<String, ClassDetails> getMappedSuperclasses() {
@@ -108,17 +110,19 @@ public class DomainModelCategorizationCollector {
 		// todo : named queries
 		// todo : named graphs
 
-		if ( classDetails.getAnnotationUsage( MappedSuperclass.class ) != null ) {
+		if ( classDetails.hasDirectAnnotationUsage( MappedSuperclass.class ) ) {
+			sourcePersistentTypes.add( classDetails );
 			if ( classDetails.getClassName() != null ) {
 				mappedSuperclasses.put( classDetails.getClassName(), classDetails );
 			}
 		}
-		else if ( classDetails.getAnnotationUsage( Entity.class ) != null ) {
+		else if ( classDetails.hasDirectAnnotationUsage( Entity.class ) ) {
+			sourcePersistentTypes.add( classDetails );
 			if ( EntityHierarchyBuilder.isRoot( classDetails ) ) {
 				rootEntities.add( classDetails );
 			}
 		}
-		else if ( classDetails.getAnnotationUsage( Embeddable.class ) != null ) {
+		else if ( classDetails.hasDirectAnnotationUsage( Embeddable.class ) ) {
 			if ( classDetails.getClassName() != null ) {
 				embeddables.put( classDetails.getClassName(), classDetails );
 			}
@@ -134,15 +138,10 @@ public class DomainModelCategorizationCollector {
 	 * @param entityHierarchies All entity hierarchies defined in the persistence-unit, built based
 	 * on {@linkplain #getRootEntities()}
 	 *
-	 * @see ManagedResourcesProcessor#processManagedResources
+	 * @see org.hibernate.boot.models.categorize.spi.DomainModelCategorizer#categorize
 	 */
-	public CategorizedDomainModel createResult(
-			Set<EntityHierarchy> entityHierarchies,
-			ClassDetailsRegistry classDetailsRegistry,
-			AnnotationDescriptorRegistry annotationDescriptorRegistry) {
+	public CategorizedDomainModel createResult(Set<EntityHierarchy> entityHierarchies) {
 		return new CategorizedDomainModelImpl(
-				classDetailsRegistry,
-				annotationDescriptorRegistry,
 				entityHierarchies,
 				mappedSuperclasses,
 				embeddables,

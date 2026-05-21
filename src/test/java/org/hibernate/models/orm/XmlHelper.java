@@ -16,9 +16,7 @@ import org.hibernate.boot.jaxb.SourceType;
 import org.hibernate.boot.jaxb.internal.MappingBinder;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
 import org.hibernate.boot.jaxb.spi.Binding;
-import org.hibernate.boot.jaxb.spi.JaxbBindableMappingDescriptor;
-import org.hibernate.boot.models.categorize.xml.XmlResourceException;
-import org.hibernate.models.spi.ClassLoading;
+import org.hibernate.boot.models.xml.XmlResourceException;
 
 import static org.hibernate.boot.jaxb.internal.MappingBinder.NON_VALIDATING;
 
@@ -26,26 +24,19 @@ import static org.hibernate.boot.jaxb.internal.MappingBinder.NON_VALIDATING;
  * @author Steve Ebersole
  */
 public class XmlHelper {
-	public static JaxbEntityMappingsImpl loadMapping(String resourceName, ClassLoading classLoadingAccess) {
-		final ResourceStreamLocatorImpl resourceStreamLocator = new ResourceStreamLocatorImpl( classLoadingAccess );
+	public static Binding<JaxbEntityMappingsImpl> loadMapping(String resourceName) {
+		final ResourceStreamLocatorImpl resourceStreamLocator = new ResourceStreamLocatorImpl();
 		final MappingBinder mappingBinder = new MappingBinder( resourceStreamLocator, NON_VALIDATING );
-		final Binding<JaxbBindableMappingDescriptor> binding = mappingBinder.bind(
+		return mappingBinder.bind(
 				resourceStreamLocator.locateResourceStream( resourceName ),
 				new Origin( SourceType.RESOURCE, resourceName )
 		);
-		return (JaxbEntityMappingsImpl) binding.getRoot();
 	}
 
 	private static class ResourceStreamLocatorImpl implements ResourceStreamLocator {
-		private final ClassLoading classLoadingAccess;
-
-		public ResourceStreamLocatorImpl(ClassLoading classLoadingAccess) {
-			this.classLoadingAccess = classLoadingAccess;
-		}
-
 		@Override
 		public InputStream locateResourceStream(String resourceName) {
-			final URL resource = classLoadingAccess.locateResource( resourceName );
+			final URL resource = XmlHelper.class.getClassLoader().getResource( resourceName );
 			if ( resource == null ) {
 				throw new XmlResourceException( "Could not locate XML mapping resource - " + resourceName );
 			}

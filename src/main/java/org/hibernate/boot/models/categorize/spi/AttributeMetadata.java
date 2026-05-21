@@ -7,38 +7,24 @@
 package org.hibernate.boot.models.categorize.spi;
 
 
+import org.hibernate.boot.models.AttributeNature;
 import org.hibernate.boot.models.bind.spi.TableOwner;
 import org.hibernate.models.spi.MemberDetails;
 
-/**
- * Metadata about a persistent attribute
- *
- * @author Steve Ebersole
- */
+/// Categorized metadata about a persistent attribute.
+///
+/// Attribute metadata points back to the member selected for persistence and
+/// exposes the broad mapping nature determined during categorization.  Detailed
+/// value binding is handled later by the binding phase.
+///
+/// @author Steve Ebersole
 public interface AttributeMetadata extends TableOwner {
-	/**
-	 * The attribute name
-	 */
+	/// The attribute name
 	String getName();
 
-	/**
-	 * The persistent nature of the attribute
-	 */
+	/// The persistent nature of the attribute
 	AttributeNature getNature();
 
-	/**
-	 * The backing member
-	 */
+	/// The backing member
 	MemberDetails getMember();
-
-	/**
-	 * An enum defining the nature (categorization) of a persistent attribute.
-	 */
-	enum AttributeNature {
-		BASIC,
-		EMBEDDED,
-		ANY,
-		TO_ONE,
-		PLURAL
-	}
 }

@@ -6,22 +6,19 @@
  */
 package org.hibernate.boot.models;
 
+import org.hibernate.MappingException;
+
 import java.util.EnumSet;
 
-import org.hibernate.MappingException;
-import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
-
-/**
- * Condition where an attribute indicates multiple {@linkplain AttributeMetadata.AttributeNature natures}
- *
- * @author Steve Ebersole
- */
+/// Condition where an attribute indicates multiple {@linkplain AttributeNature natures}
+///
+/// @author Steve Ebersole
 public class MultipleAttributeNaturesException extends MappingException {
 	private final String attributeName;
 
 	public MultipleAttributeNaturesException(
 			String attributeName,
-			EnumSet<AttributeMetadata.AttributeNature> natures) {
+			EnumSet<AttributeNature> natures) {
 		super( craftMessage( attributeName, natures ) );
 		this.attributeName = attributeName;
 	}
@@ -30,7 +27,7 @@ public class MultipleAttributeNaturesException extends MappingException {
 		return attributeName;
 	}
 
-	private static String craftMessage(String attributeName, EnumSet<AttributeMetadata.AttributeNature> natures) {
+	private static String craftMessage(String attributeName, EnumSet<AttributeNature> natures) {
 		final StringBuilder buffer = new StringBuilder( "Attribute `" )
 				.append( attributeName )
 				.append( "` expressed multiple natures [" );

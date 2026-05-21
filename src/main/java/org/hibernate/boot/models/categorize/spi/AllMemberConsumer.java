@@ -8,10 +8,15 @@ package org.hibernate.boot.models.categorize.spi;
 
 import org.hibernate.models.spi.MemberDetails;
 
-/**
- * @author Steve Ebersole
- */
+/// Callback used while resolving persistent attributes to observe every member
+/// declared by a managed class.
+///
+/// The persistent attribute resolver uses this hook for consumers that need to
+/// inspect non-persistent members while the class is already being scanned.
+///
+/// @author Steve Ebersole
 @FunctionalInterface
 public interface AllMemberConsumer {
+	/// Visit a member declared by the class being inspected.
 	void acceptMember(MemberDetails memberDetails);
 }

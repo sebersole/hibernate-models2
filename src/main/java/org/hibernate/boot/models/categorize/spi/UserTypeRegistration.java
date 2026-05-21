@@ -6,29 +6,17 @@
  */
 package org.hibernate.boot.models.categorize.spi;
 
+import org.hibernate.annotations.TypeRegistration;
 import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.usertype.UserType;
 
-/**
- * Registration for a {@linkplain org.hibernate.usertype.UserType}
- *
- * @see org.hibernate.annotations.TypeRegistration
- *
- * @author Steve Ebersole
- */
-public class UserTypeRegistration {
-	private final ClassDetails domainClass;
-	private final ClassDetails userTypeClass;
-
-	public UserTypeRegistration(ClassDetails domainClass, ClassDetails userTypeClass) {
-		this.domainClass = domainClass;
-		this.userTypeClass = userTypeClass;
-	}
-
-	public ClassDetails getDomainClass() {
-		return domainClass;
-	}
-
-	public ClassDetails getUserTypeClass() {
-		return userTypeClass;
-	}
+/// Global registration for a {@linkplain UserType user type}.
+///
+/// @param domainClass The domain Java type handled by the user type
+/// @param userTypeClass The user type implementation class
+///
+/// @see TypeRegistration
+///
+/// @author Steve Ebersole
+public record UserTypeRegistration(ClassDetails domainClass, ClassDetails userTypeClass) {
 }

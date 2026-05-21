@@ -10,7 +10,6 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityListenerImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitDefaultsImpl;
 import org.hibernate.internal.util.MutableObject;
 import org.hibernate.models.ModelsException;
-import org.hibernate.models.internal.jdk.VoidClassDetails;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MethodDetails;
 
@@ -22,19 +21,18 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreRemove;
 import jakarta.persistence.PreUpdate;
 
-/**
- * JPA-style event listener with support for resolving callback methods
- * {@linkplain #from(JpaEventListenerStyle, ClassDetails, JaxbEntityListenerImpl) by name} (from XML)
- * or by {@linkplain #from(JpaEventListenerStyle, ClassDetails) annotation}.
- *
- * Represents a global entity listener defined in the persistence unit
- *
- * @see JaxbPersistenceUnitDefaultsImpl#getEntityListeners()
- * @see JaxbEntityListenerImpl
- * @see GlobalRegistrations#getEntityListenerRegistrations()
- *
- * @author Steve Ebersole
- */
+/// Categorized JPA lifecycle callback descriptor.
+///
+/// A listener may represent callback methods declared directly on a managed type or
+/// listener methods declared on a separate listener class.  XML mappings identify
+/// callback methods by name, while annotations identify them by lifecycle callback
+/// annotations.
+///
+/// @see JaxbPersistenceUnitDefaultsImpl#getEntityListenerContainer()
+/// @see JaxbEntityListenerImpl
+/// @see GlobalRegistrations#getEntityListenerRegistrations()
+///
+/// @author Steve Ebersole
 public class JpaEventListener {
 
 	private final JpaEventListenerStyle consumerType;
@@ -51,6 +49,7 @@ public class JpaEventListener {
 
 	private final MethodDetails postLoadMethod;
 
+	/// Create a lifecycle callback descriptor from already-resolved callback methods.
 	public JpaEventListener(
 			JpaEventListenerStyle consumerType,
 			ClassDetails listenerClass,
@@ -72,38 +71,47 @@ public class JpaEventListener {
 		this.postLoadMethod = postLoadMethod;
 	}
 
+	/// The style that determines the expected callback method signature.
 	public JpaEventListenerStyle getStyle() {
 		return consumerType;
 	}
 
+	/// The managed type or listener class declaring the callback methods.
 	public ClassDetails getCallbackClass() {
 		return listenerClass;
 	}
 
+	/// Callback method for {@link PrePersist}, or {@code null} when none is declared.
 	public MethodDetails getPrePersistMethod() {
 		return prePersistMethod;
 	}
 
+	/// Callback method for {@link PostPersist}, or {@code null} when none is declared.
 	public MethodDetails getPostPersistMethod() {
 		return postPersistMethod;
 	}
 
+	/// Callback method for {@link PreRemove}, or {@code null} when none is declared.
 	public MethodDetails getPreRemoveMethod() {
 		return preRemoveMethod;
 	}
 
+	/// Callback method for {@link PostRemove}, or {@code null} when none is declared.
 	public MethodDetails getPostRemoveMethod() {
 		return postRemoveMethod;
 	}
 
+	/// Callback method for {@link PreUpdate}, or {@code null} when none is declared.
 	public MethodDetails getPreUpdateMethod() {
 		return preUpdateMethod;
 	}
 
+	/// Callback method for {@link PostUpdate}, or {@code null} when none is declared.
 	public MethodDetails getPostUpdateMethod() {
 		return postUpdateMethod;
 	}
 
+	/// Callback method for {@link PostLoad}, or {@code null} when none is declared.
 	public MethodDetails getPostLoadMethod() {
 		return postLoadMethod;
 	}
@@ -194,6 +202,7 @@ public class JpaEventListener {
 		}
 	}
 
+	/// Create a listener descriptor from annotation-declared callback methods.
 	public static JpaEventListener from(JpaEventListenerStyle consumerType, ClassDetails listenerClassDetails) {
 		final MutableObject<MethodDetails> prePersistMethod = new MutableObject<>();
 		final MutableObject<MethodDetails> postPersistMethod = new MutableObject<>();
@@ -204,31 +213,31 @@ public class JpaEventListener {
 		final MutableObject<MethodDetails> postLoadMethod = new MutableObject<>();
 
 		listenerClassDetails.forEachMethod( (index, methodDetails) -> {
-			if ( methodDetails.getAnnotationUsage( PrePersist.class ) != null
+			if ( methodDetails.hasDirectAnnotationUsage( PrePersist.class )
 					&& matchesSignature( consumerType, methodDetails ) ) {
 				prePersistMethod.set( methodDetails );
 			}
-			else if ( methodDetails.getAnnotationUsage( PostPersist.class ) != null
+			else if ( methodDetails.hasDirectAnnotationUsage( PostPersist.class )
 					&& matchesSignature( consumerType, methodDetails ) ) {
 				postPersistMethod.set( methodDetails );
 			}
-			else if ( methodDetails.getAnnotationUsage( PreRemove.class ) != null
+			else if ( methodDetails.hasDirectAnnotationUsage( PreRemove.class )
 					&& matchesSignature( consumerType, methodDetails ) ) {
 				preRemoveMethod.set( methodDetails );
 			}
-			else if ( methodDetails.getAnnotationUsage( PostRemove.class ) != null
+			else if ( methodDetails.hasDirectAnnotationUsage( PostRemove.class )
 					&& matchesSignature( consumerType, methodDetails ) ) {
 				postRemoveMethod.set( methodDetails );
 			}
-			else if ( methodDetails.getAnnotationUsage( PreUpdate.class ) != null
+			else if ( methodDetails.hasDirectAnnotationUsage( PreUpdate.class )
 					&& matchesSignature( consumerType, methodDetails ) ) {
 				preUpdateMethod.set( methodDetails );
 			}
-			else if ( methodDetails.getAnnotationUsage( PostUpdate.class ) != null
+			else if ( methodDetails.hasDirectAnnotationUsage( PostUpdate.class )
 					&& matchesSignature( consumerType, methodDetails ) ) {
 				postUpdateMethod.set( methodDetails );
 			}
-			else if ( methodDetails.getAnnotationUsage( PostLoad.class ) != null
+			else if ( methodDetails.hasDirectAnnotationUsage( PostLoad.class )
 					&& matchesSignature( consumerType, methodDetails ) ) {
 				postLoadMethod.set( methodDetails );
 			}
@@ -249,6 +258,9 @@ public class JpaEventListener {
 		return jpaEventListener;
 	}
 
+	/// Try to interpret the class as an entity callback class.
+	///
+	/// @return the callback descriptor, or {@code null} when no callback methods are declared
 	public static JpaEventListener tryAsCallback(ClassDetails classDetails) {
 		try {
 			return from( JpaEventListenerStyle.CALLBACK, classDetails );
@@ -258,17 +270,18 @@ public class JpaEventListener {
 		}
 	}
 
+	/// Whether the method has the legal signature for the given callback style.
 	public static boolean matchesSignature(JpaEventListenerStyle callbackType, MethodDetails methodDetails) {
 		if ( callbackType == JpaEventListenerStyle.CALLBACK ) {
 			// should have no arguments.  and technically (spec) have a void return
 			return methodDetails.getArgumentTypes().isEmpty()
-					&& methodDetails.getReturnType() == VoidClassDetails.VOID_CLASS_DETAILS;
+					&& methodDetails.getReturnType() == ClassDetails.VOID_CLASS_DETAILS;
 		}
 		else {
 			assert callbackType == JpaEventListenerStyle.LISTENER;
 			// should have 1 argument.  and technically (spec) have a void return
 			return methodDetails.getArgumentTypes().size() == 1
-					&& methodDetails.getReturnType() == VoidClassDetails.VOID_CLASS_DETAILS;
+					&& methodDetails.getReturnType() == ClassDetails.VOID_CLASS_DETAILS;
 		}
 	}
 

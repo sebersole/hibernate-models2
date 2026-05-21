@@ -9,87 +9,58 @@ package org.hibernate.boot.models.categorize.spi;
 import org.hibernate.boot.model.CustomSql;
 import org.hibernate.boot.model.naming.EntityNaming;
 
-/**
- * Metadata about an {@linkplain jakarta.persistence.metamodel.EntityType entity type}
- *
- * @author Steve Ebersole
- */
+/// Categorized metadata about an {@linkplain jakarta.persistence.metamodel.EntityType entity type}.
+///
+/// Entity metadata extends identifiable type metadata with entity naming, mutability,
+/// caching, synchronization, batching, and custom SQL options needed by binding.
+///
+/// @author Steve Ebersole
 public interface EntityTypeMetadata extends IdentifiableTypeMetadata, EntityNaming {
 	@Override
 	default Kind getManagedTypeKind() {
 		return Kind.ENTITY;
 	}
 
-	/**
-	 * The Hibernate notion of entity-name, used for dynamic models
-	 */
+	/// The Hibernate notion of entity-name, used for dynamic models
 	String getEntityName();
 
-	/**
-	 * The JPA notion of entity-name, used for HQL references (import)
-	 */
+	/// The JPA notion of entity-name, used for HQL references (import)
 	String getJpaEntityName();
 
-	/**
-	 * Whether the state of the entity is written to the database (mutable) or not (immutable)
-	 */
+	/// Whether the state of the entity is written to the database (mutable) or not (immutable)
 	boolean isMutable();
 
-	/**
-	 * Whether this entity is cacheable.
-	 *
-	 * @see jakarta.persistence.Cacheable
-	 * @see org.hibernate.jpa.boot.spi.PersistenceUnitDescriptor#getSharedCacheMode()
-	 */
+	/// Whether this entity is cacheable.
+	///
+	/// @see jakarta.persistence.Cacheable
+	/// @see org.hibernate.jpa.boot.spi.PersistenceUnitDescriptor#getSharedCacheMode()
 	boolean isCacheable();
 
-	/**
-	 * Any tables to which this entity maps that Hibernate does not know about.
-	 *
-	 * @see org.hibernate.annotations.View
-	 * @see org.hibernate.annotations.Subselect
-	 */
+	/// Any tables to which this entity maps that Hibernate does not know about.
+	///
+	/// @see org.hibernate.annotations.View
+	/// @see org.hibernate.annotations.Subselect
 	String[] getSynchronizedTableNames();
 
-	/**
-	 * A size to use for the entity with batch loading
-	 */
+	/// A size to use for the entity with batch loading
 	int getBatchSize();
 
-	/**
-	 * Whether to perform a select prior to performing a {@linkplain org.hibernate.Session#update}
-	 *
-	 * @deprecated Because {@linkplain org.hibernate.Session#update} itself is deprecated
-	 */
-	@Deprecated
-	boolean isSelectBeforeUpdate();
-
-	/**
-	 * Whether to perform dynamic inserts.
-	 *
-	 * @see org.hibernate.annotations.DynamicInsert
-	 */
+	/// Whether to perform dynamic inserts.
+	///
+	/// @see org.hibernate.annotations.DynamicInsert
 	boolean isDynamicInsert();
 
-	/**
-	 * Whether to perform dynamic updates.
-	 *
-	 * @see org.hibernate.annotations.DynamicUpdate
-	 */
+	/// Whether to perform dynamic updates.
+	///
+	/// @see org.hibernate.annotations.DynamicUpdate
 	boolean isDynamicUpdate();
 
-	/**
-	 * Custom SQL to perform an INSERT of this entity
-	 */
+	/// Custom SQL to perform an INSERT of this entity
 	CustomSql getCustomInsert();
 
-	/**
-	 * Custom SQL to perform an UPDATE of this entity
-	 */
+	/// Custom SQL to perform an UPDATE of this entity
 	CustomSql getCustomUpdate();
 
-	/**
-	 * Custom SQL to perform an DELETE of this entity
-	 */
+	/// Custom SQL to perform a DELETE of this entity
 	CustomSql getCustomDelete();
 }

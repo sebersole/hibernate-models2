@@ -183,14 +183,14 @@ public class BindingStateImpl implements BindingState {
 	@Override
 	public void apply(FilterDefRegistration registration) {
 		metadataBuildingContext.getMetadataCollector().addFilterDefinition( new FilterDefinition(
-				registration.getName(),
-				registration.getDefaultCondition(),
+				registration.name(),
+				registration.defaultCondition(),
 				extractParameterMap( registration )
 		) );
 	}
 
 	private Map<String, JdbcMapping> extractParameterMap(FilterDefRegistration registration) {
-		final Map<String, ClassDetails> parameters = registration.getParameters();
+		final Map<String, ClassDetails> parameters = registration.parameters();
 		if ( CollectionHelper.isEmpty( parameters ) ) {
 			return Collections.emptyMap();
 		}
