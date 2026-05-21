@@ -26,6 +26,7 @@ import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.BasicValue;
+import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
 import org.hibernate.models.ModelsException;
@@ -37,6 +38,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 
 import static org.hibernate.boot.models.AttributeNature.BASIC;
+import static org.hibernate.boot.models.AttributeNature.EMBEDDED;
 import static org.hibernate.boot.models.AttributeNature.TO_ONE;
 
 /**
@@ -55,6 +57,7 @@ public class AttributeBinder {
 
 	public AttributeBinder(
 			IdentifiableTypeMetadata ownerType,
+			PersistentClass ownerBinding,
 			AttributeMetadata attributeMetadata,
 			Table primaryTable,
 			BindingState bindingState,
@@ -84,6 +87,19 @@ public class AttributeBinder {
 			).bind( binding );
 			binding.setValue( toOneValue );
 			attributeTable = toOneValue.getTable();
+		}
+		else if ( attributeMetadata.getNature() == EMBEDDED ) {
+			final var componentValue = new EmbeddableAttributeBinder(
+					ownerType,
+					ownerBinding,
+					attributeMetadata,
+					primaryTable,
+					bindingState,
+					bindingOptions,
+					bindingContext
+			).bind( binding );
+			binding.setValue( componentValue );
+			attributeTable = componentValue.getTable();
 		}
 		else {
 			throw new UnsupportedOperationException( "Not yet implemented" );

@@ -183,21 +183,16 @@ public class IdentifierBinder {
 			ClassDetails embeddableType,
 			Component idValue,
 			Table table) {
-		final List<org.hibernate.mapping.Column> columns = new ArrayList<>();
-		embeddableType.forEachPersistableMember( (member) -> {
-			final BasicValue basicValue = createBasicIdValue( table, member );
-			final Property property = createProperty( member.resolveAttributeName(), basicValue );
-			idValue.addProperty( property );
-
-			final org.hibernate.mapping.Column column = bindIdColumn(
-					member,
-					member::resolveAttributeName,
-					basicValue,
-					table
-			);
-			columns.add( column );
-		} );
-		return columns;
+		return new ComponentBinder( state, options, context ).bindBasicProperties(
+				embeddableType,
+				idValue,
+				table,
+				(member) -> ColumnSource.from( member.getDirectAnnotationUsage( Column.class ) ),
+				(member, column) -> table.getPrimaryKey().addColumn( column ),
+				true,
+				false,
+				false
+		);
 	}
 
 	private BasicValue createBasicIdValue(Table table, MemberDetails member) {
