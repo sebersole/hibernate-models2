@@ -25,6 +25,7 @@ import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
 import jakarta.persistence.SecondaryTable;
 import jakarta.persistence.Table;
 
@@ -260,6 +261,86 @@ public class EmbeddableBindingTests {
 		);
 	}
 
+	@Test
+	@ServiceRegistry
+	void testAssociationOverrideJoinTable(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( AssociationOverrideJoinTableEntity.class.getName() );
+					final Component address = (Component) entityBinding.getProperty( "address" ).getValue();
+					final ManyToOne country = (ManyToOne) address.getProperty( "country" ).getValue();
+					final Join join = entityBinding.getJoins().get( 0 );
+
+					assertThat( join.getTable().getName() ).isEqualTo( "embedded_country_links" );
+					assertThat( join.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_id" );
+					assertThat( country.getTable() ).isSameAs( join.getTable() );
+					assertThat( country.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "country_id" );
+				},
+				scope.getRegistry(),
+				Country.class,
+				AssociationOverrideJoinTableEntity.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testNestedAssociationOverrideJoinTable(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( NestedAssociationOverrideJoinTableEntity.class.getName() );
+					final Component address = (Component) entityBinding.getProperty( "address" ).getValue();
+					final Component location = (Component) address.getProperty( "location" ).getValue();
+					final ManyToOne country = (ManyToOne) location.getProperty( "country" ).getValue();
+					final Join join = entityBinding.getJoins().get( 0 );
+
+					assertThat( join.getTable().getName() ).isEqualTo( "nested_embedded_country_links" );
+					assertThat( join.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_id" );
+					assertThat( country.getTable() ).isSameAs( join.getTable() );
+					assertThat( country.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "country_id" );
+				},
+				scope.getRegistry(),
+				Country.class,
+				NestedAssociationOverrideJoinTableEntity.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testNestedCompositeAssociationOverrideJoinTable(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( NestedCompositeAssociationOverrideJoinTableEntity.class.getName() );
+					final Component address = (Component) entityBinding.getProperty( "address" ).getValue();
+					final Component location = (Component) address.getProperty( "location" ).getValue();
+					final ManyToOne country = (ManyToOne) location.getProperty( "country" ).getValue();
+					final Join join = entityBinding.getJoins().get( 0 );
+
+					assertThat( join.getTable().getName() ).isEqualTo( "nested_embedded_composite_country_links" );
+					assertThat( join.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_id" );
+					assertThat( country.getTable() ).isSameAs( join.getTable() );
+					assertThat( country.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "country_code", "country_region" );
+				},
+				scope.getRegistry(),
+				CompositeCountry.class,
+				NestedCompositeAssociationOverrideJoinTableEntity.class
+		);
+	}
+
 	@Entity(name="ExplicitEmbeddedEntity")
 	@Table(name="explicit_embedded")
 	public static class ExplicitEmbeddedEntity {
@@ -359,6 +440,51 @@ public class EmbeddableBindingTests {
 				@JoinColumn(name = "home_country_region", referencedColumnName = "region"),
 				@JoinColumn(name = "home_country_code", referencedColumnName = "code")
 		})
+		private AddressWithCompositeAssociationLocation address;
+	}
+
+	@Entity(name="AssociationOverrideJoinTableEntity")
+	@Table(name="association_override_join_table")
+	public static class AssociationOverrideJoinTableEntity {
+		@Id
+		private Integer id;
+		@Embedded
+		@AssociationOverride(name = "country", joinTable = @JoinTable(
+				name = "embedded_country_links",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = @JoinColumn(name = "country_id", referencedColumnName = "id")
+		))
+		private AddressWithCountry address;
+	}
+
+	@Entity(name="NestedAssociationOverrideJoinTableEntity")
+	@Table(name="nested_association_override_join_table")
+	public static class NestedAssociationOverrideJoinTableEntity {
+		@Id
+		private Integer id;
+		@Embedded
+		@AssociationOverride(name = "location.country", joinTable = @JoinTable(
+				name = "nested_embedded_country_links",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = @JoinColumn(name = "country_id", referencedColumnName = "id")
+		))
+		private AddressWithAssociationLocation address;
+	}
+
+	@Entity(name="NestedCompositeAssociationOverrideJoinTableEntity")
+	@Table(name="nested_composite_association_override_join_table")
+	public static class NestedCompositeAssociationOverrideJoinTableEntity {
+		@Id
+		private Integer id;
+		@Embedded
+		@AssociationOverride(name = "location.country", joinTable = @JoinTable(
+				name = "nested_embedded_composite_country_links",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = {
+						@JoinColumn(name = "country_region", referencedColumnName = "region"),
+						@JoinColumn(name = "country_code", referencedColumnName = "code")
+				}
+		))
 		private AddressWithCompositeAssociationLocation address;
 	}
 

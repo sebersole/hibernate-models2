@@ -70,6 +70,8 @@ class EmbeddableAttributeBinder {
 		component.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
 
 		new ComponentBinder( bindingState, bindingOptions, bindingContext ).bindBasicProperties(
+				ownerType,
+				ownerBinding,
 				member.getType().determineRawClass(),
 				component,
 				componentTable,
