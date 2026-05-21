@@ -18,10 +18,27 @@ import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.MappedSuperclassTypeMetadata;
 
-/**
- * @author Steve Ebersole
- */
-public class MappedSuperTypeBinder extends IdentifiableTypeBinder {
+/// Binder for a mapped-superclass type.
+///
+/// Construction intentionally creates only the local {@link MappedSuperclass}
+/// shell.  The coordinator then publishes that shell during the type-skeleton phase
+/// before table, identifier, and member phases run for entities in the same
+/// hierarchy.
+/// The current phases for mapped-superclass binders are:
+///
+/// 1. Construction - create the local {@link MappedSuperclass} shell, linked to
+/// the already-registered super mapped-superclass or entity shell when one exists.
+/// 2. {@link #bindTypeSkeleton()} - register this binder with {@link BindingState},
+/// publish the mapping shell to the metadata collector, and add the import.
+///
+/// Mapped-superclass binders do not currently participate in the entity table,
+/// super-type wiring, entity metadata, identifier, or member phases.  The
+/// implemented {@link TypeBindingPhase} contracts identify the phases this binder
+/// participates in while the coordinator owns their ordering.
+///
+/// @author Steve Ebersole
+public class MappedSuperTypeBinder extends IdentifiableTypeBinder
+		implements TypeBindingPhase.TypeSkeleton {
 	private final MappedSuperclass binding;
 
 	public MappedSuperTypeBinder(
@@ -55,11 +72,19 @@ public class MappedSuperTypeBinder extends IdentifiableTypeBinder {
 		}
 
 		this.binding = new MappedSuperclass( superMappedSuper, superEntity, getTable() );
-		state.registerTypeBinder( type, this );
+	}
 
-		state.getMetadataBuildingContext().getMetadataCollector().addImport(
-				StringHelper.unqualify( type.getClassDetails().getClassName() ),
-				type.getClassDetails().getClassName()
+	/// Publish the mapped-superclass skeleton for downstream binders.
+	///
+	/// After this phase the mapped-superclass is registered with both
+	/// {@link BindingState} and the metadata collector and can be resolved as a super
+	/// type by entity binders.  No table or member binding should be introduced here.
+	public void bindTypeSkeleton() {
+		getBindingState().registerTypeBinder( getManagedType(), this );
+
+		getBindingState().getMetadataBuildingContext().getMetadataCollector().addImport(
+				StringHelper.unqualify( getManagedType().getClassDetails().getClassName() ),
+				getManagedType().getClassDetails().getClassName()
 		);
 	}
 

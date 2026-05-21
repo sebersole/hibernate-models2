@@ -6,6 +6,9 @@
  */
 package org.hibernate.boot.models.bind.internal.binders;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
@@ -19,7 +22,6 @@ import org.hibernate.boot.models.categorize.spi.KeyMapping;
 import org.hibernate.boot.models.categorize.spi.NonAggregatedKeyMapping;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Component;
-import org.hibernate.mapping.KeyValue;
 import org.hibernate.mapping.PrimaryKey;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.RootClass;
@@ -27,7 +29,6 @@ import org.hibernate.mapping.Table;
 import org.hibernate.models.spi.MemberDetails;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Id;
 
 /**
  * @author Steve Ebersole
@@ -50,7 +51,7 @@ public class IdentifierBinder {
 		this.context = context;
 	}
 
-	public static KeyValue bindIdentifier(
+	public static IdentifierBinding bindIdentifier(
 			EntityTypeMetadata type,
 			RootClass typeBinding,
 			ModelBinders modelBinders,
@@ -61,7 +62,7 @@ public class IdentifierBinder {
 		return identifierBinder.bindIdentifier( type, typeBinding );
 	}
 
-	private KeyValue bindIdentifier(EntityTypeMetadata type, RootClass typeBinding) {
+	private IdentifierBinding bindIdentifier(EntityTypeMetadata type, RootClass typeBinding) {
 		final EntityHierarchy hierarchy = type.getHierarchy();
 		final KeyMapping idMapping = hierarchy.getIdMapping();
 		final Table table = typeBinding.getTable();
@@ -80,7 +81,7 @@ public class IdentifierBinder {
 		}
 	}
 
-	private KeyValue bindBasicIdentifier(
+	private IdentifierBinding bindBasicIdentifier(
 			BasicKeyMapping basicKeyMapping,
 			Table table,
 			EntityTypeMetadata typeMetadata,
@@ -115,10 +116,18 @@ public class IdentifierBinder {
 		BasicValueBinder.bindJdbcType( idAttributeMember, idProperty, idValue, options, state, context );
 		BasicValueBinder.bindNationalized( idAttributeMember, idProperty, idValue, options, state, context );
 
-		return idValue;
+		return new IdentifierBinding(
+				typeMetadata,
+				typeBinding,
+				basicKeyMapping,
+				idValue,
+				idProperty,
+				table,
+				List.of( column )
+		);
 	}
 
-	private KeyValue bindAggregatedIdentifier(
+	private IdentifierBinding bindAggregatedIdentifier(
 			AggregatedKeyMapping aggregatedKeyMapping,
 			Table table,
 			EntityTypeMetadata type,
@@ -130,10 +139,18 @@ public class IdentifierBinder {
 		idProperty.setValue( idValue );
 		typeBinding.setIdentifierProperty( idProperty );
 
-		return idValue;
+		return new IdentifierBinding(
+				type,
+				typeBinding,
+				aggregatedKeyMapping,
+				idValue,
+				idProperty,
+				table,
+				Collections.emptyList()
+		);
 	}
 
-	private KeyValue bindNonAggregatedIdentifier(
+	private IdentifierBinding bindNonAggregatedIdentifier(
 			NonAggregatedKeyMapping idMapping,
 			Table table,
 			EntityTypeMetadata type,
