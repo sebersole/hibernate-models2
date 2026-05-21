@@ -21,6 +21,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
+import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -237,6 +238,28 @@ public class EmbeddableBindingTests {
 		);
 	}
 
+	@Test
+	@ServiceRegistry
+	void testNestedCompositeAssociationOverride(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( NestedCompositeAssociationOverrideEntity.class.getName() );
+					final Component address = (Component) entityBinding.getProperty( "address" ).getValue();
+					final Component location = (Component) address.getProperty( "location" ).getValue();
+					final ManyToOne country = (ManyToOne) location.getProperty( "country" ).getValue();
+
+					assertThat( country.getReferencedEntityName() ).isEqualTo( CompositeCountry.class.getName() );
+					assertThat( country.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "home_country_code", "home_country_region" );
+				},
+				scope.getRegistry(),
+				CompositeCountry.class,
+				NestedCompositeAssociationOverrideEntity.class
+		);
+	}
+
 	@Entity(name="ExplicitEmbeddedEntity")
 	@Table(name="explicit_embedded")
 	public static class ExplicitEmbeddedEntity {
@@ -326,11 +349,32 @@ public class EmbeddableBindingTests {
 		private AddressWithAssociationLocation address;
 	}
 
+	@Entity(name="NestedCompositeAssociationOverrideEntity")
+	@Table(name="nested_composite_association_override")
+	public static class NestedCompositeAssociationOverrideEntity {
+		@Id
+		private Integer id;
+		@Embedded
+		@AssociationOverride(name = "location.country", joinColumns = {
+				@JoinColumn(name = "home_country_region", referencedColumnName = "region"),
+				@JoinColumn(name = "home_country_code", referencedColumnName = "code")
+		})
+		private AddressWithCompositeAssociationLocation address;
+	}
+
 	@Entity(name="Country")
 	@Table(name="countries")
 	public static class Country {
 		@Id
 		private Integer id;
+		private String name;
+	}
+
+	@Entity(name="CompositeCountry")
+	@Table(name="composite_countries")
+	public static class CompositeCountry {
+		@EmbeddedId
+		private CompositeCountryPk id;
 		private String name;
 	}
 
@@ -385,6 +429,25 @@ public class EmbeddableBindingTests {
 		private String city;
 		@jakarta.persistence.ManyToOne
 		private Country country;
+	}
+
+	@Embeddable
+	public static class AddressWithCompositeAssociationLocation {
+		private String line1;
+		private CompositeAssociationLocation location;
+	}
+
+	@Embeddable
+	public static class CompositeAssociationLocation {
+		private String city;
+		@jakarta.persistence.ManyToOne
+		private CompositeCountry country;
+	}
+
+	@Embeddable
+	public static class CompositeCountryPk {
+		private String code;
+		private String region;
 	}
 
 	public static class CityConverter implements AttributeConverter<String, String> {

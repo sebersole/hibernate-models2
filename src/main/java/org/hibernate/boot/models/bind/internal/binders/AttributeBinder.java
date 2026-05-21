@@ -122,7 +122,7 @@ public class AttributeBinder {
 			return;
 		}
 		property.setNaturalIdentifier( true );
-		property.setUpdateable( naturalIdAnn.mutable() );
+		property.setUpdatable( naturalIdAnn.mutable() );
 	}
 
 	private void registerValueSecondPass(ValueSecondPass secondPass) {
@@ -231,10 +231,11 @@ public class AttributeBinder {
 				);
 			}
 
-			property.setUpdateable( false );
+			property.setUpdatable( false );
 		}
 		else if ( mutabilityAnn != null ) {
 			basicValue.setExplicitMutabilityPlanAccess( (typeConfiguration) -> {
+				//noinspection unchecked
 				final Class<MutabilityPlan<?>> javaClass = (Class<MutabilityPlan<?>>) mutabilityAnn.value();
 				try {
 					return javaClass.getConstructor().newInstance();
@@ -308,6 +309,7 @@ public class AttributeBinder {
 			throw new ModelsException( "@Convert#attributeName should not be specified on basic mappings - " + member.getName() );
 		}
 
+		//noinspection unchecked
 		final Class<AttributeConverter<?, ?>> javaClass = (Class<AttributeConverter<?, ?>>) convertAnn.converter();
 		basicValue.setJpaAttributeConverterDescriptor(
 				new RegisteredConversion( null, javaClass, false ).getConverterDescriptor()
