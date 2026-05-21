@@ -20,8 +20,8 @@ import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
 import org.hibernate.models.spi.MemberDetails;
 
-import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 
 import java.util.Locale;
 
@@ -36,6 +36,7 @@ class EmbeddableAttributeBinder {
 	private final BindingState bindingState;
 	private final BindingOptions bindingOptions;
 	private final BindingContext bindingContext;
+	private OverrideAndConverterCollector overrideAndConverterCollector;
 
 	EmbeddableAttributeBinder(
 			IdentifiableTypeMetadata ownerType,
@@ -56,6 +57,7 @@ class EmbeddableAttributeBinder {
 
 	Component bind(Property property) {
 		final MemberDetails member = attributeMetadata.getMember();
+		overrideAndConverterCollector = new OverrideAndConverterCollector( member, bindingContext );
 		final Table componentTable = resolveComponentTable( member );
 		final Component component = new Component(
 				bindingState.getMetadataBuildingContext(),
@@ -72,6 +74,7 @@ class EmbeddableAttributeBinder {
 				component,
 				componentTable,
 				this::resolveColumnSource,
+				this::resolveConversion,
 				(ignored, column) -> {
 				},
 				false,
@@ -85,8 +88,8 @@ class EmbeddableAttributeBinder {
 
 	private Table resolveComponentTable(MemberDetails attributeMember) {
 		final Table[] result = { primaryTable };
-		attributeMember.getType().determineRawClass().forEachPersistableMember( (member) -> {
-			final ColumnSource columnSource = resolveColumnSource( member );
+		visitColumnSources( attributeMember.getType().determineRawClass(), "", (path, member) -> {
+			final ColumnSource columnSource = resolveColumnSource( path, member );
 			if ( columnSource == null || StringHelper.isEmpty( columnSource.table() ) ) {
 				return;
 			}
@@ -106,8 +109,25 @@ class EmbeddableAttributeBinder {
 		return result[0];
 	}
 
-	private ColumnSource resolveColumnSource(MemberDetails member) {
-		final AttributeOverride override = resolveAttributeOverride( member.resolveAttributeName() );
+	private void visitColumnSources(
+			org.hibernate.models.spi.ClassDetails componentType,
+			String pathPrefix,
+			java.util.function.BiConsumer<String, MemberDetails> consumer) {
+		componentType.forEachPersistableMember( (member) -> {
+			final String attributeName = member.resolveAttributeName();
+			final String path = pathPrefix + attributeName;
+			if ( member.hasDirectAnnotationUsage( jakarta.persistence.Embedded.class )
+					|| member.getType().determineRawClass().hasDirectAnnotationUsage( jakarta.persistence.Embeddable.class ) ) {
+				visitColumnSources( member.getType().determineRawClass(), path + ".", consumer );
+			}
+			else {
+				consumer.accept( path, member );
+			}
+		} );
+	}
+
+	private ColumnSource resolveColumnSource(String memberPath, MemberDetails member) {
+		final var override = overrideAndConverterCollector.locateAttributeOverride( memberPath );
 		if ( override != null ) {
 			return ColumnSource.from( override.column() );
 		}
@@ -116,16 +136,15 @@ class EmbeddableAttributeBinder {
 		return ColumnSource.from( columnAnn );
 	}
 
-	private AttributeOverride resolveAttributeOverride(String memberName) {
-		final AttributeOverride[] overrides = attributeMetadata.getMember().getRepeatedAnnotationUsages(
-				AttributeOverride.class,
-				bindingContext.getBootstrapContext().getModelsContext()
-		);
-		for ( AttributeOverride override : overrides ) {
-			if ( memberName.equals( override.name() ) ) {
-				return override;
-			}
+	private Convert resolveConversion(String memberPath, MemberDetails member) {
+		final Convert override = overrideAndConverterCollector.locateConversion( memberPath );
+		if ( override != null ) {
+			return override;
 		}
-		return null;
+
+		final Convert directConversion = member.getDirectAnnotationUsage( Convert.class );
+		return directConversion != null && StringHelper.isEmpty( directConversion.attributeName() )
+				? directConversion
+				: null;
 	}
 }

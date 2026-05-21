@@ -4,6 +4,7 @@
  */
 package org.hibernate.models.orm.bind.embeddable;
 
+import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.Join;
 import org.hibernate.mapping.PersistentClass;
@@ -12,8 +13,10 @@ import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.ServiceRegistryScope;
 import org.junit.jupiter.api.Test;
 
+import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -120,6 +123,74 @@ public class EmbeddableBindingTests {
 		);
 	}
 
+	@Test
+	@ServiceRegistry
+	void testNestedEmbedded(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( NestedEmbeddedEntity.class.getName() );
+					final Component address = (Component) entityBinding.getProperty( "address" ).getValue();
+					assertThat( address.getProperties() )
+							.extracting( org.hibernate.mapping.Property::getName )
+							.containsExactly( "line1", "zipCode", "location" );
+
+					final Component location = (Component) address.getProperty( "location" ).getValue();
+					assertThat( location.getComponentClassName() ).isEqualTo( Location.class.getName() );
+					assertThat( location.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "city", "country" );
+					assertThat( address.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "line1", "zipCode", "city", "country" );
+				},
+				scope.getRegistry(),
+				NestedEmbeddedEntity.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testNestedAttributeOverride(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( NestedOverrideEmbeddedEntity.class.getName() );
+					final Component address = (Component) entityBinding.getProperty( "address" ).getValue();
+					final Component location = (Component) address.getProperty( "location" ).getValue();
+
+					assertThat( location.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "home_city", "home_country" );
+					assertThat( address.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "line1", "zipCode", "home_city", "home_country" );
+				},
+				scope.getRegistry(),
+				NestedOverrideEmbeddedEntity.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testNestedConvert(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( NestedConvertEmbeddedEntity.class.getName() );
+					final Component address = (Component) entityBinding.getProperty( "address" ).getValue();
+					final Component location = (Component) address.getProperty( "location" ).getValue();
+					final BasicValue city = (BasicValue) location.getProperty( "city" ).getValue();
+					final BasicValue country = (BasicValue) location.getProperty( "country" ).getValue();
+
+					assertThat( city.getJpaAttributeConverterDescriptor() ).isNotNull();
+					assertThat( country.getJpaAttributeConverterDescriptor() ).isNotNull();
+				},
+				scope.getRegistry(),
+				NestedConvertEmbeddedEntity.class
+		);
+	}
+
 	@Entity(name="ExplicitEmbeddedEntity")
 	@Table(name="explicit_embedded")
 	public static class ExplicitEmbeddedEntity {
@@ -160,9 +231,90 @@ public class EmbeddableBindingTests {
 		private Address address;
 	}
 
+	@Entity(name="NestedEmbeddedEntity")
+	@Table(name="nested_embedded")
+	public static class NestedEmbeddedEntity {
+		@Id
+		private Integer id;
+		@Embedded
+		private AddressWithLocation address;
+	}
+
+	@Entity(name="NestedOverrideEmbeddedEntity")
+	@Table(name="nested_override_embedded")
+	public static class NestedOverrideEmbeddedEntity {
+		@Id
+		private Integer id;
+		@Embedded
+		@AttributeOverride(name = "location.city", column = @Column(name = "home_city"))
+		@AttributeOverride(name = "location.country", column = @Column(name = "home_country"))
+		private AddressWithLocation address;
+	}
+
+	@Entity(name="NestedConvertEmbeddedEntity")
+	@Table(name="nested_convert_embedded")
+	public static class NestedConvertEmbeddedEntity {
+		@Id
+		private Integer id;
+		@Embedded
+		@Convert(attributeName = "location.city", converter = CityConverter.class)
+		private AddressWithConvertedLocation address;
+	}
+
 	@Embeddable
 	public static class Address {
 		private String line1;
 		private String zipCode;
+	}
+
+	@Embeddable
+	public static class AddressWithLocation {
+		private String line1;
+		private String zipCode;
+		private Location location;
+	}
+
+	@Embeddable
+	public static class Location {
+		private String city;
+		private String country;
+	}
+
+	@Embeddable
+	public static class AddressWithConvertedLocation {
+		private String line1;
+		private String zipCode;
+		private ConvertedLocation location;
+	}
+
+	@Embeddable
+	public static class ConvertedLocation {
+		private String city;
+		@Convert(converter = CountryConverter.class)
+		private String country;
+	}
+
+	public static class CityConverter implements AttributeConverter<String, String> {
+		@Override
+		public String convertToDatabaseColumn(String attribute) {
+			return attribute;
+		}
+
+		@Override
+		public String convertToEntityAttribute(String dbData) {
+			return dbData;
+		}
+	}
+
+	public static class CountryConverter implements AttributeConverter<String, String> {
+		@Override
+		public String convertToDatabaseColumn(String attribute) {
+			return attribute;
+		}
+
+		@Override
+		public String convertToEntityAttribute(String dbData) {
+			return dbData;
+		}
 	}
 }

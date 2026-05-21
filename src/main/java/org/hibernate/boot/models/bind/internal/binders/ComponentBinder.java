@@ -7,19 +7,25 @@ package org.hibernate.boot.models.bind.internal.binders;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
+import org.hibernate.boot.model.convert.spi.RegisteredConversion;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
+import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
+import org.hibernate.models.ModelsException;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MemberDetails;
+
+import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Convert;
 
 /**
  * Shared support for binding component-valued mappings.
@@ -42,23 +48,76 @@ class ComponentBinder {
 			ClassDetails componentType,
 			Component component,
 			Table table,
-			Function<MemberDetails, ColumnSource> columnSourceResolver,
+			BiFunction<String, MemberDetails, ColumnSource> columnSourceResolver,
+			BiFunction<String, MemberDetails, Convert> conversionResolver,
+			BiConsumer<MemberDetails, Column> columnConsumer,
+			boolean uniqueByDefault,
+			boolean nullableByDefault,
+			boolean updatable) {
+		return bindProperties(
+				componentType,
+				component,
+				table,
+				"",
+				columnSourceResolver,
+				conversionResolver,
+				columnConsumer,
+				uniqueByDefault,
+				nullableByDefault,
+				updatable
+		);
+	}
+
+	private List<Column> bindProperties(
+			ClassDetails componentType,
+			Component component,
+			Table table,
+			String pathPrefix,
+			BiFunction<String, MemberDetails, ColumnSource> columnSourceResolver,
+			BiFunction<String, MemberDetails, Convert> conversionResolver,
 			BiConsumer<MemberDetails, Column> columnConsumer,
 			boolean uniqueByDefault,
 			boolean nullableByDefault,
 			boolean updatable) {
 		final List<Column> columns = new ArrayList<>();
 		componentType.forEachPersistableMember( (member) -> {
-			validateBasicMember( member );
+			validateMember( member );
+			final String attributeName = member.resolveAttributeName();
+			final String memberPath = pathPrefix + attributeName;
+
+			if ( isEmbeddedMember( member ) ) {
+				final Component nestedComponent = new Component( state.getMetadataBuildingContext(), component );
+				nestedComponent.setEmbedded( true );
+				nestedComponent.setComponentClassName( member.getType().determineRawClass().getClassName() );
+				nestedComponent.setTable( table );
+				nestedComponent.setTypeUsingReflection( componentType.getClassName(), attributeName );
+
+				final Property property = createProperty( attributeName, nestedComponent );
+				component.addProperty( property );
+				columns.addAll( bindProperties(
+						member.getType().determineRawClass(),
+						nestedComponent,
+						table,
+						memberPath + ".",
+						columnSourceResolver,
+						conversionResolver,
+						columnConsumer,
+						uniqueByDefault,
+						nullableByDefault,
+						updatable
+				) );
+				return;
+			}
 
 			final BasicValue basicValue = createBasicValue( table, member );
-			final Property property = createProperty( member.resolveAttributeName(), basicValue );
+			bindConversion( member, memberPath, basicValue, conversionResolver.apply( memberPath, member ) );
+			final Property property = createProperty( attributeName, basicValue );
 			component.addProperty( property );
 
 			final Column column = bindColumn(
-					member::resolveAttributeName,
+					() -> attributeName,
 					basicValue,
-					columnSourceResolver.apply( member ),
+					columnSourceResolver.apply( memberPath, member ),
 					uniqueByDefault,
 					nullableByDefault,
 					updatable
@@ -69,9 +128,8 @@ class ComponentBinder {
 		return columns;
 	}
 
-	private void validateBasicMember(MemberDetails member) {
+	private void validateMember(MemberDetails member) {
 		if ( member.isPlural()
-				|| member.hasDirectAnnotationUsage( jakarta.persistence.Embedded.class )
 				|| member.hasDirectAnnotationUsage( jakarta.persistence.ManyToOne.class )
 				|| member.hasDirectAnnotationUsage( jakarta.persistence.OneToOne.class )
 				|| member.hasDirectAnnotationUsage( jakarta.persistence.OneToMany.class )
@@ -81,11 +139,31 @@ class ComponentBinder {
 					"Only basic embeddable members are supported for now - " + member.getName()
 			);
 		}
-		if ( member.getType().determineRawClass().hasDirectAnnotationUsage( jakarta.persistence.Embeddable.class ) ) {
-			throw new UnsupportedOperationException(
-					"Nested embeddables are not yet implemented - " + member.getName()
-			);
+	}
+
+	private boolean isEmbeddedMember(MemberDetails member) {
+		return member.hasDirectAnnotationUsage( jakarta.persistence.Embedded.class )
+				|| member.getType().determineRawClass().hasDirectAnnotationUsage( jakarta.persistence.Embeddable.class );
+	}
+
+	private void bindConversion(
+			MemberDetails member,
+			String memberPath,
+			BasicValue basicValue,
+			Convert conversion) {
+		if ( conversion == null || conversion.disableConversion() ) {
+			return;
 		}
+
+		final String attributeName = conversion.attributeName();
+		if ( StringHelper.isNotEmpty( attributeName ) && !memberPath.equals( attributeName ) ) {
+			throw new ModelsException( "@Convert#attributeName did not match component path - " + memberPath );
+		}
+
+		final Class<AttributeConverter<?, ?>> javaClass = (Class<AttributeConverter<?, ?>>) conversion.converter();
+		basicValue.setJpaAttributeConverterDescriptor(
+				new RegisteredConversion( null, javaClass, false ).getConverterDescriptor()
+		);
 	}
 
 	private BasicValue createBasicValue(Table table, MemberDetails member) {
