@@ -162,7 +162,7 @@ public class CategorizationHelper {
 			if ( backingMember.hasDirectAnnotationUsage( Temporal.class )
 					|| backingMember.hasDirectAnnotationUsage( Lob.class )
 					|| backingMember.hasDirectAnnotationUsage( Enumerated.class )
-					|| backingMember.hasDirectAnnotationUsage( Convert.class )
+					|| hasBasicConversion( backingMember )
 					|| backingMember.hasDirectAnnotationUsage( Version.class )
 					|| backingMember.hasDirectAnnotationUsage( Generated.class )
 					|| backingMember.hasDirectAnnotationUsage( Nationalized.class )
@@ -206,5 +206,10 @@ public class CategorizationHelper {
 			case 1 -> natures.iterator().next();
 			default -> throw new MultipleAttributeNaturesException( backingMember.resolveAttributeName(), natures );
 		};
+	}
+
+	private static boolean hasBasicConversion(MemberDetails backingMember) {
+		final Convert convert = backingMember.getDirectAnnotationUsage( Convert.class );
+		return convert != null && ( convert.attributeName() == null || convert.attributeName().isEmpty() );
 	}
 }
