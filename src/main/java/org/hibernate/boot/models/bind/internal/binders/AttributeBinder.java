@@ -79,6 +79,7 @@ public class AttributeBinder {
 		else if ( attributeMetadata.getNature() == TO_ONE ) {
 			final var toOneValue = new ToOneAttributeBinder(
 					ownerType,
+					ownerBinding,
 					attributeMetadata,
 					primaryTable,
 					bindingOptions,

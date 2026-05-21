@@ -5,6 +5,7 @@
 package org.hibernate.models.orm.bind.associations;
 
 import org.hibernate.MappingException;
+import org.hibernate.mapping.Join;
 import org.hibernate.mapping.ManyToOne;
 import org.hibernate.mapping.PersistentClass;
 
@@ -18,6 +19,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinColumns;
+import jakarta.persistence.JoinTable;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.SecondaryTable;
 import jakarta.persistence.Table;
@@ -132,7 +134,78 @@ public class ToOneAssociationTests {
 				CompositeParent.class,
 				MixedJoinColumnTablesOwner.class
 		) ).isInstanceOf( MappingException.class )
-				.hasMessageContaining( "To-one join columns cannot span multiple tables" );
+					.hasMessageContaining( "To-one join columns cannot span multiple tables" );
+	}
+
+	@Test
+	@ServiceRegistry
+	void testManyToOneJoinTable(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( JoinTableManyToOneOwner.class.getName() );
+					final Join join = entityBinding.getJoins().get( 0 );
+					final ManyToOne value = (ManyToOne) join.getProperties().get( 0 ).getValue();
+
+					assertThat( join.getTable().getName() ).isEqualTo( "owner_parent_links" );
+					assertThat( join.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_id" );
+					assertThat( value.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_id" );
+					assertThat( join.getTable().getForeignKeyCollection() ).hasSize( 2 );
+				},
+				scope.getRegistry(),
+				Parent.class,
+				JoinTableManyToOneOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testCompositeManyToOneJoinTableWithReferencedColumnNames(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( JoinTableCompositeManyToOneOwner.class.getName() );
+					final Join join = entityBinding.getJoins().get( 0 );
+					final ManyToOne value = (ManyToOne) join.getProperties().get( 0 ).getValue();
+
+					assertThat( join.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_id" );
+					assertThat( value.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_fk1", "parent_fk2" );
+				},
+				scope.getRegistry(),
+				CompositeParent.class,
+				JoinTableCompositeManyToOneOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testCompositeOwnerManyToOneJoinTableWithReferencedColumnNames(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( CompositeOwnerJoinTableManyToOneOwner.class.getName() );
+					final Join join = entityBinding.getJoins().get( 0 );
+					final ManyToOne value = (ManyToOne) join.getProperties().get( 0 ).getValue();
+
+					assertThat( join.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_fk1", "owner_fk2" );
+					assertThat( value.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_id" );
+				},
+				scope.getRegistry(),
+				Parent.class,
+				CompositeOwnerJoinTableManyToOneOwner.class
+		);
 	}
 
 	@Entity(name="Parent")
@@ -204,6 +277,54 @@ public class ToOneAssociationTests {
 				@JoinColumn(name = "parent_fk2", referencedColumnName = "id2", table = "mixed_join_column_tables_details")
 		})
 		private CompositeParent parent;
+	}
+
+	@Entity(name="JoinTableManyToOneOwner")
+	@Table(name="join_table_many_to_one_owners")
+	public static class JoinTableManyToOneOwner {
+		@Id
+		private Integer id;
+		@jakarta.persistence.ManyToOne
+		@JoinTable(
+				name = "owner_parent_links",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
+		)
+		private Parent parent;
+	}
+
+	@Entity(name="JoinTableCompositeManyToOneOwner")
+	@Table(name="join_table_composite_many_to_one_owners")
+	public static class JoinTableCompositeManyToOneOwner {
+		@Id
+		private Integer id;
+		@jakarta.persistence.ManyToOne
+		@JoinTable(
+				name = "owner_composite_parent_links",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = {
+						@JoinColumn(name = "parent_fk2", referencedColumnName = "id2"),
+						@JoinColumn(name = "parent_fk1", referencedColumnName = "id1")
+				}
+		)
+		private CompositeParent parent;
+	}
+
+	@Entity(name="CompositeOwnerJoinTableManyToOneOwner")
+	@Table(name="composite_owner_join_table_many_to_one_owners")
+	public static class CompositeOwnerJoinTableManyToOneOwner {
+		@EmbeddedId
+		private Pk id;
+		@jakarta.persistence.ManyToOne
+		@JoinTable(
+				name = "composite_owner_parent_links",
+				joinColumns = {
+						@JoinColumn(name = "owner_fk2", referencedColumnName = "id2"),
+						@JoinColumn(name = "owner_fk1", referencedColumnName = "id1")
+				},
+				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
+		)
+		private Parent parent;
 	}
 
 	@Embeddable

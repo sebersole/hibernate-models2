@@ -6,6 +6,7 @@ package org.hibernate.boot.models.bind.spi;
 
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.models.bind.internal.SecondaryTable;
+import org.hibernate.boot.models.bind.internal.binders.AssociationTableBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifiableTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
@@ -15,6 +16,7 @@ import org.hibernate.boot.models.categorize.spi.ManagedTypeMetadata;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.internal.util.KeyedConsumer;
+import org.hibernate.mapping.Join;
 import org.hibernate.models.spi.ClassDetails;
 
 /// Mutable state shared by binders while producing Hibernate's boot-time mapping
@@ -58,6 +60,12 @@ public interface BindingState {
 
 	/// Register a secondary table reference.
 	void addSecondaryTable(SecondaryTable table);
+
+	/// Register a Join that represents an association table.
+	void addAssociationTableBinding(AssociationTableBinding associationTableBinding);
+
+	/// Resolve association-table state for a Join, if the Join represents one.
+	AssociationTableBinding getAssociationTableBinding(Join join);
 
 	/// Register the identifier binding produced for an entity hierarchy root.
 	void addIdentifierBinding(EntityTypeMetadata rootType, IdentifierBinding identifierBinding);

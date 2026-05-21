@@ -18,7 +18,9 @@ import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.Column;
+import org.hibernate.mapping.Join;
 import org.hibernate.mapping.ManyToOne;
+import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
 import org.hibernate.models.spi.ClassDetails;
@@ -28,6 +30,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.AssociationOverride;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinColumns;
+import jakarta.persistence.JoinTable;
 import jakarta.persistence.OneToOne;
 
 /**
@@ -35,21 +38,26 @@ import jakarta.persistence.OneToOne;
  */
 class ToOneAttributeBinder {
 	private final IdentifiableTypeMetadata ownerType;
+	private final PersistentClass ownerBinding;
 	private final AttributeMetadata attributeMetadata;
 	private final Table primaryTable;
+	private final BindingOptions bindingOptions;
 	private final BindingState bindingState;
 	private final BindingContext bindingContext;
 
 	ToOneAttributeBinder(
 			IdentifiableTypeMetadata ownerType,
+			PersistentClass ownerBinding,
 			AttributeMetadata attributeMetadata,
 			Table primaryTable,
-			@SuppressWarnings("unused") BindingOptions bindingOptions,
+			BindingOptions bindingOptions,
 			BindingState bindingState,
 			BindingContext bindingContext) {
 		this.ownerType = ownerType;
+		this.ownerBinding = ownerBinding;
 		this.attributeMetadata = attributeMetadata;
 		this.primaryTable = primaryTable;
+		this.bindingOptions = bindingOptions;
 		this.bindingState = bindingState;
 		this.bindingContext = bindingContext;
 	}
@@ -57,24 +65,30 @@ class ToOneAttributeBinder {
 	ManyToOne bind(Property property) {
 		final MemberDetails member = attributeMetadata.getMember();
 		return bindToOne(
+				ownerType,
+				ownerBinding,
 				ownerType.getClassDetails().getClassName(),
 				attributeMetadata.getName(),
 				member,
 				property,
 				primaryTable,
 				null,
+				bindingOptions,
 				bindingState,
 				bindingContext
 		);
 	}
 
 	static ManyToOne bindToOne(
+			IdentifiableTypeMetadata ownerType,
+			PersistentClass ownerBinding,
 			String ownerClassName,
 			String propertyName,
 			MemberDetails member,
 			Property property,
 			Table primaryTable,
 			AssociationOverride associationOverride,
+			BindingOptions bindingOptions,
 			BindingState bindingState,
 			BindingContext bindingContext) {
 		final jakarta.persistence.ManyToOne manyToOneAnn = member.getDirectAnnotationUsage( jakarta.persistence.ManyToOne.class );
@@ -84,10 +98,20 @@ class ToOneAttributeBinder {
 		}
 
 		final TargetEntityBinding target = resolveTargetEntityBinding( member, manyToOneAnn, oneToOneAnn, bindingState, bindingContext );
+		final JoinTable joinTable = resolveJoinTable( member, associationOverride );
+		final Table associationTable = joinTable == null
+				? resolveAssociationTable( member, associationOverride, primaryTable, bindingState )
+				: bindAssociationTable(
+						ownerType,
+						ownerBinding,
+						joinTable,
+						bindingOptions,
+						bindingState
+				);
 
 		final ManyToOne value = new ManyToOne(
 				bindingState.getMetadataBuildingContext(),
-				resolveAssociationTable( member, associationOverride, primaryTable, bindingState )
+				associationTable
 		);
 		value.setReferencedEntityName( target.entityName() );
 		value.setReferenceToPrimaryKey( true );
@@ -103,21 +127,27 @@ class ToOneAttributeBinder {
 		final boolean optional = resolveOptionality( manyToOneAnn, oneToOneAnn );
 		property.setOptional( optional );
 
-		bindJoinColumns( member, value, target, associationOverride, logicalOneToOne, optional, ownerClassName, propertyName );
+		bindJoinColumns(
+				resolveValueJoinColumns( member, associationOverride, joinTable ),
+				value,
+				target,
+				logicalOneToOne,
+				optional,
+				ownerClassName,
+				propertyName
+		);
 		value.createForeignKey();
 		return value;
 	}
 
 	private static void bindJoinColumns(
-			MemberDetails member,
+			List<JoinColumn> joinColumnAnns,
 			ManyToOne value,
 			TargetEntityBinding target,
-			AssociationOverride associationOverride,
 			boolean uniqueByDefault,
 			boolean optional,
 			String ownerClassName,
 			String propertyName) {
-		final List<JoinColumn> joinColumnAnns = resolveJoinColumns( member, associationOverride );
 		final List<Column> targetColumns = target.identifierColumns();
 
 		if ( !joinColumnAnns.isEmpty() && joinColumnAnns.size() != targetColumns.size() ) {
@@ -152,7 +182,7 @@ class ToOneAttributeBinder {
 		}
 	}
 
-	private static List<JoinColumn> orderJoinColumns(
+	static List<JoinColumn> orderJoinColumns(
 			List<JoinColumn> joinColumns,
 			List<Column> targetColumns,
 			String ownerClassName,
@@ -193,11 +223,67 @@ class ToOneAttributeBinder {
 		);
 	}
 
+	private static Table bindAssociationTable(
+			IdentifiableTypeMetadata ownerType,
+			PersistentClass ownerBinding,
+			JoinTable joinTable,
+			BindingOptions bindingOptions,
+			BindingState bindingState) {
+		if ( ownerBinding == null ) {
+			throw new UnsupportedOperationException( "To-one @JoinTable inside embeddables is not yet implemented" );
+		}
+		if ( StringHelper.isEmpty( joinTable.name() ) ) {
+			throw new UnsupportedOperationException( "Implicit to-one @JoinTable names are not yet implemented" );
+		}
+
+		final Identifier logicalName = Identifier.toIdentifier( joinTable.name() );
+		final Identifier schemaName = StringHelper.isEmpty( joinTable.schema() )
+				? bindingOptions.getDefaultSchemaName()
+				: Identifier.toIdentifier( joinTable.schema() );
+		final Identifier catalogName = StringHelper.isEmpty( joinTable.catalog() )
+				? bindingOptions.getDefaultCatalogName()
+				: Identifier.toIdentifier( joinTable.catalog() );
+
+		final Table associationTable = bindingState.getMetadataBuildingContext().getMetadataCollector().addTable(
+				schemaName == null ? null : schemaName.getCanonicalName(),
+				catalogName == null ? null : catalogName.getCanonicalName(),
+				logicalName.getCanonicalName(),
+				null,
+				false,
+				bindingState.getMetadataBuildingContext(),
+				false
+		);
+
+		final Join join = new Join();
+		join.setTable( associationTable );
+		join.setPersistentClass( ownerBinding );
+		join.setOptional( true );
+		join.setInverse( false );
+		ownerBinding.addJoin( join );
+
+		final IdentifierBinding ownerIdentifierBinding = bindingState.getIdentifierBinding( ownerType.getHierarchy().getRoot() );
+		if ( ownerIdentifierBinding == null ) {
+			throw new MappingException(
+					"Could not resolve identifier binding for to-one association table owner - "
+							+ ownerType.getClassDetails().getClassName()
+			);
+		}
+		final List<JoinColumn> joinColumns = listJoinColumns( joinTable.joinColumns() );
+		if ( !joinColumns.isEmpty() && joinColumns.size() != ownerIdentifierBinding.columns().size() ) {
+			throw new MappingException(
+					"Association table join column count did not match owner identifier column count - "
+							+ ownerType.getClassDetails().getClassName()
+			);
+		}
+		bindingState.addAssociationTableBinding( new AssociationTableBinding( join, joinColumns ) );
+		return associationTable;
+	}
+
 	private static Table resolveAssociationTable(
 			MemberDetails member,
 			AssociationOverride associationOverride,
 			Table primaryTable,
-		BindingState bindingState) {
+			BindingState bindingState) {
 		final List<JoinColumn> joinColumns = resolveJoinColumns( member, associationOverride );
 		final String tableName = resolveJoinTableName( joinColumns, primaryTable );
 		if ( StringHelper.isEmpty( tableName ) ) {
@@ -223,6 +309,16 @@ class ToOneAttributeBinder {
 		return primaryTable.getName().equals( tableName ) ? null : tableName;
 	}
 
+	private static List<JoinColumn> resolveValueJoinColumns(
+			MemberDetails member,
+			AssociationOverride associationOverride,
+			JoinTable joinTable) {
+		if ( joinTable != null ) {
+			return listJoinColumns( joinTable.inverseJoinColumns() );
+		}
+		return resolveJoinColumns( member, associationOverride );
+	}
+
 	static List<JoinColumn> resolveJoinColumns(
 			MemberDetails member,
 			AssociationOverride associationOverride) {
@@ -245,6 +341,31 @@ class ToOneAttributeBinder {
 
 		final JoinColumn joinColumnAnn = member.getDirectAnnotationUsage( JoinColumn.class );
 		return joinColumnAnn == null ? List.of() : List.of( joinColumnAnn );
+	}
+
+	private static JoinTable resolveJoinTable(MemberDetails member, AssociationOverride associationOverride) {
+		if ( associationOverride != null && isSpecified( associationOverride.joinTable() ) ) {
+			return associationOverride.joinTable();
+		}
+		return member.getDirectAnnotationUsage( JoinTable.class );
+	}
+
+	private static boolean isSpecified(JoinTable joinTable) {
+		return joinTable != null
+				&& ( StringHelper.isNotEmpty( joinTable.name() )
+						|| joinTable.joinColumns().length > 0
+						|| joinTable.inverseJoinColumns().length > 0 );
+	}
+
+	private static List<JoinColumn> listJoinColumns(JoinColumn[] joinColumns) {
+		if ( joinColumns.length == 0 ) {
+			return List.of();
+		}
+		final ArrayList<JoinColumn> result = new ArrayList<>( joinColumns.length );
+		for ( JoinColumn joinColumn : joinColumns ) {
+			result.add( joinColumn );
+		}
+		return result;
 	}
 
 	private static TargetEntityBinding resolveTargetEntityBinding(

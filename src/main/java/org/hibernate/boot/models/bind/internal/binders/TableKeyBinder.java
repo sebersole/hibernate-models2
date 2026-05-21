@@ -4,6 +4,7 @@
  */
 package org.hibernate.boot.models.bind.internal.binders;
 
+import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.mapping.Column;
@@ -45,7 +46,10 @@ public class TableKeyBinder {
 
 	private void bindSecondaryTableKey(Join join) {
 		final IdentifierBinding rootIdentifierBinding = resolveIdentifierBinding();
-		final DependantValue key = createDependentKeyValue( join.getTable(), rootIdentifierBinding );
+		final AssociationTableBinding associationTableBinding = bindingState.getAssociationTableBinding( join );
+		final DependantValue key = associationTableBinding == null
+				? createDependentKeyValue( join.getTable(), rootIdentifierBinding )
+				: createDependentKeyValue( join.getTable(), rootIdentifierBinding, associationTableBinding );
 		join.setKey( key );
 		join.createPrimaryKey();
 		if ( !join.isInverse() ) {
@@ -76,6 +80,35 @@ public class TableKeyBinder {
 		return key;
 	}
 
+	private DependantValue createDependentKeyValue(
+			Table table,
+			IdentifierBinding identifierBinding,
+			AssociationTableBinding associationTableBinding) {
+		final DependantValue key = new DependantValue(
+				bindingState.getMetadataBuildingContext(),
+				table,
+				identifierBinding.value()
+		);
+		key.setNullable( false );
+		key.setUpdateable( false );
+
+		final var orderedJoinColumns = ToOneAttributeBinder.orderJoinColumns(
+				associationTableBinding.joinColumns(),
+				identifierBinding.columns(),
+				entityBinder.getManagedType().getClassDetails().getClassName(),
+				associationTableBinding.join().getTable().getName()
+		);
+		for ( int i = 0; i < identifierBinding.columns().size(); i++ ) {
+			final Column identifierColumn = identifierBinding.columns().get( i );
+			key.addColumn(
+					bindKeyColumn( identifierColumn, orderedJoinColumns.isEmpty() ? null : orderedJoinColumns.get( i ) ),
+					true,
+					false
+			);
+		}
+		return key;
+	}
+
 	private Column copyKeyColumn(Column source) {
 		// todo : is this enough detail?
 		final Column result = new Column( source.getName() );
@@ -85,6 +118,17 @@ public class TableKeyBinder {
 		result.setSqlType( source.getSqlType() );
 		result.setNullable( false );
 		result.setUnique( source.isUnique() );
+		return result;
+	}
+
+	private Column bindKeyColumn(Column identifierColumn, jakarta.persistence.JoinColumn joinColumn) {
+		final Column result = ColumnBinder.bindColumn(
+				ColumnSource.from( joinColumn ),
+				identifierColumn::getName,
+				false,
+				false
+		);
+		result.setNullable( false );
 		return result;
 	}
 

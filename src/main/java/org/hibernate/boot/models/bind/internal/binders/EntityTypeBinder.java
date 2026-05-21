@@ -90,10 +90,11 @@ import static org.hibernate.internal.util.StringHelper.coalesce;
 /// 5. {@link #bindEntityMetadata()} - bind entity-level metadata such as caching,
 /// filters, and callbacks.
 /// 6. {@link #bindIdentifier()} - bind the root identifier shape for the hierarchy.
-/// 7. {@link #bindTableKeys()} - bind joined-subclass and secondary-table keys
-/// that depend on the root identifier shape.
-/// 8. {@link #bindMembers()} - bind the remaining currently coarse member phase:
+/// 7. {@link #bindMembers()} - bind the remaining currently coarse member phase:
 /// discriminator, version, tenant id, and persistent attributes.
+/// 8. {@link #bindTableKeys()} - bind joined-subclass, secondary-table, and
+/// association-table keys that depend on the root identifier shape and on joins
+/// discovered while binding members.
 ///
 /// The implemented {@link TypeBindingPhase} contracts identify which phases this
 /// binder participates in.  The coordinator owns the ordering while this class
@@ -240,9 +241,10 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 
 	/// Bind table keys that depend on a completed root identifier shape.
 	///
-	/// Joined-subclass tables and secondary tables use dependent key values that
-	/// wrap the root identifier.  Keeping this in its own phase lets table shells be
-	/// created before identifiers while still avoiding constructor-time key binding.
+	/// Joined-subclass tables, secondary tables, and association tables use dependent
+	/// key values that wrap the root identifier.  Keeping this in its own phase lets
+	/// table and member binding create table shells before the dependent keys are
+	/// resolved.
 	public void bindTableKeys() {
 		new TableKeyBinder( this ).bindTableKeys();
 	}
@@ -250,7 +252,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 	/// Bind discriminator, version, tenant id, and persistent attributes.
 	///
 	/// This is still a coarse phase today.  Later refactoring steps are expected to
-	/// split table keys, foreign keys, and attributes into more focused phases.
+	/// split foreign keys and attributes into more focused phases.
 	public void bindMembers() {
 		prepareBinding( modelBinders );
 	}
