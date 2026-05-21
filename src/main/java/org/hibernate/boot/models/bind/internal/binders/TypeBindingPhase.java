@@ -35,9 +35,11 @@ public interface TypeBindingPhase {
 		void bindIdentifier();
 	}
 
-	/// Bind table keys that depend on the completed root identifier shape.
+	/// Bind table keys that depend on the completed root identifier shape and
+	/// table-valued members.
 	///
-	/// Examples include joined-subclass table keys and secondary-table join keys.
+	/// Examples include joined-subclass table keys, secondary-table join keys,
+	/// and association-table join keys.
 	interface TableKeys {
 		void bindTableKeys();
 	}

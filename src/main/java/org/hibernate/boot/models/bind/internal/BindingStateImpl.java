@@ -11,6 +11,7 @@ import java.util.function.BiConsumer;
 
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.relational.Database;
+import org.hibernate.boot.models.bind.internal.binders.AssociationTableBinding;
 import org.hibernate.boot.models.bind.internal.binders.EntityTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.IdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifiableTypeBinder;
@@ -29,6 +30,7 @@ import org.hibernate.engine.spi.FilterDefinition;
 import org.hibernate.internal.util.KeyedConsumer;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.mapping.JdbcMapping;
+import org.hibernate.mapping.Join;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.type.spi.TypeConfiguration;
 
@@ -43,6 +45,7 @@ public class BindingStateImpl implements BindingState {
 
 	private final Map<String, TableReference> tableMap = new HashMap<>();
 	private final Map<TableOwner, TableReference> tableByOwnerMap = new HashMap<>();
+	private final Map<Join, AssociationTableBinding> associationTableBindings = new HashMap<>();
 
 	private final Map<ClassDetails, ManagedTypeBinder> typeBinders = new HashMap<>();
 	private final Map<ClassDetails, IdentifiableTypeBinder> typeBindersBySuper = new HashMap<>();
@@ -150,6 +153,16 @@ public class BindingStateImpl implements BindingState {
 	@Override
 	public void addSecondaryTable(SecondaryTable table) {
 		tableMap.put( table.logicalName().getCanonicalName(), table );
+	}
+
+	@Override
+	public void addAssociationTableBinding(AssociationTableBinding associationTableBinding) {
+		associationTableBindings.put( associationTableBinding.join(), associationTableBinding );
+	}
+
+	@Override
+	public AssociationTableBinding getAssociationTableBinding(Join join) {
+		return associationTableBindings.get( join );
 	}
 
 	private String resolveSchemaName(Identifier explicit) {

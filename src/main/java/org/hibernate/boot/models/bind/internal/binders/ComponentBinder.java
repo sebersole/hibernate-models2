@@ -93,12 +93,15 @@ class ComponentBinder {
 				final Property property = new Property();
 				property.setName( attributeName );
 				final var manyToOne = ToOneAttributeBinder.bindToOne(
+						null,
+						null,
 						componentType.getClassName(),
 						attributeName,
 						member,
 						property,
 						table,
 						associationOverrideResolver.apply( memberPath, member ),
+						options,
 						state,
 						context
 				);
