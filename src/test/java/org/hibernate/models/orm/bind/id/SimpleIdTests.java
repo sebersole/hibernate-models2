@@ -22,11 +22,8 @@ import org.hibernate.testing.orm.junit.ServiceRegistryScope;
 import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.EmbeddedId;
-import jakarta.persistence.Embeddable;
-import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.InheritanceType;
-import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -91,16 +88,23 @@ public class SimpleIdTests {
 	void testAggregatedIdBinding(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
-						final RootClass entityBinding = (RootClass) context.getMetadataCollector()
-								.getEntityBinding( AggregatedIdOnlyEntity.class.getName() );
+					final RootClass entityBinding = (RootClass) context.getMetadataCollector()
+							.getEntityBinding( AggregatedIdEntity.class.getName() );
 					assertThat( entityBinding.getIdentifier() ).isInstanceOf( Component.class );
 					assertThat( entityBinding.hasEmbeddedIdentifier() ).isTrue();
 					assertThat( entityBinding.getTable().getPrimaryKey().getColumns() )
 							.extracting( org.hibernate.mapping.Column::getName )
 							.containsExactly( "id1", "id2" );
+
+					final org.hibernate.mapping.Property naturalId = entityBinding.getProperty( "naturalId" );
+					assertThat( naturalId.isNaturalIdentifier() ).isTrue();
+					assertThat( naturalId.getValue() ).isInstanceOf( Component.class );
+					assertThat( ( (Component) naturalId.getValue() ).getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "key1", "key2" );
 				},
 				scope.getRegistry(),
-				AggregatedIdOnlyEntity.class
+				AggregatedIdEntity.class
 		);
 	}
 
@@ -152,16 +156,4 @@ public class SimpleIdTests {
 		);
 	}
 
-	@Entity
-	@Table(name = "agg_id_only_entities")
-	public static class AggregatedIdOnlyEntity {
-		@EmbeddedId
-		private Pk id;
-
-		@Embeddable
-		public static class Pk {
-			private Integer id1;
-			private Integer id2;
-		}
-	}
 }

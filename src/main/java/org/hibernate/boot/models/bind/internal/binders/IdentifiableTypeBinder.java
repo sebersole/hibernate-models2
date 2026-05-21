@@ -100,6 +100,7 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 
 			final var attributeBinder = new AttributeBinder(
 					managedType,
+					getTypeBinding() instanceof PersistentClass persistentClass ? persistentClass : null,
 					attributeMetadata,
 					primaryTable,
 					getBindingState(),
