@@ -120,16 +120,22 @@ class ToOneAttributeBinder {
 		final List<JoinColumn> joinColumnAnns = resolveJoinColumns( member, associationOverride );
 		final List<Column> targetColumns = target.identifierColumns();
 
-		if ( joinColumnAnns.size() > 1 && joinColumnAnns.size() != targetColumns.size() ) {
+		if ( !joinColumnAnns.isEmpty() && joinColumnAnns.size() != targetColumns.size() ) {
 			throw new MappingException(
 					"Composite to-one join column count did not match target identifier column count - "
 							+ ownerClassName + "." + propertyName
 			);
 		}
 
+		final List<JoinColumn> orderedJoinColumns = orderJoinColumns(
+				joinColumnAnns,
+				targetColumns,
+				ownerClassName,
+				propertyName
+		);
 		for ( int i = 0; i < targetColumns.size(); i++ ) {
 			final Column targetColumn = targetColumns.get( i );
-			final JoinColumn joinColumnAnn = joinColumnAnns.isEmpty() ? null : joinColumnAnns.get( i );
+			final JoinColumn joinColumnAnn = orderedJoinColumns.isEmpty() ? null : orderedJoinColumns.get( i );
 			final Column column = ColumnBinder.bindColumn(
 					ColumnSource.from( joinColumnAnn ),
 					() -> propertyName + "_" + targetColumn.getName(),
@@ -146,19 +152,75 @@ class ToOneAttributeBinder {
 		}
 	}
 
+	private static List<JoinColumn> orderJoinColumns(
+			List<JoinColumn> joinColumns,
+			List<Column> targetColumns,
+			String ownerClassName,
+			String propertyName) {
+		if ( joinColumns.isEmpty() || joinColumns.stream().noneMatch( (joinColumn) -> StringHelper.isNotEmpty( joinColumn.referencedColumnName() ) ) ) {
+			return joinColumns;
+		}
+
+		final ArrayList<JoinColumn> orderedJoinColumns = new ArrayList<>( targetColumns.size() );
+		final ArrayList<JoinColumn> unmatchedJoinColumns = new ArrayList<>( joinColumns );
+		for ( Column targetColumn : targetColumns ) {
+			final JoinColumn joinColumn = findJoinColumn(
+					targetColumn,
+					unmatchedJoinColumns,
+					ownerClassName,
+					propertyName
+			);
+			orderedJoinColumns.add( joinColumn );
+			unmatchedJoinColumns.remove( joinColumn );
+		}
+		return orderedJoinColumns;
+	}
+
+	private static JoinColumn findJoinColumn(
+			Column targetColumn,
+			List<JoinColumn> joinColumns,
+			String ownerClassName,
+			String propertyName) {
+		for ( JoinColumn joinColumn : joinColumns ) {
+			if ( targetColumn.getName().equals( joinColumn.referencedColumnName() ) ) {
+				return joinColumn;
+			}
+		}
+
+		throw new MappingException(
+				"Unable to match join column referencedColumnName to target identifier column `"
+						+ targetColumn.getName() + "` - " + ownerClassName + "." + propertyName
+		);
+	}
+
 	private static Table resolveAssociationTable(
 			MemberDetails member,
 			AssociationOverride associationOverride,
 			Table primaryTable,
-			BindingState bindingState) {
-		final JoinColumn joinColumn = resolveFirstJoinColumn( member, associationOverride );
-		if ( joinColumn == null || StringHelper.isEmpty( joinColumn.table() ) ) {
+		BindingState bindingState) {
+		final List<JoinColumn> joinColumns = resolveJoinColumns( member, associationOverride );
+		final String tableName = resolveJoinTableName( joinColumns, primaryTable );
+		if ( StringHelper.isEmpty( tableName ) ) {
 			return primaryTable;
 		}
 
-		final Identifier identifier = Identifier.toIdentifier( joinColumn.table() );
+		final Identifier identifier = Identifier.toIdentifier( tableName );
 		final TableReference tableByName = bindingState.getTableByName( identifier.getCanonicalName() );
 		return tableByName.binding();
+	}
+
+	private static String resolveJoinTableName(List<JoinColumn> joinColumns, Table primaryTable) {
+		String tableName = null;
+		for ( JoinColumn joinColumn : joinColumns ) {
+			final String joinColumnTableName = StringHelper.isEmpty( joinColumn.table() )
+					? primaryTable.getName()
+					: joinColumn.table();
+			if ( tableName != null && !tableName.equals( joinColumnTableName ) ) {
+				throw new MappingException( "To-one join columns cannot span multiple tables" );
+			}
+			tableName = joinColumnTableName;
+		}
+		return primaryTable.getName().equals( tableName ) ? null : tableName;
 	}
 
 	static List<JoinColumn> resolveJoinColumns(
@@ -183,13 +245,6 @@ class ToOneAttributeBinder {
 
 		final JoinColumn joinColumnAnn = member.getDirectAnnotationUsage( JoinColumn.class );
 		return joinColumnAnn == null ? List.of() : List.of( joinColumnAnn );
-	}
-
-	private static JoinColumn resolveFirstJoinColumn(
-			MemberDetails member,
-			AssociationOverride associationOverride) {
-		final List<JoinColumn> joinColumns = resolveJoinColumns( member, associationOverride );
-		return joinColumns.isEmpty() ? null : joinColumns.get( 0 );
 	}
 
 	private static TargetEntityBinding resolveTargetEntityBinding(

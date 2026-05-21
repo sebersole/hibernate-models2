@@ -4,6 +4,7 @@
  */
 package org.hibernate.models.orm.bind.associations;
 
+import org.hibernate.MappingException;
 import org.hibernate.mapping.ManyToOne;
 import org.hibernate.mapping.PersistentClass;
 
@@ -16,10 +17,13 @@ import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinColumns;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.SecondaryTable;
 import jakarta.persistence.Table;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hibernate.models.orm.bind.BindingTestingHelper.checkDomainModel;
 
 /**
@@ -98,6 +102,39 @@ public class ToOneAssociationTests {
 		);
 	}
 
+	@Test
+	@ServiceRegistry
+	void testCompositeManyToOneWithReferencedColumnNames(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ExplicitCompositeManyToOneOwner.class.getName() );
+					final org.hibernate.mapping.Property property = entityBinding.getProperty( "parent" );
+					final ManyToOne value = (ManyToOne) property.getValue();
+
+					assertThat( value.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_fk1", "parent_fk2" );
+				},
+				scope.getRegistry(),
+				CompositeParent.class,
+				ExplicitCompositeManyToOneOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testMixedJoinColumnTables(ServiceRegistryScope scope) {
+		assertThatThrownBy( () -> checkDomainModel(
+				(context) -> {
+				},
+				scope.getRegistry(),
+				CompositeParent.class,
+				MixedJoinColumnTablesOwner.class
+		) ).isInstanceOf( MappingException.class )
+				.hasMessageContaining( "To-one join columns cannot span multiple tables" );
+	}
+
 	@Entity(name="Parent")
 	@Table(name="parents")
 	public static class Parent {
@@ -139,6 +176,33 @@ public class ToOneAssociationTests {
 		@Id
 		private Integer id;
 		@jakarta.persistence.ManyToOne
+		private CompositeParent parent;
+	}
+
+	@Entity(name="ExplicitCompositeManyToOneOwner")
+	@Table(name="explicit_composite_many_to_one_owners")
+	public static class ExplicitCompositeManyToOneOwner {
+		@Id
+		private Integer id;
+		@jakarta.persistence.ManyToOne
+		@JoinColumns({
+				@JoinColumn(name = "parent_fk2", referencedColumnName = "id2"),
+				@JoinColumn(name = "parent_fk1", referencedColumnName = "id1")
+		})
+		private CompositeParent parent;
+	}
+
+	@Entity(name="MixedJoinColumnTablesOwner")
+	@Table(name="mixed_join_column_tables")
+	@SecondaryTable(name="mixed_join_column_tables_details")
+	public static class MixedJoinColumnTablesOwner {
+		@Id
+		private Integer id;
+		@jakarta.persistence.ManyToOne
+		@JoinColumns({
+				@JoinColumn(name = "parent_fk1", referencedColumnName = "id1"),
+				@JoinColumn(name = "parent_fk2", referencedColumnName = "id2", table = "mixed_join_column_tables_details")
+		})
 		private CompositeParent parent;
 	}
 
