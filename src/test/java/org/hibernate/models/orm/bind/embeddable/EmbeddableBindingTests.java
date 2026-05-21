@@ -7,12 +7,14 @@ package org.hibernate.models.orm.bind.embeddable;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.Join;
+import org.hibernate.mapping.ManyToOne;
 import org.hibernate.mapping.PersistentClass;
 
 import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.ServiceRegistryScope;
 import org.junit.jupiter.api.Test;
 
+import jakarta.persistence.AssociationOverride;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
@@ -21,6 +23,7 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.SecondaryTable;
 import jakarta.persistence.Table;
 
@@ -191,6 +194,49 @@ public class EmbeddableBindingTests {
 		);
 	}
 
+	@Test
+	@ServiceRegistry
+	void testEmbeddedManyToOne(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( EmbeddedAssociationEntity.class.getName() );
+					final Component address = (Component) entityBinding.getProperty( "address" ).getValue();
+					final ManyToOne country = (ManyToOne) address.getProperty( "country" ).getValue();
+
+					assertThat( country.getReferencedEntityName() ).isEqualTo( Country.class.getName() );
+					assertThat( country.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "country_id" );
+				},
+				scope.getRegistry(),
+				Country.class,
+				EmbeddedAssociationEntity.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testNestedAssociationOverride(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( NestedAssociationOverrideEntity.class.getName() );
+					final Component address = (Component) entityBinding.getProperty( "address" ).getValue();
+					final Component location = (Component) address.getProperty( "location" ).getValue();
+					final ManyToOne country = (ManyToOne) location.getProperty( "country" ).getValue();
+
+					assertThat( country.getReferencedEntityName() ).isEqualTo( Country.class.getName() );
+					assertThat( country.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "home_country_id" );
+				},
+				scope.getRegistry(),
+				Country.class,
+				NestedAssociationOverrideEntity.class
+		);
+	}
+
 	@Entity(name="ExplicitEmbeddedEntity")
 	@Table(name="explicit_embedded")
 	public static class ExplicitEmbeddedEntity {
@@ -261,6 +307,33 @@ public class EmbeddableBindingTests {
 		private AddressWithConvertedLocation address;
 	}
 
+	@Entity(name="EmbeddedAssociationEntity")
+	@Table(name="embedded_association")
+	public static class EmbeddedAssociationEntity {
+		@Id
+		private Integer id;
+		@Embedded
+		private AddressWithCountry address;
+	}
+
+	@Entity(name="NestedAssociationOverrideEntity")
+	@Table(name="nested_association_override")
+	public static class NestedAssociationOverrideEntity {
+		@Id
+		private Integer id;
+		@Embedded
+		@AssociationOverride(name = "location.country", joinColumns = @JoinColumn(name = "home_country_id"))
+		private AddressWithAssociationLocation address;
+	}
+
+	@Entity(name="Country")
+	@Table(name="countries")
+	public static class Country {
+		@Id
+		private Integer id;
+		private String name;
+	}
+
 	@Embeddable
 	public static class Address {
 		private String line1;
@@ -292,6 +365,26 @@ public class EmbeddableBindingTests {
 		private String city;
 		@Convert(converter = CountryConverter.class)
 		private String country;
+	}
+
+	@Embeddable
+	public static class AddressWithCountry {
+		private String line1;
+		@jakarta.persistence.ManyToOne
+		private Country country;
+	}
+
+	@Embeddable
+	public static class AddressWithAssociationLocation {
+		private String line1;
+		private AssociationLocation location;
+	}
+
+	@Embeddable
+	public static class AssociationLocation {
+		private String city;
+		@jakarta.persistence.ManyToOne
+		private Country country;
 	}
 
 	public static class CityConverter implements AttributeConverter<String, String> {
