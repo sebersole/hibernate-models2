@@ -6,16 +6,17 @@
  */
 package org.hibernate.boot.models.categorize.internal;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
+import jakarta.persistence.Access;
+import jakarta.persistence.AccessType;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.hibernate.boot.models.JpaAnnotations;
-import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
-import org.hibernate.boot.models.categorize.spi.CategorizationContext;
-import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.boot.models.AccessTypeDeterminationException;
+import org.hibernate.boot.models.JpaAnnotations;
+import org.hibernate.boot.models.categorize.spi.CategorizationContext;
+import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
+import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.models.spi.AnnotationTarget;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.ClassDetailsRegistry;
@@ -23,11 +24,8 @@ import org.hibernate.models.spi.FieldDetails;
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.models.spi.MethodDetails;
 
-import jakarta.persistence.Access;
-import jakarta.persistence.AccessType;
-import jakarta.persistence.EmbeddedId;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Builds {@link EntityHierarchy} references from
@@ -99,7 +97,7 @@ public class EntityHierarchyBuilder {
 					return AccessType.FIELD;
 				}
 				else if ( inclusiveMember.getKind() == AnnotationTarget.Kind.METHOD
-						  && inclusiveMember.asMethodDetails().getMethodKind() == MethodDetails.MethodKind.GETTER ) {
+						&& inclusiveMember.asMethodDetails().getMethodKind() == MethodDetails.MethodKind.GETTER ) {
 					return AccessType.PROPERTY;
 				}
 				else {
@@ -144,23 +142,6 @@ public class EntityHierarchyBuilder {
 		return null;
 	}
 
-	private Set<ClassDetails> collectRootEntityTypes() {
-		return collectRootEntityTypes( modelContext.getClassDetailsRegistry() );
-	}
-
-	private static Set<ClassDetails> collectRootEntityTypes(ClassDetailsRegistry classDetailsRegistry) {
-		final Set<ClassDetails> collectedTypes = new HashSet<>();
-
-		classDetailsRegistry.forEachClassDetails( (managedType) -> {
-			if ( managedType.hasDirectAnnotationUsage( Entity.class )
-					&& isRoot( managedType ) ) {
-				collectedTypes.add( managedType );
-			}
-		} );
-
-		return collectedTypes;
-	}
-
 	public static boolean isRoot(ClassDetails classInfo) {
 		// perform a series of opt-out checks against the super-type hierarchy
 
@@ -173,7 +154,7 @@ public class EntityHierarchyBuilder {
 		}
 
 		ClassDetails current = classInfo.getSuperClass();
-		while (  current != null ) {
+		while ( current != null ) {
 			if ( current.hasDirectAnnotationUsage( Entity.class ) ) {
 				// a super type has `@Entity`, cannot be root
 				return false;

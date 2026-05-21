@@ -91,7 +91,7 @@ public class CategorizationHelper {
 
 		// for now, do the legacy bit and just look for @Id and @EmbeddedId
 		return memberDetails.hasDirectAnnotationUsage( Id.class )
-			   || memberDetails.hasDirectAnnotationUsage( EmbeddedId.class );
+				|| memberDetails.hasDirectAnnotationUsage( EmbeddedId.class );
 	}
 
 	/// Determine the attribute's nature - is it a basic mapping, an embeddable, ...?
@@ -106,7 +106,7 @@ public class CategorizationHelper {
 
 		final Any any = backingMember.getDirectAnnotationUsage( HibernateAnnotations.ANY );
 		final Basic basic = backingMember.getDirectAnnotationUsage( JpaAnnotations.BASIC );
-		final ElementCollection elementCollection = backingMember.getDirectAnnotationUsage( JpaAnnotations.ELEMENT_COLLECTION );
+		final ElementCollection elementCollection = backingMember.getDirectAnnotationUsage(	JpaAnnotations.ELEMENT_COLLECTION );
 		final Embedded embedded = backingMember.getDirectAnnotationUsage( JpaAnnotations.EMBEDDED );
 		final EmbeddedId embeddedId = backingMember.getDirectAnnotationUsage( JpaAnnotations.EMBEDDED_ID );
 		final ManyToAny manyToAny = backingMember.getDirectAnnotationUsage( HibernateAnnotations.MANY_TO_ANY );
@@ -120,8 +120,8 @@ public class CategorizationHelper {
 		}
 
 		if ( embedded != null
-			 || embeddedId != null
-			 || ( memberType != null && memberType.determineRawClass().hasDirectAnnotationUsage( Embeddable.class ) ) ) {
+				|| embeddedId != null
+				|| (memberType != null && memberType.determineRawClass().hasDirectAnnotationUsage( Embeddable.class )) ) {
 			natures.add( AttributeNature.EMBEDDED );
 		}
 
@@ -130,7 +130,7 @@ public class CategorizationHelper {
 		}
 
 		if ( oneToOne != null
-			 || manyToOne != null ) {
+				|| manyToOne != null ) {
 			natures.add( AttributeNature.TO_ONE );
 		}
 
@@ -162,36 +162,36 @@ public class CategorizationHelper {
 		if ( !plural ) {
 			// first implicit basic nature
 			if ( backingMember.hasDirectAnnotationUsage( Temporal.class )
-				 || backingMember.hasDirectAnnotationUsage( Lob.class )
-				 || backingMember.hasDirectAnnotationUsage( Enumerated.class )
-				 || backingMember.hasDirectAnnotationUsage( Convert.class )
-				 || backingMember.hasDirectAnnotationUsage( Version.class )
-				 || backingMember.hasDirectAnnotationUsage( Generated.class )
-				 || backingMember.hasDirectAnnotationUsage( Nationalized.class )
-				 || backingMember.hasDirectAnnotationUsage( TimeZoneColumn.class )
-				 || backingMember.hasDirectAnnotationUsage( TimeZoneStorage.class )
-				 || backingMember.hasDirectAnnotationUsage( Type.class )
-				 || backingMember.hasDirectAnnotationUsage( TenantId.class )
-				 || backingMember.hasDirectAnnotationUsage( JavaType.class )
-				 || backingMember.hasDirectAnnotationUsage( JdbcTypeCode.class )
-				 || backingMember.hasDirectAnnotationUsage( JdbcType.class ) ) {
+					|| backingMember.hasDirectAnnotationUsage( Lob.class )
+					|| backingMember.hasDirectAnnotationUsage( Enumerated.class )
+					|| backingMember.hasDirectAnnotationUsage( Convert.class )
+					|| backingMember.hasDirectAnnotationUsage( Version.class )
+					|| backingMember.hasDirectAnnotationUsage( Generated.class )
+					|| backingMember.hasDirectAnnotationUsage( Nationalized.class )
+					|| backingMember.hasDirectAnnotationUsage( TimeZoneColumn.class )
+					|| backingMember.hasDirectAnnotationUsage( TimeZoneStorage.class )
+					|| backingMember.hasDirectAnnotationUsage( Type.class )
+					|| backingMember.hasDirectAnnotationUsage( TenantId.class )
+					|| backingMember.hasDirectAnnotationUsage( JavaType.class )
+					|| backingMember.hasDirectAnnotationUsage( JdbcTypeCode.class )
+					|| backingMember.hasDirectAnnotationUsage( JdbcType.class ) ) {
 				natures.add( AttributeNature.BASIC );
 			}
 
 			// then embedded
 			if ( backingMember.hasDirectAnnotationUsage( EmbeddableInstantiator.class )
-				 || backingMember.hasDirectAnnotationUsage( CompositeType.class ) ) {
+					|| backingMember.hasDirectAnnotationUsage( CompositeType.class ) ) {
 				natures.add( AttributeNature.EMBEDDED );
 			}
 
 			// and any
 			if ( backingMember.hasDirectAnnotationUsage( AnyDiscriminator.class )
-				 || backingMember.hasDirectAnnotationUsage( AnyDiscriminatorValue.class )
-				 || backingMember.hasDirectAnnotationUsage( AnyDiscriminatorValues.class )
-				 || backingMember.hasDirectAnnotationUsage( AnyKeyJavaType.class )
-				 || backingMember.hasDirectAnnotationUsage( AnyKeyJavaClass.class )
-				 || backingMember.hasDirectAnnotationUsage( AnyKeyJdbcTypeCode.class )
-				 || backingMember.hasDirectAnnotationUsage( AnyKeyJdbcType.class ) ) {
+					|| backingMember.hasDirectAnnotationUsage( AnyDiscriminatorValue.class )
+					|| backingMember.hasDirectAnnotationUsage( AnyDiscriminatorValues.class )
+					|| backingMember.hasDirectAnnotationUsage( AnyKeyJavaType.class )
+					|| backingMember.hasDirectAnnotationUsage( AnyKeyJavaClass.class )
+					|| backingMember.hasDirectAnnotationUsage( AnyKeyJdbcTypeCode.class )
+					|| backingMember.hasDirectAnnotationUsage( AnyKeyJdbcType.class ) ) {
 				natures.add( AttributeNature.ANY );
 			}
 		}
