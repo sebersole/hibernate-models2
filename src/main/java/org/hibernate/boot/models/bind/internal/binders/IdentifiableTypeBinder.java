@@ -20,6 +20,9 @@ import org.hibernate.mapping.Join;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Table;
 
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Id;
+
 /**
  * @author Steve Ebersole
  */
@@ -90,6 +93,8 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 
 		managedType.forEachAttribute( (index, attributeMetadata) -> {
 			if ( managedType.getHierarchy().getIdMapping().contains( attributeMetadata )
+					|| attributeMetadata.getMember().hasDirectAnnotationUsage( Id.class )
+					|| attributeMetadata.getMember().hasDirectAnnotationUsage( EmbeddedId.class )
 					|| managedType.getHierarchy().getVersionAttribute() == attributeMetadata
 					|| managedType.getHierarchy().getTenantIdAttribute() == attributeMetadata ) {
 				return;
