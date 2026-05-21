@@ -106,7 +106,8 @@ class ToOneAttributeBinder {
 						ownerBinding,
 						joinTable,
 						bindingOptions,
-						bindingState
+						bindingState,
+						bindingContext
 				);
 
 		final ManyToOne value = new ManyToOne(
@@ -228,14 +229,21 @@ class ToOneAttributeBinder {
 			PersistentClass ownerBinding,
 			JoinTable joinTable,
 			BindingOptions bindingOptions,
-			BindingState bindingState) {
+			BindingState bindingState,
+			BindingContext bindingContext) {
 		if ( ownerBinding == null ) {
-			throw new UnsupportedOperationException( "To-one @JoinTable inside embeddables is not yet implemented" );
+			throw new UnsupportedOperationException( "To-one @JoinTable requires an owning PersistentClass" );
 		}
 		if ( StringHelper.isEmpty( joinTable.name() ) ) {
+			// todo: implement implicit to-one association-table naming using the configured
+			//  ImplicitNamingStrategy from BindingContext#getBootstrapContext(), with the
+			//  MetadataBuildingContext from BindingState for the naming source.
 			throw new UnsupportedOperationException( "Implicit to-one @JoinTable names are not yet implemented" );
 		}
 
+		// todo: route explicit catalog/schema/table names through BindingHelper so
+		//  global quoting and the configured JdbcEnvironment are applied consistently.
+		implicitNamingStrategy( bindingContext );
 		final Identifier logicalName = Identifier.toIdentifier( joinTable.name() );
 		final Identifier schemaName = StringHelper.isEmpty( joinTable.schema() )
 				? bindingOptions.getDefaultSchemaName()
@@ -277,6 +285,12 @@ class ToOneAttributeBinder {
 		}
 		bindingState.addAssociationTableBinding( new AssociationTableBinding( join, joinColumns ) );
 		return associationTable;
+	}
+
+	private static org.hibernate.boot.model.naming.ImplicitNamingStrategy implicitNamingStrategy(BindingContext bindingContext) {
+		return bindingContext.getBootstrapContext()
+				.getMetadataBuildingOptions()
+				.getImplicitNamingStrategy();
 	}
 
 	private static Table resolveAssociationTable(
