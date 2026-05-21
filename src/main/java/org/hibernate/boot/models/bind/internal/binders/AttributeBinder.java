@@ -23,6 +23,7 @@ import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.boot.models.bind.spi.TableReference;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
+import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Property;
@@ -36,6 +37,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 
 import static org.hibernate.boot.models.AttributeNature.BASIC;
+import static org.hibernate.boot.models.AttributeNature.TO_ONE;
 
 /**
  * @author Steve Ebersole
@@ -52,6 +54,7 @@ public class AttributeBinder {
 	private List<ValueSecondPass> valueSecondPasses;
 
 	public AttributeBinder(
+			IdentifiableTypeMetadata ownerType,
 			AttributeMetadata attributeMetadata,
 			Table primaryTable,
 			BindingState bindingState,
@@ -69,6 +72,18 @@ public class AttributeBinder {
 			final var basicValue = createBasicValue( primaryTable );
 			binding.setValue( basicValue );
 			attributeTable = basicValue.getTable();
+		}
+		else if ( attributeMetadata.getNature() == TO_ONE ) {
+			final var toOneValue = new ToOneAttributeBinder(
+					ownerType,
+					attributeMetadata,
+					primaryTable,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			).bind( binding );
+			binding.setValue( toOneValue );
+			attributeTable = toOneValue.getTable();
 		}
 		else {
 			throw new UnsupportedOperationException( "Not yet implemented" );

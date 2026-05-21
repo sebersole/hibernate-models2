@@ -99,6 +99,7 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 			}
 
 			final var attributeBinder = new AttributeBinder(
+					managedType,
 					attributeMetadata,
 					primaryTable,
 					getBindingState(),

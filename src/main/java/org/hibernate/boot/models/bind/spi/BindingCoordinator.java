@@ -96,8 +96,19 @@ public class BindingCoordinator {
 	}
 
 	private void coordinateModelBindings() {
-		// process hierarchy
-		categorizedDomainModel.forEachEntityHierarchy( this::processHierarchy );
+		final List<ManagedTypeBinder> binders = new ArrayList<>();
+		categorizedDomainModel.forEachEntityHierarchy( (index, hierarchy) -> {
+			hierarchy.forEachType( (type, superType, entityHierarchy, relation) -> {
+				binders.add( createIdentifiableTypeBinder( type, superType, entityHierarchy, relation ) );
+			} );
+		} );
+
+		runPhase( binders, TypeBindingPhase.Tables.class, TypeBindingPhase.Tables::bindTables );
+		runPhase( binders, TypeBindingPhase.SuperType.class, TypeBindingPhase.SuperType::bindSuperType );
+		runPhase( binders, TypeBindingPhase.EntityMetadata.class, TypeBindingPhase.EntityMetadata::bindEntityMetadata );
+		runPhase( binders, TypeBindingPhase.Identifiers.class, TypeBindingPhase.Identifiers::bindIdentifier );
+		runPhase( binders, TypeBindingPhase.TableKeys.class, TypeBindingPhase.TableKeys::bindTableKeys );
+		runPhase( binders, TypeBindingPhase.Members.class, TypeBindingPhase.Members::bindMembers );
 
 		// complete tables
 		modelBinders.getTableBinder().processSecondPasses();
@@ -125,20 +136,6 @@ public class BindingCoordinator {
 		processInstantiators( categorizedDomainModel.getGlobalRegistrations() );
 		processEventListeners( categorizedDomainModel.getGlobalRegistrations() );
 		processFilterDefinitions( categorizedDomainModel.getGlobalRegistrations() );
-	}
-
-	private void processHierarchy(int index, EntityHierarchy hierarchy) {
-		final List<ManagedTypeBinder> binders = new ArrayList<>();
-		hierarchy.forEachType( (type, superType, entityHierarchy, relation) -> {
-			binders.add( createIdentifiableTypeBinder( type, superType, entityHierarchy, relation ) );
-		} );
-
-		runPhase( binders, TypeBindingPhase.Tables.class, TypeBindingPhase.Tables::bindTables );
-		runPhase( binders, TypeBindingPhase.SuperType.class, TypeBindingPhase.SuperType::bindSuperType );
-		runPhase( binders, TypeBindingPhase.EntityMetadata.class, TypeBindingPhase.EntityMetadata::bindEntityMetadata );
-		runPhase( binders, TypeBindingPhase.Identifiers.class, TypeBindingPhase.Identifiers::bindIdentifier );
-		runPhase( binders, TypeBindingPhase.TableKeys.class, TypeBindingPhase.TableKeys::bindTableKeys );
-		runPhase( binders, TypeBindingPhase.Members.class, TypeBindingPhase.Members::bindMembers );
 	}
 
 	private <P> void runPhase(List<ManagedTypeBinder> binders, Class<P> phaseType, Consumer<P> phaseAction) {
