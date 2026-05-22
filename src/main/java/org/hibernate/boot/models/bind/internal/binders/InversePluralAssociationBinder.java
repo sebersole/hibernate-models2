@@ -5,7 +5,9 @@
 package org.hibernate.boot.models.bind.internal.binders;
 
 import org.hibernate.MappingException;
+import org.hibernate.boot.models.bind.internal.sources.CollectionSource;
 import org.hibernate.boot.models.bind.spi.BindingState;
+import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.DependantValue;
@@ -15,6 +17,8 @@ import org.hibernate.mapping.OneToMany;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
 import org.hibernate.mapping.Value;
+
+import jakarta.persistence.MapKey;
 
 /// Resolves inverse plural associations from their owning-side mapping objects.
 ///
@@ -84,6 +88,7 @@ class InversePluralAssociationBinder {
 		inverseCollection.setCollectionTable( collectionTable );
 		inverseCollection.setKey( createInverseKey( inverseBinding, collectionTable, owningElement ) );
 		inverseCollection.setElement( createInverseElement( inverseBinding, collectionTable, targetTypeBinder, owningCollection ) );
+		bindInverseIndex( inverseBinding, owningCollection, inverseCollection );
 		inverseCollection.createAllKeys();
 	}
 
@@ -113,6 +118,7 @@ class InversePluralAssociationBinder {
 		inverseCollection.setCollectionTable( collectionTable );
 		inverseCollection.setKey( createInverseKey( inverseBinding, collectionTable, owningToOne ) );
 		inverseCollection.setElement( createOneToManyElement( inverseBinding, targetTypeBinder ) );
+		bindInverseOneToManyIndex( inverseBinding, targetTypeBinder, inverseCollection );
 		inverseCollection.createAllKeys();
 	}
 
@@ -160,6 +166,91 @@ class InversePluralAssociationBinder {
 			element.addColumn( copyColumn( collectionTable, owningKeyColumn, owningKeyColumn.isUnique() ) );
 		}
 		return element;
+	}
+
+	private void bindInverseIndex(
+			InversePluralAssociationBinding inverseBinding,
+			Collection owningCollection,
+			Collection inverseCollection) {
+		if ( !( inverseCollection instanceof org.hibernate.mapping.Map inverseMap ) ) {
+			return;
+		}
+		if ( !( owningCollection instanceof org.hibernate.mapping.Map owningMap ) ) {
+			throw new MappingException(
+					"Inverse map-valued @ManyToMany mappedBy did not name a map-valued owning collection - "
+							+ inverseBinding.ownerType().getClassDetails().getClassName()
+							+ "." + inverseBinding.attributeMetadata().getName()
+			);
+		}
+		if ( owningMap.hasMapKeyProperty() ) {
+			throw new UnsupportedOperationException(
+					"Inverse map-valued @ManyToMany with property-based map keys is not yet implemented - "
+							+ inverseMap.getRole()
+			);
+		}
+		if ( !( owningMap.getIndex() instanceof BasicValue owningIndex ) ) {
+			throw new UnsupportedOperationException(
+					"Inverse map-valued @ManyToMany is only implemented for basic owning map keys - "
+							+ inverseMap.getRole()
+			);
+		}
+
+		inverseMap.setIndex( copyBasicIndex( inverseMap, owningIndex ) );
+		inverseMap.setMapKeyPropertyName( owningMap.getMapKeyPropertyName() );
+		inverseMap.setHasMapKeyProperty( owningMap.hasMapKeyProperty() );
+	}
+
+	private void bindInverseOneToManyIndex(
+			InversePluralAssociationBinding inverseBinding,
+			EntityTypeBinder targetTypeBinder,
+			Collection inverseCollection) {
+		if ( !( inverseCollection instanceof org.hibernate.mapping.Map inverseMap ) ) {
+			return;
+		}
+
+		final CollectionSource source = CollectionSource.oneToMany( inverseBinding.attributeMetadata().getMember() );
+		final MapKey mapKey = source.mapKey();
+		if ( mapKey == null ) {
+			throw new UnsupportedOperationException(
+					"Inverse map-valued @OneToMany is only implemented for property-based map keys - "
+							+ inverseMap.getRole()
+			);
+		}
+		if ( mapKey.name().isEmpty() ) {
+			throw new UnsupportedOperationException(
+					"Inverse map-valued @OneToMany with implicit @MapKey is not yet implemented - "
+							+ inverseMap.getRole()
+			);
+		}
+
+		final Property targetProperty = resolveTargetMapKeyProperty( targetTypeBinder, mapKey.name() );
+		inverseMap.setIndex( CollectionIndexBinder.createPropertyMapKeyValue(
+				inverseMap,
+				targetProperty.getValue(),
+				bindingState
+		) );
+		inverseMap.setMapKeyPropertyName( mapKey.name() );
+		inverseMap.setHasMapKeyProperty( true );
+	}
+
+	private Property resolveTargetMapKeyProperty(EntityTypeBinder targetTypeBinder, String propertyName) {
+		final Property identifierProperty = targetTypeBinder.getTypeBinding().getIdentifierProperty();
+		if ( identifierProperty != null && identifierProperty.getName().equals( propertyName ) ) {
+			return identifierProperty;
+		}
+		return targetTypeBinder.getTypeBinding().getProperty( propertyName );
+	}
+
+	private BasicValue copyBasicIndex(org.hibernate.mapping.Map inverseMap, BasicValue owningIndex) {
+		final BasicValue inverseIndex = new BasicValue(
+				bindingState.getMetadataBuildingContext(),
+				inverseMap.getCollectionTable()
+		);
+		inverseIndex.copyTypeFrom( owningIndex );
+		for ( Column column : owningIndex.getColumns() ) {
+			inverseIndex.addColumn( copyColumn( inverseMap.getCollectionTable(), column, column.isUnique() ) );
+		}
+		return inverseIndex;
 	}
 
 	private OneToMany createOneToManyElement(

@@ -75,10 +75,6 @@ class PluralAssociationAttributeBinder {
 	}
 
 	private Collection bindInverseManyToMany(CollectionSource source, String mappedBy) {
-		if ( source.classification().toJpaClassification() == jakarta.persistence.metamodel.PluralAttribute.CollectionType.MAP ) {
-			throw new UnsupportedOperationException( "Map-valued plural associations are not yet implemented" );
-		}
-
 		final ClassDetails targetClassDetails = resolveTargetClassDetails( source );
 		final Collection collection = createCollection( source );
 		collection.setRole( ownerBinding.getEntityName() + "." + attributeMetadata.getName() );
@@ -102,10 +98,6 @@ class PluralAssociationAttributeBinder {
 	}
 
 	private Collection bindInverseOneToMany(CollectionSource source, String mappedBy) {
-		if ( source.classification().toJpaClassification() == jakarta.persistence.metamodel.PluralAttribute.CollectionType.MAP ) {
-			throw new UnsupportedOperationException( "Map-valued plural associations are not yet implemented" );
-		}
-
 		final ClassDetails targetClassDetails = resolveTargetClassDetails( source );
 		final Collection collection = createCollection( source );
 		collection.setRole( ownerBinding.getEntityName() + "." + attributeMetadata.getName() );

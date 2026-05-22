@@ -426,6 +426,20 @@ public class ToOneAssociationTests {
 
 	@Test
 	@ServiceRegistry
+	void testOwningManyToManyEntityMapKeyWithoutMapKeyJoinColumnFails(ServiceRegistryScope scope) {
+		assertThatThrownBy( () -> checkDomainModel(
+				(context) -> {
+				},
+				scope.getRegistry(),
+				Parent.class,
+				Child.class,
+				ManyToManyEntityMapKeyWithoutJoinColumnOwner.class
+		) ).isInstanceOf( UnsupportedOperationException.class )
+				.hasMessageContaining( "Entity-valued map keys require @MapKeyJoinColumn support" );
+	}
+
+	@Test
+	@ServiceRegistry
 	void testOwningManyToManyPropertyMapKey(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -530,6 +544,53 @@ public class ToOneAssociationTests {
 
 	@Test
 	@ServiceRegistry
+	void testInverseManyToManyMapMappedBy(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass inverseEntityBinding = context.getMetadataCollector()
+							.getEntityBinding( MappedByManyToManyMapParent.class.getName() );
+					final org.hibernate.mapping.Map inverseCollection = (org.hibernate.mapping.Map) inverseEntityBinding
+							.getProperty( "owners" )
+							.getValue();
+					final ManyToOne inverseElement = (ManyToOne) inverseCollection.getElement();
+					final BasicValue inverseIndex = (BasicValue) inverseCollection.getIndex();
+
+					assertThat( inverseCollection.isInverse() ).isTrue();
+					assertThat( inverseCollection.getMappedByProperty() ).isEqualTo( "parents" );
+					assertThat( inverseCollection.getCollectionTable().getName() ).isEqualTo( "mapped_by_owner_parent_maps" );
+					assertThat( inverseCollection.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_id" );
+					assertThat( inverseElement.getReferencedEntityName() )
+							.isEqualTo( MappedByManyToManyMapOwner.class.getName() );
+					assertThat( inverseElement.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_id" );
+					assertThat( inverseIndex.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "label_key" );
+				},
+				scope.getRegistry(),
+				MappedByManyToManyMapParent.class,
+				MappedByManyToManyMapOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testInverseManyToManyMapMappedByPropertyMapKeyFails(ServiceRegistryScope scope) {
+		assertThatThrownBy( () -> checkDomainModel(
+				(context) -> {
+				},
+				scope.getRegistry(),
+				MappedByManyToManyPropertyMapKeyParent.class,
+				MappedByManyToManyPropertyMapKeyOwner.class
+		) ).isInstanceOf( UnsupportedOperationException.class )
+				.hasMessageContaining( "Inverse map-valued @ManyToMany with property-based map keys is not yet implemented" );
+	}
+
+	@Test
+	@ServiceRegistry
 	void testInverseOneToManyMappedBy(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -555,6 +616,65 @@ public class ToOneAssociationTests {
 				MappedByOneToManyParent.class,
 				MappedByChild.class
 		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testInverseOneToManyMapMappedBy(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass inverseEntityBinding = context.getMetadataCollector()
+							.getEntityBinding( MappedByOneToManyMapParent.class.getName() );
+					final org.hibernate.mapping.Map inverseCollection = (org.hibernate.mapping.Map) inverseEntityBinding
+							.getProperty( "children" )
+							.getValue();
+
+					assertThat( inverseCollection.isInverse() ).isTrue();
+					assertThat( inverseCollection.isOneToMany() ).isTrue();
+					assertThat( inverseCollection.getMappedByProperty() ).isEqualTo( "parent" );
+					assertThat( inverseCollection.hasMapKeyProperty() ).isTrue();
+					assertThat( inverseCollection.getMapKeyPropertyName() ).isEqualTo( "code" );
+					assertThat( inverseCollection.getCollectionTable().getName() ).isEqualTo( "mapped_by_map_children" );
+					assertThat( inverseCollection.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_fk" );
+					assertThat( inverseCollection.getElement() ).isInstanceOf( org.hibernate.mapping.OneToMany.class );
+					assertThat( ( (org.hibernate.mapping.OneToMany) inverseCollection.getElement() ).getReferencedEntityName() )
+							.isEqualTo( MappedByMapChild.class.getName() );
+					assertThat( inverseCollection.getIndex().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "code" );
+				},
+				scope.getRegistry(),
+				MappedByOneToManyMapParent.class,
+				MappedByMapChild.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testInverseOneToManyMapMappedByWithoutMapKeyFails(ServiceRegistryScope scope) {
+		assertThatThrownBy( () -> checkDomainModel(
+				(context) -> {
+				},
+				scope.getRegistry(),
+				MappedByOneToManyMapWithoutMapKeyParent.class,
+				MappedByMapWithoutMapKeyChild.class
+		) ).isInstanceOf( UnsupportedOperationException.class )
+				.hasMessageContaining( "Inverse map-valued @OneToMany is only implemented for property-based map keys" );
+	}
+
+	@Test
+	@ServiceRegistry
+	void testInverseOneToManyMapMappedByImplicitMapKeyFails(ServiceRegistryScope scope) {
+		assertThatThrownBy( () -> checkDomainModel(
+				(context) -> {
+				},
+				scope.getRegistry(),
+				MappedByOneToManyMapImplicitMapKeyParent.class,
+				MappedByMapImplicitMapKeyChild.class
+		) ).isInstanceOf( UnsupportedOperationException.class )
+				.hasMessageContaining( "Inverse map-valued @OneToMany with implicit @MapKey is not yet implemented" );
 	}
 
 	@Test
@@ -1127,6 +1247,20 @@ public class ToOneAssociationTests {
 		private Map<Child, Parent> parents;
 	}
 
+	@Entity(name="ManyToManyEntityMapKeyWithoutJoinColumnOwner")
+	@Table(name="many_to_many_entity_map_key_without_join_column_owners")
+	public static class ManyToManyEntityMapKeyWithoutJoinColumnOwner {
+		@Id
+		private Integer id;
+		@ManyToMany
+		@JoinTable(
+				name = "owner_parent_entity_key_without_join_column_maps",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
+		)
+		private Map<Child, Parent> parents;
+	}
+
 	@Entity(name="ManyToManyPropertyMapKeyOwner")
 	@Table(name="many_to_many_property_map_key_owners")
 	public static class ManyToManyPropertyMapKeyOwner {
@@ -1196,6 +1330,55 @@ public class ToOneAssociationTests {
 		private Set<MappedByManyToManyParent> parents;
 	}
 
+	@Entity(name="MappedByManyToManyMapParent")
+	@Table(name="mapped_by_many_to_many_map_parents")
+	public static class MappedByManyToManyMapParent {
+		@Id
+		private Integer id;
+		@ManyToMany(mappedBy = "parents")
+		private Map<String, MappedByManyToManyMapOwner> owners;
+	}
+
+	@Entity(name="MappedByManyToManyMapOwner")
+	@Table(name="mapped_by_many_to_many_map_owners")
+	public static class MappedByManyToManyMapOwner {
+		@Id
+		private Integer id;
+		@ManyToMany
+		@JoinTable(
+				name = "mapped_by_owner_parent_maps",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
+		)
+		@MapKeyColumn(name = "label_key")
+		private Map<String, MappedByManyToManyMapParent> parents;
+	}
+
+	@Entity(name="MappedByManyToManyPropertyMapKeyParent")
+	@Table(name="mapped_by_many_to_many_property_map_key_parents")
+	public static class MappedByManyToManyPropertyMapKeyParent {
+		@Id
+		private Integer id;
+		private String code;
+		@ManyToMany(mappedBy = "parents")
+		private Map<String, MappedByManyToManyPropertyMapKeyOwner> owners;
+	}
+
+	@Entity(name="MappedByManyToManyPropertyMapKeyOwner")
+	@Table(name="mapped_by_many_to_many_property_map_key_owners")
+	public static class MappedByManyToManyPropertyMapKeyOwner {
+		@Id
+		private Integer id;
+		@ManyToMany
+		@JoinTable(
+				name = "mapped_by_owner_parent_property_maps",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
+		)
+		@MapKey(name = "code")
+		private Map<String, MappedByManyToManyPropertyMapKeyParent> parents;
+	}
+
 	@Entity(name="MappedByOneToManyParent")
 	@Table(name="mapped_by_one_to_many_parents")
 	public static class MappedByOneToManyParent {
@@ -1213,6 +1396,66 @@ public class ToOneAssociationTests {
 		@jakarta.persistence.ManyToOne
 		@JoinColumn(name = "parent_fk", referencedColumnName = "id")
 		private MappedByOneToManyParent parent;
+	}
+
+	@Entity(name="MappedByOneToManyMapParent")
+	@Table(name="mapped_by_one_to_many_map_parents")
+	public static class MappedByOneToManyMapParent {
+		@Id
+		private Integer id;
+		@OneToMany(mappedBy = "parent")
+		@MapKey(name = "code")
+		private Map<String, MappedByMapChild> children;
+	}
+
+	@Entity(name="MappedByMapChild")
+	@Table(name="mapped_by_map_children")
+	public static class MappedByMapChild {
+		@Id
+		private Integer id;
+		@jakarta.persistence.ManyToOne
+		@JoinColumn(name = "parent_fk", referencedColumnName = "id")
+		private MappedByOneToManyMapParent parent;
+		private String code;
+	}
+
+	@Entity(name="MappedByOneToManyMapWithoutMapKeyParent")
+	@Table(name="mapped_by_one_to_many_map_without_map_key_parents")
+	public static class MappedByOneToManyMapWithoutMapKeyParent {
+		@Id
+		private Integer id;
+		@OneToMany(mappedBy = "parent")
+		private Map<String, MappedByMapWithoutMapKeyChild> children;
+	}
+
+	@Entity(name="MappedByMapWithoutMapKeyChild")
+	@Table(name="mapped_by_map_without_map_key_children")
+	public static class MappedByMapWithoutMapKeyChild {
+		@Id
+		private Integer id;
+		@jakarta.persistence.ManyToOne
+		@JoinColumn(name = "parent_fk", referencedColumnName = "id")
+		private MappedByOneToManyMapWithoutMapKeyParent parent;
+	}
+
+	@Entity(name="MappedByOneToManyMapImplicitMapKeyParent")
+	@Table(name="mapped_by_one_to_many_map_implicit_map_key_parents")
+	public static class MappedByOneToManyMapImplicitMapKeyParent {
+		@Id
+		private Integer id;
+		@OneToMany(mappedBy = "parent")
+		@MapKey
+		private Map<Integer, MappedByMapImplicitMapKeyChild> children;
+	}
+
+	@Entity(name="MappedByMapImplicitMapKeyChild")
+	@Table(name="mapped_by_map_implicit_map_key_children")
+	public static class MappedByMapImplicitMapKeyChild {
+		@Id
+		private Integer id;
+		@jakarta.persistence.ManyToOne
+		@JoinColumn(name = "parent_fk", referencedColumnName = "id")
+		private MappedByOneToManyMapImplicitMapKeyParent parent;
 	}
 
 	@Entity(name="CompositeMappedByOneToManyParent")
