@@ -153,7 +153,7 @@ class PluralAssociationAttributeBinder {
 		final ManyToOne element = bindElementValue( source, target, table, uniqueTargetColumns );
 		collection.setElement( element );
 		if ( collection instanceof org.hibernate.mapping.Map map ) {
-			CollectionIndexBinder.bindBasicMapKey(
+			CollectionIndexBinder.bindMapKey(
 					source,
 					map,
 					table,

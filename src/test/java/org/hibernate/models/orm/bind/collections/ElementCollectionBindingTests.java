@@ -14,6 +14,7 @@ import org.hibernate.annotations.Bag;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.Component;
+import org.hibernate.mapping.ManyToOne;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 
@@ -38,6 +39,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.MapKeyClass;
 import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.MapKeyEnumerated;
+import jakarta.persistence.MapKeyJoinColumn;
+import jakarta.persistence.MapKeyJoinColumns;
 import jakarta.persistence.MapKeyTemporal;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
@@ -237,6 +240,51 @@ public class ElementCollectionBindingTests {
 				},
 				scope.getRegistry(),
 				ImplicitMapOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testEntityMapKeyElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( EntityMapKeyOwner.class.getName() );
+					final org.hibernate.mapping.Map collection = (org.hibernate.mapping.Map) entityBinding.getProperty( "labels" )
+							.getValue();
+					final ManyToOne key = (ManyToOne) collection.getIndex();
+
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "entity_map_key_owner_labels" );
+					assertThat( key.getReferencedEntityName() ).isEqualTo( LabelKey.class.getName() );
+					assertThat( key.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "label_key_id" );
+				},
+				scope.getRegistry(),
+				EntityMapKeyOwner.class,
+				LabelKey.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testCompositeEntityMapKeyElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( CompositeEntityMapKeyOwner.class.getName() );
+					final org.hibernate.mapping.Map collection = (org.hibernate.mapping.Map) entityBinding.getProperty( "labels" )
+							.getValue();
+					final ManyToOne key = (ManyToOne) collection.getIndex();
+
+					assertThat( key.getReferencedEntityName() ).isEqualTo( CompositeLabelKey.class.getName() );
+					assertThat( key.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "label_key_fk1", "label_key_fk2" );
+				},
+				scope.getRegistry(),
+				CompositeEntityMapKeyOwner.class,
+				CompositeLabelKey.class
 		);
 	}
 
@@ -641,6 +689,53 @@ public class ElementCollectionBindingTests {
 		)
 		@Column(name = "label")
 		private Map<String, String> labels;
+	}
+
+	@Entity(name="EntityMapKeyOwner")
+	@Table(name="entity_map_key_owners")
+	public static class EntityMapKeyOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "entity_map_key_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@MapKeyJoinColumn(name = "label_key_id", referencedColumnName = "id")
+		@Column(name = "label")
+		private Map<LabelKey, String> labels;
+	}
+
+	@Entity(name="LabelKey")
+	@Table(name="label_keys")
+	public static class LabelKey {
+		@Id
+		private Integer id;
+	}
+
+	@Entity(name="CompositeEntityMapKeyOwner")
+	@Table(name="composite_entity_map_key_owners")
+	public static class CompositeEntityMapKeyOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "composite_entity_map_key_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@MapKeyJoinColumns({
+				@MapKeyJoinColumn(name = "label_key_fk2", referencedColumnName = "id2"),
+				@MapKeyJoinColumn(name = "label_key_fk1", referencedColumnName = "id1")
+		})
+		@Column(name = "label")
+		private Map<CompositeLabelKey, String> labels;
+	}
+
+	@Entity(name="CompositeLabelKey")
+	@Table(name="composite_label_keys")
+	public static class CompositeLabelKey {
+		@EmbeddedId
+		private Pk id;
 	}
 
 	@Entity(name="EnumMapKeyOwner")

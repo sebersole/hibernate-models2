@@ -19,6 +19,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.MapKeyColumn;
+import jakarta.persistence.MapKeyJoinColumn;
+import jakarta.persistence.MapKeyJoinColumns;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderColumn;
 
@@ -224,6 +226,21 @@ public record CollectionSource(
 	/// use the implicit/default map-key column.
 	public MapKeyColumn mapKeyColumn() {
 		return member.getDirectAnnotationUsage( MapKeyColumn.class );
+	}
+
+	/// The map-key join columns as a list, if an entity-valued map key was declared.
+	public List<MapKeyJoinColumn> mapKeyJoinColumns() {
+		final MapKeyJoinColumns plural = member.getDirectAnnotationUsage( MapKeyJoinColumns.class );
+		if ( plural != null && plural.value().length > 0 ) {
+			final ArrayList<MapKeyJoinColumn> result = new ArrayList<>( plural.value().length );
+			for ( MapKeyJoinColumn mapKeyJoinColumn : plural.value() ) {
+				result.add( mapKeyJoinColumn );
+			}
+			return result;
+		}
+
+		final MapKeyJoinColumn singular = member.getDirectAnnotationUsage( MapKeyJoinColumn.class );
+		return singular == null ? List.of() : List.of( singular );
 	}
 
 	/// The collection-table join columns as a list.

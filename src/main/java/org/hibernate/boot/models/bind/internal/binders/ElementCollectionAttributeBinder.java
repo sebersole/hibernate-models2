@@ -78,7 +78,7 @@ class ElementCollectionAttributeBinder {
 		final Value element = bindElementValue( source, collection, table );
 		collection.setElement( element );
 		if ( collection instanceof org.hibernate.mapping.Map map ) {
-			CollectionIndexBinder.bindBasicMapKey(
+			CollectionIndexBinder.bindMapKey(
 					source,
 					map,
 					table,
