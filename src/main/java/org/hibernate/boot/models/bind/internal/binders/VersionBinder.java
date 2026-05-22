@@ -19,9 +19,7 @@ import static org.hibernate.boot.models.bind.internal.binders.AttributeBinder.pr
 import static org.hibernate.boot.models.bind.internal.binders.BasicValueBinder.bindJavaType;
 import static org.hibernate.boot.models.bind.internal.binders.BasicValueBinder.bindJdbcType;
 
-/**
- * @author Steve Ebersole
- */
+/// @author Steve Ebersole
 public class VersionBinder {
 	public static void bindVersion(
 			AttributeMetadata attributeMetadata,

@@ -9,6 +9,8 @@ package org.hibernate.boot.models.bind.internal.binders;
 /// Each nested interface represents one phase a type binder may participate in.
 /// Binders implement only the phases that apply to them, avoiding no-op phase
 /// methods while still making the coordinator's ordering explicit.
+///
+/// @author Steve Ebersole
 public interface TypeBindingPhase {
 	/// Publish the minimal type skeleton so other binders can resolve it.
 	interface TypeSkeleton {

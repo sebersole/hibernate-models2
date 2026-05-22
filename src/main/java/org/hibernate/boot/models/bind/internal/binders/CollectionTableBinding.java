@@ -13,9 +13,9 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.UniqueConstraint;
 
-/**
- * Local state for a collection table whose key depends on the owner identifier.
- */
+/// Local state for a collection table whose key depends on the owner identifier.
+///
+/// @author Steve Ebersole
 public record CollectionTableBinding(
 		Collection collection,
 		List<JoinColumn> joinColumns,

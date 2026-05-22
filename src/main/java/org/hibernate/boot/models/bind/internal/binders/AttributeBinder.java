@@ -38,9 +38,7 @@ import static org.hibernate.boot.models.AttributeNature.MANY_TO_MANY;
 import static org.hibernate.boot.models.AttributeNature.ONE_TO_MANY;
 import static org.hibernate.boot.models.AttributeNature.TO_ONE;
 
-/**
- * @author Steve Ebersole
- */
+/// @author Steve Ebersole
 public class AttributeBinder {
 	private final AttributeMetadata attributeMetadata;
 	private final BindingState bindingState;

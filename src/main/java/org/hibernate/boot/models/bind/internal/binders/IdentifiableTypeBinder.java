@@ -21,9 +21,7 @@ import org.hibernate.mapping.Table;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Id;
 
-/**
- * @author Steve Ebersole
- */
+/// @author Steve Ebersole
 public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 	private final IdentifiableTypeMetadata superType;
 	private final EntityHierarchy.HierarchyRelation hierarchyRelation;

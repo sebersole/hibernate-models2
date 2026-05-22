@@ -22,9 +22,7 @@ import jakarta.persistence.DiscriminatorType;
 
 import static org.hibernate.internal.util.NullnessHelper.nullif;
 
-/**
- * @author Steve Ebersole
- */
+/// @author Steve Ebersole
 public class ColumnBinder {
 	public static Column bindColumn(
 			ColumnSource columnSource,

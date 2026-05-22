@@ -16,9 +16,9 @@ import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
 import org.hibernate.mapping.Value;
 
-/**
- * Resolves inverse plural associations from their owning-side mapping objects.
- */
+/// Resolves inverse plural associations from their owning-side mapping objects.
+///
+/// @author Steve Ebersole
 class InversePluralAssociationBinder {
 	private final EntityTypeBinder entityBinder;
 	private final BindingState bindingState;

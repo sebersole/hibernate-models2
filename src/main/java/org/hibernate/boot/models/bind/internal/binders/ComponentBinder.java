@@ -28,9 +28,9 @@ import org.hibernate.models.spi.MemberDetails;
 import jakarta.persistence.AssociationOverride;
 import jakarta.persistence.Convert;
 
-/**
- * Shared support for binding component-valued mappings.
- */
+/// Shared support for binding component-valued mappings.
+///
+/// @author Steve Ebersole
 class ComponentBinder {
 	private final ModelBinders modelBinders;
 	private final BindingState state;

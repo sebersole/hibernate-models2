@@ -46,9 +46,7 @@ import static jakarta.persistence.EnumType.ORDINAL;
 import static org.hibernate.annotations.TimeZoneStorageType.AUTO;
 import static org.hibernate.annotations.TimeZoneStorageType.COLUMN;
 
-/**
- * @author Steve Ebersole
- */
+/// @author Steve Ebersole
 public class BasicValueBinder {
 
 	public static void bindBasicValue(

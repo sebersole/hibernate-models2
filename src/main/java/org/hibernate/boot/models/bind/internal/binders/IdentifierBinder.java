@@ -31,9 +31,7 @@ import org.hibernate.models.spi.MemberDetails;
 
 import jakarta.persistence.Column;
 
-/**
- * @author Steve Ebersole
- */
+/// @author Steve Ebersole
 public class IdentifierBinder {
 	private final ModelBinders modelBinders;
 
