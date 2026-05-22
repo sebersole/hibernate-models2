@@ -19,6 +19,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.MapKeyColumn;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderColumn;
 
 /// Source-model facts for an [org.hibernate.mapping.Collection].
@@ -153,9 +154,18 @@ public record CollectionSource(
 
 	/// Creates a collection source for an owning many-to-many association member.
 	public static CollectionSource manyToMany(MemberDetails member) {
+		return association( Nature.MANY_TO_MANY, member );
+	}
+
+	/// Creates a collection source for an owning one-to-many association member.
+	public static CollectionSource oneToMany(MemberDetails member) {
+		return association( Nature.ONE_TO_MANY, member );
+	}
+
+	private static CollectionSource association(Nature nature, MemberDetails member) {
 		final CollectionSource source = elementCollection( member );
 		return new CollectionSource(
-				Nature.MANY_TO_MANY,
+				nature,
 				source.classification,
 				source.member,
 				source.elementType,
@@ -183,6 +193,11 @@ public record CollectionSource(
 	/// The direct `@ManyToMany` annotation.
 	public ManyToMany manyToMany() {
 		return member.getDirectAnnotationUsage( ManyToMany.class );
+	}
+
+	/// The direct `@OneToMany` annotation.
+	public OneToMany oneToMany() {
+		return member.getDirectAnnotationUsage( OneToMany.class );
 	}
 
 	/// Whether the collection element value should be modeled as a component.
