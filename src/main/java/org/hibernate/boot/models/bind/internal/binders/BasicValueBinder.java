@@ -9,6 +9,12 @@ import java.lang.reflect.InvocationTargetException;
 import org.hibernate.annotations.JavaType;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.ListIndexJavaType;
+import org.hibernate.annotations.ListIndexJdbcType;
+import org.hibernate.annotations.ListIndexJdbcTypeCode;
+import org.hibernate.annotations.MapKeyJavaType;
+import org.hibernate.annotations.MapKeyJdbcType;
+import org.hibernate.annotations.MapKeyJdbcTypeCode;
 import org.hibernate.annotations.Nationalized;
 import org.hibernate.annotations.TimeZoneColumn;
 import org.hibernate.annotations.TimeZoneStorage;
@@ -27,6 +33,8 @@ import org.hibernate.type.descriptor.java.BasicJavaType;
 
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Lob;
+import jakarta.persistence.MapKeyEnumerated;
+import jakarta.persistence.MapKeyTemporal;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 
@@ -38,6 +46,107 @@ import static org.hibernate.annotations.TimeZoneStorageType.COLUMN;
  * @author Steve Ebersole
  */
 public class BasicValueBinder {
+
+	public static void bindBasicValue(
+			BasicValueSource source,
+			Property property,
+			BasicValue basicValue,
+			BindingOptions bindingOptions,
+			BindingState bindingState,
+			BindingContext bindingContext) {
+		basicValue.setImplicitJavaTypeAccess( (typeConfiguration) -> source.javaType() );
+		bindJavaType( source, property, basicValue, bindingOptions, bindingState, bindingContext );
+		bindJdbcType( source, property, basicValue, bindingOptions, bindingState, bindingContext );
+		bindLob( source.member(), property, basicValue, bindingOptions, bindingState, bindingContext );
+		bindNationalized( source.member(), property, basicValue, bindingOptions, bindingState, bindingContext );
+		bindEnumerated( source, property, basicValue, bindingOptions, bindingState, bindingContext );
+		bindTemporalPrecision( source, property, basicValue, bindingOptions, bindingState, bindingContext );
+		bindTimeZoneStorage( source.member(), property, basicValue, bindingOptions, bindingState, bindingContext );
+	}
+
+	public static void bindJavaType(
+			BasicValueSource source,
+			Property property,
+			BasicValue basicValue,
+			BindingOptions bindingOptions,
+			BindingState bindingState,
+			BindingContext bindingContext) {
+		final var member = source.member();
+		switch ( source.kind() ) {
+			case MAP_KEY -> {
+				final var javaTypeAnn = member.getDirectAnnotationUsage( MapKeyJavaType.class );
+				if ( javaTypeAnn != null ) {
+					applyJavaType( member, basicValue, javaTypeAnn.value() );
+				}
+			}
+			case LIST_INDEX -> {
+				final var javaTypeAnn = member.getDirectAnnotationUsage( ListIndexJavaType.class );
+				if ( javaTypeAnn != null ) {
+					applyJavaType( member, basicValue, javaTypeAnn.value() );
+				}
+			}
+			default -> bindJavaType( member, property, basicValue, bindingOptions, bindingState, bindingContext );
+		}
+	}
+
+	public static void bindJdbcType(
+			BasicValueSource source,
+			Property property,
+			BasicValue basicValue,
+			BindingOptions bindingOptions,
+			BindingState bindingState,
+			BindingContext bindingContext) {
+		final var member = source.member();
+		switch ( source.kind() ) {
+			case MAP_KEY -> {
+				final var jdbcTypeAnn = member.getDirectAnnotationUsage( MapKeyJdbcType.class );
+				final var jdbcTypeCodeAnn = member.getDirectAnnotationUsage( MapKeyJdbcTypeCode.class );
+				bindExplicitJdbcType( member, basicValue, jdbcTypeAnn == null ? null : jdbcTypeAnn.value(), jdbcTypeCodeAnn == null ? null : jdbcTypeCodeAnn.value() );
+			}
+			case LIST_INDEX -> {
+				final var jdbcTypeAnn = member.getDirectAnnotationUsage( ListIndexJdbcType.class );
+				final var jdbcTypeCodeAnn = member.getDirectAnnotationUsage( ListIndexJdbcTypeCode.class );
+				bindExplicitJdbcType( member, basicValue, jdbcTypeAnn == null ? null : jdbcTypeAnn.value(), jdbcTypeCodeAnn == null ? null : jdbcTypeCodeAnn.value() );
+			}
+			default -> bindJdbcType( member, property, basicValue, bindingOptions, bindingState, bindingContext );
+		}
+	}
+
+	public static void bindEnumerated(
+			BasicValueSource source,
+			Property property,
+			BasicValue basicValue,
+			BindingOptions bindingOptions,
+			BindingState bindingState,
+			BindingContext bindingContext) {
+		if ( source.kind() == BasicValueSource.Kind.MAP_KEY ) {
+			final MapKeyEnumerated mapKeyEnumerated = source.member().getDirectAnnotationUsage( MapKeyEnumerated.class );
+			if ( mapKeyEnumerated != null ) {
+				basicValue.setEnumerationStyle( mapKeyEnumerated.value() );
+			}
+			return;
+		}
+
+		bindEnumerated( source.member(), property, basicValue, bindingOptions, bindingState, bindingContext );
+	}
+
+	public static void bindTemporalPrecision(
+			BasicValueSource source,
+			Property property,
+			BasicValue basicValue,
+			BindingOptions bindingOptions,
+			BindingState bindingState,
+			BindingContext bindingContext) {
+		if ( source.kind() == BasicValueSource.Kind.MAP_KEY ) {
+			final MapKeyTemporal mapKeyTemporal = source.member().getDirectAnnotationUsage( MapKeyTemporal.class );
+			if ( mapKeyTemporal != null ) {
+				basicValue.setTemporalPrecision( mapKeyTemporal.value() );
+			}
+			return;
+		}
+
+		bindTemporalPrecision( source.member(), property, basicValue, bindingOptions, bindingState, bindingContext );
+	}
 
 	public static void bindJavaType(
 			MemberDetails member,
@@ -52,8 +161,15 @@ public class BasicValueBinder {
 			return;
 		}
 
+		applyJavaType( member, basicValue, javaTypeAnn.value() );
+	}
+
+	private static void applyJavaType(
+			MemberDetails member,
+			BasicValue basicValue,
+			Class<? extends BasicJavaType<?>> javaTypeClass) {
 		basicValue.setExplicitJavaTypeAccess( (typeConfiguration) -> {
-			final Class<BasicJavaType<?>> javaClass = (Class<BasicJavaType<?>>) javaTypeAnn.value();
+			final Class<BasicJavaType<?>> javaClass = (Class<BasicJavaType<?>>) javaTypeClass;
 			try {
 				return javaClass.getConstructor().newInstance();
 			}
@@ -75,16 +191,28 @@ public class BasicValueBinder {
 		// todo : do we need to account for JdbcTypeRegistration here?
 		final var jdbcTypeAnn = member.getDirectAnnotationUsage( JdbcType.class );
 		final var jdbcTypeCodeAnn = member.getDirectAnnotationUsage( JdbcTypeCode.class );
+		bindExplicitJdbcType(
+				member,
+				basicValue,
+				jdbcTypeAnn == null ? null : jdbcTypeAnn.value(),
+				jdbcTypeCodeAnn == null ? null : jdbcTypeCodeAnn.value()
+		);
+	}
 
-		if ( jdbcTypeAnn != null ) {
-			if ( jdbcTypeCodeAnn != null ) {
+	private static void bindExplicitJdbcType(
+			MemberDetails member,
+			BasicValue basicValue,
+			Class<? extends org.hibernate.type.descriptor.jdbc.JdbcType> jdbcTypeClass,
+			Integer jdbcTypeCode) {
+		if ( jdbcTypeClass != null ) {
+			if ( jdbcTypeCode != null ) {
 				throw new AnnotationPlacementException(
 						"Illegal combination of @JdbcType and @JdbcTypeCode - " + member.getName()
 				);
 			}
 
 			basicValue.setExplicitJdbcTypeAccess( (typeConfiguration) -> {
-				final Class<org.hibernate.type.descriptor.jdbc.JdbcType> javaClass = (Class<org.hibernate.type.descriptor.jdbc.JdbcType>) jdbcTypeAnn.value();
+				final Class<org.hibernate.type.descriptor.jdbc.JdbcType> javaClass = (Class<org.hibernate.type.descriptor.jdbc.JdbcType>) jdbcTypeClass;
 				try {
 					return javaClass.getConstructor().newInstance();
 				}
@@ -95,8 +223,8 @@ public class BasicValueBinder {
 				}
 			} );
 		}
-		else if ( jdbcTypeCodeAnn != null ) {
-			basicValue.setExplicitJdbcTypeCode( jdbcTypeCodeAnn.value() );
+		else if ( jdbcTypeCode != null ) {
+			basicValue.setExplicitJdbcTypeCode( jdbcTypeCode );
 		}
 	}
 
@@ -189,7 +317,7 @@ public class BasicValueBinder {
 			}
 
 			property.setInsertable( columnAnn.insertable() );
-			property.setUpdateable( columnAnn.updatable() );
+			property.setUpdatable( columnAnn.updatable() );
 		}
 	}
 

@@ -209,14 +209,14 @@ class ComponentBinder {
 	private BasicValue createBasicValue(Table table, MemberDetails member) {
 		final BasicValue basicValue = new BasicValue( state.getMetadataBuildingContext(), table );
 		basicValue.setTable( table );
-		AttributeBinder.bindImplicitJavaType( member, null, basicValue, options, state, context );
-		BasicValueBinder.bindJavaType( member, null, basicValue, options, state, context );
-		BasicValueBinder.bindJdbcType( member, null, basicValue, options, state, context );
-		BasicValueBinder.bindLob( member, null, basicValue, options, state, context );
-		BasicValueBinder.bindNationalized( member, null, basicValue, options, state, context );
-		BasicValueBinder.bindEnumerated( member, null, basicValue, options, state, context );
-		BasicValueBinder.bindTemporalPrecision( member, null, basicValue, options, state, context );
-		BasicValueBinder.bindTimeZoneStorage( member, null, basicValue, options, state, context );
+		BasicValueBinder.bindBasicValue(
+				BasicValueSource.embeddableMember( member ),
+				null,
+				basicValue,
+				options,
+				state,
+				context
+		);
 		return basicValue;
 	}
 
