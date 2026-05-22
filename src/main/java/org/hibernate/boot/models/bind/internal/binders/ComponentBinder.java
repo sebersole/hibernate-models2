@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
-import org.hibernate.boot.model.convert.spi.RegisteredConversion;
 import org.hibernate.boot.models.bind.internal.sources.BasicValueSource;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.internal.sources.ComponentSource;
@@ -17,18 +16,15 @@ import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
-import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
-import org.hibernate.models.ModelsException;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MemberDetails;
 
-import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.AssociationOverride;
 import jakarta.persistence.Convert;
 
@@ -175,8 +171,11 @@ class ComponentBinder {
 				return;
 			}
 
-			final BasicValue basicValue = createBasicValue( table, member );
-			bindConversion( member, memberPath, basicValue, conversionResolver.apply( memberPath, member ) );
+			final BasicValue basicValue = createBasicValue(
+					table,
+					member,
+					conversionResolver.apply( memberPath, member )
+			);
 			final Property property = createProperty( attributeName, basicValue );
 			component.addProperty( property );
 
@@ -215,31 +214,11 @@ class ComponentBinder {
 				|| member.hasDirectAnnotationUsage( jakarta.persistence.OneToOne.class );
 	}
 
-	private void bindConversion(
-			MemberDetails member,
-			String memberPath,
-			BasicValue basicValue,
-			Convert conversion) {
-		if ( conversion == null || conversion.disableConversion() ) {
-			return;
-		}
-
-		final String attributeName = conversion.attributeName();
-		if ( StringHelper.isNotEmpty( attributeName ) && !memberPath.equals( attributeName ) ) {
-			throw new ModelsException( "@Convert#attributeName did not match component path - " + memberPath );
-		}
-
-		final Class<AttributeConverter<?, ?>> javaClass = (Class<AttributeConverter<?, ?>>) conversion.converter();
-		basicValue.setJpaAttributeConverterDescriptor(
-				new RegisteredConversion( null, javaClass, false ).getConverterDescriptor()
-		);
-	}
-
-	private BasicValue createBasicValue(Table table, MemberDetails member) {
+	private BasicValue createBasicValue(Table table, MemberDetails member, Convert conversion) {
 		final BasicValue basicValue = new BasicValue( state.getMetadataBuildingContext(), table );
 		basicValue.setTable( table );
 		BasicValueBinder.bindBasicValue(
-				BasicValueSource.embeddableMember( member ),
+				BasicValueSource.embeddableMember( member, conversion ),
 				null,
 				basicValue,
 				options,

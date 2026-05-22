@@ -296,6 +296,23 @@ public class ElementCollectionBindingTests {
 
 	@Test
 	@ServiceRegistry
+	void testConvertedBasicElementCollectionValue(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ConvertedElementOwner.class.getName() );
+					final Collection collection = (Collection) entityBinding.getProperty( "labels" ).getValue();
+					final BasicValue element = (BasicValue) collection.getElement();
+
+					assertThat( element.getJpaAttributeConverterDescriptor() ).isNotNull();
+				},
+				scope.getRegistry(),
+				ConvertedElementOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testCompositeOwnerElementCollection(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -660,6 +677,21 @@ public class ElementCollectionBindingTests {
 		@Convert(attributeName = "key", converter = LabelCodeConverter.class)
 		@Column(name = "label")
 		private Map<LabelCode, String> labels;
+	}
+
+	@Entity(name="ConvertedElementOwner")
+	@Table(name="converted_element_owners")
+	public static class ConvertedElementOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "converted_element_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@Convert(attributeName = "value", converter = LabelCodeConverter.class)
+		@Column(name = "label")
+		private Set<LabelCode> labels;
 	}
 
 	@Entity(name="EmbeddableElementOwner")
