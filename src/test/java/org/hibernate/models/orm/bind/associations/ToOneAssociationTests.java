@@ -27,6 +27,7 @@ import jakarta.persistence.JoinColumns;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.MapKeyColumn;
+import jakarta.persistence.MapKeyJoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.SecondaryTable;
@@ -340,6 +341,37 @@ public class ToOneAssociationTests {
 				scope.getRegistry(),
 				Parent.class,
 				ManyToManyMapOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testOwningManyToManyEntityMapKeyJoinTable(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ManyToManyEntityMapKeyOwner.class.getName() );
+					final org.hibernate.mapping.Map collection = (org.hibernate.mapping.Map) entityBinding.getProperty( "parents" ).getValue();
+					final ManyToOne index = (ManyToOne) collection.getIndex();
+					final ManyToOne element = (ManyToOne) collection.getElement();
+
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "owner_parent_entity_key_maps" );
+					assertThat( collection.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_id" );
+					assertThat( index.getReferencedEntityName() ).isEqualTo( Child.class.getName() );
+					assertThat( index.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "child_key_id" );
+					assertThat( element.getReferencedEntityName() ).isEqualTo( Parent.class.getName() );
+					assertThat( element.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_id" );
+				},
+				scope.getRegistry(),
+				Parent.class,
+				Child.class,
+				ManyToManyEntityMapKeyOwner.class
 		);
 	}
 
@@ -866,6 +898,21 @@ public class ToOneAssociationTests {
 		)
 		@MapKeyColumn(name = "label_key")
 		private Map<String, Parent> parents;
+	}
+
+	@Entity(name="ManyToManyEntityMapKeyOwner")
+	@Table(name="many_to_many_entity_map_key_owners")
+	public static class ManyToManyEntityMapKeyOwner {
+		@Id
+		private Integer id;
+		@ManyToMany
+		@JoinTable(
+				name = "owner_parent_entity_key_maps",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
+		)
+		@MapKeyJoinColumn(name = "child_key_id", referencedColumnName = "id")
+		private Map<Child, Parent> parents;
 	}
 
 	@Entity(name="MappedByManyToManyParent")
