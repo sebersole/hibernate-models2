@@ -275,6 +275,56 @@ public class ToOneAssociationTests {
 
 	@Test
 	@ServiceRegistry
+	void testInverseOneToManyMappedBy(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass inverseEntityBinding = context.getMetadataCollector()
+							.getEntityBinding( MappedByOneToManyParent.class.getName() );
+					final Collection inverseCollection = (Collection) inverseEntityBinding.getProperty( "children" ).getValue();
+
+					assertThat( inverseCollection ).isInstanceOf( org.hibernate.mapping.Set.class );
+					assertThat( inverseCollection.isInverse() ).isTrue();
+					assertThat( inverseCollection.isOneToMany() ).isTrue();
+					assertThat( inverseCollection.getMappedByProperty() ).isEqualTo( "parent" );
+					assertThat( inverseCollection.getCollectionTable().getName() ).isEqualTo( "mapped_by_children" );
+					assertThat( inverseCollection.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_fk" );
+					assertThat( inverseCollection.getElement() ).isInstanceOf( org.hibernate.mapping.OneToMany.class );
+					assertThat( ( (org.hibernate.mapping.OneToMany) inverseCollection.getElement() ).getReferencedEntityName() )
+							.isEqualTo( MappedByChild.class.getName() );
+					assertThat( context.getMetadataCollector().getCollectionBinding( inverseCollection.getRole() ) )
+							.isSameAs( inverseCollection );
+				},
+				scope.getRegistry(),
+				MappedByOneToManyParent.class,
+				MappedByChild.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testInverseOneToManyMappedByCompositeOwner(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass inverseEntityBinding = context.getMetadataCollector()
+							.getEntityBinding( CompositeMappedByOneToManyParent.class.getName() );
+					final Collection inverseCollection = (Collection) inverseEntityBinding.getProperty( "children" ).getValue();
+
+					assertThat( inverseCollection.getCollectionTable().getName() ).isEqualTo( "composite_mapped_by_children" );
+					assertThat( inverseCollection.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_fk1", "parent_fk2" );
+					assertThat( inverseCollection.getElement() ).isInstanceOf( org.hibernate.mapping.OneToMany.class );
+				},
+				scope.getRegistry(),
+				CompositeMappedByOneToManyParent.class,
+				CompositeMappedByChild.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testUnidirectionalOneToManyJoinTable(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -632,6 +682,47 @@ public class ToOneAssociationTests {
 				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
 		)
 		private Set<MappedByManyToManyParent> parents;
+	}
+
+	@Entity(name="MappedByOneToManyParent")
+	@Table(name="mapped_by_one_to_many_parents")
+	public static class MappedByOneToManyParent {
+		@Id
+		private Integer id;
+		@OneToMany(mappedBy = "parent")
+		private Set<MappedByChild> children;
+	}
+
+	@Entity(name="MappedByChild")
+	@Table(name="mapped_by_children")
+	public static class MappedByChild {
+		@Id
+		private Integer id;
+		@jakarta.persistence.ManyToOne
+		@JoinColumn(name = "parent_fk", referencedColumnName = "id")
+		private MappedByOneToManyParent parent;
+	}
+
+	@Entity(name="CompositeMappedByOneToManyParent")
+	@Table(name="composite_mapped_by_one_to_many_parents")
+	public static class CompositeMappedByOneToManyParent {
+		@EmbeddedId
+		private Pk id;
+		@OneToMany(mappedBy = "parent")
+		private Set<CompositeMappedByChild> children;
+	}
+
+	@Entity(name="CompositeMappedByChild")
+	@Table(name="composite_mapped_by_children")
+	public static class CompositeMappedByChild {
+		@Id
+		private Integer id;
+		@jakarta.persistence.ManyToOne
+		@JoinColumns({
+				@JoinColumn(name = "parent_fk2", referencedColumnName = "id2"),
+				@JoinColumn(name = "parent_fk1", referencedColumnName = "id1")
+		})
+		private CompositeMappedByOneToManyParent parent;
 	}
 
 	@Entity(name="OneToManyJoinTableOwner")
