@@ -18,6 +18,10 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.TableGenerator;
 import org.hibernate.annotations.Any;
 import org.hibernate.annotations.ManyToAny;
+import org.hibernate.boot.model.IdentifierGeneratorDefinition;
+import org.hibernate.boot.model.convert.spi.RegisteredConversion;
+import org.hibernate.boot.model.internal.AnnotationHelper;
+import org.hibernate.boot.model.internal.GeneratorParameters;
 import org.hibernate.boot.models.AnnotationPlacementException;
 import org.hibernate.boot.models.bind.ModelBindingLogging;
 import org.hibernate.boot.models.bind.internal.binders.EntityTypeBinder;
@@ -27,14 +31,36 @@ import org.hibernate.boot.models.bind.internal.binders.ModelBinders;
 import org.hibernate.boot.models.bind.internal.binders.TypeBindingPhase;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
+import org.hibernate.boot.models.categorize.spi.CollectionTypeRegistration;
+import org.hibernate.boot.models.categorize.spi.CompositeUserTypeRegistration;
+import org.hibernate.boot.models.categorize.spi.ConversionRegistration;
+import org.hibernate.boot.models.categorize.spi.EmbeddableInstantiatorRegistration;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
+import org.hibernate.boot.models.categorize.spi.GenericGeneratorRegistration;
 import org.hibernate.boot.models.categorize.spi.GlobalRegistrations;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
+import org.hibernate.boot.models.categorize.spi.JavaTypeRegistration;
+import org.hibernate.boot.models.categorize.spi.JdbcTypeRegistration;
 import org.hibernate.boot.models.categorize.spi.ManagedTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.MappedSuperclassTypeMetadata;
+import org.hibernate.boot.models.categorize.spi.SequenceGeneratorRegistration;
+import org.hibernate.boot.models.categorize.spi.TableGeneratorRegistration;
+import org.hibernate.boot.models.categorize.spi.UserTypeRegistration;
+import org.hibernate.generator.Generator;
 import org.hibernate.mapping.RootClass;
+import org.hibernate.metamodel.spi.EmbeddableInstantiator;
 import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.ModelsException;
+import org.hibernate.type.descriptor.java.JavaType;
+import org.hibernate.type.descriptor.jdbc.JdbcType;
+import org.hibernate.usertype.CompositeUserType;
+import org.hibernate.usertype.UserCollectionType;
+import org.hibernate.usertype.UserType;
+
+import jakarta.persistence.AttributeConverter;
+
+import static org.hibernate.internal.util.StringHelper.isNotEmpty;
 
 /// Coordinates binding of a categorized domain model into Hibernate's boot-time
 /// mapping model.
@@ -125,14 +151,15 @@ public class BindingCoordinator {
 	}
 
 	private void coordinateGlobalBindings() {
-		processGenerators( categorizedDomainModel.getGlobalRegistrations() );
-		processConverters( categorizedDomainModel.getGlobalRegistrations() );
-		processJavaTypeRegistrations( categorizedDomainModel.getGlobalRegistrations() );
-		processJdbcTypeRegistrations( categorizedDomainModel.getGlobalRegistrations() );
-		processCustomTypes( categorizedDomainModel.getGlobalRegistrations() );
-		processInstantiators( categorizedDomainModel.getGlobalRegistrations() );
-		processEventListeners( categorizedDomainModel.getGlobalRegistrations() );
-		processFilterDefinitions( categorizedDomainModel.getGlobalRegistrations() );
+		final GlobalRegistrations globalRegistrations = categorizedDomainModel.getGlobalRegistrations();
+		processGenerators( globalRegistrations );
+		processConverters( globalRegistrations );
+		processJavaTypeRegistrations( globalRegistrations );
+		processJdbcTypeRegistrations( globalRegistrations );
+		processCustomTypes( globalRegistrations );
+		processInstantiators( globalRegistrations );
+		processEventListeners( globalRegistrations );
+		processFilterDefinitions( globalRegistrations );
 	}
 
 	private <P> void runPhase(List<ManagedTypeBinder> binders, Class<P> phaseType, Consumer<P> phaseAction) {
@@ -184,43 +211,49 @@ public class BindingCoordinator {
 	}
 
 	private void processGenerators(GlobalRegistrations globalRegistrations) {
-		// todo : process these
-		globalRegistrations.getSequenceGeneratorRegistrations();
-		globalRegistrations.getTableGeneratorRegistrations();
-		globalRegistrations.getGenericGeneratorRegistrations();
+		globalRegistrations.getSequenceGeneratorRegistrations().values().forEach( (registration) -> {
+			bindingState.getMetadataBuildingContext()
+					.getMetadataCollector()
+					.addIdentifierGenerator( buildSequenceGeneratorDefinition( registration ) );
+		} );
+		globalRegistrations.getTableGeneratorRegistrations().values().forEach( (registration) -> {
+			bindingState.getMetadataBuildingContext()
+					.getMetadataCollector()
+					.addIdentifierGenerator( buildTableGeneratorDefinition( registration ) );
+		} );
+		globalRegistrations.getGenericGeneratorRegistrations().values().forEach( (registration) -> {
+			bindingState.getMetadataBuildingContext()
+					.getMetadataCollector()
+					.addIdentifierGenerator( buildGenericGeneratorDefinition( registration ) );
+		} );
 	}
 
 	private void processConverters(GlobalRegistrations globalRegistrations) {
-
-		// todo : process these
-		globalRegistrations.getConverterRegistrations();
+		globalRegistrations.getConverterRegistrations().forEach( this::processConverter );
 	}
 
 	private void processJavaTypeRegistrations(GlobalRegistrations globalRegistrations) {
-		// todo : process these
-		globalRegistrations.getJavaTypeRegistrations();
+		globalRegistrations.getJavaTypeRegistrations().forEach( this::processJavaTypeRegistration );
 	}
 
 	private void processJdbcTypeRegistrations(GlobalRegistrations globalRegistrations) {
-		// todo : process these
-		globalRegistrations.getJdbcTypeRegistrations();
+		globalRegistrations.getJdbcTypeRegistrations().forEach( this::processJdbcTypeRegistration );
 	}
 
 	private void processCustomTypes(GlobalRegistrations globalRegistrations) {
-		// todo : process these
-		globalRegistrations.getUserTypeRegistrations();
-		globalRegistrations.getCompositeUserTypeRegistrations();
-		globalRegistrations.getCollectionTypeRegistrations();
+		globalRegistrations.getUserTypeRegistrations().forEach( this::processUserTypeRegistration );
+		globalRegistrations.getCompositeUserTypeRegistrations().forEach( this::processCompositeUserTypeRegistration );
+		globalRegistrations.getCollectionTypeRegistrations().forEach( this::processCollectionTypeRegistration );
 	}
 
 	private void processInstantiators(GlobalRegistrations globalRegistrations) {
-		// todo : process these
-		globalRegistrations.getEmbeddableInstantiatorRegistrations();
+		globalRegistrations.getEmbeddableInstantiatorRegistrations().forEach( this::processEmbeddableInstantiatorRegistration );
 	}
 
 	private void processEventListeners(GlobalRegistrations globalRegistrations) {
-		// todo : process these
-		globalRegistrations.getEntityListenerRegistrations();
+		// JPA event listeners are consumed by EntityTypeMetadata#getCompleteJpaEventListeners()
+		// during entity metadata binding.  There is no separate mapping collector
+		// registration to apply here.
 	}
 
 	private void processFilterDefinitions(GlobalRegistrations globalRegistrations) {
@@ -228,6 +261,149 @@ public class BindingCoordinator {
 			bindingState.apply( filterDefRegistration );
 		} );
 
+	}
+
+	private IdentifierGeneratorDefinition buildSequenceGeneratorDefinition(SequenceGeneratorRegistration registration) {
+		final IdentifierGeneratorDefinition.Builder definitionBuilder = new IdentifierGeneratorDefinition.Builder();
+		GeneratorParameters.interpretSequenceGenerator( registration.configuration(), definitionBuilder );
+		return definitionBuilder.build();
+	}
+
+	private IdentifierGeneratorDefinition buildTableGeneratorDefinition(TableGeneratorRegistration registration) {
+		final IdentifierGeneratorDefinition.Builder definitionBuilder = new IdentifierGeneratorDefinition.Builder();
+		GeneratorParameters.interpretTableGenerator( registration.configuration(), definitionBuilder );
+		return definitionBuilder.build();
+	}
+
+	@SuppressWarnings("removal")
+	private IdentifierGeneratorDefinition buildGenericGeneratorDefinition(GenericGeneratorRegistration registration) {
+		final IdentifierGeneratorDefinition.Builder definitionBuilder = new IdentifierGeneratorDefinition.Builder();
+		definitionBuilder.setName( registration.name() );
+		final Class<? extends Generator> generatorClass = registration.configuration().type();
+		final String strategy = generatorClass.equals( Generator.class )
+				? registration.configuration().strategy()
+				: generatorClass.getName();
+		if ( isNotEmpty( strategy ) ) {
+			definitionBuilder.setStrategy( strategy );
+		}
+		definitionBuilder.addParams( AnnotationHelper.extractParameterMap( registration.configuration().parameters() ) );
+		return definitionBuilder.build();
+	}
+
+	private void processConverter(ConversionRegistration registration) {
+		bindingState.getMetadataBuildingContext()
+				.getMetadataCollector()
+				.addRegisteredConversion( new RegisteredConversion(
+						registration.explicitDomainType() == null ? null : registration.explicitDomainType().toJavaClass(),
+						attributeConverterClass( registration.converterType() ),
+						registration.autoApply()
+				) );
+	}
+
+	private void processJavaTypeRegistration(JavaTypeRegistration registration) {
+		bindingState.getMetadataBuildingContext()
+				.getMetadataCollector()
+				.addJavaTypeRegistration(
+						registration.domainType().toJavaClass(),
+						instantiate( registration.descriptor(), JavaType.class, "Java type descriptor" )
+				);
+	}
+
+	private void processJdbcTypeRegistration(JdbcTypeRegistration registration) {
+		bindingState.getMetadataBuildingContext()
+				.getMetadataCollector()
+				.addJdbcTypeRegistration(
+						registration.code(),
+						instantiate( registration.descriptor(), JdbcType.class, "JDBC type descriptor" )
+				);
+	}
+
+	private void processUserTypeRegistration(UserTypeRegistration registration) {
+		bindingState.getMetadataBuildingContext()
+				.getMetadataCollector()
+				.registerUserType(
+						registration.domainClass().toJavaClass(),
+						userTypeClass( registration.userTypeClass() )
+				);
+	}
+
+	private void processCompositeUserTypeRegistration(CompositeUserTypeRegistration registration) {
+		bindingState.getMetadataBuildingContext()
+				.getMetadataCollector()
+				.registerCompositeUserType(
+						registration.embeddableClass().toJavaClass(),
+						compositeUserTypeClass( registration.userTypeClass() )
+				);
+	}
+
+	private void processCollectionTypeRegistration(CollectionTypeRegistration registration) {
+		bindingState.getMetadataBuildingContext()
+				.getMetadataCollector()
+				.addCollectionTypeRegistration(
+						registration.classification(),
+						new org.hibernate.boot.spi.InFlightMetadataCollector.CollectionTypeRegistrationDescriptor(
+								instantiateClass( registration.userTypeClass(), UserCollectionType.class, "collection user type" ),
+								registration.parameterMap()
+						)
+				);
+	}
+
+	private void processEmbeddableInstantiatorRegistration(EmbeddableInstantiatorRegistration registration) {
+		bindingState.getMetadataBuildingContext()
+				.getMetadataCollector()
+				.registerEmbeddableInstantiator(
+						registration.embeddableClass().toJavaClass(),
+						instantiateClass( registration.instantiator(), EmbeddableInstantiator.class, "embeddable instantiator" )
+				);
+	}
+
+	private <T> T instantiate(ClassDetails classDetails, Class<T> expectedType, String registrationRole) {
+		final Class<? extends T> javaClass = instantiateClass( classDetails, expectedType, registrationRole );
+		try {
+			return javaClass.getConstructor().newInstance();
+		}
+		catch (Exception e) {
+			final ModelsException modelsException = new ModelsException(
+					"Error instantiating global " + registrationRole + " registration - " + classDetails.getName()
+			);
+			modelsException.addSuppressed( e );
+			throw modelsException;
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> Class<? extends T> instantiateClass(ClassDetails classDetails, Class<T> expectedType, String registrationRole) {
+		final Class<?> javaClass = classDetails.toJavaClass();
+		if ( !expectedType.isAssignableFrom( javaClass ) ) {
+			throw new ModelsException(
+					"Global " + registrationRole + " registration class `" + classDetails.getName()
+							+ "` did not implement " + expectedType.getName()
+			);
+		}
+		return (Class<? extends T>) javaClass;
+	}
+
+	@SuppressWarnings("unchecked")
+	private Class<? extends UserType<?>> userTypeClass(ClassDetails classDetails) {
+		return (Class<? extends UserType<?>>) (Class<?>) instantiateClass( classDetails, UserType.class, "user type" );
+	}
+
+	@SuppressWarnings("unchecked")
+	private Class<? extends CompositeUserType<?>> compositeUserTypeClass(ClassDetails classDetails) {
+		return (Class<? extends CompositeUserType<?>>) (Class<?>) instantiateClass(
+				classDetails,
+				CompositeUserType.class,
+				"composite user type"
+		);
+	}
+
+	@SuppressWarnings("unchecked")
+	private Class<? extends AttributeConverter<?, ?>> attributeConverterClass(ClassDetails classDetails) {
+		return (Class<? extends AttributeConverter<?, ?>>) (Class<?>) instantiateClass(
+				classDetails,
+				AttributeConverter.class,
+				"attribute converter"
+		);
 	}
 
 	private void processTables(AttributeMetadata attribute) {
