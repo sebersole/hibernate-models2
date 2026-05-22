@@ -37,6 +37,12 @@ public interface TypeBindingPhase {
 		void bindIdentifier();
 	}
 
+	/// Resolve identifier attributes that are themselves associations after all
+	/// root identifier shapes are available.
+	interface AssociationIdentifiers {
+		void bindAssociationIdentifiers();
+	}
+
 	/// Bind table keys that depend on the completed root identifier shape and
 	/// table-valued members.
 	///
@@ -77,5 +83,11 @@ public interface TypeBindingPhase {
 	/// Resolve association target properties for non-primary-key references.
 	interface AssociationTargets {
 		void bindAssociationTargets();
+	}
+
+	/// Resolve derived identifier associations such as {@code @MapsId} after
+	/// owner identifiers and to-one members have both been created.
+	interface DerivedIdentifiers {
+		void bindDerivedIdentifiers();
 	}
 }

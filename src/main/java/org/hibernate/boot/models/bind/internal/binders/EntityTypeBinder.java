@@ -90,18 +90,22 @@ import static org.hibernate.internal.util.StringHelper.coalesce;
 /// 5. {@link #bindEntityMetadata()} - bind entity-level metadata such as caching,
 /// filters, and callbacks.
 /// 6. {@link #bindIdentifier()} - bind the root identifier shape for the hierarchy.
-/// 7. {@link #bindMembers()} - bind the remaining currently coarse member phase:
+/// 7. {@link #bindAssociationIdentifiers()} - resolve identifier attributes that
+/// are themselves associations.
+/// 8. {@link #bindMembers()} - bind the remaining currently coarse member phase:
 /// discriminator, version, tenant id, and persistent attributes.
-/// 8. {@link #bindCollectionIndexes()} - resolve collection indexes that depend
+/// 9. {@link #bindCollectionIndexes()} - resolve collection indexes that depend
 /// on fully-bound member state, such as property-derived map keys.
-/// 9. {@link #bindAssociationTargets()} - resolve association target properties
+/// 10. {@link #bindAssociationTargets()} - resolve association target properties
 /// for non-primary-key references.
-/// 10. {@link #bindTableKeys()} - bind joined-subclass, secondary-table, and
+/// 11. {@link #bindDerivedIdentifiers()} - resolve derived identifier
+/// associations such as {@code @MapsId}.
+/// 12. {@link #bindTableKeys()} - bind joined-subclass, secondary-table, and
 /// association-table keys that depend on the root identifier shape and on joins
 /// discovered while binding members.
-/// 11. {@link #bindInverseAssociations()} - resolve inverse association values
+/// 13. {@link #bindInverseAssociations()} - resolve inverse association values
 /// from owning-side association mappings whose keys are now available.
-/// 12. {@link #bindForeignKeys()} - create physical foreign-key constraints from
+/// 14. {@link #bindForeignKeys()} - create physical foreign-key constraints from
 /// the association values and table keys prepared by earlier phases.
 ///
 /// The implemented {@link TypeBindingPhase} contracts identify which phases this
@@ -115,8 +119,10 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 				TypeBindingPhase.SuperType,
 				TypeBindingPhase.EntityMetadata,
 				TypeBindingPhase.Identifiers,
+				TypeBindingPhase.AssociationIdentifiers,
 				TypeBindingPhase.CollectionIndexes,
 				TypeBindingPhase.AssociationTargets,
+				TypeBindingPhase.DerivedIdentifiers,
 				TypeBindingPhase.TableKeys,
 				TypeBindingPhase.InverseAssociations,
 				TypeBindingPhase.ForeignKeys,
@@ -251,6 +257,11 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 		return identifierBinding;
 	}
 
+	/// Resolve association-valued identifier attributes after all identifiers exist.
+	public void bindAssociationIdentifiers() {
+		new AssociationIdentifierBinder( this ).bindAssociationIdentifiers();
+	}
+
 	/// Resolve collection indexes that need all member properties to exist.
 	///
 	/// Property-derived map keys, for example {@code @MapKey(name = "code")}, are
@@ -268,6 +279,11 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 	/// Resolve non-primary-key association targets after all target members exist.
 	public void bindAssociationTargets() {
 		new AssociationTargetBinder( this ).bindAssociationTargets();
+	}
+
+	/// Resolve derived identifier associations after identifier and member values exist.
+	public void bindDerivedIdentifiers() {
+		new DerivedIdentifierBinder( this ).bindDerivedIdentifiers();
 	}
 
 	/// Bind table keys that depend on a completed root identifier shape.

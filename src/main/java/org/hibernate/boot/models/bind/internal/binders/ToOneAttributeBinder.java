@@ -77,11 +77,6 @@ class ToOneAttributeBinder {
 				attributeMetadata.getName(),
 				null
 		);
-		if ( member.hasDirectAnnotationUsage( MapsId.class ) ) {
-			throw new UnsupportedOperationException(
-					"Derived identifiers via @MapsId need a dedicated binding phase and are not yet implemented"
-			);
-		}
 		if ( source.isInverseOneToOne() ) {
 			return bindInverseOneToOne( source, property );
 		}
@@ -115,11 +110,6 @@ class ToOneAttributeBinder {
 			BindingState bindingState,
 			BindingContext bindingContext) {
 		final ToOneSource source = ToOneSource.create( member, ownerClassName, propertyName, associationOverride );
-		if ( member.hasDirectAnnotationUsage( MapsId.class ) ) {
-			throw new UnsupportedOperationException(
-					"Derived identifiers via @MapsId need a dedicated binding phase and are not yet implemented"
-			);
-		}
 		if ( source.isInverseOneToOne() ) {
 			throw new UnsupportedOperationException( "Inverse @OneToOne is not yet implemented" );
 		}
@@ -175,6 +165,7 @@ class ToOneAttributeBinder {
 		);
 		final List<JoinColumn> valueJoinColumns = source.valueJoinColumns( joinTable );
 		final boolean referenceToPrimaryKey = referencesPrimaryKey( valueJoinColumns, target.identifierColumns() );
+		final MapsId mapsId = member.getDirectAnnotationUsage( MapsId.class );
 		value.setReferencedEntityName( target.entityName() );
 		value.setReferenceToPrimaryKey( referenceToPrimaryKey );
 		value.setTypeName( target.entityName() );
@@ -186,19 +177,38 @@ class ToOneAttributeBinder {
 			value.markAsLogicalOneToOne();
 		}
 
-		final boolean optional = source.optional();
+		final boolean optional = mapsId == null && source.optional();
 		property.setOptional( optional );
 
-		bindJoinColumns(
-				valueJoinColumns,
-				value,
-				target,
-				referenceToPrimaryKey,
-				logicalOneToOne,
-				optional,
-				ownerClassName,
-				propertyName
-		);
+		if ( mapsId == null ) {
+			bindJoinColumns(
+					valueJoinColumns,
+					value,
+					target,
+					referenceToPrimaryKey,
+					logicalOneToOne,
+					optional,
+					ownerClassName,
+					propertyName
+			);
+		}
+		else {
+			if ( !referenceToPrimaryKey ) {
+				throw new UnsupportedOperationException(
+						"@MapsId with non-primary-key to-one references is not yet implemented - "
+								+ ownerClassName + "." + propertyName
+				);
+			}
+			bindingState.addDerivedIdentifierBinding( new DerivedIdentifierBinding(
+					ownerType,
+					ownerBinding,
+					property,
+					value,
+					mapsId.value(),
+					valueJoinColumns,
+					target.identifierColumns()
+			) );
+		}
 		if ( !referenceToPrimaryKey ) {
 			bindingState.addAssociationTargetBinding( new AssociationTargetBinding(
 					ownerBinding,

@@ -12,8 +12,10 @@ import java.util.function.BiConsumer;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.models.bind.internal.binders.AssociationTableBinding;
+import org.hibernate.boot.models.bind.internal.binders.AssociationIdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.AssociationTargetBinding;
 import org.hibernate.boot.models.bind.internal.binders.CollectionTableBinding;
+import org.hibernate.boot.models.bind.internal.binders.DerivedIdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.EntityTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.ForeignKeyBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifierBinding;
@@ -56,7 +58,9 @@ public class BindingStateImpl implements BindingState {
 	private final Map<Join, AssociationTableBinding> associationTableBindings = new HashMap<>();
 	private final java.util.List<CollectionTableBinding> collectionTableBindings = new java.util.ArrayList<>();
 	private final java.util.List<PropertyMapKeyBinding> propertyMapKeyBindings = new java.util.ArrayList<>();
+	private final java.util.List<AssociationIdentifierBinding> associationIdentifierBindings = new java.util.ArrayList<>();
 	private final java.util.List<AssociationTargetBinding> associationTargetBindings = new java.util.ArrayList<>();
+	private final java.util.List<DerivedIdentifierBinding> derivedIdentifierBindings = new java.util.ArrayList<>();
 	private final java.util.List<InversePluralAssociationBinding> inversePluralAssociationBindings = new java.util.ArrayList<>();
 	private final java.util.List<InverseToOneAssociationBinding> inverseToOneAssociationBindings = new java.util.ArrayList<>();
 	private final java.util.List<ForeignKeyBinding> foreignKeyBindings = new java.util.ArrayList<>();
@@ -207,6 +211,16 @@ public class BindingStateImpl implements BindingState {
 	}
 
 	@Override
+	public void addAssociationIdentifierBinding(AssociationIdentifierBinding associationIdentifierBinding) {
+		associationIdentifierBindings.add( associationIdentifierBinding );
+	}
+
+	@Override
+	public void forEachAssociationIdentifierBinding(java.util.function.Consumer<AssociationIdentifierBinding> consumer) {
+		associationIdentifierBindings.forEach( consumer );
+	}
+
+	@Override
 	public void addAssociationTargetBinding(AssociationTargetBinding associationTargetBinding) {
 		associationTargetBindings.add( associationTargetBinding );
 	}
@@ -214,6 +228,16 @@ public class BindingStateImpl implements BindingState {
 	@Override
 	public void forEachAssociationTargetBinding(java.util.function.Consumer<AssociationTargetBinding> consumer) {
 		associationTargetBindings.forEach( consumer );
+	}
+
+	@Override
+	public void addDerivedIdentifierBinding(DerivedIdentifierBinding derivedIdentifierBinding) {
+		derivedIdentifierBindings.add( derivedIdentifierBinding );
+	}
+
+	@Override
+	public void forEachDerivedIdentifierBinding(java.util.function.Consumer<DerivedIdentifierBinding> consumer) {
+		derivedIdentifierBindings.forEach( consumer );
 	}
 
 	@Override
