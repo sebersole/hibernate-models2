@@ -1,0 +1,185 @@
+= ORM Integration Notes
+
+These are concrete `org.hibernate.mapping` changes suggested by the phased binder prototype.
+They are separate from prototype implementation details: the point is to remember which pieces should move into ORM proper when integrating this work.
+
+== Separate collection key, primary-key, and foreign-key creation
+
+`org.hibernate.mapping.Collection#createAllKeys()` currently does too much for a phased binder.
+It creates collection foreign keys and then creates the collection table primary key.
+
+That makes it awkward to enforce a clean phase order:
+
+* bind collection key value
+* bind collection index and element values
+* bind collection table primary key
+* create/customize physical foreign-key constraints
+
+The prototype can centralize most foreign-key creation in a `ForeignKeys` phase, but collection tables are still constrained by this API because `createAllKeys()` calls `createForeignKeys()` internally and `createPrimaryKey()` is package-private.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/TableKeyBinder.java[`TableKeyBinder`] still calls `collection.createAllKeys()` after setting the collection key.
+  This is the spot where the prototype cannot currently create only the collection table primary key.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/ForeignKeyBinder.java[`ForeignKeyBinder`] owns the explicit late FK phase for association values and table-key FKs.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/TypeBindingPhase.java[`TypeBindingPhase.ForeignKeys`] and link:../src/main/java/org/hibernate/boot/models/bind/spi/BindingCoordinator.java[`BindingCoordinator`] show where the FK phase runs after collection indexes, association targets, table keys, and inverse associations.
+
+When integrating upstream, split this API into explicit operations, for example:
+
+[source,java]
+----
+collection.createPrimaryKey();
+collection.createForeignKeys();
+----
+
+or expose a binding-oriented API that lets the coordinator create the collection table primary key without also creating FKs.
+The important part is that physical FK creation/customization should happen in one explicit phase after table keys, association targets, collection indexes, and inverse structures are ready.
+
+== Make table-key foreign keys first-class
+
+`Join#createForeignKey()` hides the actual key value and target entity used to create the FK.
+For phased binding, it is easier to record:
+
+* the table key value
+* the referenced entity name
+* the source `@ForeignKey` details
+
+and create/customize the FK later.
+
+The prototype models this as typed pending state.
+ORM proper could support this either by exposing more direct key-level APIs or by making FK metadata a first-class part of `Join` / secondary-table / association-table mapping.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/TableForeignKeyBinding.java[`TableForeignKeyBinding`] is the local typed state for table-key FKs.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/TableKeyBinder.java[`TableKeyBinder`] registers joined-subclass, secondary-table, association-table, and collection owner-key FKs instead of creating them immediately.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/ForeignKeyBinder.java[`ForeignKeyBinder`] consumes both association-value FK bindings and table-key FK bindings in the `ForeignKeys` phase.
+* link:../src/main/java/org/hibernate/boot/models/bind/spi/BindingState.java[`BindingState`] and link:../src/main/java/org/hibernate/boot/models/bind/internal/BindingStateImpl.java[`BindingStateImpl`] expose `addTableForeignKeyBinding` / `forEachTableForeignKeyBinding`.
+
+== Retain source-model facts on mapping values
+
+The prototype has a family of source descriptors that preserve Hibernate Models source facts long enough for later binding phases to make decisions without re-reading annotations or relying on captured lambdas.
+This suggests that upstream `org.hibernate.mapping` values should retain more source-level context directly, especially now that this work is not constrained by legacy `hbm.xml` equivalence.
+
+Examples of useful source facts:
+
+* source `MemberDetails`
+* effective `TypeDetails`
+* source role/kind, such as attribute, collection element, map key, list index, embedded attribute, embedded identifier, or collection-element component
+* source association role, such as many-to-one versus owning one-to-one
+* explicit Java type or converter source selected for this value
+* effective target entity details for associations
+
+Without this, later phases need binder-local side channels for type resolution, converter handling, map-key handling, association target resolution, and FK customization.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/sources/BasicValueSource.java[`BasicValueSource`] records the source member, effective value type, basic-value role, explicit Java type override, and selected converter.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/sources/ToOneSource.java[`ToOneSource`] records the association member, logical association role, target type, optionality/fetch, join columns, join table, and association override.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/sources/CollectionSource.java[`CollectionSource`] records the plural member, element type, map-key type, collection classification, table source, list-index source, and map-key source.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/sources/ComponentSource.java[`ComponentSource`] records component role, source member, component class, and path-aware adjustment state.
+
+== Preserve component path-adjustment state
+
+Embeddable binding is path-sensitive.
+`@AttributeOverride`, `@AssociationOverride`, and `@Convert(attributeName = ...)` are declared on the owning member, but they apply to nested component members by relative path.
+
+Upstream `org.hibernate.mapping.Component` should probably retain enough source/path context to resolve these adjustments consistently, instead of requiring each binder to pass parallel override/converter lookup functions.
+This becomes more important for nested embeddables and embeddable collection elements, where the same Java embeddable class can be bound under different source paths with different adjustments.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/sources/ComponentSource.java[`ComponentSource`] exposes path-aware `columnSource`, `conversion`, and `associationOverride` lookups.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/sources/PathAdjustmentCollector.java[`PathAdjustmentCollector`] collects path-keyed attribute overrides, association overrides, and conversion overrides from the source member.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/EmbeddableAttributeBinder.java[`EmbeddableAttributeBinder`] and link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/ComponentBinder.java[`ComponentBinder`] consume this source state while binding component members.
+
+== Keep plural source classification and element/key type facts
+
+A plural Java member contributes several mapping values: the collection container, the element value, and sometimes an index/key value.
+Those values may use different source types and annotation vocabularies even though all annotations are declared on the same member.
+
+Upstream collection mappings should retain the semantic source classification and the effective element/key type facts.
+This avoids repeatedly rediscovering whether a `List` is an indexed list or a bag, whether a map key is basic/entity/property-based, and which annotations apply to the element versus key.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/sources/CollectionSource.java[`CollectionSource`] centralizes the collection classification rules, including `List` as indexed list unless Hibernate `@Bag` is present.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/sources/BasicValueSource.java[`BasicValueSource`] distinguishes collection element, map key, and list-index basic values from ordinary attribute values.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/CollectionIndexBinder.java[`CollectionIndexBinder`] depends on collection source facts for list indexes, basic map keys, property map keys, and entity map keys.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/ElementCollectionAttributeBinder.java[`ElementCollectionAttributeBinder`] and link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/PluralAssociationAttributeBinder.java[`PluralAssociationAttributeBinder`] use `CollectionSource` to bind structurally different collection shapes from one source abstraction.
+
+== Unify table and column source descriptors
+
+The prototype uses small source interfaces to normalize annotation families that describe the same physical concept.
+This reduces binder branching and keeps defaulting/quoting/naming logic closer to the physical concept being bound.
+
+Upstream mapping objects should either keep similar source descriptors or expose equivalent normalized source metadata for table-like and column-like mappings.
+This is especially useful when the same physical concept can come from different annotations, such as `@Column`, `@JoinColumn`, `@MapKeyColumn`, `@MapKeyJoinColumn`, `@OrderColumn`, `@Table`, `@JoinTable`, `@CollectionTable`, and `@SecondaryTable`.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/sources/ColumnSource.java[`ColumnSource`] normalizes column-like annotations for name, uniqueness, nullability, DDL type, length/precision/scale, options, and table.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/sources/TableSource.java[`TableSource`] normalizes table-like annotations for name, schema, catalog, comment, and options.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/ColumnBinder.java[`ColumnBinder`] consumes `ColumnSource`.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/TableBinder.java[`TableBinder`] consumes `TableSource`.
+
+== Preserve source foreign-key metadata on mapping structures
+
+Some source-level FK details are currently only available while binding annotations:
+
+* `@SecondaryTable#foreignKey`
+* `@JoinTable#foreignKey`
+* `@JoinTable#inverseForeignKey`
+* `@CollectionTable#foreignKey`
+* `@JoinColumn#foreignKey`
+* `@MapKeyJoinColumn#foreignKey`
+
+The phased binder needs those details after values and keys are structurally bound.
+Upstream integration should either store this source metadata directly on the relevant mapping objects or expose source descriptors from them.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/sources/ForeignKeySource.java[`ForeignKeySource`] is the source descriptor used to carry FK names, constraint modes, definitions, and options across phases.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/SecondaryTable.java[`SecondaryTable`] currently carries the secondary-table FK source so the late FK phase can customize the key FK.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/AssociationTableBinding.java[`AssociationTableBinding`] carries `@JoinTable#foreignKey` for association-table owner-key FKs.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/CollectionTableBinding.java[`CollectionTableBinding`] carries `@CollectionTable#foreignKey` for collection owner-key FKs.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/sources/ToOneSource.java[`ToOneSource#valueForeignKeySource`] preserves value-side FK metadata for owning to-one associations, including join-table inverse FK metadata.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/CollectionIndexBinder.java[`CollectionIndexBinder`] preserves `@MapKeyJoinColumn#foreignKey` for entity-valued map-key FKs.
+
+== Property-ref association targets
+
+Associations whose `referencedColumnName` points at a non-identifier property need all target members to be bound before the referenced property can be resolved.
+This applies to normal to-one associations, plural association element FKs, and entity-valued map keys.
+
+The prototype resolves this in an association-target phase and later creates the physical FK in the foreign-key phase.
+ORM proper should avoid resolving these target properties during attribute/member binding.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/AssociationTargetBinding.java[`AssociationTargetBinding`] records association values whose join columns reference non-identifier target columns.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/AssociationTargetBinder.java[`AssociationTargetBinder`] resolves the referenced target property after all members have been bound.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/TypeBindingPhase.java[`TypeBindingPhase.AssociationTargets`] and link:../src/main/java/org/hibernate/boot/models/bind/spi/BindingCoordinator.java[`BindingCoordinator`] place this resolution after `Members` and `CollectionIndexes`, before `TableKeys` / `ForeignKeys`.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/ToOneAttributeBinder.java[`ToOneAttributeBinder`], link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/PluralAssociationAttributeBinder.java[`PluralAssociationAttributeBinder`], and link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/CollectionIndexBinder.java[`CollectionIndexBinder`] register these pending bindings for to-one associations, plural association elements, and entity-valued map keys.
+
+== Unique property references
+
+`InFlightMetadataCollector#addUniquePropertyReference` is still used as a side channel for property-ref associations.
+When moving this work upstream, consider whether unique property references should be represented directly on the association mapping or folded into the same association-target resolution model.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/AssociationTargetBinder.java[`AssociationTargetBinder`] calls `addUniquePropertyReference` after resolving non-PK association targets.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/InverseToOneAssociationBinder.java[`InverseToOneAssociationBinder`] still calls `addUniquePropertyReference` directly while resolving inverse one-to-one mappings.
+  This is a remaining one-off path that should likely fold into the same association-target model.
+
+== Derived identifiers
+
+`@MapsId` needs dedicated typed state and phase ordering.
+It connects identifier binding with association binding, which means it should not be handled as an ordinary to-one member during the coarse member phase.
+
+The prototype currently rejects `@MapsId` deliberately rather than accidentally binding it as a normal association.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/ToOneAttributeBinder.java[`ToOneAttributeBinder`] explicitly rejects `@MapsId` in both direct to-one binding and embeddable override binding paths.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/IdentifierBinder.java[`IdentifierBinder`] binds identifiers before normal members, which is the ordering pressure that makes derived identifiers need their own typed state and phase.

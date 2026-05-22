@@ -16,6 +16,7 @@ import org.hibernate.boot.models.bind.internal.binders.InversePluralAssociationB
 import org.hibernate.boot.models.bind.internal.binders.InverseToOneAssociationBinding;
 import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.PropertyMapKeyBinding;
+import org.hibernate.boot.models.bind.internal.binders.TableForeignKeyBinding;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.FilterDefRegistration;
 import org.hibernate.boot.models.categorize.spi.ManagedTypeMetadata;
@@ -67,6 +68,9 @@ public interface BindingState {
 	/// Register a secondary table reference.
 	void addSecondaryTable(SecondaryTable table);
 
+	/// Resolve secondary-table state by its Hibernate table binding.
+	SecondaryTable getSecondaryTable(org.hibernate.mapping.Table table);
+
 	/// Register a Join that represents an association table.
 	void addAssociationTableBinding(AssociationTableBinding associationTableBinding);
 
@@ -108,6 +112,12 @@ public interface BindingState {
 
 	/// Visit foreign-key constraints waiting for late binding.
 	void forEachForeignKeyBinding(java.util.function.Consumer<ForeignKeyBinding> consumer);
+
+	/// Register a table-key foreign-key constraint to create after table keys are bound.
+	void addTableForeignKeyBinding(TableForeignKeyBinding tableForeignKeyBinding);
+
+	/// Visit table-key foreign-key constraints waiting for late binding.
+	void forEachTableForeignKeyBinding(java.util.function.Consumer<TableForeignKeyBinding> consumer);
 
 	/// Register the identifier binding produced for an entity hierarchy root.
 	void addIdentifierBinding(EntityTypeMetadata rootType, IdentifierBinding identifierBinding);

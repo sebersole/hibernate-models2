@@ -25,6 +25,11 @@ class ForeignKeyBinder {
 				bindForeignKey( foreignKeyBinding );
 			}
 		} );
+		entityBinder.getBindingState().forEachTableForeignKeyBinding( (tableForeignKeyBinding) -> {
+			if ( tableForeignKeyBinding.ownerBinding() == entityBinder.getTypeBinding() ) {
+				bindTableForeignKey( tableForeignKeyBinding );
+			}
+		} );
 	}
 
 	private void bindForeignKey(ForeignKeyBinding foreignKeyBinding) {
@@ -42,13 +47,23 @@ class ForeignKeyBinder {
 		applyForeignKeySource( value, foreignKeyBinding.foreignKeySource() );
 	}
 
+	private void bindTableForeignKey(TableForeignKeyBinding tableForeignKeyBinding) {
+		final ForeignKey foreignKey = tableForeignKeyBinding.key()
+				.createForeignKeyOfEntity( tableForeignKeyBinding.referencedEntityName() );
+		applyForeignKeySource( foreignKey, tableForeignKeyBinding.foreignKeySource() );
+	}
+
 	private void applyForeignKeySource(ManyToOne value, ForeignKeySource foreignKeySource) {
 		if ( foreignKeySource == null ) {
 			return;
 		}
 
 		final ForeignKey foreignKey = findForeignKey( value );
-		if ( foreignKey == null ) {
+		applyForeignKeySource( foreignKey, foreignKeySource );
+	}
+
+	private void applyForeignKeySource(ForeignKey foreignKey, ForeignKeySource foreignKeySource) {
+		if ( foreignKey == null || foreignKeySource == null ) {
 			return;
 		}
 		if ( foreignKeySource.isNoConstraint() ) {

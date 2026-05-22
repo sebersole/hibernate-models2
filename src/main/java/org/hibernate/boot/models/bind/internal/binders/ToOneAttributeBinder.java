@@ -10,6 +10,7 @@ import java.util.List;
 import org.hibernate.MappingException;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
+import org.hibernate.boot.models.bind.internal.sources.ForeignKeySource;
 import org.hibernate.boot.models.bind.internal.sources.ToOneSource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
@@ -410,7 +411,11 @@ class ToOneAttributeBinder {
 							+ ownerType.getClassDetails().getClassName()
 			);
 		}
-		bindingState.addAssociationTableBinding( new AssociationTableBinding( join, joinColumns ) );
+		bindingState.addAssociationTableBinding( new AssociationTableBinding(
+				join,
+				joinColumns,
+				ForeignKeySource.from( joinTable )
+		) );
 		return associationTable;
 	}
 

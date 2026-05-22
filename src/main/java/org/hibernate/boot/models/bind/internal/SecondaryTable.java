@@ -5,6 +5,7 @@
 package org.hibernate.boot.models.bind.internal;
 
 import org.hibernate.boot.model.naming.Identifier;
+import org.hibernate.boot.models.bind.internal.sources.ForeignKeySource;
 import org.hibernate.boot.models.bind.spi.PhysicalTableReference;
 import org.hibernate.mapping.Table;
 
@@ -22,6 +23,7 @@ public record SecondaryTable(
 		Identifier physicalSchemaName,
 		boolean optional,
 		boolean owned,
+		ForeignKeySource foreignKeySource,
 		Table binding) implements PhysicalTableReference {
 	@Override
 	public Identifier logicalName() {
