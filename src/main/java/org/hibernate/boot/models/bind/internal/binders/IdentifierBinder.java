@@ -189,7 +189,7 @@ public class IdentifierBinder {
 			ClassDetails embeddableType,
 			Component idValue,
 			Table table) {
-		return new ComponentBinder( state, options, context ).bindBasicProperties(
+		return new ComponentBinder( modelBinders, state, options, context ).bindBasicProperties(
 				type,
 				typeBinding,
 				ComponentSource.embeddedIdentifier( embeddableType ),

@@ -13,9 +13,12 @@ import org.hibernate.annotations.SecondaryRow;
 import org.hibernate.annotations.Subselect;
 import org.hibernate.boot.model.naming.EntityNaming;
 import org.hibernate.boot.model.naming.Identifier;
+import org.hibernate.boot.model.naming.ImplicitCollectionTableNameSource;
 import org.hibernate.boot.model.naming.ImplicitEntityNameSource;
+import org.hibernate.boot.model.naming.ImplicitJoinTableNameSource;
 import org.hibernate.boot.model.naming.ImplicitNamingStrategy;
 import org.hibernate.boot.model.naming.PhysicalNamingStrategy;
+import org.hibernate.boot.model.source.spi.AttributePath;
 import org.hibernate.boot.models.AnnotationPlacementException;
 import org.hibernate.boot.models.bind.internal.BindingHelper;
 import org.hibernate.boot.models.bind.internal.InLineView;
@@ -39,6 +42,7 @@ import org.hibernate.mapping.PrimaryKey;
 import org.hibernate.mapping.Table;
 import org.hibernate.models.spi.ClassDetails;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.SecondaryTable;
@@ -244,10 +248,12 @@ public class TableBinder {
 
 	private PhysicalTable bindImplicitPhysicalTable(EntityTypeMetadata type, boolean isPrimary) {
 		final Identifier logicalName = determineLogicalName( type, null );
+		final Identifier logicalSchemaName = bindingOptions.getDefaultSchemaName();
+		final Identifier logicalCatalogName = bindingOptions.getDefaultCatalogName();
 
 		final Table binding = bindingState.getMetadataBuildingContext().getMetadataCollector().addTable(
-				bindingOptions.getDefaultSchemaName() == null ? null : bindingOptions.getDefaultSchemaName().getCanonicalName(),
-				bindingOptions.getDefaultCatalogName() == null ? null : bindingOptions.getDefaultCatalogName().getCanonicalName(),
+				toCanonicalName( logicalSchemaName ),
+				toCanonicalName( logicalCatalogName ),
 				logicalName.getCanonicalName(),
 				null,
 				type.isAbstract(),
@@ -263,11 +269,11 @@ public class TableBinder {
 
 		return new PhysicalTable(
 				logicalName,
-				bindingOptions.getDefaultCatalogName(),
-				bindingOptions.getDefaultSchemaName(),
+				logicalCatalogName,
+				logicalSchemaName,
 				physicalNamingStrategy.toPhysicalTableName( logicalName, jdbcEnvironment ),
-				physicalNamingStrategy.toPhysicalCatalogName( bindingOptions.getDefaultCatalogName(), jdbcEnvironment ),
-				physicalNamingStrategy.toPhysicalSchemaName( bindingOptions.getDefaultSchemaName(), jdbcEnvironment ),
+				physicalNamingStrategy.toPhysicalCatalogName( logicalCatalogName, jdbcEnvironment ),
+				physicalNamingStrategy.toPhysicalSchemaName( logicalSchemaName, jdbcEnvironment ),
 				binding
 		);
 	}
@@ -356,6 +362,165 @@ public class TableBinder {
 				logicalCatalogName == null ? null : physicalNamingStrategy.toPhysicalCatalogName( logicalCatalogName, jdbcEnvironment ),
 				logicalSchemaName == null ? null : physicalNamingStrategy.toPhysicalSchemaName( logicalSchemaName, jdbcEnvironment ),
 				binding
+		);
+	}
+
+	public PhysicalTable bindCollectionTable(
+			EntityTypeMetadata ownerType,
+			Table owningTable,
+			String attributeName,
+			CollectionTable collectionTable) {
+		final TableSource tableSource = TableSource.from( collectionTable );
+		final Identifier logicalName = determineCollectionTableLogicalName(
+				ownerType,
+				owningTable,
+				attributeName,
+				tableSource
+		);
+		return bindPhysicalTable( logicalName, tableSource, false );
+	}
+
+	public PhysicalTable bindAssociationTable(
+			EntityTypeMetadata ownerType,
+			Table owningTable,
+			String attributeName,
+			EntityNaming targetType,
+			Table targetTable,
+			JoinTable joinTable) {
+		final TableSource tableSource = TableSource.from( joinTable );
+		final Identifier logicalName = determineAssociationTableLogicalName(
+				ownerType,
+				owningTable,
+				attributeName,
+				targetType,
+				targetTable,
+				tableSource
+		);
+		return bindPhysicalTable( logicalName, tableSource, false );
+	}
+
+	private PhysicalTable bindPhysicalTable(
+			Identifier logicalName,
+			TableSource tableSource,
+			boolean isAbstract) {
+		final Identifier logicalSchemaName = resolveDatabaseIdentifier(
+				tableSource == null ? null : tableSource.schema(),
+				bindingOptions.getDefaultSchemaName(),
+				QuotedIdentifierTarget.SCHEMA_NAME
+		);
+		final Identifier logicalCatalogName = resolveDatabaseIdentifier(
+				tableSource == null ? null : tableSource.catalog(),
+				bindingOptions.getDefaultCatalogName(),
+				QuotedIdentifierTarget.CATALOG_NAME
+		);
+
+		final var binding = bindingState.getMetadataBuildingContext().getMetadataCollector().addTable(
+				toCanonicalName( logicalSchemaName ),
+				toCanonicalName( logicalCatalogName ),
+				logicalName.getCanonicalName(),
+				null,
+				isAbstract,
+				bindingState.getMetadataBuildingContext(),
+				false
+		);
+
+		applyComment( binding, tableSource, null );
+		applyOptions( binding, tableSource );
+
+		return new PhysicalTable(
+				logicalName,
+				logicalCatalogName,
+				logicalSchemaName,
+				physicalNamingStrategy.toPhysicalTableName( logicalName, jdbcEnvironment ),
+				physicalNamingStrategy.toPhysicalCatalogName( logicalCatalogName, jdbcEnvironment ),
+				physicalNamingStrategy.toPhysicalSchemaName( logicalSchemaName, jdbcEnvironment ),
+				binding
+		);
+	}
+
+	private Identifier determineCollectionTableLogicalName(
+			EntityTypeMetadata ownerType,
+			Table owningTable,
+			String attributeName,
+			TableSource tableSource) {
+		if ( tableSource != null ) {
+			final String name = tableSource.nonEmptyName();
+			if ( name != null ) {
+				return BindingHelper.toIdentifier( name, QuotedIdentifierTarget.TABLE_NAME, bindingOptions, jdbcEnvironment );
+			}
+		}
+
+		return implicitNamingStrategy.determineCollectionTableName(
+				new ImplicitCollectionTableNameSource() {
+					@Override
+					public Identifier getOwningPhysicalTableName() {
+						return Identifier.toIdentifier( owningTable.getName() );
+					}
+
+					@Override
+					public EntityNaming getOwningEntityNaming() {
+						return ownerType;
+					}
+
+					@Override
+					public AttributePath getOwningAttributePath() {
+						return AttributePath.parse( attributeName );
+					}
+
+					@Override
+					public MetadataBuildingContext getBuildingContext() {
+						return bindingState.getMetadataBuildingContext();
+					}
+				}
+		);
+	}
+
+	private Identifier determineAssociationTableLogicalName(
+			EntityTypeMetadata ownerType,
+			Table owningTable,
+			String attributeName,
+			EntityNaming targetType,
+			Table targetTable,
+			TableSource tableSource) {
+		if ( tableSource != null ) {
+			final String name = tableSource.nonEmptyName();
+			if ( name != null ) {
+				return BindingHelper.toIdentifier( name, QuotedIdentifierTarget.TABLE_NAME, bindingOptions, jdbcEnvironment );
+			}
+		}
+
+		return implicitNamingStrategy.determineJoinTableName(
+				new ImplicitJoinTableNameSource() {
+					@Override
+					public String getOwningPhysicalTableName() {
+						return owningTable.getName();
+					}
+
+					@Override
+					public EntityNaming getOwningEntityNaming() {
+						return ownerType;
+					}
+
+					@Override
+					public String getNonOwningPhysicalTableName() {
+						return targetTable.getName();
+					}
+
+					@Override
+					public EntityNaming getNonOwningEntityNaming() {
+						return targetType;
+					}
+
+					@Override
+					public AttributePath getAssociationOwningAttributePath() {
+						return AttributePath.parse( attributeName );
+					}
+
+					@Override
+					public MetadataBuildingContext getBuildingContext() {
+						return bindingState.getMetadataBuildingContext();
+					}
+				}
 		);
 	}
 
@@ -450,8 +615,7 @@ public class TableBinder {
 		if ( tableSource != null ) {
 			final String options = tableSource.options();
 			if ( StringHelper.isNotEmpty( options ) ) {
-//				table.setOptions( options );
-				throw new UnsupportedOperationException( "Not yet implemented" );
+				table.setOptions( options );
 			}
 		}
 	}

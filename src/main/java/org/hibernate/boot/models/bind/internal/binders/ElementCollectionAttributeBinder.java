@@ -7,7 +7,6 @@ package org.hibernate.boot.models.bind.internal.binders;
 import java.util.List;
 
 import org.hibernate.MappingException;
-import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.models.bind.internal.sources.BasicValueSource;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.internal.sources.CollectionSource;
@@ -17,8 +16,8 @@ import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
+import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
-import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.Component;
@@ -30,7 +29,9 @@ import org.hibernate.mapping.Value;
 import org.hibernate.models.spi.MemberDetails;
 
 import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.UniqueConstraint;
 
 /**
  * Binds the first supported element-collection shape: a basic element collection
@@ -40,6 +41,7 @@ class ElementCollectionAttributeBinder {
 	private final IdentifiableTypeMetadata ownerType;
 	private final PersistentClass ownerBinding;
 	private final AttributeMetadata attributeMetadata;
+	private final ModelBinders modelBinders;
 	private final BindingOptions bindingOptions;
 	private final BindingState bindingState;
 	private final BindingContext bindingContext;
@@ -48,12 +50,14 @@ class ElementCollectionAttributeBinder {
 			IdentifiableTypeMetadata ownerType,
 			PersistentClass ownerBinding,
 			AttributeMetadata attributeMetadata,
+			ModelBinders modelBinders,
 			BindingOptions bindingOptions,
 			BindingState bindingState,
 			BindingContext bindingContext) {
 		this.ownerType = ownerType;
 		this.ownerBinding = ownerBinding;
 		this.attributeMetadata = attributeMetadata;
+		this.modelBinders = modelBinders;
 		this.bindingOptions = bindingOptions;
 		this.bindingState = bindingState;
 		this.bindingContext = bindingContext;
@@ -62,13 +66,6 @@ class ElementCollectionAttributeBinder {
 	Collection bind(Property property) {
 		final CollectionSource source = CollectionSource.elementCollection( attributeMetadata.getMember() );
 		final CollectionTable collectionTable = source.collectionTable();
-		if ( collectionTable == null || StringHelper.isEmpty( collectionTable.name() ) ) {
-			// todo: implement implicit collection-table naming using the configured
-			//  ImplicitNamingStrategy from BindingContext#getBootstrapContext(), with the
-			//  MetadataBuildingContext from BindingState for the naming source.
-			throw new UnsupportedOperationException( "Implicit @CollectionTable names are not yet implemented" );
-		}
-
 		final Table table = bindCollectionTable( collectionTable );
 		final Collection collection = createCollection( source );
 		collection.setRole( ownerBinding.getEntityName() + "." + attributeMetadata.getName() );
@@ -105,8 +102,8 @@ class ElementCollectionAttributeBinder {
 				collection,
 				joinColumns,
 				ForeignKeySource.from( collectionTable ),
-				collectionTable.uniqueConstraints(),
-				collectionTable.indexes()
+				collectionTable == null ? new UniqueConstraint[0] : collectionTable.uniqueConstraints(),
+				collectionTable == null ? new Index[0] : collectionTable.indexes()
 		) );
 		bindingState.getMetadataBuildingContext().getMetadataCollector().addCollectionBinding( collection );
 		return collection;
@@ -174,30 +171,14 @@ class ElementCollectionAttributeBinder {
 	}
 
 	private Table bindCollectionTable(CollectionTable collectionTable) {
-		// todo: route explicit catalog/schema/table names through BindingHelper so
-		//  global quoting and the configured JdbcEnvironment are applied consistently.
-		implicitNamingStrategy( bindingContext );
-		final Identifier logicalName = Identifier.toIdentifier( collectionTable.name() );
-		final Identifier schemaName = StringHelper.isEmpty( collectionTable.schema() )
-				? bindingOptions.getDefaultSchemaName()
-				: Identifier.toIdentifier( collectionTable.schema() );
-		final Identifier catalogName = StringHelper.isEmpty( collectionTable.catalog() )
-				? bindingOptions.getDefaultCatalogName()
-				: Identifier.toIdentifier( collectionTable.catalog() );
-
-		final Table table = bindingState.getMetadataBuildingContext().getMetadataCollector().addTable(
-				schemaName == null ? null : schemaName.getCanonicalName(),
-				catalogName == null ? null : catalogName.getCanonicalName(),
-				logicalName.getCanonicalName(),
-				null,
-				false,
-				bindingState.getMetadataBuildingContext(),
-				false
-		);
-		if ( StringHelper.isNotEmpty( collectionTable.options() ) ) {
-			table.setOptions( collectionTable.options() );
-		}
-		return table;
+		return modelBinders.getTableBinder()
+				.bindCollectionTable(
+						resolveOwnerEntityType(),
+						ownerBinding.getTable(),
+						attributeMetadata.getName(),
+						collectionTable
+				)
+				.binding();
 	}
 
 	private Value bindElementValue(CollectionSource source, Collection collection, Table table) {
@@ -215,7 +196,7 @@ class ElementCollectionAttributeBinder {
 		component.setTable( table );
 		component.setRoleName( collection.getRole() );
 
-		new ComponentBinder( bindingState, bindingOptions, bindingContext ).bindBasicProperties(
+		new ComponentBinder( modelBinders, bindingState, bindingOptions, bindingContext ).bindBasicProperties(
 				ownerType,
 				ownerBinding,
 				source,
@@ -251,10 +232,11 @@ class ElementCollectionAttributeBinder {
 		return element;
 	}
 
-	private static org.hibernate.boot.model.naming.ImplicitNamingStrategy implicitNamingStrategy(BindingContext bindingContext) {
-		return bindingContext.getBootstrapContext()
-				.getMetadataBuildingOptions()
-				.getImplicitNamingStrategy();
+	private EntityTypeMetadata resolveOwnerEntityType() {
+		if ( ownerType instanceof EntityTypeMetadata entityType ) {
+			return entityType;
+		}
+		return ownerType.getHierarchy().getRoot();
 	}
 
 }

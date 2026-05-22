@@ -6,6 +6,7 @@ package org.hibernate.boot.models.bind.internal.sources;
 
 import org.hibernate.internal.util.StringHelper;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.SecondaryTable;
 
@@ -21,6 +22,10 @@ public interface TableSource {
 
 	static TableSource from(JoinTable joinTable) {
 		return joinTable == null ? null : new JoinTableSource( joinTable );
+	}
+
+	static TableSource from(CollectionTable collectionTable) {
+		return collectionTable == null ? null : new CollectionTableSource( collectionTable );
 	}
 
 	static TableSource from(SecondaryTable secondaryTable) {
@@ -119,6 +124,33 @@ public interface TableSource {
 		@Override
 		public String options() {
 			return secondaryTable.options();
+		}
+	}
+
+	record CollectionTableSource(CollectionTable collectionTable) implements TableSource {
+		@Override
+		public String name() {
+			return collectionTable.name();
+		}
+
+		@Override
+		public String schema() {
+			return collectionTable.schema();
+		}
+
+		@Override
+		public String catalog() {
+			return collectionTable.catalog();
+		}
+
+		@Override
+		public String comment() {
+			return "";
+		}
+
+		@Override
+		public String options() {
+			return collectionTable.options();
 		}
 	}
 }
