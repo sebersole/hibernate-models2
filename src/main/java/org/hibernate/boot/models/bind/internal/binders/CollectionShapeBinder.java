@@ -5,7 +5,7 @@
 package org.hibernate.boot.models.bind.internal.binders;
 
 import org.hibernate.boot.models.bind.internal.sources.CollectionSource;
-import org.hibernate.internal.util.StringHelper;
+import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.mapping.Collection;
 
 /// Applies collection-shape metadata after the concrete collection mapping exists.
@@ -16,16 +16,16 @@ import org.hibernate.mapping.Collection;
 ///
 /// @author Steve Ebersole
 class CollectionShapeBinder {
-	static void apply(CollectionSource source, Collection collection) {
+	static void apply(CollectionSource source, Collection collection, BindingState bindingState) {
 		switch ( source.classification() ) {
-			case ORDERED_SET, ORDERED_MAP -> applyOrdering( source, collection );
+			case ORDERED_SET, ORDERED_MAP -> applyOrdering( source, collection, bindingState );
 			case SORTED_SET, SORTED_MAP -> applySorting( source, collection );
 			default -> {
 			}
 		}
 	}
 
-	private static void applyOrdering(CollectionSource source, Collection collection) {
+	private static void applyOrdering(CollectionSource source, Collection collection, BindingState bindingState) {
 		final var sqlOrder = source.sqlOrder();
 		if ( sqlOrder != null ) {
 			collection.setOrderBy( sqlOrder.value() );
@@ -34,10 +34,11 @@ class CollectionShapeBinder {
 
 		final var orderBy = source.orderBy();
 		if ( orderBy != null ) {
-			// todo (models2): empty @OrderBy means order by target primary key.  We need
-			// to resolve that from the collection element/key metadata instead of assuming
-			// a physical column name.
-			collection.setOrderBy( StringHelper.nullIfEmpty( orderBy.value() ) );
+			bindingState.addCollectionOrderingBinding( new CollectionOrderingBinding(
+					collection,
+					source,
+					orderBy.value()
+			) );
 		}
 	}
 

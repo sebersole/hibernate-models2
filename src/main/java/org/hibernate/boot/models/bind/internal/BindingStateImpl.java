@@ -15,6 +15,7 @@ import org.hibernate.boot.models.bind.internal.binders.AssociationTableBinding;
 import org.hibernate.boot.models.bind.internal.binders.AssociationIdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.AssociationTargetBinding;
 import org.hibernate.boot.models.bind.internal.binders.CollectionTableBinding;
+import org.hibernate.boot.models.bind.internal.binders.CollectionOrderingBinding;
 import org.hibernate.boot.models.bind.internal.binders.DerivedIdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.EntityTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.ForeignKeyBinding;
@@ -73,6 +74,7 @@ public class BindingStateImpl implements BindingState {
 	private final Map<Join, AssociationTableBinding> associationTableBindings = new HashMap<>();
 	private final java.util.List<CollectionTableBinding> collectionTableBindings = new java.util.ArrayList<>();
 	private final java.util.List<PropertyMapKeyBinding> propertyMapKeyBindings = new java.util.ArrayList<>();
+	private final java.util.List<CollectionOrderingBinding> collectionOrderingBindings = new java.util.ArrayList<>();
 	private final java.util.List<AssociationIdentifierBinding> associationIdentifierBindings = new java.util.ArrayList<>();
 	private final java.util.List<AssociationTargetBinding> associationTargetBindings = new java.util.ArrayList<>();
 	private final java.util.List<DerivedIdentifierBinding> derivedIdentifierBindings = new java.util.ArrayList<>();
@@ -223,6 +225,16 @@ public class BindingStateImpl implements BindingState {
 	@Override
 	public void forEachPropertyMapKeyBinding(java.util.function.Consumer<PropertyMapKeyBinding> consumer) {
 		propertyMapKeyBindings.forEach( consumer );
+	}
+
+	@Override
+	public void addCollectionOrderingBinding(CollectionOrderingBinding collectionOrderingBinding) {
+		collectionOrderingBindings.add( collectionOrderingBinding );
+	}
+
+	@Override
+	public void forEachCollectionOrderingBinding(java.util.function.Consumer<CollectionOrderingBinding> consumer) {
+		collectionOrderingBindings.forEach( consumer );
 	}
 
 	@Override

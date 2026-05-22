@@ -243,20 +243,21 @@ public class ElementCollectionBindingTests {
 
 	@Test
 	@ServiceRegistry
-	void testJpaOrderedMapElementCollection(ServiceRegistryScope scope) {
+	void testJpaOrderedEmbeddableElementCollection(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
 					final PersistentClass entityBinding = context.getMetadataCollector()
-							.getEntityBinding( JpaOrderedMapOwner.class.getName() );
+							.getEntityBinding( JpaOrderedEmbeddableOwner.class.getName() );
 					final Property property = entityBinding.getProperty( "labels" );
 
-					assertThat( property.getValue() ).isInstanceOf( org.hibernate.mapping.Map.class );
+					assertThat( property.getValue() ).isInstanceOf( org.hibernate.mapping.Set.class );
 					final Collection collection = (Collection) property.getValue();
 					assertThat( collection.getOrderBy() ).isEqualTo( "label desc" );
 					assertThat( collection.isSorted() ).isFalse();
 				},
 				scope.getRegistry(),
-				JpaOrderedMapOwner.class
+				JpaOrderedEmbeddableOwner.class,
+				OrderedLabel.class
 		);
 	}
 
@@ -845,20 +846,24 @@ public class ElementCollectionBindingTests {
 		private Set<String> labels;
 	}
 
-	@Entity(name="JpaOrderedMapOwner")
-	@Table(name="jpa_ordered_map_owners")
-	public static class JpaOrderedMapOwner {
+	@Entity(name="JpaOrderedEmbeddableOwner")
+	@Table(name="jpa_ordered_embeddable_owners")
+	public static class JpaOrderedEmbeddableOwner {
 		@Id
 		private Integer id;
 		@ElementCollection
 		@CollectionTable(
-				name = "jpa_ordered_map_owner_labels",
+				name = "jpa_ordered_embeddable_owner_labels",
 				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
 		)
-		@MapKeyColumn(name = "label_key")
-		@Column(name = "label")
 		@OrderBy("label desc")
-		private Map<String, String> labels;
+		private Set<OrderedLabel> labels;
+	}
+
+	@Embeddable
+	public static class OrderedLabel {
+		@Column(name = "label")
+		private String label;
 	}
 
 	@Entity(name="NaturalSortedSetOwner")
