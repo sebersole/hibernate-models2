@@ -98,6 +98,7 @@ class PluralAssociationAttributeBinder {
 		collection.setMutable( true );
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
+		CollectionShapeBinder.apply( source, collection );
 		applyCascade( source, property, collection );
 
 		bindingState.addInversePluralAssociationBinding( new InversePluralAssociationBinding(
@@ -122,6 +123,7 @@ class PluralAssociationAttributeBinder {
 		collection.setMutable( true );
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
+		CollectionShapeBinder.apply( source, collection );
 		applyCascade( source, property, collection );
 
 		bindingState.addInversePluralAssociationBinding( new InversePluralAssociationBinding(
@@ -157,6 +159,7 @@ class PluralAssociationAttributeBinder {
 		collection.setMutable( true );
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
+		CollectionShapeBinder.apply( source, collection );
 		applyCascade( source, property, collection );
 
 		final ManyToOne element = bindElementValue( source, target, table, uniqueTargetColumns );
@@ -165,6 +168,16 @@ class PluralAssociationAttributeBinder {
 			CollectionIndexBinder.bindMapKey(
 					source,
 					map,
+					table,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			);
+		}
+		else if ( collection instanceof IndexedCollection indexedCollection ) {
+			CollectionIndexBinder.bindListIndex(
+					source,
+					indexedCollection,
 					table,
 					bindingOptions,
 					bindingState,
@@ -219,6 +232,7 @@ class PluralAssociationAttributeBinder {
 		collection.setMutable( true );
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
+		CollectionShapeBinder.apply( source, collection );
 
 		final AnySource anySource = AnySource.createManyToAny( source, bindingContext, bindingState );
 		final org.hibernate.mapping.Any element = new AnyValueBinder(
@@ -266,7 +280,12 @@ class PluralAssociationAttributeBinder {
 			case LIST -> new org.hibernate.mapping.List( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case BAG -> new org.hibernate.mapping.Bag( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case MAP, ORDERED_MAP, SORTED_MAP -> new org.hibernate.mapping.Map( bindingState.getMetadataBuildingContext(), ownerBinding );
-			case ARRAY, ID_BAG -> throw new UnsupportedOperationException(
+			case ARRAY -> {
+				final org.hibernate.mapping.Array array = new org.hibernate.mapping.Array( bindingState.getMetadataBuildingContext(), ownerBinding );
+				array.setElementClassName( source.elementType().determineRawClass().getClassName() );
+				yield array;
+			}
+			case ID_BAG -> throw new UnsupportedOperationException(
 					source.classification() + " plural associations are not yet implemented"
 			);
 		};

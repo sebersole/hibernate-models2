@@ -84,6 +84,7 @@ class ElementCollectionAttributeBinder {
 		collection.setMutable( true );
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
+		CollectionShapeBinder.apply( source, collection );
 
 		final Value element = bindElementValue( source, collection, table );
 		collection.setElement( element );
@@ -139,7 +140,12 @@ class ElementCollectionAttributeBinder {
 			case LIST -> new org.hibernate.mapping.List( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case MAP, ORDERED_MAP, SORTED_MAP -> new org.hibernate.mapping.Map( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case BAG -> new org.hibernate.mapping.Bag( bindingState.getMetadataBuildingContext(), ownerBinding );
-			case ARRAY, ID_BAG -> throw new UnsupportedOperationException(
+			case ARRAY -> {
+				final org.hibernate.mapping.Array array = new org.hibernate.mapping.Array( bindingState.getMetadataBuildingContext(), ownerBinding );
+				array.setElementClassName( source.elementType().determineRawClass().getClassName() );
+				yield array;
+			}
+			case ID_BAG -> throw new UnsupportedOperationException(
 					source.classification() + " element collections are not yet implemented"
 			);
 		};

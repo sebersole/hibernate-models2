@@ -11,6 +11,9 @@ import java.util.List;
 import org.hibernate.annotations.Bag;
 import org.hibernate.annotations.CascadeType;
 import org.hibernate.annotations.ManyToAny;
+import org.hibernate.annotations.SQLOrder;
+import org.hibernate.annotations.SortComparator;
+import org.hibernate.annotations.SortNatural;
 import org.hibernate.boot.models.bind.internal.binders.CascadeBinder;
 import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.metamodel.CollectionClassification;
@@ -29,6 +32,7 @@ import jakarta.persistence.MapKeyJoinColumn;
 import jakarta.persistence.MapKeyJoinColumns;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderColumn;
+import jakarta.persistence.OrderBy;
 
 /// Source-model facts for an [org.hibernate.mapping.Collection].
 ///
@@ -191,7 +195,16 @@ public record CollectionSource(
 
 	private static CollectionClassification determineClassification(MemberDetails member) {
 		final Class<?> collectionType = member.getType().determineRawClass().toJavaClass();
+		if ( collectionType.isArray() ) {
+			return CollectionClassification.ARRAY;
+		}
 		if ( java.util.Set.class.isAssignableFrom( collectionType ) ) {
+			if ( isSorted( member, collectionType ) ) {
+				return CollectionClassification.SORTED_SET;
+			}
+			if ( isOrdered( member ) ) {
+				return CollectionClassification.ORDERED_SET;
+			}
 			return CollectionClassification.SET;
 		}
 		if ( java.util.List.class.isAssignableFrom( collectionType )
@@ -199,9 +212,27 @@ public record CollectionSource(
 			return CollectionClassification.LIST;
 		}
 		if ( java.util.Map.class.isAssignableFrom( collectionType ) ) {
+			if ( isSorted( member, collectionType ) ) {
+				return CollectionClassification.SORTED_MAP;
+			}
+			if ( isOrdered( member ) ) {
+				return CollectionClassification.ORDERED_MAP;
+			}
 			return CollectionClassification.MAP;
 		}
 		return CollectionClassification.BAG;
+	}
+
+	private static boolean isSorted(MemberDetails member, Class<?> collectionType) {
+		return member.hasDirectAnnotationUsage( SortNatural.class )
+				|| member.hasDirectAnnotationUsage( SortComparator.class )
+				|| java.util.SortedSet.class.isAssignableFrom( collectionType )
+				|| java.util.SortedMap.class.isAssignableFrom( collectionType );
+	}
+
+	private static boolean isOrdered(MemberDetails member) {
+		return member.hasDirectAnnotationUsage( OrderBy.class )
+				|| member.hasDirectAnnotationUsage( SQLOrder.class );
 	}
 
 	/// The direct `@ManyToMany` annotation.
@@ -246,6 +277,21 @@ public record CollectionSource(
 	/// use the implicit/default index column.
 	public OrderColumn orderColumn() {
 		return member.getDirectAnnotationUsage( OrderColumn.class );
+	}
+
+	/// JPA order-by fragment declared for ordered sets/maps.
+	public OrderBy orderBy() {
+		return member.getDirectAnnotationUsage( OrderBy.class );
+	}
+
+	/// Hibernate SQL order fragment declared for ordered sets/maps.
+	public SQLOrder sqlOrder() {
+		return member.getDirectAnnotationUsage( SQLOrder.class );
+	}
+
+	/// Hibernate comparator declaration for sorted sets/maps.
+	public SortComparator sortComparator() {
+		return member.getDirectAnnotationUsage( SortComparator.class );
 	}
 
 	/// The explicit map-key column source, if one was declared.
