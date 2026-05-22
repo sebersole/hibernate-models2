@@ -5,6 +5,7 @@
 package org.hibernate.models.orm.bind.collections;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.hibernate.annotations.Bag;
@@ -32,6 +33,7 @@ import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import jakarta.persistence.AttributeOverride;
@@ -162,6 +164,58 @@ public class ElementCollectionBindingTests {
 
 	@Test
 	@ServiceRegistry
+	void testBasicMapElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( MapOwner.class.getName() );
+					final Property property = entityBinding.getProperty( "labels" );
+					assertThat( property.getValue() ).isInstanceOf( org.hibernate.mapping.Map.class );
+					final org.hibernate.mapping.Map collection = (org.hibernate.mapping.Map) property.getValue();
+					final BasicValue key = (BasicValue) collection.getIndex();
+					final BasicValue element = (BasicValue) collection.getElement();
+
+					assertThat( collection.getRole() ).isEqualTo( MapOwner.class.getName() + ".labels" );
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "map_owner_labels" );
+					assertThat( collection.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_id" );
+					assertThat( key.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "label_key" );
+					assertThat( element.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "label" );
+				},
+				scope.getRegistry(),
+				MapOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testImplicitMapKeyColumnElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ImplicitMapOwner.class.getName() );
+					final Property property = entityBinding.getProperty( "labels" );
+					assertThat( property.getValue() ).isInstanceOf( org.hibernate.mapping.Map.class );
+					final org.hibernate.mapping.Map collection = (org.hibernate.mapping.Map) property.getValue();
+					final BasicValue key = (BasicValue) collection.getIndex();
+
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "implicit_map_owner_labels" );
+					assertThat( key.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "id" );
+				},
+				scope.getRegistry(),
+				ImplicitMapOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testCompositeOwnerElementCollection(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -231,6 +285,33 @@ public class ElementCollectionBindingTests {
 				},
 				scope.getRegistry(),
 				EmbeddableListOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testEmbeddableMapElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( EmbeddableMapOwner.class.getName() );
+					final Property property = entityBinding.getProperty( "addresses" );
+					assertThat( property.getValue() ).isInstanceOf( org.hibernate.mapping.Map.class );
+					final org.hibernate.mapping.Map collection = (org.hibernate.mapping.Map) property.getValue();
+					final BasicValue key = (BasicValue) collection.getIndex();
+					final Component element = (Component) collection.getElement();
+
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "map_owner_addresses" );
+					assertThat( key.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "address_key" );
+					assertThat( element.getComponentClassName() ).isEqualTo( Address.class.getName() );
+					assertThat( element.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "line1", "zipCode" );
+				},
+				scope.getRegistry(),
+				EmbeddableMapOwner.class
 		);
 	}
 
@@ -407,6 +488,35 @@ public class ElementCollectionBindingTests {
 		private List<String> labels;
 	}
 
+	@Entity(name="MapOwner")
+	@Table(name="map_owners")
+	public static class MapOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "map_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@MapKeyColumn(name = "label_key")
+		@Column(name = "label")
+		private Map<String, String> labels;
+	}
+
+	@Entity(name="ImplicitMapOwner")
+	@Table(name="implicit_map_owners")
+	public static class ImplicitMapOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "implicit_map_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@Column(name = "label")
+		private Map<String, String> labels;
+	}
+
 	@Entity(name="EmbeddableElementOwner")
 	@Table(name="embeddable_element_owners")
 	public static class EmbeddableElementOwner {
@@ -432,6 +542,20 @@ public class ElementCollectionBindingTests {
 		)
 		@OrderColumn(name = "address_position")
 		private List<Address> addresses;
+	}
+
+	@Entity(name="EmbeddableMapOwner")
+	@Table(name="embeddable_map_owners")
+	public static class EmbeddableMapOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "map_owner_addresses",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@MapKeyColumn(name = "address_key")
+		private Map<String, Address> addresses;
 	}
 
 	@Entity(name="OverrideEmbeddableElementOwner")

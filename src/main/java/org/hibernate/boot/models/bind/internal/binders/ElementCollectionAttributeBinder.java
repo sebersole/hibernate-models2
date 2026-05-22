@@ -34,6 +34,7 @@ import jakarta.persistence.Convert;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.OrderColumn;
 
 /**
@@ -84,7 +85,10 @@ class ElementCollectionAttributeBinder {
 
 		final Value element = bindElementValue( member, collection, table );
 		collection.setElement( element );
-		if ( collection instanceof IndexedCollection indexedCollection ) {
+		if ( collection instanceof org.hibernate.mapping.Map map ) {
+			bindMapKey( member, map, table );
+		}
+		else if ( collection instanceof IndexedCollection indexedCollection ) {
 			bindListIndex( member, indexedCollection, table );
 		}
 
@@ -122,6 +126,9 @@ class ElementCollectionAttributeBinder {
 				&& !member.hasDirectAnnotationUsage( Bag.class ) ) {
 			return new org.hibernate.mapping.List( bindingState.getMetadataBuildingContext(), ownerBinding );
 		}
+		if ( java.util.Map.class.isAssignableFrom( collectionType ) ) {
+			return new org.hibernate.mapping.Map( bindingState.getMetadataBuildingContext(), ownerBinding );
+		}
 		return new org.hibernate.mapping.Bag( bindingState.getMetadataBuildingContext(), ownerBinding );
 	}
 
@@ -141,6 +148,28 @@ class ElementCollectionAttributeBinder {
 				indexColumn,
 				orderColumn == null || orderColumn.insertable(),
 				orderColumn == null || orderColumn.updatable()
+		);
+		collection.setIndex( index );
+	}
+
+	private void bindMapKey(MemberDetails member, org.hibernate.mapping.Map collection, Table table) {
+		final MapKeyColumn mapKeyColumn = member.getDirectAnnotationUsage( MapKeyColumn.class );
+
+		final BasicValue index = new BasicValue( bindingState.getMetadataBuildingContext(), table );
+		index.setTable( table );
+		index.setImplicitJavaTypeAccess( (typeConfiguration) -> member.getMapKeyType().determineRawClass().toJavaClass() );
+
+		final org.hibernate.mapping.Column indexColumn = ColumnBinder.bindColumn(
+				ColumnSource.from( mapKeyColumn ),
+				() -> Collection.DEFAULT_KEY_COLUMN_NAME,
+				false,
+				false
+		);
+		table.addColumn( indexColumn );
+		index.addColumn(
+				indexColumn,
+				mapKeyColumn == null || mapKeyColumn.insertable(),
+				mapKeyColumn == null || mapKeyColumn.updatable()
 		);
 		collection.setIndex( index );
 	}

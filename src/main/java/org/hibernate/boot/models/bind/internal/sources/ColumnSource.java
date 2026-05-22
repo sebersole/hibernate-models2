@@ -8,6 +8,7 @@ import org.hibernate.internal.util.StringHelper;
 
 import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.OrderColumn;
 
 /**
@@ -22,6 +23,10 @@ public interface ColumnSource {
 
 	static ColumnSource from(JoinColumn joinColumn) {
 		return joinColumn == null ? null : new JoinColumnSource( joinColumn );
+	}
+
+	static ColumnSource from(MapKeyColumn mapKeyColumn) {
+		return mapKeyColumn == null ? null : new MapKeyColumnSource( mapKeyColumn );
 	}
 
 	static ColumnSource from(OrderColumn orderColumn) {
@@ -145,6 +150,53 @@ public interface ColumnSource {
 		@Override
 		public String table() {
 			return joinColumn.table();
+		}
+	}
+
+	record MapKeyColumnSource(MapKeyColumn mapKeyColumn) implements ColumnSource {
+		@Override
+		public String name() {
+			return mapKeyColumn.name();
+		}
+
+		@Override
+		public boolean unique(boolean defaultValue) {
+			return mapKeyColumn.unique();
+		}
+
+		@Override
+		public boolean nullable(boolean defaultValue) {
+			return mapKeyColumn.nullable();
+		}
+
+		@Override
+		public String columnDefinition() {
+			return mapKeyColumn.columnDefinition();
+		}
+
+		@Override
+		public int length(int defaultValue) {
+			return mapKeyColumn.length();
+		}
+
+		@Override
+		public int precision(int defaultValue) {
+			return mapKeyColumn.precision();
+		}
+
+		@Override
+		public int scale(int defaultValue) {
+			return mapKeyColumn.scale();
+		}
+
+		@Override
+		public String options() {
+			return mapKeyColumn.options();
+		}
+
+		@Override
+		public String table() {
+			return mapKeyColumn.table();
 		}
 	}
 
