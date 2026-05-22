@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.hibernate.annotations.Bag;
+import org.hibernate.annotations.ManyToAny;
 import org.hibernate.metamodel.CollectionClassification;
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.models.spi.TypeDetails;
@@ -165,6 +166,11 @@ public record CollectionSource(
 		return association( Nature.ONE_TO_MANY, member );
 	}
 
+	/// Creates a collection source for a heterogeneous many-to-any association member.
+	public static CollectionSource manyToAny(MemberDetails member) {
+		return association( Nature.MANY_TO_ANY, member );
+	}
+
 	private static CollectionSource association(Nature nature, MemberDetails member) {
 		final CollectionSource source = elementCollection( member );
 		return new CollectionSource(
@@ -201,6 +207,11 @@ public record CollectionSource(
 	/// The direct `@OneToMany` annotation.
 	public OneToMany oneToMany() {
 		return member.getDirectAnnotationUsage( OneToMany.class );
+	}
+
+	/// The direct `@ManyToAny` annotation.
+	public ManyToAny manyToAny() {
+		return member.getDirectAnnotationUsage( ManyToAny.class );
 	}
 
 	/// Whether the collection element value should be modeled as a component.

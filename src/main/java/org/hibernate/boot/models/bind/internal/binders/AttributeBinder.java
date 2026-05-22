@@ -150,10 +150,27 @@ public class AttributeBinder {
 			attributeTable = collectionValue.getCollectionTable();
 		}
 		else if ( attributeMetadata.getNature() == ANY ) {
-			throw new UnsupportedOperationException( "@Any is not yet implemented" );
+			final var anyValue = new AnyAttributeBinder(
+					attributeMetadata,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			).bind( binding, primaryTable );
+			binding.setValue( anyValue );
+			attributeTable = anyValue.getTable();
 		}
 		else if ( attributeMetadata.getNature() == MANY_TO_ANY ) {
-			throw new UnsupportedOperationException( "@ManyToAny is not yet implemented" );
+			final var collectionValue = new PluralAssociationAttributeBinder(
+					ownerType,
+					ownerBinding,
+					attributeMetadata,
+					modelBinders,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			).bindManyToAny( binding );
+			binding.setValue( collectionValue );
+			attributeTable = collectionValue.getCollectionTable();
 		}
 		else {
 			throw new UnsupportedOperationException( "Not yet implemented" );

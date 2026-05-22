@@ -7,6 +7,7 @@ package org.hibernate.boot.models.bind.internal.binders;
 import java.util.List;
 
 import org.hibernate.MappingException;
+import org.hibernate.boot.models.bind.internal.sources.AnySource;
 import org.hibernate.boot.models.bind.internal.sources.CollectionSource;
 import org.hibernate.boot.models.bind.internal.sources.ForeignKeySource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
@@ -17,6 +18,7 @@ import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.Collection;
+import org.hibernate.mapping.IndexedCollection;
 import org.hibernate.mapping.ManyToOne;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
@@ -24,6 +26,7 @@ import org.hibernate.mapping.Table;
 import org.hibernate.models.spi.ClassDetails;
 
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 
@@ -79,6 +82,11 @@ class PluralAssociationAttributeBinder {
 			return bindInverseOneToMany( source, oneToMany.mappedBy() );
 		}
 		return bindAssociation( source, true );
+	}
+
+	Collection bindManyToAny(Property property) {
+		final CollectionSource source = CollectionSource.manyToAny( attributeMetadata.getMember() );
+		return bindManyToAny( source );
 	}
 
 	private Collection bindInverseManyToMany(CollectionSource source, String mappedBy) {
@@ -166,6 +174,70 @@ class PluralAssociationAttributeBinder {
 				ForeignKeySource.from( source.joinTable() ),
 				source.joinTable() == null ? new jakarta.persistence.UniqueConstraint[0] : source.joinTable().uniqueConstraints(),
 				source.joinTable() == null ? new jakarta.persistence.Index[0] : source.joinTable().indexes()
+		) );
+		bindingState.getMetadataBuildingContext().getMetadataCollector().addCollectionBinding( collection );
+		return collection;
+	}
+
+	private Collection bindManyToAny(CollectionSource source) {
+		if ( source.classification().toJpaClassification() == jakarta.persistence.metamodel.PluralAttribute.CollectionType.MAP ) {
+			throw new UnsupportedOperationException(
+					"Map-valued @ManyToAny is not yet implemented - "
+							+ ownerType.getClassDetails().getClassName() + "." + attributeMetadata.getName()
+			);
+		}
+
+		final JoinTable joinTable = source.joinTable();
+		final Table table = joinTable == null
+				? modelBinders.getTableBinder()
+						.bindCollectionTable(
+								resolveOwnerEntityType(),
+								ownerBinding.getTable(),
+								attributeMetadata.getName(),
+								null
+						)
+						.binding()
+				: modelBinders.getTableBinder()
+						.bindAssociationTable(
+								resolveOwnerEntityType(),
+								ownerBinding.getTable(),
+								attributeMetadata.getName(),
+								resolveOwnerEntityType(),
+								ownerBinding.getTable(),
+								joinTable
+						)
+						.binding();
+
+		final Collection collection = createCollection( source );
+		collection.setRole( ownerBinding.getEntityName() + "." + attributeMetadata.getName() );
+		collection.setCollectionTable( table );
+		collection.setInverse( false );
+		collection.setMutable( true );
+		collection.setOptimisticLocked( true );
+		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
+
+		final org.hibernate.mapping.Any element = new AnyValueBinder(
+				bindingOptions,
+				bindingState,
+				bindingContext
+		).bind( AnySource.createManyToAny( source, bindingContext ), attributeMetadata.getName(), table );
+		collection.setElement( element );
+		if ( collection instanceof IndexedCollection indexedCollection ) {
+			CollectionIndexBinder.bindListIndex(
+					source,
+					indexedCollection,
+					table,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			);
+		}
+		bindingState.addCollectionTableBinding( new CollectionTableBinding(
+				collection,
+				source.associationJoinColumns(),
+				ForeignKeySource.from( joinTable ),
+				joinTable == null ? new jakarta.persistence.UniqueConstraint[0] : joinTable.uniqueConstraints(),
+				joinTable == null ? new jakarta.persistence.Index[0] : joinTable.indexes()
 		) );
 		bindingState.getMetadataBuildingContext().getMetadataCollector().addCollectionBinding( collection );
 		return collection;
