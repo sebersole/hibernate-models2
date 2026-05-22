@@ -4,6 +4,7 @@
  */
 package org.hibernate.models.orm.bind.associations;
 
+import java.io.Serializable;
 import java.util.List;
 
 import org.hibernate.annotations.Any;
@@ -34,9 +35,11 @@ import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.DiscriminatorType;
+import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinColumns;
 import jakarta.persistence.JoinTable;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -241,6 +244,55 @@ public class AnyAssociationTests {
 
 	@Test
 	@ServiceRegistry
+	void testAnyCompositeKeyColumns(ServiceRegistryScope scope) {
+		BindingTestingHelper.checkDomainModel(
+				(context) -> {
+					final RootClass entityBinding = (RootClass) context.getMetadataCollector()
+							.getEntityBinding( CompositeKeyHolder.class.getName() );
+					final org.hibernate.mapping.Any value = (org.hibernate.mapping.Any) entityBinding.getProperty( "target" )
+							.getValue();
+					final BasicValue key = value.getKeyDescriptor();
+
+					assertThat( key.getColumns() ).extracting( Column::getName )
+							.containsExactly( "target_id1", "target_id2" );
+					assertThat( value.getColumns() ).extracting( Column::getName )
+							.containsExactly( "target_type", "target_id1", "target_id2" );
+				},
+				scope.getRegistry(),
+				CompositeKeyHolder.class,
+				CompositeKeyTarget.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testAnyJoinTableCompositeKeyColumns(ServiceRegistryScope scope) {
+		BindingTestingHelper.checkDomainModel(
+				(context) -> {
+					final RootClass entityBinding = (RootClass) context.getMetadataCollector()
+							.getEntityBinding( JoinTableCompositeKeyHolder.class.getName() );
+					final org.hibernate.mapping.Join join = entityBinding.getJoins().get( 0 );
+					final org.hibernate.mapping.Any value = (org.hibernate.mapping.Any) join.getProperties()
+							.get( 0 )
+							.getValue();
+					final BasicValue key = value.getKeyDescriptor();
+
+					assertThat( join.getTable().getName() ).isEqualTo( "any_holder_composite_targets" );
+					assertThat( join.getKey().getColumns() ).extracting( Column::getName )
+							.containsExactly( "holder_id" );
+					assertThat( key.getColumns() ).extracting( Column::getName )
+							.containsExactly( "target_id1", "target_id2" );
+					assertThat( value.getColumns() ).extracting( Column::getName )
+							.containsExactly( "target_type", "target_id1", "target_id2" );
+				},
+				scope.getRegistry(),
+				JoinTableCompositeKeyHolder.class,
+				CompositeKeyTarget.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testManyToAnyAssociation(ServiceRegistryScope scope) {
 		BindingTestingHelper.checkDomainModel(
 				(context) -> {
@@ -290,6 +342,28 @@ public class AnyAssociationTests {
 				scope.getRegistry(),
 				JdbcTypeCodeKeyManyHolder.class,
 				TargetOne.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testManyToAnyCompositeKeyColumns(ServiceRegistryScope scope) {
+		BindingTestingHelper.checkDomainModel(
+				(context) -> {
+					final RootClass entityBinding = (RootClass) context.getMetadataCollector()
+							.getEntityBinding( CompositeKeyManyHolder.class.getName() );
+					final Collection collection = (Collection) entityBinding.getProperty( "targets" ).getValue();
+					final org.hibernate.mapping.Any element = (org.hibernate.mapping.Any) collection.getElement();
+					final BasicValue key = element.getKeyDescriptor();
+
+					assertThat( key.getColumns() ).extracting( Column::getName )
+							.containsExactly( "target_id1", "target_id2" );
+					assertThat( element.getColumns() ).extracting( Column::getName )
+							.containsExactly( "targets_type", "target_id1", "target_id2" );
+				},
+				scope.getRegistry(),
+				CompositeKeyManyHolder.class,
+				CompositeKeyTarget.class
 		);
 	}
 
@@ -458,6 +532,42 @@ public class AnyAssociationTests {
 		private Object target;
 	}
 
+	@Entity(name = "CompositeKeyAnyHolder")
+	public static class CompositeKeyHolder {
+		@Id
+		private Integer id;
+
+		@Any
+		@JoinColumns({
+				@JoinColumn(name = "target_id1"),
+				@JoinColumn(name = "target_id2")
+		})
+		@jakarta.persistence.Column(name = "target_type")
+		@AnyDiscriminatorValue(discriminator = "composite", entity = CompositeKeyTarget.class)
+		@AnyKeyJavaClass(CompositeAnyKey.class)
+		private Object target;
+	}
+
+	@Entity(name = "JoinTableCompositeKeyAnyHolder")
+	public static class JoinTableCompositeKeyHolder {
+		@Id
+		private Integer id;
+
+		@Any
+		@JoinTable(
+				name = "any_holder_composite_targets",
+				joinColumns = @JoinColumn(name = "holder_id"),
+				inverseJoinColumns = {
+						@JoinColumn(name = "target_id1"),
+						@JoinColumn(name = "target_id2")
+				}
+		)
+		@jakarta.persistence.Column(name = "target_type")
+		@AnyDiscriminatorValue(discriminator = "composite", entity = CompositeKeyTarget.class)
+		@AnyKeyJavaClass(CompositeAnyKey.class)
+		private Object target;
+	}
+
 	@Entity(name = "ManyAnyHolder")
 	public static class ManyHolder {
 		@Id
@@ -511,6 +621,25 @@ public class AnyAssociationTests {
 		private List<Object> targets;
 	}
 
+	@Entity(name = "CompositeKeyManyAnyHolder")
+	public static class CompositeKeyManyHolder {
+		@Id
+		private Integer id;
+
+		@ManyToAny
+		@JoinTable(
+				name = "composite_key_many_holder_targets",
+				joinColumns = @JoinColumn(name = "holder_id"),
+				inverseJoinColumns = {
+						@JoinColumn(name = "target_id1"),
+						@JoinColumn(name = "target_id2")
+				}
+		)
+		@AnyDiscriminatorValue(discriminator = "composite", entity = CompositeKeyTarget.class)
+		@AnyKeyJavaClass(CompositeAnyKey.class)
+		private List<Object> targets;
+	}
+
 	@Entity(name = "ImplicitJoinTableManyAnyHolder")
 	public static class ImplicitJoinTableManyHolder {
 		@Id
@@ -532,6 +661,17 @@ public class AnyAssociationTests {
 	public static class TargetTwo {
 		@Id
 		private Integer id;
+	}
+
+	@Entity(name = "CompositeAnyTarget")
+	public static class CompositeKeyTarget {
+		@EmbeddedId
+		private CompositeAnyKey id;
+	}
+
+	public static class CompositeAnyKey implements Serializable {
+		private Integer id1;
+		private Integer id2;
 	}
 
 	public static class AnyIntegerJavaType extends AbstractClassJavaType<Integer> {

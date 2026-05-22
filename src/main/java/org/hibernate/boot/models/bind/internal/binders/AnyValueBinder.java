@@ -18,6 +18,7 @@ import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.mapping.Any;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Column;
+import org.hibernate.mapping.Selectable;
 import org.hibernate.mapping.Table;
 import org.hibernate.metamodel.internal.FullNameImplicitDiscriminatorStrategy;
 import org.hibernate.metamodel.internal.ShortNameImplicitDiscriminatorStrategy;
@@ -31,9 +32,8 @@ import jakarta.persistence.DiscriminatorType;
 /// Binds the shared mapping value used by singular `@Any` and plural `@ManyToAny`.
 ///
 /// The value is physically two basic values on the owning table: a discriminator
-/// and an entity-id key.  The first implementation deliberately supports the
-/// conservative shape needed to establish the core binder: explicit discriminator
-/// values and a single explicitly typed key column.
+/// and an entity-id key.  The key may span multiple columns, but still has one
+/// explicit key Java type for this prototype.
 ///
 /// Supported mapping controls:
 ///
@@ -53,15 +53,15 @@ import jakarta.persistence.DiscriminatorType;
 /// - `@AnyKeyJavaType`, `@AnyKeyJdbcType`, and `@AnyKeyJdbcTypeCode` are applied
 ///   by [BasicValueBinder] to the key value.
 /// - Singular `@JoinColumn`, singular `@JoinTable#inverseJoinColumns`, or plural
-///   `@JoinTable#inverseJoinColumns` names the key column.  If absent, the binder
-///   uses the current implicit key-column default for this prototype.
+///   `@JoinTable#inverseJoinColumns` names the key column or columns.  If absent,
+///   the binder uses the current implicit key-column default for this prototype.
 ///
 /// Not yet supported:
 ///
 /// - cascade propagation from `@Any#cascade` / `@ManyToAny#cascade`
 /// - discriminator `@Formula`
 /// - inferred key Java type
-/// - composite keys / multiple key columns
+/// - composite any-key type inference from target identifiers
 /// - implicit singular `@Any` join-table names
 /// - map-valued `@ManyToAny`
 /// - optionality becoming non-optional when either explicit discriminator or key
@@ -92,7 +92,9 @@ class AnyValueBinder {
 		if ( source.implicitDiscriminatorValues() != null ) {
 			any.setImplicitDiscriminatorValueStrategy( resolveImplicitDiscriminatorStrategy( source ) );
 		}
-		any.setKey( bindKey( source, propertyName, table ) );
+		final BasicValue key = bindKey( source, propertyName, table );
+		any.setKey( key );
+		addAdditionalKeySelectables( any, key );
 		any.setTypeUsingReflection( source.member().getDeclaringType().getName(), propertyName );
 		return any;
 	}
@@ -128,14 +130,29 @@ class AnyValueBinder {
 		final BasicValue key = new BasicValue( bindingState.getMetadataBuildingContext(), table );
 		key.setTable( table );
 
-		final Column column = ColumnBinder.bindColumn(
-				ColumnSource.from( source.keyColumn() ),
-				() -> propertyName + "_id",
-				false,
-				source.optional()
-		);
-		table.addColumn( column );
-		key.addColumn( column, true, true );
+		if ( source.keyColumns().isEmpty() ) {
+			final Column column = ColumnBinder.bindColumn(
+					null,
+					() -> propertyName + "_id",
+					false,
+					source.optional()
+			);
+			table.addColumn( column );
+			key.addColumn( column, true, true );
+		}
+		else {
+			for ( int i = 0; i < source.keyColumns().size(); i++ ) {
+				final int index = i;
+				final Column column = ColumnBinder.bindColumn(
+						ColumnSource.from( source.keyColumns().get( index ) ),
+						() -> index == 0 ? propertyName + "_id" : propertyName + "_id" + ( index + 1 ),
+						false,
+						source.optional()
+				);
+				table.addColumn( column );
+				key.addColumn( column, true, true );
+			}
+		}
 
 		BasicValueBinder.bindBasicValue(
 				BasicValueSource.anyKey( source.member(), source.keyJavaClass() ),
@@ -146,6 +163,13 @@ class AnyValueBinder {
 				bindingContext
 		);
 		return key;
+	}
+
+	private void addAdditionalKeySelectables(Any any, BasicValue key) {
+		final java.util.List<Selectable> selectables = key.getSelectables();
+		for ( int i = 1; i < selectables.size(); i++ ) {
+			any.addSelectable( selectables.get( i ) );
+		}
 	}
 
 	private Map<DiscriminatorValue, Class<?>> bindDiscriminatorValueMappings(

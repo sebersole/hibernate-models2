@@ -27,6 +27,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorType;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinColumns;
 import jakarta.persistence.JoinTable;
 
 /// Source-model facts for a Hibernate `@Any` association value.
@@ -70,7 +71,7 @@ import jakarta.persistence.JoinTable;
 /// - plural `@ManyToAny`
 /// - explicit or implicit `@ManyToAny` collection tables
 /// - explicit singular `@Any` association tables
-/// - one any key column
+/// - singular and plural composite any key columns
 /// - explicit `@AnyKeyJavaClass`
 /// - explicit discriminator values or an implicit discriminator strategy
 /// - discriminator Java type selection through `@AnyDiscriminator`
@@ -83,7 +84,6 @@ import jakarta.persistence.JoinTable;
 ///
 /// - discriminator `@Formula`
 /// - inferring the key Java type from target identifiers
-/// - composite any keys
 /// - implicit singular `@Any` association-table names
 /// - map-valued `@ManyToAny`
 /// - optionality derived from explicit discriminator/key column nullability
@@ -100,7 +100,7 @@ public record AnySource(
 		List<AnyDiscriminatorValue> discriminatorValues,
 		AnyDiscriminatorImplicitValues implicitDiscriminatorValues,
 		JoinTable joinTable,
-		JoinColumn keyColumn,
+		List<JoinColumn> keyColumns,
 		Class<?> keyJavaClass) {
 
 	public static AnySource create(MemberDetails member, BindingContext bindingContext, BindingState bindingState) {
@@ -111,14 +111,9 @@ public record AnySource(
 
 		final var anyKeyJavaClass = member.getDirectAnnotationUsage( AnyKeyJavaClass.class );
 		final JoinTable joinTable = member.getDirectAnnotationUsage( JoinTable.class );
-		final List<JoinColumn> inverseJoinColumns = joinTable == null
-				? List.of()
+		final List<JoinColumn> keyColumns = joinTable == null
+				? joinColumns( member )
 				: listJoinColumns( joinTable.inverseJoinColumns() );
-		if ( inverseJoinColumns.size() > 1 ) {
-			throw new UnsupportedOperationException(
-					"@Any @JoinTable requires at most one inverse join column in this binder - " + member.getName()
-			);
-		}
 		return new AnySource(
 				member,
 				any.fetch() == FetchType.LAZY,
@@ -129,9 +124,7 @@ public record AnySource(
 				discriminatorValues( member, bindingContext ),
 				member.getDirectAnnotationUsage( AnyDiscriminatorImplicitValues.class ),
 				joinTable,
-				joinTable == null
-						? member.getDirectAnnotationUsage( JoinColumn.class )
-						: inverseJoinColumns.isEmpty() ? null : inverseJoinColumns.get( 0 ),
+				keyColumns,
 				anyKeyJavaClass == null ? null : anyKeyJavaClass.value()
 		);
 	}
@@ -147,11 +140,6 @@ public record AnySource(
 		}
 
 		final List<JoinColumn> inverseJoinColumns = collectionSource.associationInverseJoinColumns();
-		if ( inverseJoinColumns.size() > 1 ) {
-			throw new UnsupportedOperationException(
-					"@ManyToAny requires at most one inverse join column in this binder - " + member.getName()
-			);
-		}
 
 		final var anyKeyJavaClass = member.getDirectAnnotationUsage( AnyKeyJavaClass.class );
 		return new AnySource(
@@ -164,7 +152,7 @@ public record AnySource(
 				discriminatorValues( member, bindingContext ),
 				member.getDirectAnnotationUsage( AnyDiscriminatorImplicitValues.class ),
 				collectionSource.joinTable(),
-				inverseJoinColumns.isEmpty() ? null : inverseJoinColumns.get( 0 ),
+				inverseJoinColumns,
 				anyKeyJavaClass == null ? null : anyKeyJavaClass.value()
 		);
 	}
@@ -208,6 +196,16 @@ public record AnySource(
 
 	public List<JoinColumn> ownerJoinColumns() {
 		return joinTable == null ? List.of() : listJoinColumns( joinTable.joinColumns() );
+	}
+
+	private static List<JoinColumn> joinColumns(MemberDetails member) {
+		final JoinColumns joinColumnsAnn = member.getDirectAnnotationUsage( JoinColumns.class );
+		if ( joinColumnsAnn != null ) {
+			return listJoinColumns( joinColumnsAnn.value() );
+		}
+
+		final JoinColumn joinColumnAnn = member.getDirectAnnotationUsage( JoinColumn.class );
+		return joinColumnAnn == null ? List.of() : List.of( joinColumnAnn );
 	}
 
 	private static List<JoinColumn> listJoinColumns(JoinColumn[] joinColumns) {
