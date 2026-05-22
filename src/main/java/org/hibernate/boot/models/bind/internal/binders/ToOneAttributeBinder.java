@@ -16,6 +16,7 @@ import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.boot.models.bind.spi.TableReference;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
+import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.Column;
@@ -40,6 +41,7 @@ class ToOneAttributeBinder {
 	private final PersistentClass ownerBinding;
 	private final AttributeMetadata attributeMetadata;
 	private final Table primaryTable;
+	private final ModelBinders modelBinders;
 	private final BindingOptions bindingOptions;
 	private final BindingState bindingState;
 	private final BindingContext bindingContext;
@@ -49,6 +51,7 @@ class ToOneAttributeBinder {
 			PersistentClass ownerBinding,
 			AttributeMetadata attributeMetadata,
 			Table primaryTable,
+			ModelBinders modelBinders,
 			BindingOptions bindingOptions,
 			BindingState bindingState,
 			BindingContext bindingContext) {
@@ -56,6 +59,7 @@ class ToOneAttributeBinder {
 		this.ownerBinding = ownerBinding;
 		this.attributeMetadata = attributeMetadata;
 		this.primaryTable = primaryTable;
+		this.modelBinders = modelBinders;
 		this.bindingOptions = bindingOptions;
 		this.bindingState = bindingState;
 		this.bindingContext = bindingContext;
@@ -72,6 +76,7 @@ class ToOneAttributeBinder {
 				property,
 				primaryTable,
 				null,
+				modelBinders,
 				bindingOptions,
 				bindingState,
 				bindingContext
@@ -87,6 +92,7 @@ class ToOneAttributeBinder {
 			Property property,
 			Table primaryTable,
 			AssociationOverride associationOverride,
+			ModelBinders modelBinders,
 			BindingOptions bindingOptions,
 			BindingState bindingState,
 			BindingContext bindingContext) {
@@ -102,7 +108,11 @@ class ToOneAttributeBinder {
 				: bindAssociationTable(
 						ownerType,
 						ownerBinding,
+						primaryTable,
+						propertyName,
+						target,
 						joinTable,
+						modelBinders,
 						bindingOptions,
 						bindingState,
 						bindingContext
@@ -225,40 +235,27 @@ class ToOneAttributeBinder {
 	private static Table bindAssociationTable(
 			IdentifiableTypeMetadata ownerType,
 			PersistentClass ownerBinding,
+			Table primaryTable,
+			String propertyName,
+			TargetEntityBinding target,
 			JoinTable joinTable,
+			ModelBinders modelBinders,
 			BindingOptions bindingOptions,
 			BindingState bindingState,
 			BindingContext bindingContext) {
 		if ( ownerBinding == null ) {
 			throw new UnsupportedOperationException( "To-one @JoinTable requires an owning PersistentClass" );
 		}
-		if ( StringHelper.isEmpty( joinTable.name() ) ) {
-			// todo: implement implicit to-one association-table naming using the configured
-			//  ImplicitNamingStrategy from BindingContext#getBootstrapContext(), with the
-			//  MetadataBuildingContext from BindingState for the naming source.
-			throw new UnsupportedOperationException( "Implicit to-one @JoinTable names are not yet implemented" );
-		}
-
-		// todo: route explicit catalog/schema/table names through BindingHelper so
-		//  global quoting and the configured JdbcEnvironment are applied consistently.
-		implicitNamingStrategy( bindingContext );
-		final Identifier logicalName = Identifier.toIdentifier( joinTable.name() );
-		final Identifier schemaName = StringHelper.isEmpty( joinTable.schema() )
-				? bindingOptions.getDefaultSchemaName()
-				: Identifier.toIdentifier( joinTable.schema() );
-		final Identifier catalogName = StringHelper.isEmpty( joinTable.catalog() )
-				? bindingOptions.getDefaultCatalogName()
-				: Identifier.toIdentifier( joinTable.catalog() );
-
-		final Table associationTable = bindingState.getMetadataBuildingContext().getMetadataCollector().addTable(
-				schemaName == null ? null : schemaName.getCanonicalName(),
-				catalogName == null ? null : catalogName.getCanonicalName(),
-				logicalName.getCanonicalName(),
-				null,
-				false,
-				bindingState.getMetadataBuildingContext(),
-				false
-		);
+		final Table associationTable = modelBinders.getTableBinder()
+				.bindAssociationTable(
+						resolveOwnerEntityType( ownerType ),
+						primaryTable,
+						propertyName,
+						target.entityNaming(),
+						target.primaryTable(),
+						joinTable
+				)
+				.binding();
 
 		final Join join = new Join();
 		join.setTable( associationTable );
@@ -283,12 +280,6 @@ class ToOneAttributeBinder {
 		}
 		bindingState.addAssociationTableBinding( new AssociationTableBinding( join, joinColumns ) );
 		return associationTable;
-	}
-
-	private static org.hibernate.boot.model.naming.ImplicitNamingStrategy implicitNamingStrategy(BindingContext bindingContext) {
-		return bindingContext.getBootstrapContext()
-				.getMetadataBuildingOptions()
-				.getImplicitNamingStrategy();
 	}
 
 	private static Table resolveAssociationTable(
@@ -364,12 +355,23 @@ class ToOneAttributeBinder {
 
 		return new TargetEntityBinding(
 				targetTypeBinder.getTypeBinding().getEntityName(),
+				targetTypeBinder.getManagedType(),
+				targetTypeBinder.getTable(),
 				identifierBinding.columns()
 		);
 	}
 
+	private static EntityTypeMetadata resolveOwnerEntityType(IdentifiableTypeMetadata ownerType) {
+		if ( ownerType instanceof EntityTypeMetadata entityType ) {
+			return entityType;
+		}
+		return ownerType.getHierarchy().getRoot();
+	}
+
 	private record TargetEntityBinding(
 			String entityName,
+			EntityTypeMetadata entityNaming,
+			Table primaryTable,
 			List<Column> identifierColumns) {
 	}
 }

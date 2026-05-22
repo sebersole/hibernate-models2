@@ -32,14 +32,17 @@ import jakarta.persistence.Convert;
  * Shared support for binding component-valued mappings.
  */
 class ComponentBinder {
+	private final ModelBinders modelBinders;
 	private final BindingState state;
 	private final BindingOptions options;
 	private final BindingContext context;
 
 	ComponentBinder(
+			ModelBinders modelBinders,
 			BindingState state,
 			BindingOptions options,
 			BindingContext context) {
+		this.modelBinders = modelBinders;
 		this.state = state;
 		this.options = options;
 		this.context = context;
@@ -134,6 +137,7 @@ class ComponentBinder {
 						property,
 						table,
 						associationOverrideResolver.apply( memberPath, member ),
+						modelBinders,
 						options,
 						state,
 						context

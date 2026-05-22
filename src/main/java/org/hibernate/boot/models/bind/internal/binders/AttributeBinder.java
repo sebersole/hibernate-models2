@@ -51,6 +51,7 @@ public class AttributeBinder {
 			PersistentClass ownerBinding,
 			AttributeMetadata attributeMetadata,
 			Table primaryTable,
+			ModelBinders modelBinders,
 			BindingState bindingState,
 			BindingOptions bindingOptions,
 			BindingContext bindingContext) {
@@ -73,6 +74,7 @@ public class AttributeBinder {
 					ownerBinding,
 					attributeMetadata,
 					primaryTable,
+					modelBinders,
 					bindingOptions,
 					bindingState,
 					bindingContext
@@ -86,6 +88,7 @@ public class AttributeBinder {
 					ownerBinding,
 					attributeMetadata,
 					primaryTable,
+					modelBinders,
 					bindingState,
 					bindingOptions,
 					bindingContext
@@ -98,6 +101,7 @@ public class AttributeBinder {
 					ownerType,
 					ownerBinding,
 					attributeMetadata,
+					modelBinders,
 					bindingOptions,
 					bindingState,
 					bindingContext

@@ -103,6 +103,7 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 					getTypeBinding() instanceof PersistentClass persistentClass ? persistentClass : null,
 					attributeMetadata,
 					primaryTable,
+					modelBinders,
 					getBindingState(),
 					getOptions(),
 					getBindingContext()

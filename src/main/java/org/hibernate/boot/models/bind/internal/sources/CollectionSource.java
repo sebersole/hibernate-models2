@@ -183,6 +183,9 @@ public record CollectionSource(
 	/// object because these columns are source-level instructions for how the collection
 	/// table joins back to its owner.
 	public List<JoinColumn> joinColumns() {
+		if ( collectionTable == null ) {
+			return List.of();
+		}
 		if ( collectionTable.joinColumns().length == 0 ) {
 			return List.of();
 		}

@@ -102,6 +102,26 @@ public class ElementCollectionBindingTests {
 
 	@Test
 	@ServiceRegistry
+	void testImplicitCollectionTableName(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ImplicitCollectionTableOwner.class.getName() );
+					final Collection collection = (Collection) entityBinding.getProperty( "labels" ).getValue();
+
+					assertThat( collection.getCollectionTable().getName() )
+							.isEqualTo( "implicitcollectiontableowner_labels" );
+					assertThat( collection.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "id" );
+				},
+				scope.getRegistry(),
+				ImplicitCollectionTableOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testBasicListElementCollection(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -537,6 +557,15 @@ public class ElementCollectionBindingTests {
 						@JoinColumn(name = "owner_id1", referencedColumnName = "id1")
 				}
 		)
+		@Column(name = "label")
+		private Set<String> labels;
+	}
+
+	@Entity(name="ImplicitCollectionTableOwner")
+	public static class ImplicitCollectionTableOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
 		@Column(name = "label")
 		private Set<String> labels;
 	}

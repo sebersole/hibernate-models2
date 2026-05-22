@@ -33,6 +33,7 @@ class EmbeddableAttributeBinder {
 	private final PersistentClass ownerBinding;
 	private final AttributeMetadata attributeMetadata;
 	private final Table primaryTable;
+	private final ModelBinders modelBinders;
 	private final BindingState bindingState;
 	private final BindingOptions bindingOptions;
 	private final BindingContext bindingContext;
@@ -43,6 +44,7 @@ class EmbeddableAttributeBinder {
 			PersistentClass ownerBinding,
 			AttributeMetadata attributeMetadata,
 			Table primaryTable,
+			ModelBinders modelBinders,
 			BindingState bindingState,
 			BindingOptions bindingOptions,
 			BindingContext bindingContext) {
@@ -50,6 +52,7 @@ class EmbeddableAttributeBinder {
 		this.ownerBinding = ownerBinding;
 		this.attributeMetadata = attributeMetadata;
 		this.primaryTable = primaryTable;
+		this.modelBinders = modelBinders;
 		this.bindingState = bindingState;
 		this.bindingOptions = bindingOptions;
 		this.bindingContext = bindingContext;
@@ -69,7 +72,7 @@ class EmbeddableAttributeBinder {
 		component.setTable( componentTable );
 		component.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
 
-		new ComponentBinder( bindingState, bindingOptions, bindingContext ).bindBasicProperties(
+		new ComponentBinder( modelBinders, bindingState, bindingOptions, bindingContext ).bindBasicProperties(
 				ownerType,
 				ownerBinding,
 				componentSource,

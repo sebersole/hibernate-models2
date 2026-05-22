@@ -164,6 +164,26 @@ public class ToOneAssociationTests {
 
 	@Test
 	@ServiceRegistry
+	void testImplicitManyToOneJoinTableName(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ImplicitJoinTableManyToOneOwner.class.getName() );
+					final Join join = entityBinding.getJoins().get( 0 );
+
+					assertThat( join.getTable().getName() ).isEqualTo( "implicit_join_table_many_to_one_owners_parents" );
+					assertThat( join.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_id" );
+				},
+				scope.getRegistry(),
+				Parent.class,
+				ImplicitJoinTableManyToOneOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testCompositeManyToOneJoinTableWithReferencedColumnNames(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -287,6 +307,19 @@ public class ToOneAssociationTests {
 		@jakarta.persistence.ManyToOne
 		@JoinTable(
 				name = "owner_parent_links",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
+		)
+		private Parent parent;
+	}
+
+	@Entity(name="ImplicitJoinTableManyToOneOwner")
+	@Table(name="implicit_join_table_many_to_one_owners")
+	public static class ImplicitJoinTableManyToOneOwner {
+		@Id
+		private Integer id;
+		@jakarta.persistence.ManyToOne
+		@JoinTable(
 				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
 				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
 		)
