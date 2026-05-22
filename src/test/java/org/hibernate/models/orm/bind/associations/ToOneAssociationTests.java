@@ -300,6 +300,105 @@ public class ToOneAssociationTests {
 
 	@Test
 	@ServiceRegistry
+	void testManyToManyJoinTableWithCompositeOwner(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( CompositeOwnerManyToManyOwner.class.getName() );
+					final Collection collection = (Collection) entityBinding.getProperty( "parents" ).getValue();
+					final ManyToOne element = (ManyToOne) collection.getElement();
+
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "composite_owner_parent_sets" );
+					assertThat( collection.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_fk1", "owner_fk2" );
+					assertThat( element.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_id" );
+				},
+				scope.getRegistry(),
+				Parent.class,
+				CompositeOwnerManyToManyOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testManyToManyJoinTableWithCompositeTarget(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( CompositeTargetManyToManyOwner.class.getName() );
+					final Collection collection = (Collection) entityBinding.getProperty( "parents" ).getValue();
+					final ManyToOne element = (ManyToOne) collection.getElement();
+
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "owner_composite_parent_sets" );
+					assertThat( collection.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_id" );
+					assertThat( element.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_fk1", "parent_fk2" );
+				},
+				scope.getRegistry(),
+				CompositeParent.class,
+				CompositeTargetManyToManyOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testOneToManyJoinTableWithCompositeOwner(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( CompositeOwnerOneToManyJoinTableOwner.class.getName() );
+					final Collection collection = (Collection) entityBinding.getProperty( "children" ).getValue();
+					final ManyToOne element = (ManyToOne) collection.getElement();
+
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "composite_owner_child_links" );
+					assertThat( collection.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_fk1", "owner_fk2" );
+					assertThat( element.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "child_id" );
+					assertThat( element.getColumns().get( 0 ).isUnique() ).isTrue();
+				},
+				scope.getRegistry(),
+				Child.class,
+				CompositeOwnerOneToManyJoinTableOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testOneToManyJoinTableWithCompositeTarget(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( CompositeTargetOneToManyJoinTableOwner.class.getName() );
+					final Collection collection = (Collection) entityBinding.getProperty( "children" ).getValue();
+					final ManyToOne element = (ManyToOne) collection.getElement();
+
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "owner_composite_child_links" );
+					assertThat( collection.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_id" );
+					assertThat( element.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "child_fk1", "child_fk2" );
+					assertThat( element.getColumns().get( 0 ).isUnique() ).isTrue();
+					assertThat( element.getColumns().get( 1 ).isUnique() ).isTrue();
+				},
+				scope.getRegistry(),
+				CompositeChild.class,
+				CompositeTargetOneToManyJoinTableOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testCompositeManyToOneJoinTableWithReferencedColumnNames(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -382,6 +481,14 @@ public class ToOneAssociationTests {
 	@Entity(name="CompositeParent")
 	@Table(name="composite_parents")
 	public static class CompositeParent {
+		@EmbeddedId
+		private Pk id;
+		private String name;
+	}
+
+	@Entity(name="CompositeChild")
+	@Table(name="composite_children")
+	public static class CompositeChild {
 		@EmbeddedId
 		private Pk id;
 		private String name;
@@ -494,6 +601,74 @@ public class ToOneAssociationTests {
 		private Integer id;
 		@OneToMany
 		private Set<Child> children;
+	}
+
+	@Entity(name="CompositeOwnerManyToManyOwner")
+	@Table(name="composite_owner_many_to_many_owners")
+	public static class CompositeOwnerManyToManyOwner {
+		@EmbeddedId
+		private Pk id;
+		@ManyToMany
+		@JoinTable(
+				name = "composite_owner_parent_sets",
+				joinColumns = {
+						@JoinColumn(name = "owner_fk2", referencedColumnName = "id2"),
+						@JoinColumn(name = "owner_fk1", referencedColumnName = "id1")
+				},
+				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
+		)
+		private Set<Parent> parents;
+	}
+
+	@Entity(name="CompositeTargetManyToManyOwner")
+	@Table(name="composite_target_many_to_many_owners")
+	public static class CompositeTargetManyToManyOwner {
+		@Id
+		private Integer id;
+		@ManyToMany
+		@JoinTable(
+				name = "owner_composite_parent_sets",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = {
+						@JoinColumn(name = "parent_fk2", referencedColumnName = "id2"),
+						@JoinColumn(name = "parent_fk1", referencedColumnName = "id1")
+				}
+		)
+		private Set<CompositeParent> parents;
+	}
+
+	@Entity(name="CompositeOwnerOneToManyJoinTableOwner")
+	@Table(name="composite_owner_one_to_many_join_table_owners")
+	public static class CompositeOwnerOneToManyJoinTableOwner {
+		@EmbeddedId
+		private Pk id;
+		@OneToMany
+		@JoinTable(
+				name = "composite_owner_child_links",
+				joinColumns = {
+						@JoinColumn(name = "owner_fk2", referencedColumnName = "id2"),
+						@JoinColumn(name = "owner_fk1", referencedColumnName = "id1")
+				},
+				inverseJoinColumns = @JoinColumn(name = "child_id", referencedColumnName = "id")
+		)
+		private Set<Child> children;
+	}
+
+	@Entity(name="CompositeTargetOneToManyJoinTableOwner")
+	@Table(name="composite_target_one_to_many_join_table_owners")
+	public static class CompositeTargetOneToManyJoinTableOwner {
+		@Id
+		private Integer id;
+		@OneToMany
+		@JoinTable(
+				name = "owner_composite_child_links",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = {
+						@JoinColumn(name = "child_fk2", referencedColumnName = "id2"),
+						@JoinColumn(name = "child_fk1", referencedColumnName = "id1")
+				}
+		)
+		private Set<CompositeChild> children;
 	}
 
 	@Entity(name="JoinTableCompositeManyToOneOwner")
