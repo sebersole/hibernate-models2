@@ -39,6 +39,7 @@ import jakarta.persistence.Convert;
 
 import static org.hibernate.boot.models.AttributeNature.BASIC;
 import static org.hibernate.boot.models.AttributeNature.EMBEDDED;
+import static org.hibernate.boot.models.AttributeNature.ELEMENT_COLLECTION;
 import static org.hibernate.boot.models.AttributeNature.TO_ONE;
 
 /**
@@ -101,6 +102,18 @@ public class AttributeBinder {
 			).bind( binding );
 			binding.setValue( componentValue );
 			attributeTable = componentValue.getTable();
+		}
+		else if ( attributeMetadata.getNature() == ELEMENT_COLLECTION ) {
+			final var collectionValue = new ElementCollectionAttributeBinder(
+					ownerType,
+					ownerBinding,
+					attributeMetadata,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			).bind( binding );
+			binding.setValue( collectionValue );
+			attributeTable = collectionValue.getCollectionTable();
 		}
 		else {
 			throw new UnsupportedOperationException( "Not yet implemented" );

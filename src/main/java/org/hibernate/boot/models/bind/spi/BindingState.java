@@ -7,6 +7,7 @@ package org.hibernate.boot.models.bind.spi;
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.models.bind.internal.SecondaryTable;
 import org.hibernate.boot.models.bind.internal.binders.AssociationTableBinding;
+import org.hibernate.boot.models.bind.internal.binders.CollectionTableBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifiableTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
@@ -66,6 +67,12 @@ public interface BindingState {
 
 	/// Resolve association-table state for a Join, if the Join represents one.
 	AssociationTableBinding getAssociationTableBinding(Join join);
+
+	/// Register a collection table whose key is bound after member binding.
+	void addCollectionTableBinding(CollectionTableBinding collectionTableBinding);
+
+	/// Visit registered collection table bindings.
+	void forEachCollectionTableBinding(java.util.function.Consumer<CollectionTableBinding> consumer);
 
 	/// Register the identifier binding produced for an entity hierarchy root.
 	void addIdentifierBinding(EntityTypeMetadata rootType, IdentifierBinding identifierBinding);

@@ -1,0 +1,165 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright Red Hat Inc. and Hibernate Authors
+ */
+package org.hibernate.boot.models.bind.internal.binders;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.hibernate.MappingException;
+import org.hibernate.boot.model.naming.Identifier;
+import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
+import org.hibernate.boot.models.bind.spi.BindingContext;
+import org.hibernate.boot.models.bind.spi.BindingOptions;
+import org.hibernate.boot.models.bind.spi.BindingState;
+import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
+import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
+import org.hibernate.internal.util.StringHelper;
+import org.hibernate.mapping.BasicValue;
+import org.hibernate.mapping.Collection;
+import org.hibernate.mapping.PersistentClass;
+import org.hibernate.mapping.Property;
+import org.hibernate.mapping.Table;
+import org.hibernate.models.spi.MemberDetails;
+
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.JoinColumn;
+
+/**
+ * Binds the first supported element-collection shape: a basic element collection
+ * with an explicit collection table.
+ */
+class ElementCollectionAttributeBinder {
+	private final IdentifiableTypeMetadata ownerType;
+	private final PersistentClass ownerBinding;
+	private final AttributeMetadata attributeMetadata;
+	private final BindingOptions bindingOptions;
+	private final BindingState bindingState;
+	private final BindingContext bindingContext;
+
+	ElementCollectionAttributeBinder(
+			IdentifiableTypeMetadata ownerType,
+			PersistentClass ownerBinding,
+			AttributeMetadata attributeMetadata,
+			BindingOptions bindingOptions,
+			BindingState bindingState,
+			BindingContext bindingContext) {
+		this.ownerType = ownerType;
+		this.ownerBinding = ownerBinding;
+		this.attributeMetadata = attributeMetadata;
+		this.bindingOptions = bindingOptions;
+		this.bindingState = bindingState;
+		this.bindingContext = bindingContext;
+	}
+
+	Collection bind(Property property) {
+		final MemberDetails member = attributeMetadata.getMember();
+		final CollectionTable collectionTable = member.getDirectAnnotationUsage( CollectionTable.class );
+		if ( collectionTable == null || StringHelper.isEmpty( collectionTable.name() ) ) {
+			// todo: implement implicit collection-table naming using the configured
+			//  ImplicitNamingStrategy from BindingContext#getBootstrapContext(), with the
+			//  MetadataBuildingContext from BindingState for the naming source.
+			throw new UnsupportedOperationException( "Implicit @CollectionTable names are not yet implemented" );
+		}
+
+		final Table table = bindCollectionTable( collectionTable );
+		final Collection collection = createCollection( member );
+		collection.setRole( ownerBinding.getEntityName() + "." + attributeMetadata.getName() );
+		collection.setCollectionTable( table );
+		collection.setInverse( false );
+		collection.setMutable( true );
+		collection.setOptimisticLocked( true );
+		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
+
+		final BasicValue element = bindElementValue( member, table );
+		collection.setElement( element );
+
+		final List<JoinColumn> joinColumns = listJoinColumns( collectionTable.joinColumns() );
+		final IdentifierBinding ownerIdentifierBinding = bindingState.getIdentifierBinding( ownerType.getHierarchy().getRoot() );
+		if ( ownerIdentifierBinding == null ) {
+			throw new MappingException(
+					"Could not resolve identifier binding for element collection owner - "
+							+ ownerType.getClassDetails().getClassName()
+			);
+		}
+		if ( !joinColumns.isEmpty() && joinColumns.size() != ownerIdentifierBinding.columns().size() ) {
+			throw new MappingException(
+					"Collection table join column count did not match owner identifier column count - "
+							+ ownerType.getClassDetails().getClassName()
+			);
+		}
+		bindingState.addCollectionTableBinding( new CollectionTableBinding( collection, joinColumns ) );
+		bindingState.getMetadataBuildingContext().getMetadataCollector().addCollectionBinding( collection );
+		return collection;
+	}
+
+	private Collection createCollection(MemberDetails member) {
+		if ( java.util.Set.class.equals( member.getType().determineRawClass().toJavaClass() ) ) {
+			return new org.hibernate.mapping.Set( bindingState.getMetadataBuildingContext(), ownerBinding );
+		}
+		return new org.hibernate.mapping.Bag( bindingState.getMetadataBuildingContext(), ownerBinding );
+	}
+
+	private Table bindCollectionTable(CollectionTable collectionTable) {
+		// todo: route explicit catalog/schema/table names through BindingHelper so
+		//  global quoting and the configured JdbcEnvironment are applied consistently.
+		implicitNamingStrategy( bindingContext );
+		final Identifier logicalName = Identifier.toIdentifier( collectionTable.name() );
+		final Identifier schemaName = StringHelper.isEmpty( collectionTable.schema() )
+				? bindingOptions.getDefaultSchemaName()
+				: Identifier.toIdentifier( collectionTable.schema() );
+		final Identifier catalogName = StringHelper.isEmpty( collectionTable.catalog() )
+				? bindingOptions.getDefaultCatalogName()
+				: Identifier.toIdentifier( collectionTable.catalog() );
+
+		return bindingState.getMetadataBuildingContext().getMetadataCollector().addTable(
+				schemaName == null ? null : schemaName.getCanonicalName(),
+				catalogName == null ? null : catalogName.getCanonicalName(),
+				logicalName.getCanonicalName(),
+				null,
+				false,
+				bindingState.getMetadataBuildingContext(),
+				false
+		);
+	}
+
+	private BasicValue bindElementValue(MemberDetails member, Table table) {
+		final BasicValue element = new BasicValue( bindingState.getMetadataBuildingContext(), table );
+		element.setTable( table );
+		element.setImplicitJavaTypeAccess( (typeConfiguration) -> member.getElementType().determineRawClass().toJavaClass() );
+		BasicValueBinder.bindJavaType( member, null, element, bindingOptions, bindingState, bindingContext );
+		BasicValueBinder.bindJdbcType( member, null, element, bindingOptions, bindingState, bindingContext );
+		BasicValueBinder.bindLob( member, null, element, bindingOptions, bindingState, bindingContext );
+		BasicValueBinder.bindNationalized( member, null, element, bindingOptions, bindingState, bindingContext );
+		BasicValueBinder.bindEnumerated( member, null, element, bindingOptions, bindingState, bindingContext );
+		BasicValueBinder.bindTemporalPrecision( member, null, element, bindingOptions, bindingState, bindingContext );
+		BasicValueBinder.bindTimeZoneStorage( member, null, element, bindingOptions, bindingState, bindingContext );
+
+		final jakarta.persistence.Column column = member.getDirectAnnotationUsage( jakarta.persistence.Column.class );
+		element.addColumn(
+				ColumnBinder.bindColumn(
+						ColumnSource.from( column ),
+						() -> Collection.DEFAULT_ELEMENT_COLUMN_NAME
+				)
+		);
+		return element;
+	}
+
+	private static org.hibernate.boot.model.naming.ImplicitNamingStrategy implicitNamingStrategy(BindingContext bindingContext) {
+		return bindingContext.getBootstrapContext()
+				.getMetadataBuildingOptions()
+				.getImplicitNamingStrategy();
+	}
+
+	private static List<JoinColumn> listJoinColumns(JoinColumn[] joinColumns) {
+		if ( joinColumns.length == 0 ) {
+			return List.of();
+		}
+		final ArrayList<JoinColumn> result = new ArrayList<>( joinColumns.length );
+		for ( JoinColumn joinColumn : joinColumns ) {
+			result.add( joinColumn );
+		}
+		return result;
+	}
+}
