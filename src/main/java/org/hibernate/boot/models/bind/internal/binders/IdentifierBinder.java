@@ -7,7 +7,9 @@ package org.hibernate.boot.models.bind.internal.binders;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.boot.models.bind.internal.sources.BasicValueSource;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
+import org.hibernate.boot.models.bind.internal.sources.ComponentSource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
@@ -190,12 +192,9 @@ public class IdentifierBinder {
 		return new ComponentBinder( state, options, context ).bindBasicProperties(
 				type,
 				typeBinding,
-				embeddableType,
+				ComponentSource.embeddedIdentifier( embeddableType ),
 				idValue,
 				table,
-				(path, member) -> ColumnSource.from( member.getDirectAnnotationUsage( Column.class ) ),
-				(path, member) -> null,
-				(path, member) -> null,
 				(member, column) -> table.getPrimaryKey().addColumn( column ),
 				true,
 				false,

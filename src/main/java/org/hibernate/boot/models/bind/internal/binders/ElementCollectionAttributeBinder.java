@@ -4,14 +4,15 @@
  */
 package org.hibernate.boot.models.bind.internal.binders;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.hibernate.MappingException;
-import org.hibernate.annotations.Bag;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.convert.spi.RegisteredConversion;
+import org.hibernate.boot.models.bind.internal.sources.BasicValueSource;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
+import org.hibernate.boot.models.bind.internal.sources.CollectionSource;
+import org.hibernate.boot.models.bind.internal.sources.ComponentSource;
 import org.hibernate.boot.models.bind.internal.sources.ForeignKeySource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
@@ -27,17 +28,12 @@ import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
 import org.hibernate.mapping.Value;
-import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MemberDetails;
 
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Convert;
 import jakarta.persistence.AttributeConverter;
-import jakarta.persistence.Embeddable;
-import jakarta.persistence.Embedded;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.MapKeyColumn;
-import jakarta.persistence.OrderColumn;
 
 /**
  * Binds the first supported element-collection shape: a basic element collection
@@ -67,8 +63,8 @@ class ElementCollectionAttributeBinder {
 	}
 
 	Collection bind(Property property) {
-		final MemberDetails member = attributeMetadata.getMember();
-		final CollectionTable collectionTable = member.getDirectAnnotationUsage( CollectionTable.class );
+		final CollectionSource source = CollectionSource.elementCollection( attributeMetadata.getMember() );
+		final CollectionTable collectionTable = source.collectionTable();
 		if ( collectionTable == null || StringHelper.isEmpty( collectionTable.name() ) ) {
 			// todo: implement implicit collection-table naming using the configured
 			//  ImplicitNamingStrategy from BindingContext#getBootstrapContext(), with the
@@ -77,7 +73,7 @@ class ElementCollectionAttributeBinder {
 		}
 
 		final Table table = bindCollectionTable( collectionTable );
-		final Collection collection = createCollection( member );
+		final Collection collection = createCollection( source );
 		collection.setRole( ownerBinding.getEntityName() + "." + attributeMetadata.getName() );
 		collection.setCollectionTable( table );
 		collection.setInverse( false );
@@ -85,16 +81,16 @@ class ElementCollectionAttributeBinder {
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
 
-		final Value element = bindElementValue( member, collection, table );
+		final Value element = bindElementValue( source, collection, table );
 		collection.setElement( element );
 		if ( collection instanceof org.hibernate.mapping.Map map ) {
-			bindMapKey( member, map, table );
+			bindMapKey( source, map, table );
 		}
 		else if ( collection instanceof IndexedCollection indexedCollection ) {
-			bindListIndex( member, indexedCollection, table );
+			bindListIndex( source, indexedCollection, table );
 		}
 
-		final List<JoinColumn> joinColumns = listJoinColumns( collectionTable.joinColumns() );
+		final List<JoinColumn> joinColumns = source.joinColumns();
 		final IdentifierBinding ownerIdentifierBinding = bindingState.getIdentifierBinding( ownerType.getHierarchy().getRoot() );
 		if ( ownerIdentifierBinding == null ) {
 			throw new MappingException(
@@ -119,28 +115,20 @@ class ElementCollectionAttributeBinder {
 		return collection;
 	}
 
-	private Collection createCollection(MemberDetails member) {
-		final Class<?> collectionType = member.getType().determineRawClass().toJavaClass();
-		if ( java.util.Set.class.isAssignableFrom( collectionType ) ) {
-			return new org.hibernate.mapping.Set( bindingState.getMetadataBuildingContext(), ownerBinding );
-		}
-		if ( java.util.List.class.isAssignableFrom( collectionType )
-				&& !member.hasDirectAnnotationUsage( Bag.class ) ) {
-			return new org.hibernate.mapping.List( bindingState.getMetadataBuildingContext(), ownerBinding );
-		}
-		if ( java.util.Map.class.isAssignableFrom( collectionType ) ) {
-			return new org.hibernate.mapping.Map( bindingState.getMetadataBuildingContext(), ownerBinding );
-		}
-		return new org.hibernate.mapping.Bag( bindingState.getMetadataBuildingContext(), ownerBinding );
+	private Collection createCollection(CollectionSource source) {
+		return switch ( source.kind() ) {
+			case SET -> new org.hibernate.mapping.Set( bindingState.getMetadataBuildingContext(), ownerBinding );
+			case LIST -> new org.hibernate.mapping.List( bindingState.getMetadataBuildingContext(), ownerBinding );
+			case MAP -> new org.hibernate.mapping.Map( bindingState.getMetadataBuildingContext(), ownerBinding );
+			case BAG -> new org.hibernate.mapping.Bag( bindingState.getMetadataBuildingContext(), ownerBinding );
+		};
 	}
 
-	private void bindListIndex(MemberDetails member, IndexedCollection collection, Table table) {
-		final OrderColumn orderColumn = member.getDirectAnnotationUsage( OrderColumn.class );
-
+	private void bindListIndex(CollectionSource source, IndexedCollection collection, Table table) {
 		final BasicValue index = new BasicValue( bindingState.getMetadataBuildingContext(), table );
 		index.setTable( table );
 		BasicValueBinder.bindBasicValue(
-				BasicValueSource.listIndex( member ),
+				BasicValueSource.listIndex( source.member() ),
 				null,
 				index,
 				bindingOptions,
@@ -149,35 +137,33 @@ class ElementCollectionAttributeBinder {
 		);
 
 		final org.hibernate.mapping.Column indexColumn = ColumnBinder.bindColumn(
-				ColumnSource.from( orderColumn ),
+				ColumnSource.from( source.orderColumn() ),
 				() -> IndexedCollection.DEFAULT_INDEX_COLUMN_NAME
 		);
 		table.addColumn( indexColumn );
 		index.addColumn(
 				indexColumn,
-				orderColumn == null || orderColumn.insertable(),
-				orderColumn == null || orderColumn.updatable()
+				source.orderColumn() == null || source.orderColumn().insertable(),
+				source.orderColumn() == null || source.orderColumn().updatable()
 		);
 		collection.setIndex( index );
 	}
 
-	private void bindMapKey(MemberDetails member, org.hibernate.mapping.Map collection, Table table) {
-		final MapKeyColumn mapKeyColumn = member.getDirectAnnotationUsage( MapKeyColumn.class );
-
+	private void bindMapKey(CollectionSource source, org.hibernate.mapping.Map collection, Table table) {
 		final BasicValue index = new BasicValue( bindingState.getMetadataBuildingContext(), table );
 		index.setTable( table );
 		BasicValueBinder.bindBasicValue(
-				BasicValueSource.mapKey( member ),
+				BasicValueSource.mapKey( source.member() ),
 				null,
 				index,
 				bindingOptions,
 				bindingState,
 				bindingContext
 		);
-		bindMapKeyConversion( member, index );
+		bindMapKeyConversion( source.member(), index );
 
 		final org.hibernate.mapping.Column indexColumn = ColumnBinder.bindColumn(
-				ColumnSource.from( mapKeyColumn ),
+				ColumnSource.from( source.mapKeyColumn() ),
 				() -> Collection.DEFAULT_KEY_COLUMN_NAME,
 				false,
 				false
@@ -185,8 +171,8 @@ class ElementCollectionAttributeBinder {
 		table.addColumn( indexColumn );
 		index.addColumn(
 				indexColumn,
-				mapKeyColumn == null || mapKeyColumn.insertable(),
-				mapKeyColumn == null || mapKeyColumn.updatable()
+				source.mapKeyColumn() == null || source.mapKeyColumn().insertable(),
+				source.mapKeyColumn() == null || source.mapKeyColumn().updatable()
 		);
 		collection.setIndex( index );
 	}
@@ -238,66 +224,33 @@ class ElementCollectionAttributeBinder {
 		return table;
 	}
 
-	private Value bindElementValue(MemberDetails member, Collection collection, Table table) {
-		if ( isEmbeddableElement( member ) ) {
-			return bindEmbeddableElementValue( member, collection, table );
+	private Value bindElementValue(CollectionSource source, Collection collection, Table table) {
+		if ( source.hasEmbeddableElement() ) {
+			return bindEmbeddableElementValue( source, collection, table );
 		}
-		return bindBasicElementValue( member, table );
+		return bindBasicElementValue( source.member(), table );
 	}
 
-	private boolean isEmbeddableElement(MemberDetails member) {
-		final ClassDetails elementType = member.getElementType().determineRawClass();
-		return elementType.hasDirectAnnotationUsage( Embeddable.class )
-				|| member.hasDirectAnnotationUsage( Embedded.class );
-	}
-
-	private Component bindEmbeddableElementValue(MemberDetails member, Collection collection, Table table) {
-		final ClassDetails elementType = member.getElementType().determineRawClass();
+	private Component bindEmbeddableElementValue(CollectionSource collectionSource, Collection collection, Table table) {
+		final ComponentSource source = ComponentSource.collectionElement( collectionSource.member(), bindingContext );
 		final Component component = new Component( bindingState.getMetadataBuildingContext(), collection );
 		component.setEmbedded( true );
-		component.setComponentClassName( elementType.getClassName() );
+		component.setComponentClassName( source.componentType().getClassName() );
 		component.setTable( table );
 		component.setRoleName( collection.getRole() );
 
-		final OverrideAndConverterCollector overrideAndConverterCollector = new OverrideAndConverterCollector(
-				member,
-				bindingContext
-		);
 		new ComponentBinder( bindingState, bindingOptions, bindingContext ).bindBasicProperties(
 				ownerType,
 				ownerBinding,
-				elementType,
+				source,
 				component,
 				table,
-				(path, elementMember) -> {
-					final var override = overrideAndConverterCollector.locateAttributeOverride( path );
-					if ( override != null ) {
-						return ColumnSource.from( (jakarta.persistence.Column) override.column() );
-					}
-					final jakarta.persistence.Column column = elementMember.getDirectAnnotationUsage( jakarta.persistence.Column.class );
-					return ColumnSource.from( column );
-				},
-				(path, elementMember) -> resolveConversion( overrideAndConverterCollector, path, elementMember ),
-				(path, elementMember) -> overrideAndConverterCollector.locateAssociationOverride( path ),
 				(ignored, column) -> table.addColumn( column ),
 				false,
 				true,
 				true
 		);
 		return component;
-	}
-
-	private Convert resolveConversion(
-			OverrideAndConverterCollector overrideAndConverterCollector,
-			String path,
-			MemberDetails elementMember) {
-		final Convert override = overrideAndConverterCollector.locateConversion( path );
-		if ( override != null ) {
-			return override;
-		}
-
-		final Convert direct = elementMember.getDirectAnnotationUsage( Convert.class );
-		return direct != null && StringHelper.isEmpty( direct.attributeName() ) ? direct : null;
 	}
 
 	private BasicValue bindBasicElementValue(MemberDetails member, Table table) {
@@ -328,14 +281,4 @@ class ElementCollectionAttributeBinder {
 				.getImplicitNamingStrategy();
 	}
 
-	private static List<JoinColumn> listJoinColumns(JoinColumn[] joinColumns) {
-		if ( joinColumns.length == 0 ) {
-			return List.of();
-		}
-		final ArrayList<JoinColumn> result = new ArrayList<>( joinColumns.length );
-		for ( JoinColumn joinColumn : joinColumns ) {
-			result.add( joinColumn );
-		}
-		return result;
-	}
 }

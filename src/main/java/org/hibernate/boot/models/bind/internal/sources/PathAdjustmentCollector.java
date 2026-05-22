@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright Red Hat Inc. and Hibernate Authors
  */
-package org.hibernate.boot.models.bind.internal.binders;
+package org.hibernate.boot.models.bind.internal.sources;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -15,15 +15,19 @@ import jakarta.persistence.AssociationOverride;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Convert;
 
-/**
- * Path-keyed overrides and explicit conversions scoped to an attribute.
- */
-class OverrideAndConverterCollector {
+/// Path-keyed mapping adjustments scoped to an attribute.
+///
+/// Collects annotation-driven adjustments whose target is identified by an attribute path
+/// relative to the source member, such as [AttributeOverride], [AssociationOverride],
+/// and explicit [Convert] declarations.
+///
+/// @author Steve Ebersole
+class PathAdjustmentCollector {
 	private final Map<AttributePath, AttributeOverride> attributeOverrides = new HashMap<>();
 	private final Map<AttributePath, AssociationOverride> associationOverrides = new HashMap<>();
 	private final Map<AttributePath, Convert> conversions = new HashMap<>();
 
-	OverrideAndConverterCollector(
+	PathAdjustmentCollector(
 			MemberDetails member,
 			BindingContext bindingContext) {
 		final var modelsContext = bindingContext.getBootstrapContext().getModelsContext();
