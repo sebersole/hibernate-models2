@@ -5,6 +5,7 @@
 package org.hibernate.boot.models.bind.internal.sources;
 
 import jakarta.persistence.ConstraintMode;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
@@ -26,6 +27,10 @@ public interface ForeignKeySource {
 
 	static ForeignKeySource from(JoinTable joinTable) {
 		return joinTable == null ? null : from( joinTable.foreignKey() );
+	}
+
+	static ForeignKeySource from(CollectionTable collectionTable) {
+		return collectionTable == null ? null : from( collectionTable.foreignKey() );
 	}
 
 	static ForeignKeySource inverseFrom(JoinTable joinTable) {

@@ -10,6 +10,7 @@ import java.util.List;
 import org.hibernate.MappingException;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
+import org.hibernate.boot.models.bind.internal.sources.ForeignKeySource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
@@ -18,12 +19,18 @@ import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Collection;
+import org.hibernate.mapping.Component;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
+import org.hibernate.mapping.Value;
+import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MemberDetails;
 
 import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.JoinColumn;
 
 /**
@@ -72,8 +79,8 @@ class ElementCollectionAttributeBinder {
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
 
-		final BasicValue element = bindElementValue( member, table );
-		collection.setElement( element );
+			final Value element = bindElementValue( member, collection, table );
+			collection.setElement( element );
 
 		final List<JoinColumn> joinColumns = listJoinColumns( collectionTable.joinColumns() );
 		final IdentifierBinding ownerIdentifierBinding = bindingState.getIdentifierBinding( ownerType.getHierarchy().getRoot() );
@@ -89,7 +96,13 @@ class ElementCollectionAttributeBinder {
 							+ ownerType.getClassDetails().getClassName()
 			);
 		}
-		bindingState.addCollectionTableBinding( new CollectionTableBinding( collection, joinColumns ) );
+		bindingState.addCollectionTableBinding( new CollectionTableBinding(
+				collection,
+				joinColumns,
+				ForeignKeySource.from( collectionTable ),
+				collectionTable.uniqueConstraints(),
+				collectionTable.indexes()
+		) );
 		bindingState.getMetadataBuildingContext().getMetadataCollector().addCollectionBinding( collection );
 		return collection;
 	}
@@ -113,7 +126,7 @@ class ElementCollectionAttributeBinder {
 				? bindingOptions.getDefaultCatalogName()
 				: Identifier.toIdentifier( collectionTable.catalog() );
 
-		return bindingState.getMetadataBuildingContext().getMetadataCollector().addTable(
+		final Table table = bindingState.getMetadataBuildingContext().getMetadataCollector().addTable(
 				schemaName == null ? null : schemaName.getCanonicalName(),
 				catalogName == null ? null : catalogName.getCanonicalName(),
 				logicalName.getCanonicalName(),
@@ -122,9 +135,75 @@ class ElementCollectionAttributeBinder {
 				bindingState.getMetadataBuildingContext(),
 				false
 		);
+		if ( StringHelper.isNotEmpty( collectionTable.options() ) ) {
+			table.setOptions( collectionTable.options() );
+		}
+		return table;
 	}
 
-	private BasicValue bindElementValue(MemberDetails member, Table table) {
+	private Value bindElementValue(MemberDetails member, Collection collection, Table table) {
+		if ( isEmbeddableElement( member ) ) {
+			return bindEmbeddableElementValue( member, collection, table );
+		}
+		return bindBasicElementValue( member, table );
+	}
+
+	private boolean isEmbeddableElement(MemberDetails member) {
+		final ClassDetails elementType = member.getElementType().determineRawClass();
+		return elementType.hasDirectAnnotationUsage( Embeddable.class )
+				|| member.hasDirectAnnotationUsage( Embedded.class );
+	}
+
+	private Component bindEmbeddableElementValue(MemberDetails member, Collection collection, Table table) {
+		final ClassDetails elementType = member.getElementType().determineRawClass();
+		final Component component = new Component( bindingState.getMetadataBuildingContext(), collection );
+		component.setEmbedded( true );
+		component.setComponentClassName( elementType.getClassName() );
+		component.setTable( table );
+		component.setRoleName( collection.getRole() );
+
+		final OverrideAndConverterCollector overrideAndConverterCollector = new OverrideAndConverterCollector(
+				member,
+				bindingContext
+		);
+		new ComponentBinder( bindingState, bindingOptions, bindingContext ).bindBasicProperties(
+				ownerType,
+				ownerBinding,
+				elementType,
+				component,
+				table,
+				(path, elementMember) -> {
+					final var override = overrideAndConverterCollector.locateAttributeOverride( path );
+					if ( override != null ) {
+						return ColumnSource.from( (jakarta.persistence.Column) override.column() );
+					}
+					final jakarta.persistence.Column column = elementMember.getDirectAnnotationUsage( jakarta.persistence.Column.class );
+					return ColumnSource.from( column );
+				},
+				(path, elementMember) -> resolveConversion( overrideAndConverterCollector, path, elementMember ),
+				(path, elementMember) -> overrideAndConverterCollector.locateAssociationOverride( path ),
+				(ignored, column) -> table.addColumn( column ),
+				false,
+				true,
+				true
+		);
+		return component;
+	}
+
+	private Convert resolveConversion(
+			OverrideAndConverterCollector overrideAndConverterCollector,
+			String path,
+			MemberDetails elementMember) {
+		final Convert override = overrideAndConverterCollector.locateConversion( path );
+		if ( override != null ) {
+			return override;
+		}
+
+		final Convert direct = elementMember.getDirectAnnotationUsage( Convert.class );
+		return direct != null && StringHelper.isEmpty( direct.attributeName() ) ? direct : null;
+	}
+
+	private BasicValue bindBasicElementValue(MemberDetails member, Table table) {
 		final BasicValue element = new BasicValue( bindingState.getMetadataBuildingContext(), table );
 		element.setTable( table );
 		element.setImplicitJavaTypeAccess( (typeConfiguration) -> member.getElementType().determineRawClass().toJavaClass() );
@@ -137,12 +216,12 @@ class ElementCollectionAttributeBinder {
 		BasicValueBinder.bindTimeZoneStorage( member, null, element, bindingOptions, bindingState, bindingContext );
 
 		final jakarta.persistence.Column column = member.getDirectAnnotationUsage( jakarta.persistence.Column.class );
-		element.addColumn(
-				ColumnBinder.bindColumn(
-						ColumnSource.from( column ),
-						() -> Collection.DEFAULT_ELEMENT_COLUMN_NAME
-				)
+		final org.hibernate.mapping.Column elementColumn = ColumnBinder.bindColumn(
+				ColumnSource.from( column ),
+				() -> Collection.DEFAULT_ELEMENT_COLUMN_NAME
 		);
+		table.addColumn( elementColumn );
+		element.addColumn( elementColumn );
 		return element;
 	}
 

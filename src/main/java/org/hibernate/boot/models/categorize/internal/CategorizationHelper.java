@@ -117,9 +117,11 @@ public class CategorizationHelper {
 			natures.add( AttributeNature.BASIC );
 		}
 
-		if ( embedded != null
-				|| embeddedId != null
-				|| (memberType != null && memberType.determineRawClass().hasDirectAnnotationUsage( Embeddable.class )) ) {
+		if ( embeddedId != null
+				|| ( embedded != null && elementCollection == null )
+				|| ( memberType != null
+						&& !backingMember.isPlural()
+						&& memberType.determineRawClass().hasDirectAnnotationUsage( Embeddable.class ) ) ) {
 			natures.add( AttributeNature.EMBEDDED );
 		}
 
