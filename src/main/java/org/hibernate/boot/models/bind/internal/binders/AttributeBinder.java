@@ -9,7 +9,6 @@ import org.hibernate.annotations.Immutable;
 import org.hibernate.annotations.Mutability;
 import org.hibernate.annotations.NaturalId;
 import org.hibernate.annotations.OptimisticLock;
-import org.hibernate.boot.model.convert.spi.RegisteredConversion;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.models.AnnotationPlacementException;
 import org.hibernate.boot.models.bind.internal.sources.BasicValueSource;
@@ -20,7 +19,6 @@ import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.boot.models.bind.spi.TableReference;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
-import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
@@ -29,9 +27,7 @@ import org.hibernate.models.ModelsException;
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.type.descriptor.java.MutabilityPlan;
 
-import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 
 import static org.hibernate.boot.models.AttributeNature.BASIC;
 import static org.hibernate.boot.models.AttributeNature.EMBEDDED;
@@ -139,7 +135,6 @@ public class AttributeBinder {
 		final MemberDetails member = attributeMetadata.getMember();
 		bindMutability( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
 		bindOptimisticLocking( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
-		bindConversion( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
 
 		processColumn( member, binding, basicValue, primaryTable, bindingOptions, bindingState, bindingContext );
 
@@ -244,34 +239,6 @@ public class AttributeBinder {
 		basicValue.addColumn( column );
 
 		return column;
-	}
-
-	public static void bindConversion(
-			MemberDetails member,
-			@SuppressWarnings("unused") Property property,
-			@SuppressWarnings("unused") BasicValue basicValue,
-			@SuppressWarnings("unused") BindingOptions bindingOptions,
-			@SuppressWarnings("unused") BindingState bindingState,
-			@SuppressWarnings("unused") BindingContext bindingContext) {
-		// todo : do we need to account for auto-applied converters here?
-		final var convertAnn = member.getDirectAnnotationUsage( Convert.class );
-		if ( convertAnn == null ) {
-			return;
-		}
-
-		if ( convertAnn.disableConversion() ) {
-			return;
-		}
-
-		if ( StringHelper.isNotEmpty( convertAnn.attributeName() ) ) {
-			throw new ModelsException( "@Convert#attributeName should not be specified on basic mappings - " + member.getName() );
-		}
-
-		//noinspection unchecked
-		final Class<AttributeConverter<?, ?>> javaClass = (Class<AttributeConverter<?, ?>>) convertAnn.converter();
-		basicValue.setJpaAttributeConverterDescriptor(
-				new RegisteredConversion( null, javaClass, false ).getConverterDescriptor()
-		);
 	}
 
 }

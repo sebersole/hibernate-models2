@@ -21,12 +21,7 @@ import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.spi.TypeConfiguration;
 
 import static java.util.Collections.singletonMap;
-import static org.hibernate.boot.models.bind.internal.binders.AttributeBinder.bindConversion;
-import static org.hibernate.boot.models.bind.internal.binders.AttributeBinder.bindImplicitJavaType;
 import static org.hibernate.boot.models.bind.internal.binders.AttributeBinder.processColumn;
-import static org.hibernate.boot.models.bind.internal.binders.BasicValueBinder.bindEnumerated;
-import static org.hibernate.boot.models.bind.internal.binders.BasicValueBinder.bindJavaType;
-import static org.hibernate.boot.models.bind.internal.binders.BasicValueBinder.bindJdbcType;
 
 /**
  * @author Steve Ebersole
@@ -81,18 +76,19 @@ public class TenantIdBinder {
 		final BasicValue basicValue = new BasicValue( bindingState.getMetadataBuildingContext(), typeBinding.getRootTable() );
 		property.setValue( basicValue );
 
-		bindImplicitJavaType( memberDetails, property, basicValue, bindingOptions, bindingState, bindingContext );
-		bindJavaType( memberDetails, property, basicValue, bindingOptions, bindingState, bindingContext );
-		bindJdbcType( memberDetails, property, basicValue, bindingOptions, bindingState, bindingContext );
-
-		bindConversion( memberDetails, property, basicValue, bindingOptions, bindingState, bindingContext );
-		bindEnumerated( memberDetails, property, basicValue, bindingOptions, bindingState, bindingContext );
-
 		processColumn(
 				memberDetails,
 				property,
 				basicValue,
 				typeBinding.getRootTable(),
+				bindingOptions,
+				bindingState,
+				bindingContext
+		);
+		BasicValueBinder.bindBasicValue(
+				org.hibernate.boot.models.bind.internal.sources.BasicValueSource.attribute( memberDetails ),
+				property,
+				basicValue,
 				bindingOptions,
 				bindingState,
 				bindingContext

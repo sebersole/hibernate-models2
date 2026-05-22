@@ -8,7 +8,6 @@ import java.util.List;
 
 import org.hibernate.MappingException;
 import org.hibernate.boot.model.naming.Identifier;
-import org.hibernate.boot.model.convert.spi.RegisteredConversion;
 import org.hibernate.boot.models.bind.internal.sources.BasicValueSource;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.internal.sources.CollectionSource;
@@ -31,8 +30,6 @@ import org.hibernate.mapping.Value;
 import org.hibernate.models.spi.MemberDetails;
 
 import jakarta.persistence.CollectionTable;
-import jakarta.persistence.Convert;
-import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.JoinColumn;
 
 /**
@@ -153,14 +150,13 @@ class ElementCollectionAttributeBinder {
 		final BasicValue index = new BasicValue( bindingState.getMetadataBuildingContext(), table );
 		index.setTable( table );
 		BasicValueBinder.bindBasicValue(
-				BasicValueSource.mapKey( source.member() ),
+				BasicValueSource.mapKey( source.member(), bindingContext ),
 				null,
 				index,
 				bindingOptions,
 				bindingState,
 				bindingContext
 		);
-		bindMapKeyConversion( source.member(), index );
 
 		final org.hibernate.mapping.Column indexColumn = ColumnBinder.bindColumn(
 				ColumnSource.from( source.mapKeyColumn() ),
@@ -175,26 +171,6 @@ class ElementCollectionAttributeBinder {
 				source.mapKeyColumn() == null || source.mapKeyColumn().updatable()
 		);
 		collection.setIndex( index );
-	}
-
-	private void bindMapKeyConversion(MemberDetails member, BasicValue index) {
-		final Convert conversion = locateMapKeyConversion( member );
-		if ( conversion != null && !conversion.disableConversion() ) {
-			final Class<AttributeConverter<?, ?>> javaClass = (Class<AttributeConverter<?, ?>>) conversion.converter();
-			index.setJpaAttributeConverterDescriptor(
-					new RegisteredConversion( null, javaClass, false ).getConverterDescriptor()
-			);
-		}
-	}
-
-	private Convert locateMapKeyConversion(MemberDetails member) {
-		final var modelsContext = bindingContext.getBootstrapContext().getModelsContext();
-		for ( Convert conversion : member.getRepeatedAnnotationUsages( Convert.class, modelsContext ) ) {
-			if ( "key".equals( conversion.attributeName() ) ) {
-				return conversion;
-			}
-		}
-		return null;
 	}
 
 	private Table bindCollectionTable(CollectionTable collectionTable) {
@@ -257,7 +233,7 @@ class ElementCollectionAttributeBinder {
 		final BasicValue element = new BasicValue( bindingState.getMetadataBuildingContext(), table );
 		element.setTable( table );
 		BasicValueBinder.bindBasicValue(
-				BasicValueSource.collectionElement( member ),
+				BasicValueSource.collectionElement( member, bindingContext ),
 				null,
 				element,
 				bindingOptions,

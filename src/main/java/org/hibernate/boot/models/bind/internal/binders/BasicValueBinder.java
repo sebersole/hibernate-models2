@@ -19,6 +19,7 @@ import org.hibernate.annotations.Nationalized;
 import org.hibernate.annotations.TimeZoneColumn;
 import org.hibernate.annotations.TimeZoneStorage;
 import org.hibernate.annotations.TimeZoneStorageType;
+import org.hibernate.boot.model.convert.spi.RegisteredConversion;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.models.AnnotationPlacementException;
 import org.hibernate.boot.models.bind.internal.sources.BasicValueSource;
@@ -32,6 +33,8 @@ import org.hibernate.models.ModelsException;
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.type.descriptor.java.BasicJavaType;
 
+import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Lob;
 import jakarta.persistence.MapKeyEnumerated;
@@ -56,6 +59,7 @@ public class BasicValueBinder {
 			BindingState bindingState,
 			BindingContext bindingContext) {
 		basicValue.setImplicitJavaTypeAccess( (typeConfiguration) -> source.javaType() );
+		bindConversion( source, property, basicValue, bindingOptions, bindingState, bindingContext );
 		bindJavaType( source, property, basicValue, bindingOptions, bindingState, bindingContext );
 		bindJdbcType( source, property, basicValue, bindingOptions, bindingState, bindingContext );
 		bindLob( source.member(), property, basicValue, bindingOptions, bindingState, bindingContext );
@@ -63,6 +67,57 @@ public class BasicValueBinder {
 		bindEnumerated( source, property, basicValue, bindingOptions, bindingState, bindingContext );
 		bindTemporalPrecision( source, property, basicValue, bindingOptions, bindingState, bindingContext );
 		bindTimeZoneStorage( source.member(), property, basicValue, bindingOptions, bindingState, bindingContext );
+	}
+
+	public static void bindConversion(
+			BasicValueSource source,
+			Property property,
+			BasicValue basicValue,
+			BindingOptions bindingOptions,
+			BindingState bindingState,
+			BindingContext bindingContext) {
+		final Convert conversion = source.conversion();
+		if ( conversion == null || conversion.disableConversion() ) {
+			return;
+		}
+
+		validateConversionAttributeName( source, conversion );
+
+		//noinspection unchecked
+		final Class<AttributeConverter<?, ?>> javaClass = (Class<AttributeConverter<?, ?>>) conversion.converter();
+		basicValue.setJpaAttributeConverterDescriptor(
+				new RegisteredConversion( null, javaClass, false ).getConverterDescriptor()
+		);
+	}
+
+	private static void validateConversionAttributeName(BasicValueSource source, Convert conversion) {
+		final String attributeName = conversion.attributeName();
+		if ( attributeName == null || attributeName.isEmpty() ) {
+			return;
+		}
+
+		switch ( source.kind() ) {
+			case MAP_KEY -> {
+				if ( "key".equals( attributeName ) ) {
+					return;
+				}
+			}
+			case COLLECTION_ELEMENT -> {
+				if ( "value".equals( attributeName ) ) {
+					return;
+				}
+			}
+			case EMBEDDABLE_MEMBER -> {
+				return;
+			}
+			default -> {
+			}
+		}
+
+		throw new ModelsException(
+				"@Convert#attributeName did not match basic value source role - "
+						+ source.member().getName() + "#" + source.kind()
+		);
 	}
 
 	public static void bindJavaType(

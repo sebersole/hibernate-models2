@@ -4,9 +4,11 @@
  */
 package org.hibernate.boot.models.bind.internal.sources;
 
+import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.models.spi.TypeDetails;
 
+import jakarta.persistence.Convert;
 import jakarta.persistence.MapKeyClass;
 
 /// Describes the source model object used to derive a [org.hibernate.mapping.BasicValue].
@@ -50,6 +52,7 @@ import jakarta.persistence.MapKeyClass;
 ///   - the source [MemberDetails]
 ///   - the effective value [TypeDetails]
 ///   - the basic-value role/kind
+///   - the converter source, when conversion was explicitly requested
 ///   - possibly the resolved explicit Java type override
 ///
 /// That would let later type resolution work from source-model facts instead of captured
@@ -96,7 +99,19 @@ public record BasicValueSource(
 		/// If this concept moves upstream, it may be better represented by a richer source
 		/// descriptor rather than a raw [Class].  The prototype keeps it simple so we can
 		/// see where the pressure appears.
-		Class<?> explicitJavaType) {
+		Class<?> explicitJavaType,
+
+		/// Explicit converter annotation selected for this value, if one applies.
+		///
+		/// Conversion is source-role-sensitive in the same way enum, temporal, Java type,
+		/// and JDBC type annotations are.  A direct `@Convert` on a singular basic member
+		/// describes the attribute value; `@Convert(attributeName = "key")` describes a
+		/// map key; `@Convert(attributeName = "value")` describes a collection element;
+		/// and embeddable member conversion may be selected by a path override declared on
+		/// the owning component member.  Keeping the selected conversion here lets
+		/// [org.hibernate.boot.models.bind.internal.binders.BasicValueBinder] apply
+		/// conversion uniformly instead of having each higher-level binder special-case it.
+		Convert conversion) {
 
 	/// The basic-value role relative to the source member.
 	///
@@ -147,7 +162,7 @@ public record BasicValueSource(
 
 	/// Creates a source for a normal singular basic attribute.
 	public static BasicValueSource attribute(MemberDetails member) {
-		return new BasicValueSource( Kind.ATTRIBUTE, member, member.getType(), null );
+		return new BasicValueSource( Kind.ATTRIBUTE, member, member.getType(), null, directConversion( member ) );
 	}
 
 	/// Creates a source for a basic embeddable/component member.
@@ -156,12 +171,30 @@ public record BasicValueSource(
 	/// override handling can be modeled explicitly later.  Today much of that is still
 	/// handled by [ComponentBinder] before the basic value is created.
 	public static BasicValueSource embeddableMember(MemberDetails member) {
-		return new BasicValueSource( Kind.EMBEDDABLE_MEMBER, member, member.getType(), null );
+		return embeddableMember( member, directConversion( member ) );
+	}
+
+	/// Creates a source for a basic embeddable/component member with the already-selected
+	/// path-aware converter source.
+	public static BasicValueSource embeddableMember(MemberDetails member, Convert conversion) {
+		return new BasicValueSource( Kind.EMBEDDABLE_MEMBER, member, member.getType(), null, conversion );
 	}
 
 	/// Creates a source for the basic value side of an element collection.
 	public static BasicValueSource collectionElement(MemberDetails member) {
-		return new BasicValueSource( Kind.COLLECTION_ELEMENT, member, member.getElementType(), null );
+		return new BasicValueSource( Kind.COLLECTION_ELEMENT, member, member.getElementType(), null, directConversion( member ) );
+	}
+
+	/// Creates a source for the basic value side of an element collection with access to
+	/// repeated `@Convert` declarations such as `@Convert(attributeName = "value", ...)`.
+	public static BasicValueSource collectionElement(MemberDetails member, BindingContext bindingContext) {
+		return new BasicValueSource(
+				Kind.COLLECTION_ELEMENT,
+				member,
+				member.getElementType(),
+				null,
+				collectionRoleConversion( member, "value", bindingContext )
+		);
 	}
 
 	/// Creates a source for a list index.
@@ -169,7 +202,7 @@ public record BasicValueSource(
 	/// The index is synthetic.  We intentionally keep the source [MemberDetails] so
 	/// index annotations on the list attribute can be consumed by the same basic-value binder.
 	public static BasicValueSource listIndex(MemberDetails member) {
-		return new BasicValueSource( Kind.LIST_INDEX, member, null, Integer.class );
+		return new BasicValueSource( Kind.LIST_INDEX, member, null, Integer.class, null );
 	}
 
 	/// Creates a source for a map key.
@@ -178,18 +211,25 @@ public record BasicValueSource(
 	/// [MapKeyClass] is represented as an explicit Java type override because it
 	/// changes the key type used for the mapping independent of the declared generic.
 	public static BasicValueSource mapKey(MemberDetails member) {
+		return mapKey( member, null );
+	}
+
+	/// Creates a source for a map key with access to repeated `@Convert` declarations
+	/// such as `@Convert(attributeName = "key", ...)`.
+	public static BasicValueSource mapKey(MemberDetails member, BindingContext bindingContext) {
 		final MapKeyClass mapKeyClass = member.getDirectAnnotationUsage( MapKeyClass.class );
 		return new BasicValueSource(
 				Kind.MAP_KEY,
 				member,
 				member.getMapKeyType(),
-				mapKeyClass == null ? null : mapKeyClass.value()
+				mapKeyClass == null ? null : mapKeyClass.value(),
+				collectionRoleConversion( member, "key", bindingContext )
 		);
 	}
 
 	/// Creates a source for a basic identifier value.
 	public static BasicValueSource identifier(MemberDetails member) {
-		return new BasicValueSource( Kind.IDENTIFIER, member, member.getType(), null );
+		return new BasicValueSource( Kind.IDENTIFIER, member, member.getType(), null, directConversion( member ) );
 	}
 
 	/// Resolves the Java type to expose to [org.hibernate.mapping.BasicValue].
@@ -204,5 +244,30 @@ public record BasicValueSource(
 			return explicitJavaType;
 		}
 		return type.determineRawClass().toJavaClass();
+	}
+
+	private static Convert directConversion(MemberDetails member) {
+		return member.getDirectAnnotationUsage( Convert.class );
+	}
+
+	private static Convert collectionRoleConversion(
+			MemberDetails member,
+			String roleName,
+			BindingContext bindingContext) {
+		if ( bindingContext != null ) {
+			final var modelsContext = bindingContext.getBootstrapContext().getModelsContext();
+			for ( Convert conversion : member.getRepeatedAnnotationUsages( Convert.class, modelsContext ) ) {
+				if ( roleName.equals( conversion.attributeName() ) ) {
+					return conversion;
+				}
+			}
+		}
+
+		final Convert directConversion = directConversion( member );
+		if ( directConversion != null
+				&& ( directConversion.attributeName() == null || directConversion.attributeName().isEmpty() ) ) {
+			return directConversion;
+		}
+		return null;
 	}
 }
