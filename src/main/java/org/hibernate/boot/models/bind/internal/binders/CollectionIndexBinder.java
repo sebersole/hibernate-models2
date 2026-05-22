@@ -81,7 +81,17 @@ class CollectionIndexBinder {
 			bindEntityMapKey( source, collection, table, bindingState );
 			return;
 		}
+		if ( isEntityMapKey( source, bindingState ) ) {
+			throw new UnsupportedOperationException(
+					"Entity-valued map keys require @MapKeyJoinColumn support - " + collection.getRole()
+			);
+		}
 		bindBasicMapKey( source, collection, table, bindingOptions, bindingState, bindingContext );
+	}
+
+	private static boolean isEntityMapKey(CollectionSource source, BindingState bindingState) {
+		return source.mapKeyType() != null
+				&& bindingState.getTypeBinder( source.mapKeyType().determineRawClass() ) instanceof EntityTypeBinder;
 	}
 
 	private static void bindPropertyMapKey(
@@ -165,7 +175,7 @@ class CollectionIndexBinder {
 		);
 	}
 
-	private static Value createPropertyMapKeyValue(
+	static Value createPropertyMapKeyValue(
 			org.hibernate.mapping.Map collection,
 			Value targetPropertyValue,
 			BindingState bindingState) {
