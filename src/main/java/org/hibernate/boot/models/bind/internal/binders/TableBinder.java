@@ -20,7 +20,6 @@ import org.hibernate.boot.models.AnnotationPlacementException;
 import org.hibernate.boot.models.bind.internal.BindingHelper;
 import org.hibernate.boot.models.bind.internal.InLineView;
 import org.hibernate.boot.models.bind.internal.PhysicalTable;
-import org.hibernate.boot.models.bind.internal.SecondPass;
 import org.hibernate.boot.models.bind.internal.sources.TableSource;
 import org.hibernate.boot.models.bind.internal.UnionTable;
 import org.hibernate.boot.models.bind.spi.BindingContext;
@@ -58,8 +57,6 @@ public class TableBinder {
 	private final PhysicalNamingStrategy physicalNamingStrategy;
 
 	private final JdbcEnvironment jdbcEnvironment;
-
-	private List<TableBinder.TableSecondPass> secondPasses;
 
 	public TableBinder(
 			BindingState bindingState,
@@ -436,20 +433,6 @@ public class TableBinder {
 		return null;
 	}
 
-
-	@FunctionalInterface
-	public interface TableSecondPass extends SecondPass {
-		boolean processTable();
-
-		@Override
-		default boolean process() {
-			return processTable();
-		}
-	}
-
-	public void processSecondPasses() {
-		BindingHelper.processSecondPassQueue( secondPasses );
-	}
 
 	private void applyComment(Table table, TableSource tableSource, Comment commentAnn) {
 		if ( commentAnn != null ) {
