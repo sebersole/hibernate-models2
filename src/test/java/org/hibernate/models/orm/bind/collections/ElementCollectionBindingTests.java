@@ -8,8 +8,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Date;
+import java.util.Comparator;
+import java.util.SortedMap;
+import java.util.SortedSet;
 
 import org.hibernate.annotations.Bag;
+import org.hibernate.annotations.SQLOrder;
+import org.hibernate.annotations.SortComparator;
+import org.hibernate.annotations.SortNatural;
 
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Collection;
@@ -44,6 +50,7 @@ import jakarta.persistence.MapKeyJoinColumn;
 import jakarta.persistence.MapKeyJoinColumns;
 import jakarta.persistence.MapKeyTemporal;
 import jakarta.persistence.OrderColumn;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.TemporalType;
@@ -189,6 +196,105 @@ public class ElementCollectionBindingTests {
 				},
 				scope.getRegistry(),
 				BagListOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testArrayElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ArrayOwner.class.getName() );
+					final Property property = entityBinding.getProperty( "labels" );
+
+					assertThat( property.getValue() ).isInstanceOf( org.hibernate.mapping.Array.class );
+					final org.hibernate.mapping.Array collection = (org.hibernate.mapping.Array) property.getValue();
+					final BasicValue index = (BasicValue) collection.getIndex();
+
+					assertThat( collection.getElementClassName() ).isEqualTo( String.class.getName() );
+					assertThat( index.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "position" );
+				},
+				scope.getRegistry(),
+				ArrayOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testSqlOrderedSetElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( SqlOrderedSetOwner.class.getName() );
+					final Property property = entityBinding.getProperty( "labels" );
+
+					assertThat( property.getValue() ).isInstanceOf( org.hibernate.mapping.Set.class );
+					final Collection collection = (Collection) property.getValue();
+					assertThat( collection.getOrderBy() ).isEqualTo( "label desc" );
+					assertThat( collection.isSorted() ).isFalse();
+				},
+				scope.getRegistry(),
+				SqlOrderedSetOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testJpaOrderedMapElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( JpaOrderedMapOwner.class.getName() );
+					final Property property = entityBinding.getProperty( "labels" );
+
+					assertThat( property.getValue() ).isInstanceOf( org.hibernate.mapping.Map.class );
+					final Collection collection = (Collection) property.getValue();
+					assertThat( collection.getOrderBy() ).isEqualTo( "label desc" );
+					assertThat( collection.isSorted() ).isFalse();
+				},
+				scope.getRegistry(),
+				JpaOrderedMapOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testNaturalSortedSetElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( NaturalSortedSetOwner.class.getName() );
+					final Property property = entityBinding.getProperty( "labels" );
+
+					assertThat( property.getValue() ).isInstanceOf( org.hibernate.mapping.Set.class );
+					final Collection collection = (Collection) property.getValue();
+					assertThat( collection.isSorted() ).isTrue();
+					assertThat( collection.getComparatorClassName() ).isNull();
+				},
+				scope.getRegistry(),
+				NaturalSortedSetOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testComparatorSortedMapElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ComparatorSortedMapOwner.class.getName() );
+					final Property property = entityBinding.getProperty( "labels" );
+
+					assertThat( property.getValue() ).isInstanceOf( org.hibernate.mapping.Map.class );
+					final Collection collection = (Collection) property.getValue();
+					assertThat( collection.isSorted() ).isTrue();
+					assertThat( collection.getComparatorClassName() ).isEqualTo( ReverseStringComparator.class.getName() );
+				},
+				scope.getRegistry(),
+				ComparatorSortedMapOwner.class
 		);
 	}
 
@@ -707,6 +813,90 @@ public class ElementCollectionBindingTests {
 		)
 		@Column(name = "label")
 		private List<String> labels;
+	}
+
+	@Entity(name="ArrayOwner")
+	@Table(name="array_owners")
+	public static class ArrayOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "array_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@OrderColumn(name = "position")
+		@Column(name = "label")
+		private String[] labels;
+	}
+
+	@Entity(name="SqlOrderedSetOwner")
+	@Table(name="sql_ordered_set_owners")
+	public static class SqlOrderedSetOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "sql_ordered_set_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@Column(name = "label")
+		@SQLOrder("label desc")
+		private Set<String> labels;
+	}
+
+	@Entity(name="JpaOrderedMapOwner")
+	@Table(name="jpa_ordered_map_owners")
+	public static class JpaOrderedMapOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "jpa_ordered_map_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@MapKeyColumn(name = "label_key")
+		@Column(name = "label")
+		@OrderBy("label desc")
+		private Map<String, String> labels;
+	}
+
+	@Entity(name="NaturalSortedSetOwner")
+	@Table(name="natural_sorted_set_owners")
+	public static class NaturalSortedSetOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "natural_sorted_set_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@Column(name = "label")
+		@SortNatural
+		private SortedSet<String> labels;
+	}
+
+	@Entity(name="ComparatorSortedMapOwner")
+	@Table(name="comparator_sorted_map_owners")
+	public static class ComparatorSortedMapOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "comparator_sorted_map_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@MapKeyColumn(name = "label_key")
+		@Column(name = "label")
+		@SortComparator(ReverseStringComparator.class)
+		private SortedMap<String, String> labels;
+	}
+
+	public static class ReverseStringComparator implements Comparator<String> {
+		@Override
+		public int compare(String first, String second) {
+			return second.compareTo( first );
+		}
 	}
 
 	@Entity(name="MapOwner")

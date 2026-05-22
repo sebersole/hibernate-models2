@@ -4,6 +4,7 @@
  */
 package org.hibernate.models.orm.bind.associations;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -34,6 +35,7 @@ import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.MapKeyJoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.OrderColumn;
 import jakarta.persistence.SecondaryTable;
 import jakarta.persistence.Table;
 
@@ -371,6 +373,28 @@ public class ToOneAssociationTests {
 				scope.getRegistry(),
 				CascadeManyToManyOwner.class,
 				CascadeManyToManyTarget.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testOwningManyToManyListJoinTable(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ManyToManyListOwner.class.getName() );
+					final org.hibernate.mapping.List collection = (org.hibernate.mapping.List) entityBinding.getProperty( "parents" )
+							.getValue();
+					final BasicValue index = (BasicValue) collection.getIndex();
+
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "owner_parent_lists" );
+					assertThat( index.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "position" );
+				},
+				scope.getRegistry(),
+				Parent.class,
+				ManyToManyListOwner.class
 		);
 	}
 
@@ -1290,6 +1314,21 @@ public class ToOneAssociationTests {
 				inverseForeignKey = @ForeignKey(name = "fk_owner_parent_sets_parent")
 		)
 		private Set<Parent> parents;
+	}
+
+	@Entity(name="ManyToManyListOwner")
+	@Table(name="many_to_many_list_owners")
+	public static class ManyToManyListOwner {
+		@Id
+		private Integer id;
+		@ManyToMany
+		@JoinTable(
+				name = "owner_parent_lists",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
+		)
+		@OrderColumn(name = "position")
+		private List<Parent> parents;
 	}
 
 	@Entity(name="CascadeManyToManyTarget")
