@@ -7,6 +7,7 @@ package org.hibernate.models.orm.bind.collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Date;
 
 import org.hibernate.annotations.Bag;
 
@@ -29,14 +30,19 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapKeyClass;
 import jakarta.persistence.MapKeyColumn;
+import jakarta.persistence.MapKeyEnumerated;
+import jakarta.persistence.MapKeyTemporal;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.TemporalType;
 import jakarta.persistence.UniqueConstraint;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -211,6 +217,80 @@ public class ElementCollectionBindingTests {
 				},
 				scope.getRegistry(),
 				ImplicitMapOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testEnumMapKeyElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( EnumMapKeyOwner.class.getName() );
+					final org.hibernate.mapping.Map collection = (org.hibernate.mapping.Map) entityBinding.getProperty( "labels" )
+							.getValue();
+					final BasicValue key = (BasicValue) collection.getIndex();
+
+					assertThat( key.getEnumerationStyle() ).isEqualTo( EnumType.STRING );
+					assertThat( key.resolve().getDomainJavaType().getJavaType() ).isEqualTo( LabelKind.class );
+				},
+				scope.getRegistry(),
+				EnumMapKeyOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testMapKeyClassElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( MapKeyClassOwner.class.getName() );
+					final org.hibernate.mapping.Map collection = (org.hibernate.mapping.Map) entityBinding.getProperty( "labels" )
+							.getValue();
+					final BasicValue key = (BasicValue) collection.getIndex();
+
+					assertThat( key.getEnumerationStyle() ).isEqualTo( EnumType.STRING );
+					assertThat( key.resolve().getDomainJavaType().getJavaType() ).isEqualTo( LabelKind.class );
+				},
+				scope.getRegistry(),
+				MapKeyClassOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testTemporalMapKeyElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( TemporalMapKeyOwner.class.getName() );
+					final org.hibernate.mapping.Map collection = (org.hibernate.mapping.Map) entityBinding.getProperty( "labels" )
+							.getValue();
+					final BasicValue key = (BasicValue) collection.getIndex();
+
+					assertThat( key.getTemporalPrecision() ).isEqualTo( TemporalType.DATE );
+				},
+				scope.getRegistry(),
+				TemporalMapKeyOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testConvertedMapKeyElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ConvertedMapKeyOwner.class.getName() );
+					final org.hibernate.mapping.Map collection = (org.hibernate.mapping.Map) entityBinding.getProperty( "labels" )
+							.getValue();
+					final BasicValue key = (BasicValue) collection.getIndex();
+
+					assertThat( key.getJpaAttributeConverterDescriptor() ).isNotNull();
+				},
+				scope.getRegistry(),
+				ConvertedMapKeyOwner.class
 		);
 	}
 
@@ -517,6 +597,71 @@ public class ElementCollectionBindingTests {
 		private Map<String, String> labels;
 	}
 
+	@Entity(name="EnumMapKeyOwner")
+	@Table(name="enum_map_key_owners")
+	public static class EnumMapKeyOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "enum_map_key_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@MapKeyColumn(name = "label_kind")
+		@MapKeyEnumerated(EnumType.STRING)
+		@Column(name = "label")
+		private Map<LabelKind, String> labels;
+	}
+
+	@Entity(name="MapKeyClassOwner")
+	@Table(name="map_key_class_owners")
+	public static class MapKeyClassOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "map_key_class_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@MapKeyColumn(name = "label_kind")
+		@MapKeyClass(LabelKind.class)
+		@MapKeyEnumerated(EnumType.STRING)
+		@Column(name = "label")
+		private Map<Object, String> labels;
+	}
+
+	@Entity(name="TemporalMapKeyOwner")
+	@Table(name="temporal_map_key_owners")
+	public static class TemporalMapKeyOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "temporal_map_key_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@MapKeyColumn(name = "label_date")
+		@MapKeyTemporal(TemporalType.DATE)
+		@Column(name = "label")
+		private Map<Date, String> labels;
+	}
+
+	@Entity(name="ConvertedMapKeyOwner")
+	@Table(name="converted_map_key_owners")
+	public static class ConvertedMapKeyOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "converted_map_key_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@MapKeyColumn(name = "label_code")
+		@Convert(attributeName = "key", converter = LabelCodeConverter.class)
+		@Column(name = "label")
+		private Map<LabelCode, String> labels;
+	}
+
 	@Entity(name="EmbeddableElementOwner")
 	@Table(name="embeddable_element_owners")
 	public static class EmbeddableElementOwner {
@@ -653,6 +798,26 @@ public class ElementCollectionBindingTests {
 		private String city;
 		@Convert(converter = CountryConverter.class)
 		private String country;
+	}
+
+	public enum LabelKind {
+		PRIMARY,
+		SECONDARY
+	}
+
+	public record LabelCode(String code) {
+	}
+
+	public static class LabelCodeConverter implements AttributeConverter<LabelCode, String> {
+		@Override
+		public String convertToDatabaseColumn(LabelCode attribute) {
+			return attribute == null ? null : attribute.code();
+		}
+
+		@Override
+		public LabelCode convertToEntityAttribute(String dbData) {
+			return dbData == null ? null : new LabelCode( dbData );
+		}
 	}
 
 	public static class CityConverter implements AttributeConverter<String, String> {
