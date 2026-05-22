@@ -4,7 +4,10 @@
  */
 package org.hibernate.models.orm.bind.collections;
 
+import java.util.List;
 import java.util.Set;
+
+import org.hibernate.annotations.Bag;
 
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Collection;
@@ -29,6 +32,7 @@ import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.UniqueConstraint;
@@ -90,6 +94,74 @@ public class ElementCollectionBindingTests {
 
 	@Test
 	@ServiceRegistry
+	void testBasicListElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ListOwner.class.getName() );
+					final Property property = entityBinding.getProperty( "labels" );
+					assertThat( property.getValue() ).isInstanceOf( org.hibernate.mapping.List.class );
+					final org.hibernate.mapping.List collection = (org.hibernate.mapping.List) property.getValue();
+					final BasicValue element = (BasicValue) collection.getElement();
+					final BasicValue index = (BasicValue) collection.getIndex();
+
+					assertThat( collection.getRole() ).isEqualTo( ListOwner.class.getName() + ".labels" );
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "list_owner_labels" );
+					assertThat( collection.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_id" );
+					assertThat( index.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "position" );
+					assertThat( element.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "label" );
+				},
+				scope.getRegistry(),
+				ListOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testImplicitOrderColumnListElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ImplicitListOwner.class.getName() );
+					final Property property = entityBinding.getProperty( "labels" );
+					assertThat( property.getValue() ).isInstanceOf( org.hibernate.mapping.List.class );
+					final org.hibernate.mapping.List collection = (org.hibernate.mapping.List) property.getValue();
+					final BasicValue index = (BasicValue) collection.getIndex();
+
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "implicit_list_owner_labels" );
+					assertThat( index.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "idx" );
+				},
+				scope.getRegistry(),
+				ImplicitListOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testBagListElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( BagListOwner.class.getName() );
+					final Property property = entityBinding.getProperty( "labels" );
+
+					assertThat( property.getValue() ).isInstanceOf( org.hibernate.mapping.Bag.class );
+				},
+				scope.getRegistry(),
+				BagListOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testCompositeOwnerElementCollection(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -132,6 +204,33 @@ public class ElementCollectionBindingTests {
 				},
 				scope.getRegistry(),
 				EmbeddableElementOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testEmbeddableListElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( EmbeddableListOwner.class.getName() );
+					final Property property = entityBinding.getProperty( "addresses" );
+					assertThat( property.getValue() ).isInstanceOf( org.hibernate.mapping.List.class );
+					final org.hibernate.mapping.List collection = (org.hibernate.mapping.List) property.getValue();
+					final Component element = (Component) collection.getElement();
+					final BasicValue index = (BasicValue) collection.getIndex();
+
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "list_owner_addresses" );
+					assertThat( index.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "address_position" );
+					assertThat( element.getComponentClassName() ).isEqualTo( Address.class.getName() );
+					assertThat( element.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "line1", "zipCode" );
+				},
+				scope.getRegistry(),
+				EmbeddableListOwner.class
 		);
 	}
 
@@ -264,6 +363,50 @@ public class ElementCollectionBindingTests {
 		private Set<String> labels;
 	}
 
+	@Entity(name="ListOwner")
+	@Table(name="list_owners")
+	public static class ListOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "list_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@OrderColumn(name = "position")
+		@Column(name = "label")
+		private List<String> labels;
+	}
+
+	@Entity(name="ImplicitListOwner")
+	@Table(name="implicit_list_owners")
+	public static class ImplicitListOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "implicit_list_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@Column(name = "label")
+		private List<String> labels;
+	}
+
+	@Entity(name="BagListOwner")
+	@Table(name="bag_list_owners")
+	public static class BagListOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@Bag
+		@CollectionTable(
+				name = "bag_list_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@Column(name = "label")
+		private List<String> labels;
+	}
+
 	@Entity(name="EmbeddableElementOwner")
 	@Table(name="embeddable_element_owners")
 	public static class EmbeddableElementOwner {
@@ -275,6 +418,20 @@ public class ElementCollectionBindingTests {
 				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
 		)
 		private Set<Address> addresses;
+	}
+
+	@Entity(name="EmbeddableListOwner")
+	@Table(name="embeddable_list_owners")
+	public static class EmbeddableListOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "list_owner_addresses",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@OrderColumn(name = "address_position")
+		private List<Address> addresses;
 	}
 
 	@Entity(name="OverrideEmbeddableElementOwner")

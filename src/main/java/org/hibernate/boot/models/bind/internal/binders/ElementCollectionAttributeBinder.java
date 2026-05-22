@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.hibernate.MappingException;
+import org.hibernate.annotations.Bag;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.internal.sources.ForeignKeySource;
@@ -20,6 +21,7 @@ import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.Component;
+import org.hibernate.mapping.IndexedCollection;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
@@ -32,6 +34,7 @@ import jakarta.persistence.Convert;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OrderColumn;
 
 /**
  * Binds the first supported element-collection shape: a basic element collection
@@ -79,8 +82,11 @@ class ElementCollectionAttributeBinder {
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
 
-			final Value element = bindElementValue( member, collection, table );
-			collection.setElement( element );
+		final Value element = bindElementValue( member, collection, table );
+		collection.setElement( element );
+		if ( collection instanceof IndexedCollection indexedCollection ) {
+			bindListIndex( member, indexedCollection, table );
+		}
 
 		final List<JoinColumn> joinColumns = listJoinColumns( collectionTable.joinColumns() );
 		final IdentifierBinding ownerIdentifierBinding = bindingState.getIdentifierBinding( ownerType.getHierarchy().getRoot() );
@@ -108,10 +114,35 @@ class ElementCollectionAttributeBinder {
 	}
 
 	private Collection createCollection(MemberDetails member) {
-		if ( java.util.Set.class.equals( member.getType().determineRawClass().toJavaClass() ) ) {
+		final Class<?> collectionType = member.getType().determineRawClass().toJavaClass();
+		if ( java.util.Set.class.isAssignableFrom( collectionType ) ) {
 			return new org.hibernate.mapping.Set( bindingState.getMetadataBuildingContext(), ownerBinding );
 		}
+		if ( java.util.List.class.isAssignableFrom( collectionType )
+				&& !member.hasDirectAnnotationUsage( Bag.class ) ) {
+			return new org.hibernate.mapping.List( bindingState.getMetadataBuildingContext(), ownerBinding );
+		}
 		return new org.hibernate.mapping.Bag( bindingState.getMetadataBuildingContext(), ownerBinding );
+	}
+
+	private void bindListIndex(MemberDetails member, IndexedCollection collection, Table table) {
+		final OrderColumn orderColumn = member.getDirectAnnotationUsage( OrderColumn.class );
+
+		final BasicValue index = new BasicValue( bindingState.getMetadataBuildingContext(), table );
+		index.setTable( table );
+		index.setImplicitJavaTypeAccess( (typeConfiguration) -> Integer.class );
+
+		final org.hibernate.mapping.Column indexColumn = ColumnBinder.bindColumn(
+				ColumnSource.from( orderColumn ),
+				() -> IndexedCollection.DEFAULT_INDEX_COLUMN_NAME
+		);
+		table.addColumn( indexColumn );
+		index.addColumn(
+				indexColumn,
+				orderColumn == null || orderColumn.insertable(),
+				orderColumn == null || orderColumn.updatable()
+		);
+		collection.setIndex( index );
 	}
 
 	private Table bindCollectionTable(CollectionTable collectionTable) {

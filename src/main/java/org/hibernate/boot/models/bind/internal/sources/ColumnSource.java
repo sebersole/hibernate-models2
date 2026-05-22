@@ -8,6 +8,7 @@ import org.hibernate.internal.util.StringHelper;
 
 import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OrderColumn;
 
 /**
  * Unified source for column-like mapping annotations.
@@ -21,6 +22,10 @@ public interface ColumnSource {
 
 	static ColumnSource from(JoinColumn joinColumn) {
 		return joinColumn == null ? null : new JoinColumnSource( joinColumn );
+	}
+
+	static ColumnSource from(OrderColumn orderColumn) {
+		return orderColumn == null ? null : new OrderColumnSource( orderColumn );
 	}
 
 	static ColumnSource from(DiscriminatorColumn discriminatorColumn) {
@@ -140,6 +145,53 @@ public interface ColumnSource {
 		@Override
 		public String table() {
 			return joinColumn.table();
+		}
+	}
+
+	record OrderColumnSource(OrderColumn orderColumn) implements ColumnSource {
+		@Override
+		public String name() {
+			return orderColumn.name();
+		}
+
+		@Override
+		public boolean unique(boolean defaultValue) {
+			return defaultValue;
+		}
+
+		@Override
+		public boolean nullable(boolean defaultValue) {
+			return orderColumn.nullable();
+		}
+
+		@Override
+		public String columnDefinition() {
+			return orderColumn.columnDefinition();
+		}
+
+		@Override
+		public int length(int defaultValue) {
+			return defaultValue;
+		}
+
+		@Override
+		public int precision(int defaultValue) {
+			return defaultValue;
+		}
+
+		@Override
+		public int scale(int defaultValue) {
+			return defaultValue;
+		}
+
+		@Override
+		public String options() {
+			return orderColumn.options();
+		}
+
+		@Override
+		public String table() {
+			return "";
 		}
 	}
 
