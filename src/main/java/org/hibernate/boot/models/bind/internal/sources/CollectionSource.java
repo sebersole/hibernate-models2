@@ -15,6 +15,8 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.OrderColumn;
 
@@ -70,6 +72,9 @@ import jakarta.persistence.OrderColumn;
 ///
 /// @author Steve Ebersole
 public record CollectionSource(
+		/// The broad mapping nature represented by the plural member.
+		Nature nature,
+
 		/// The semantic collection classification requested by the source member.
 		///
 		/// This is the source-level decision that eventually drives which
@@ -103,7 +108,22 @@ public record CollectionSource(
 		/// This is currently required to have an explicit name in the prototype binder.
 		/// Longer term, the source should also be able to represent an implicit
 		/// collection-table naming request with enough context for the naming strategy.
-		CollectionTable collectionTable) {
+		CollectionTable collectionTable,
+
+		/// The `@JoinTable` annotation declared on an association-valued plural member.
+		JoinTable joinTable) {
+	/// Source-level plural mapping nature.
+	public enum Nature {
+		/// A value collection declared with `@ElementCollection`.
+		ELEMENT_COLLECTION,
+
+		/// An association collection declared with `@ManyToMany`.
+		MANY_TO_MANY,
+
+		/// An association collection declared with `@OneToMany`.
+		ONE_TO_MANY
+	}
+
 	/// Source-level collection classification.
 	public enum Kind {
 		/// A set-valued collection.
@@ -143,12 +163,33 @@ public record CollectionSource(
 		}
 
 		return new CollectionSource(
+				Nature.ELEMENT_COLLECTION,
 				kind,
 				member,
 				member.getElementType(),
 				kind == Kind.MAP ? member.getMapKeyType() : null,
-				member.getDirectAnnotationUsage( CollectionTable.class )
+				member.getDirectAnnotationUsage( CollectionTable.class ),
+				null
 		);
+	}
+
+	/// Creates a collection source for an owning many-to-many association member.
+	public static CollectionSource manyToMany(MemberDetails member) {
+		final CollectionSource source = elementCollection( member );
+		return new CollectionSource(
+				Nature.MANY_TO_MANY,
+				source.kind,
+				source.member,
+				source.elementType,
+				source.mapKeyType,
+				null,
+				member.getDirectAnnotationUsage( JoinTable.class )
+		);
+	}
+
+	/// The direct `@ManyToMany` annotation.
+	public ManyToMany manyToMany() {
+		return member.getDirectAnnotationUsage( ManyToMany.class );
 	}
 
 	/// Whether the collection element value should be modeled as a component.
@@ -191,6 +232,30 @@ public record CollectionSource(
 		}
 		final ArrayList<JoinColumn> result = new ArrayList<>( collectionTable.joinColumns().length );
 		for ( JoinColumn joinColumn : collectionTable.joinColumns() ) {
+			result.add( joinColumn );
+		}
+		return result;
+	}
+
+	/// The owning-side join columns for a join-table association.
+	public List<JoinColumn> associationJoinColumns() {
+		if ( joinTable == null || joinTable.joinColumns().length == 0 ) {
+			return List.of();
+		}
+		final ArrayList<JoinColumn> result = new ArrayList<>( joinTable.joinColumns().length );
+		for ( JoinColumn joinColumn : joinTable.joinColumns() ) {
+			result.add( joinColumn );
+		}
+		return result;
+	}
+
+	/// The target-side join columns for a join-table association.
+	public List<JoinColumn> associationInverseJoinColumns() {
+		if ( joinTable == null || joinTable.inverseJoinColumns().length == 0 ) {
+			return List.of();
+		}
+		final ArrayList<JoinColumn> result = new ArrayList<>( joinTable.inverseJoinColumns().length );
+		for ( JoinColumn joinColumn : joinTable.inverseJoinColumns() ) {
 			result.add( joinColumn );
 		}
 		return result;
