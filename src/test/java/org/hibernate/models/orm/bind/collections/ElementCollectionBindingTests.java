@@ -36,6 +36,7 @@ import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapKey;
 import jakarta.persistence.MapKeyClass;
 import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.MapKeyEnumerated;
@@ -285,6 +286,28 @@ public class ElementCollectionBindingTests {
 				scope.getRegistry(),
 				CompositeEntityMapKeyOwner.class,
 				CompositeLabelKey.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testPropertyMapKeyEmbeddableElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( PropertyMapKeyEmbeddableOwner.class.getName() );
+					final org.hibernate.mapping.Map collection = (org.hibernate.mapping.Map) entityBinding.getProperty( "addresses" )
+							.getValue();
+
+					assertThat( collection.hasMapKeyProperty() ).isTrue();
+					assertThat( collection.getMapKeyPropertyName() ).isEqualTo( "zipCode" );
+					assertThat( collection.getIndex().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "zipCode" );
+					assertThat( collection.getElement() ).isInstanceOf( Component.class );
+				},
+				scope.getRegistry(),
+				PropertyMapKeyEmbeddableOwner.class
 		);
 	}
 
@@ -736,6 +759,20 @@ public class ElementCollectionBindingTests {
 	public static class CompositeLabelKey {
 		@EmbeddedId
 		private Pk id;
+	}
+
+	@Entity(name="PropertyMapKeyEmbeddableOwner")
+	@Table(name="property_map_key_embeddable_owners")
+	public static class PropertyMapKeyEmbeddableOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "property_map_key_embeddable_owner_addresses",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@MapKey(name = "zipCode")
+		private Map<String, Address> addresses;
 	}
 
 	@Entity(name="EnumMapKeyOwner")

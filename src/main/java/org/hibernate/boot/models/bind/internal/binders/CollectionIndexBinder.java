@@ -17,11 +17,16 @@ import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.Column;
+import org.hibernate.mapping.Component;
+import org.hibernate.mapping.DependantBasicValue;
 import org.hibernate.mapping.IndexedCollection;
 import org.hibernate.mapping.ManyToOne;
+import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
+import org.hibernate.mapping.Value;
 import org.hibernate.models.ModelsException;
 
+import jakarta.persistence.MapKey;
 import jakarta.persistence.MapKeyJoinColumn;
 
 /// Binds synthetic collection index values such as list indexes and basic map keys.
@@ -66,11 +71,72 @@ class CollectionIndexBinder {
 			BindingOptions bindingOptions,
 			BindingState bindingState,
 			BindingContext bindingContext) {
+		final MapKey mapKey = source.mapKey();
+		if ( mapKey != null ) {
+			bindPropertyMapKey( source, collection, mapKey, bindingState );
+			return;
+		}
 		if ( !source.mapKeyJoinColumns().isEmpty() ) {
 			bindEntityMapKey( source, collection, table, bindingState );
 			return;
 		}
 		bindBasicMapKey( source, collection, table, bindingOptions, bindingState, bindingContext );
+	}
+
+	private static void bindPropertyMapKey(
+			CollectionSource source,
+			org.hibernate.mapping.Map collection,
+			MapKey mapKey,
+			BindingState bindingState) {
+		if ( mapKey.name().isEmpty() ) {
+			throw new UnsupportedOperationException( "Implicit @MapKey is not yet implemented - " + collection.getRole() );
+		}
+		final Property targetProperty = resolveMapKeyProperty( source, collection, mapKey, bindingState );
+		collection.setIndex( createPropertyMapKeyValue( collection, targetProperty.getValue(), bindingState ) );
+		collection.setMapKeyPropertyName( mapKey.name() );
+		collection.setHasMapKeyProperty( true );
+	}
+
+	private static Property resolveMapKeyProperty(
+			CollectionSource source,
+			org.hibernate.mapping.Map collection,
+			MapKey mapKey,
+			BindingState bindingState) {
+		final EntityTypeBinder elementTypeBinder = (EntityTypeBinder) bindingState.getTypeBinder(
+				source.elementType().determineRawClass()
+		);
+		if ( elementTypeBinder != null ) {
+			return elementTypeBinder.getTypeBinding().getProperty( mapKey.name() );
+		}
+		if ( collection.getElement() instanceof Component component ) {
+			return component.getProperty( mapKey.name() );
+		}
+		throw new MappingException(
+				"Could not resolve property-based map key element - "
+						+ source.elementType().determineRawClass().getClassName()
+		);
+	}
+
+	private static Value createPropertyMapKeyValue(
+			org.hibernate.mapping.Map collection,
+			Value targetPropertyValue,
+			BindingState bindingState) {
+		if ( targetPropertyValue instanceof BasicValue basicValue ) {
+			final DependantBasicValue index = new DependantBasicValue(
+					bindingState.getMetadataBuildingContext(),
+					basicValue.getTable(),
+					basicValue,
+					false,
+					false
+			);
+			for ( Column column : basicValue.getColumns() ) {
+				index.addColumn( column.clone(), false, false );
+			}
+			return index;
+		}
+		throw new UnsupportedOperationException(
+				"@MapKey(name) is only implemented for basic target properties - " + collection.getRole()
+		);
 	}
 
 	private static void bindBasicMapKey(

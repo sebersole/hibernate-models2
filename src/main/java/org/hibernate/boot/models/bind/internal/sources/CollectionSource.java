@@ -18,6 +18,7 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.MapKey;
 import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.MapKeyJoinColumn;
 import jakarta.persistence.MapKeyJoinColumns;
@@ -226,6 +227,11 @@ public record CollectionSource(
 	/// use the implicit/default map-key column.
 	public MapKeyColumn mapKeyColumn() {
 		return member.getDirectAnnotationUsage( MapKeyColumn.class );
+	}
+
+	/// The explicit property-based map key source, if declared.
+	public MapKey mapKey() {
+		return member.getDirectAnnotationUsage( MapKey.class );
 	}
 
 	/// The map-key join columns as a list, if an entity-valued map key was declared.
