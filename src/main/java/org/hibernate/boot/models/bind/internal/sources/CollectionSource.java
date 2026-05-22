@@ -5,10 +5,14 @@
 package org.hibernate.boot.models.bind.internal.sources;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 
 import org.hibernate.annotations.Bag;
+import org.hibernate.annotations.CascadeType;
 import org.hibernate.annotations.ManyToAny;
+import org.hibernate.boot.models.bind.internal.binders.CascadeBinder;
+import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.metamodel.CollectionClassification;
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.models.spi.TypeDetails;
@@ -78,6 +82,7 @@ import jakarta.persistence.OrderColumn;
 /// on source-model facts rather than repeated binder-local helper methods.
 ///
 /// @author Steve Ebersole
+@SuppressWarnings("removal")
 public record CollectionSource(
 		/// The broad mapping nature represented by the plural member.
 		Nature nature,
@@ -212,6 +217,17 @@ public record CollectionSource(
 	/// The direct `@ManyToAny` annotation.
 	public ManyToAny manyToAny() {
 		return member.getDirectAnnotationUsage( ManyToAny.class );
+	}
+
+	/// Aggregates the JPA cascade, Hibernate `@Cascade`, and mapping defaults for
+	/// association-valued plural mappings.
+	public EnumSet<CascadeType> cascades(BindingState bindingState) {
+		return switch ( nature ) {
+			case MANY_TO_MANY -> CascadeBinder.aggregateCascadeTypes( manyToMany().cascade(), member, false, bindingState );
+			case ONE_TO_MANY -> CascadeBinder.aggregateCascadeTypes( oneToMany().cascade(), member, oneToMany().orphanRemoval(), bindingState );
+			case MANY_TO_ANY -> CascadeBinder.aggregateCascadeTypes( manyToAny().cascade(), member, false, bindingState );
+			case ELEMENT_COLLECTION -> EnumSet.noneOf( CascadeType.class );
+		};
 	}
 
 	/// Whether the collection element value should be modeled as a component.

@@ -6,6 +6,7 @@ package org.hibernate.boot.models.bind.internal.sources;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 
 import org.hibernate.annotations.Any;
@@ -14,8 +15,11 @@ import org.hibernate.annotations.AnyDiscriminatorImplicitValues;
 import org.hibernate.annotations.AnyDiscriminatorValue;
 import org.hibernate.annotations.AnyDiscriminatorValues;
 import org.hibernate.annotations.AnyKeyJavaClass;
+import org.hibernate.annotations.CascadeType;
 import org.hibernate.annotations.ManyToAny;
+import org.hibernate.boot.models.bind.internal.binders.CascadeBinder;
 import org.hibernate.boot.models.bind.spi.BindingContext;
+import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.models.ModelsException;
 import org.hibernate.models.spi.MemberDetails;
 
@@ -66,11 +70,12 @@ import jakarta.persistence.JoinColumn;
 /// - explicit discriminator values or an implicit discriminator strategy
 /// - discriminator Java type selection through `@AnyDiscriminator`
 /// - key Java/JDBC type overrides through the `@AnyKey...` annotations
+/// - cascade aggregation from `@Any#cascade`, `@ManyToAny#cascade`, Hibernate
+///   `@Cascade`, and mapping defaults
 ///
 /// Known gaps are left visible here because they describe real mapping controls,
 /// not incidental implementation details:
 ///
-/// - cascade handling
 /// - discriminator `@Formula`
 /// - inferring the key Java type from target identifiers
 /// - composite any keys
@@ -79,10 +84,12 @@ import jakarta.persistence.JoinColumn;
 /// - optionality derived from explicit discriminator/key column nullability
 ///
 /// @author Steve Ebersole
+@SuppressWarnings("removal")
 public record AnySource(
 		MemberDetails member,
 		boolean lazy,
 		boolean optional,
+		EnumSet<CascadeType> cascades,
 		Column discriminatorColumn,
 		AnyDiscriminator discriminator,
 		List<AnyDiscriminatorValue> discriminatorValues,
@@ -90,7 +97,7 @@ public record AnySource(
 		JoinColumn keyColumn,
 		Class<?> keyJavaClass) {
 
-	public static AnySource create(MemberDetails member, BindingContext bindingContext) {
+	public static AnySource create(MemberDetails member, BindingContext bindingContext, BindingState bindingState) {
 		final Any any = member.getDirectAnnotationUsage( Any.class );
 		if ( any == null ) {
 			throw new ModelsException( "Missing @Any annotation - " + member.getName() );
@@ -101,6 +108,7 @@ public record AnySource(
 				member,
 				any.fetch() == FetchType.LAZY,
 				any.optional(),
+				CascadeBinder.aggregateCascadeTypes( any.cascade(), member, false, bindingState ),
 				member.getDirectAnnotationUsage( Column.class ),
 				member.getDirectAnnotationUsage( AnyDiscriminator.class ),
 				discriminatorValues( member, bindingContext ),
@@ -110,7 +118,10 @@ public record AnySource(
 		);
 	}
 
-	public static AnySource createManyToAny(CollectionSource collectionSource, BindingContext bindingContext) {
+	public static AnySource createManyToAny(
+			CollectionSource collectionSource,
+			BindingContext bindingContext,
+			BindingState bindingState) {
 		final MemberDetails member = collectionSource.member();
 		final ManyToAny manyToAny = member.getDirectAnnotationUsage( ManyToAny.class );
 		if ( manyToAny == null ) {
@@ -129,6 +140,7 @@ public record AnySource(
 				member,
 				manyToAny.fetch() == FetchType.LAZY,
 				true,
+				CascadeBinder.aggregateCascadeTypes( manyToAny.cascade(), member, false, bindingState ),
 				member.getDirectAnnotationUsage( Column.class ),
 				member.getDirectAnnotationUsage( AnyDiscriminator.class ),
 				discriminatorValues( member, bindingContext ),

@@ -5,9 +5,13 @@
 package org.hibernate.boot.models.bind.internal.sources;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 
+import org.hibernate.annotations.CascadeType;
+import org.hibernate.boot.models.bind.internal.binders.CascadeBinder;
 import org.hibernate.boot.models.bind.spi.BindingContext;
+import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MemberDetails;
@@ -62,6 +66,7 @@ import jakarta.persistence.OneToOne;
 /// foreign-key/table-key phases more source-aware.
 ///
 /// @author Steve Ebersole
+@SuppressWarnings("removal")
 public record ToOneSource(
 		/// The member that declared the association.
 		MemberDetails member,
@@ -125,6 +130,15 @@ public record ToOneSource(
 	/// The optionality declared by the active association annotation.
 	public boolean optional() {
 		return manyToOne != null ? manyToOne.optional() : oneToOne.optional();
+	}
+
+	/// Aggregates the JPA cascade, Hibernate `@Cascade`, and mapping defaults for
+	/// this to-one association.
+	public EnumSet<CascadeType> cascades(BindingState bindingState) {
+		if ( manyToOne != null ) {
+			return CascadeBinder.aggregateCascadeTypes( manyToOne.cascade(), member, false, bindingState );
+		}
+		return CascadeBinder.aggregateCascadeTypes( oneToOne.cascade(), member, oneToOne.orphanRemoval(), bindingState );
 	}
 
 	/// Resolves the effective target entity class.

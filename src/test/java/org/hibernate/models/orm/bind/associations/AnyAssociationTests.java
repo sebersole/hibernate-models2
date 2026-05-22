@@ -13,6 +13,7 @@ import org.hibernate.annotations.AnyDiscriminatorValue;
 import org.hibernate.annotations.AnyKeyJavaClass;
 import org.hibernate.annotations.AnyKeyJavaType;
 import org.hibernate.annotations.AnyKeyJdbcTypeCode;
+import org.hibernate.annotations.Cascade;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.ManyToAny;
 import org.hibernate.mapping.BasicValue;
@@ -31,6 +32,7 @@ import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators;
 import org.junit.jupiter.api.Test;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.DiscriminatorType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -43,6 +45,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /// Tests for singular Hibernate `@Any` association binding.
 ///
 /// @author Steve Ebersole
+@SuppressWarnings("removal")
 public class AnyAssociationTests {
 	@Test
 	@ServiceRegistry
@@ -192,6 +195,26 @@ public class AnyAssociationTests {
 
 	@Test
 	@ServiceRegistry
+	void testAnyCascade(ServiceRegistryScope scope) {
+		BindingTestingHelper.checkDomainModel(
+				(context) -> {
+					final RootClass entityBinding = (RootClass) context.getMetadataCollector()
+							.getEntityBinding( CascadeHolder.class.getName() );
+					final Property property = entityBinding.getProperty( "target" );
+
+					assertThat( property.getCascade() )
+							.contains( "persist" )
+							.contains( "merge" )
+							.contains( "lock" );
+				},
+				scope.getRegistry(),
+				CascadeHolder.class,
+				TargetOne.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testManyToAnyAssociation(ServiceRegistryScope scope) {
 		BindingTestingHelper.checkDomainModel(
 				(context) -> {
@@ -240,6 +263,27 @@ public class AnyAssociationTests {
 				},
 				scope.getRegistry(),
 				JdbcTypeCodeKeyManyHolder.class,
+				TargetOne.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testManyToAnyCascade(ServiceRegistryScope scope) {
+		BindingTestingHelper.checkDomainModel(
+				(context) -> {
+					final RootClass entityBinding = (RootClass) context.getMetadataCollector()
+							.getEntityBinding( CascadeManyHolder.class.getName() );
+					final Property property = entityBinding.getProperty( "targets" );
+					final Collection collection = (Collection) property.getValue();
+
+					assertThat( property.getCascade() )
+							.contains( "refresh" )
+							.contains( "delete-orphan" );
+					assertThat( collection.hasOrphanDelete() ).isTrue();
+				},
+				scope.getRegistry(),
+				CascadeManyHolder.class,
 				TargetOne.class
 		);
 	}
@@ -358,6 +402,19 @@ public class AnyAssociationTests {
 		private Object target;
 	}
 
+	@Entity(name = "CascadeAnyHolder")
+	public static class CascadeHolder {
+		@Id
+		private Integer id;
+
+		@Any(cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+		@Cascade(org.hibernate.annotations.CascadeType.LOCK)
+		@AnyDiscriminatorValue(discriminator = "one", entity = TargetOne.class)
+		@AnyKeyJavaClass(Integer.class)
+		@JoinColumn(name = "target_id")
+		private Object target;
+	}
+
 	@Entity(name = "ManyAnyHolder")
 	public static class ManyHolder {
 		@Id
@@ -374,6 +431,23 @@ public class AnyAssociationTests {
 		@AnyDiscriminatorValue(discriminator = "2", entity = TargetTwo.class)
 		@AnyKeyJavaClass(Integer.class)
 		@jakarta.persistence.Column(name = "target_type")
+		private List<Object> targets;
+	}
+
+	@Entity(name = "CascadeManyAnyHolder")
+	public static class CascadeManyHolder {
+		@Id
+		private Integer id;
+
+		@ManyToAny(cascade = CascadeType.REFRESH)
+		@Cascade(org.hibernate.annotations.CascadeType.DELETE_ORPHAN)
+		@JoinTable(
+				name = "cascade_many_holder_targets",
+				joinColumns = @JoinColumn(name = "holder_id"),
+				inverseJoinColumns = @JoinColumn(name = "target_id")
+		)
+		@AnyDiscriminatorValue(discriminator = "one", entity = TargetOne.class)
+		@AnyKeyJavaClass(Integer.class)
 		private List<Object> targets;
 	}
 
