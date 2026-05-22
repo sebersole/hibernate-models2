@@ -28,9 +28,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 
-/**
- * Binds association-valued plural attributes.
- */
+/// Binds association-valued plural attributes.
+///
+/// @author Steve Ebersole
 class PluralAssociationAttributeBinder {
 	private final IdentifiableTypeMetadata ownerType;
 	private final PersistentClass ownerBinding;
@@ -130,10 +130,6 @@ class PluralAssociationAttributeBinder {
 	}
 
 	private Collection bindAssociation(CollectionSource source, boolean uniqueTargetColumns) {
-		if ( source.classification().toJpaClassification() == jakarta.persistence.metamodel.PluralAttribute.CollectionType.MAP ) {
-			throw new UnsupportedOperationException( "Map-valued plural associations are not yet implemented" );
-		}
-
 		final TargetEntityBinding target = resolveTargetEntityBinding( source );
 		final Table table = modelBinders.getTableBinder()
 				.bindAssociationTable(
@@ -156,6 +152,16 @@ class PluralAssociationAttributeBinder {
 
 		final ManyToOne element = bindElementValue( source, target, table, uniqueTargetColumns );
 		collection.setElement( element );
+		if ( collection instanceof org.hibernate.mapping.Map map ) {
+			CollectionIndexBinder.bindBasicMapKey(
+					source,
+					map,
+					table,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			);
+		}
 		bindingState.addCollectionTableBinding( new CollectionTableBinding(
 				collection,
 				source.associationJoinColumns(),
@@ -172,9 +178,7 @@ class PluralAssociationAttributeBinder {
 			case SET, ORDERED_SET, SORTED_SET -> new org.hibernate.mapping.Set( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case LIST -> new org.hibernate.mapping.List( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case BAG -> new org.hibernate.mapping.Bag( bindingState.getMetadataBuildingContext(), ownerBinding );
-			case MAP, ORDERED_MAP, SORTED_MAP -> throw new UnsupportedOperationException(
-					"Map-valued plural associations are not yet implemented"
-			);
+			case MAP, ORDERED_MAP, SORTED_MAP -> new org.hibernate.mapping.Map( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case ARRAY, ID_BAG -> throw new UnsupportedOperationException(
 					source.classification() + " plural associations are not yet implemented"
 			);

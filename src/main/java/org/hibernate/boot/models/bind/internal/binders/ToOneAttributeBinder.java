@@ -35,9 +35,9 @@ import jakarta.persistence.AssociationOverride;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 
-/**
- * Binds simple owning to-one associations.
- */
+/// Binds simple owning to-one associations.
+///
+/// @author Steve Ebersole
 class ToOneAttributeBinder {
 	private final IdentifiableTypeMetadata ownerType;
 	private final PersistentClass ownerBinding;

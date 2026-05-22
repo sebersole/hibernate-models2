@@ -33,10 +33,10 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.UniqueConstraint;
 
-/**
- * Binds the first supported element-collection shape: a basic element collection
- * with an explicit collection table.
- */
+/// Binds the first supported element-collection shape: a basic element collection
+/// with an explicit collection table.
+///
+/// @author Steve Ebersole
 class ElementCollectionAttributeBinder {
 	private final IdentifiableTypeMetadata ownerType;
 	private final PersistentClass ownerBinding;
@@ -78,10 +78,24 @@ class ElementCollectionAttributeBinder {
 		final Value element = bindElementValue( source, collection, table );
 		collection.setElement( element );
 		if ( collection instanceof org.hibernate.mapping.Map map ) {
-			bindMapKey( source, map, table );
+			CollectionIndexBinder.bindBasicMapKey(
+					source,
+					map,
+					table,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			);
 		}
 		else if ( collection instanceof IndexedCollection indexedCollection ) {
-			bindListIndex( source, indexedCollection, table );
+			CollectionIndexBinder.bindListIndex(
+					source,
+					indexedCollection,
+					table,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			);
 		}
 
 		final List<JoinColumn> joinColumns = source.joinColumns();
@@ -119,58 +133,6 @@ class ElementCollectionAttributeBinder {
 					source.classification() + " element collections are not yet implemented"
 			);
 		};
-	}
-
-	private void bindListIndex(CollectionSource source, IndexedCollection collection, Table table) {
-		final BasicValue index = new BasicValue( bindingState.getMetadataBuildingContext(), table );
-		index.setTable( table );
-		BasicValueBinder.bindBasicValue(
-				BasicValueSource.listIndex( source.member() ),
-				null,
-				index,
-				bindingOptions,
-				bindingState,
-				bindingContext
-		);
-
-		final org.hibernate.mapping.Column indexColumn = ColumnBinder.bindColumn(
-				ColumnSource.from( source.orderColumn() ),
-				() -> IndexedCollection.DEFAULT_INDEX_COLUMN_NAME
-		);
-		table.addColumn( indexColumn );
-		index.addColumn(
-				indexColumn,
-				source.orderColumn() == null || source.orderColumn().insertable(),
-				source.orderColumn() == null || source.orderColumn().updatable()
-		);
-		collection.setIndex( index );
-	}
-
-	private void bindMapKey(CollectionSource source, org.hibernate.mapping.Map collection, Table table) {
-		final BasicValue index = new BasicValue( bindingState.getMetadataBuildingContext(), table );
-		index.setTable( table );
-		BasicValueBinder.bindBasicValue(
-				BasicValueSource.mapKey( source.member(), bindingContext ),
-				null,
-				index,
-				bindingOptions,
-				bindingState,
-				bindingContext
-		);
-
-		final org.hibernate.mapping.Column indexColumn = ColumnBinder.bindColumn(
-				ColumnSource.from( source.mapKeyColumn() ),
-				() -> Collection.DEFAULT_KEY_COLUMN_NAME,
-				false,
-				false
-		);
-		table.addColumn( indexColumn );
-		index.addColumn(
-				indexColumn,
-				source.mapKeyColumn() == null || source.mapKeyColumn().insertable(),
-				source.mapKeyColumn() == null || source.mapKeyColumn().updatable()
-		);
-		collection.setIndex( index );
 	}
 
 	private Table bindCollectionTable(CollectionTable collectionTable) {

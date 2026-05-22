@@ -8,11 +8,9 @@ import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
 
-/**
- * Composition of all binders which process aspects of the domain model
- *
- * @author Steve Ebersole
- */
+/// Composition of all binders which process aspects of the domain model
+///
+/// @author Steve Ebersole
 public class ModelBinders {
 	private final TableBinder tableBinder;
 
@@ -23,9 +21,7 @@ public class ModelBinders {
 		this.tableBinder = new TableBinder( bindingState, bindingOptions, bindingContext, this );
 	}
 
-	/**
-	 * Binder for tables
-	 */
+	/// Binder for tables
 	public TableBinder getTableBinder() {
 		return tableBinder;
 	}

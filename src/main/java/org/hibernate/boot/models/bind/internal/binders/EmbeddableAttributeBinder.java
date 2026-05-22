@@ -25,9 +25,9 @@ import jakarta.persistence.Convert;
 
 import java.util.Locale;
 
-/**
- * Binds simple component-valued attributes.
- */
+/// Binds simple component-valued attributes.
+///
+/// @author Steve Ebersole
 class EmbeddableAttributeBinder {
 	private final IdentifiableTypeMetadata ownerType;
 	private final PersistentClass ownerBinding;

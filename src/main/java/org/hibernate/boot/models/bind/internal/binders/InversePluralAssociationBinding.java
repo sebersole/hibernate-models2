@@ -10,10 +10,10 @@ import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.models.spi.ClassDetails;
 
-/**
- * Local state for an inverse plural association whose physical table/key details
- * are resolved from the owning side after table keys have been bound.
- */
+/// Local state for an inverse plural association whose physical table/key details
+/// are resolved from the owning side after table keys have been bound.
+///
+/// @author Steve Ebersole
 public record InversePluralAssociationBinding(
 		Nature nature,
 		IdentifiableTypeMetadata ownerType,

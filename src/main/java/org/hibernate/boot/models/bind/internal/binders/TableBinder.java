@@ -47,9 +47,7 @@ import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.SecondaryTable;
 
-/**
- * @author Steve Ebersole
- */
+/// @author Steve Ebersole
 public class TableBinder {
 	private final ModelBinders modelBinders;
 

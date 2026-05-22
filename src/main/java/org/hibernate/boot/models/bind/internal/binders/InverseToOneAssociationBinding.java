@@ -11,9 +11,9 @@ import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.models.spi.ClassDetails;
 
-/**
- * Local state for an inverse to-one association resolved from its owning side.
- */
+/// Local state for an inverse to-one association resolved from its owning side.
+///
+/// @author Steve Ebersole
 public record InverseToOneAssociationBinding(
 		IdentifiableTypeMetadata ownerType,
 		PersistentClass ownerBinding,

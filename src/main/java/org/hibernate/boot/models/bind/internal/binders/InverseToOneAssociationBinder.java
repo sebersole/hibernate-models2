@@ -14,9 +14,9 @@ import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
 import org.hibernate.mapping.Value;
 
-/**
- * Resolves inverse to-one associations from their owning-side mapping values.
- */
+/// Resolves inverse to-one associations from their owning-side mapping values.
+///
+/// @author Steve Ebersole
 class InverseToOneAssociationBinder {
 	private final EntityTypeBinder entityBinder;
 	private final BindingState bindingState;

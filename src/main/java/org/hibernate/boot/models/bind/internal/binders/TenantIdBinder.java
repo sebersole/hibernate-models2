@@ -23,9 +23,7 @@ import org.hibernate.type.spi.TypeConfiguration;
 import static java.util.Collections.singletonMap;
 import static org.hibernate.boot.models.bind.internal.binders.AttributeBinder.processColumn;
 
-/**
- * @author Steve Ebersole
- */
+/// @author Steve Ebersole
 public class TenantIdBinder {
 	public static final String FILTER_NAME = "_tenantId";
 	public static final String PARAMETER_NAME = "tenantId";
