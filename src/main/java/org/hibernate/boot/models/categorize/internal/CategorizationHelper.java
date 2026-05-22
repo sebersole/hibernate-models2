@@ -159,7 +159,7 @@ public class CategorizationHelper {
 		//		NOTE : these could apply to the element or index of collection, so
 		//		only do these if it is not a collection
 
-		if ( !plural ) {
+		if ( !plural && any == null ) {
 			// first implicit basic nature
 			if ( backingMember.hasDirectAnnotationUsage( Temporal.class )
 					|| backingMember.hasDirectAnnotationUsage( Lob.class )

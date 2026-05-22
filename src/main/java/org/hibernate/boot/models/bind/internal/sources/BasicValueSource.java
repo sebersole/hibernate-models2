@@ -157,7 +157,20 @@ public record BasicValueSource(
 		/// because identifier values have stricter rules for converters, mutability, nullability,
 		/// and generated-value handling.  Keeping the role explicit avoids baking identifier
 		/// exceptions into a generic attribute path.
-		IDENTIFIER
+		IDENTIFIER,
+
+		/// The discriminator value of a Hibernate `@Any` association.
+		///
+		/// This is a basic value contributed by the association member, but its Java type
+		/// comes from `@AnyDiscriminator` rather than the member's declared Java type.
+		ANY_DISCRIMINATOR,
+
+		/// The foreign-key value of a Hibernate `@Any` association.
+		///
+		/// This is the id value used to locate the selected target entity.  The Java type
+		/// is source-level metadata supplied by `@AnyKeyJavaClass` or related Hibernate
+		/// any-key annotations, not the declared Java type of the association member.
+		ANY_KEY
 	}
 
 	/// Creates a source for a normal singular basic attribute.
@@ -230,6 +243,16 @@ public record BasicValueSource(
 	/// Creates a source for a basic identifier value.
 	public static BasicValueSource identifier(MemberDetails member) {
 		return new BasicValueSource( Kind.IDENTIFIER, member, member.getType(), null, directConversion( member ) );
+	}
+
+	/// Creates a source for an `@Any` discriminator value.
+	public static BasicValueSource anyDiscriminator(MemberDetails member, Class<?> discriminatorJavaType) {
+		return new BasicValueSource( Kind.ANY_DISCRIMINATOR, member, null, discriminatorJavaType, null );
+	}
+
+	/// Creates a source for an `@Any` key value.
+	public static BasicValueSource anyKey(MemberDetails member, Class<?> keyJavaType) {
+		return new BasicValueSource( Kind.ANY_KEY, member, null, keyJavaType, null );
 	}
 
 	/// Resolves the Java type to expose to [org.hibernate.mapping.BasicValue].

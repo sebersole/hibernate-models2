@@ -19,6 +19,9 @@ import org.hibernate.annotations.Nationalized;
 import org.hibernate.annotations.TimeZoneColumn;
 import org.hibernate.annotations.TimeZoneStorage;
 import org.hibernate.annotations.TimeZoneStorageType;
+import org.hibernate.annotations.AnyKeyJavaType;
+import org.hibernate.annotations.AnyKeyJdbcType;
+import org.hibernate.annotations.AnyKeyJdbcTypeCode;
 import org.hibernate.boot.model.convert.spi.RegisteredConversion;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.models.AnnotationPlacementException;
@@ -152,6 +155,12 @@ public class BasicValueBinder {
 					applyJavaType( member, basicValue, javaTypeAnn.value() );
 				}
 			}
+			case ANY_KEY -> {
+				final var javaTypeAnn = member.getDirectAnnotationUsage( AnyKeyJavaType.class );
+				if ( javaTypeAnn != null ) {
+					applyJavaType( member, basicValue, javaTypeAnn.value() );
+				}
+			}
 			default -> bindJavaType( member, property, basicValue, bindingOptions, bindingState, bindingContext );
 		}
 	}
@@ -173,6 +182,16 @@ public class BasicValueBinder {
 			case LIST_INDEX -> {
 				final var jdbcTypeAnn = member.getDirectAnnotationUsage( ListIndexJdbcType.class );
 				final var jdbcTypeCodeAnn = member.getDirectAnnotationUsage( ListIndexJdbcTypeCode.class );
+				bindExplicitJdbcType( member, basicValue, jdbcTypeAnn == null ? null : jdbcTypeAnn.value(), jdbcTypeCodeAnn == null ? null : jdbcTypeCodeAnn.value() );
+			}
+			case ANY_KEY -> {
+				final var jdbcTypeAnn = member.getDirectAnnotationUsage( AnyKeyJdbcType.class );
+				final var jdbcTypeCodeAnn = member.getDirectAnnotationUsage( AnyKeyJdbcTypeCode.class );
+				bindExplicitJdbcType( member, basicValue, jdbcTypeAnn == null ? null : jdbcTypeAnn.value(), jdbcTypeCodeAnn == null ? null : jdbcTypeCodeAnn.value() );
+			}
+			case ANY_DISCRIMINATOR -> {
+				final var jdbcTypeAnn = member.getDirectAnnotationUsage( JdbcType.class );
+				final var jdbcTypeCodeAnn = member.getDirectAnnotationUsage( JdbcTypeCode.class );
 				bindExplicitJdbcType( member, basicValue, jdbcTypeAnn == null ? null : jdbcTypeAnn.value(), jdbcTypeCodeAnn == null ? null : jdbcTypeCodeAnn.value() );
 			}
 			default -> bindJdbcType( member, property, basicValue, bindingOptions, bindingState, bindingContext );
@@ -292,6 +311,12 @@ public class BasicValueBinder {
 		}
 		else if ( jdbcTypeCode != null ) {
 			basicValue.setExplicitJdbcTypeCode( jdbcTypeCode );
+			basicValue.setExplicitJdbcTypeAccess( (typeConfiguration) -> {
+				final var jdbcTypeRegistry = typeConfiguration.getJdbcTypeRegistry();
+				return jdbcTypeRegistry.getConstructor( jdbcTypeCode ) == null
+						? jdbcTypeRegistry.getDescriptor( jdbcTypeCode )
+						: null;
+			} );
 		}
 	}
 
