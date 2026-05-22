@@ -29,6 +29,8 @@ public record DerivedIdentifierBinding(
 		PersistentClass ownerBinding,
 		Property property,
 		ManyToOne value,
+		EntityTypeBinder targetTypeBinder,
+		boolean referenceToPrimaryKey,
 		String mapsIdAttributeName,
 		List<JoinColumn> joinColumns,
 		List<Column> targetIdentifierColumns) {

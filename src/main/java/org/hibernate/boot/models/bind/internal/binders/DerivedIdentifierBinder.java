@@ -71,9 +71,9 @@ class DerivedIdentifierBinder {
 		}
 
 		final List<Column> identifierColumns = identifierValue.getColumns();
-		final List<Column> targetColumns = derivedIdentifierBinding.targetIdentifierColumns();
+		final List<Column> targetColumns = resolveTargetColumns( derivedIdentifierBinding );
 		if ( identifierColumns.size() != targetColumns.size() ) {
-			throw new UnsupportedOperationException(
+			throw new MappingException(
 					"@MapsId identifier attribute column count did not match target identifier column count - "
 							+ derivedIdentifierBinding.ownerBinding().getEntityName()
 							+ "." + derivedIdentifierBinding.property().getName()
@@ -85,6 +85,31 @@ class DerivedIdentifierBinder {
 			derivedIdentifierBinding.value().addColumn( identifierColumn, false, false );
 		}
 		derivedIdentifierBinding.property().setOptional( false );
+	}
+
+	private List<Column> resolveTargetColumns(DerivedIdentifierBinding derivedIdentifierBinding) {
+		if ( derivedIdentifierBinding.referenceToPrimaryKey() ) {
+			return derivedIdentifierBinding.targetIdentifierColumns();
+		}
+
+		final List<String> referencedColumnNames = ToOneAttributeBinder.referencedColumnNames(
+				derivedIdentifierBinding.joinColumns()
+		);
+		for ( Property property : derivedIdentifierBinding.targetTypeBinder().getTypeBinding().getProperties() ) {
+			if ( columnNames( property.getValue().getColumns() ).equals( referencedColumnNames ) ) {
+				return property.getValue().getColumns();
+			}
+		}
+		throw new MappingException(
+				"Could not resolve non-primary-key @MapsId target columns "
+						+ referencedColumnNames + " - "
+						+ derivedIdentifierBinding.ownerBinding().getEntityName()
+						+ "." + derivedIdentifierBinding.property().getName()
+		);
+	}
+
+	private List<String> columnNames(List<Column> columns) {
+		return columns.stream().map( Column::getName ).toList();
 	}
 
 	private Value resolveIdentifierValue(
