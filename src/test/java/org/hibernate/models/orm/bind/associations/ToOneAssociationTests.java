@@ -218,6 +218,32 @@ public class ToOneAssociationTests {
 
 	@Test
 	@ServiceRegistry
+	void testOwningManyToManyImplicitJoinTable(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ManyToManyImplicitJoinTableOwner.class.getName() );
+					final Collection collection = (Collection) entityBinding.getProperty( "parents" ).getValue();
+					final ManyToOne element = (ManyToOne) collection.getElement();
+
+					assertThat( collection.getCollectionTable().getName() )
+							.isEqualTo( "many_to_many_implicit_join_table_owners_parents" );
+					assertThat( collection.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "id" );
+					assertThat( element.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parents_id" );
+					assertThat( collection.getCollectionTable().getForeignKeyCollection() ).hasSize( 2 );
+				},
+				scope.getRegistry(),
+				Parent.class,
+				ManyToManyImplicitJoinTableOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testUnidirectionalOneToManyJoinTable(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -242,6 +268,33 @@ public class ToOneAssociationTests {
 				scope.getRegistry(),
 				Child.class,
 				OneToManyJoinTableOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testUnidirectionalOneToManyImplicitJoinTable(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( OneToManyImplicitJoinTableOwner.class.getName() );
+					final Collection collection = (Collection) entityBinding.getProperty( "children" ).getValue();
+					final ManyToOne element = (ManyToOne) collection.getElement();
+
+					assertThat( collection.getCollectionTable().getName() )
+							.isEqualTo( "one_to_many_implicit_join_table_owners_children" );
+					assertThat( collection.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "id" );
+					assertThat( element.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "children_id" );
+					assertThat( element.getColumns().get( 0 ).isUnique() ).isTrue();
+					assertThat( collection.getCollectionTable().getForeignKeyCollection() ).hasSize( 2 );
+				},
+				scope.getRegistry(),
+				Child.class,
+				OneToManyImplicitJoinTableOwner.class
 		);
 	}
 
@@ -411,6 +464,15 @@ public class ToOneAssociationTests {
 		private Set<Parent> parents;
 	}
 
+	@Entity(name="ManyToManyImplicitJoinTableOwner")
+	@Table(name="many_to_many_implicit_join_table_owners")
+	public static class ManyToManyImplicitJoinTableOwner {
+		@Id
+		private Integer id;
+		@ManyToMany
+		private Set<Parent> parents;
+	}
+
 	@Entity(name="OneToManyJoinTableOwner")
 	@Table(name="one_to_many_join_table_owners")
 	public static class OneToManyJoinTableOwner {
@@ -422,6 +484,15 @@ public class ToOneAssociationTests {
 				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
 				inverseJoinColumns = @JoinColumn(name = "child_id", referencedColumnName = "id")
 		)
+		private Set<Child> children;
+	}
+
+	@Entity(name="OneToManyImplicitJoinTableOwner")
+	@Table(name="one_to_many_implicit_join_table_owners")
+	public static class OneToManyImplicitJoinTableOwner {
+		@Id
+		private Integer id;
+		@OneToMany
 		private Set<Child> children;
 	}
 
