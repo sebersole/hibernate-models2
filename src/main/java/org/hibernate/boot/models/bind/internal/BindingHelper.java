@@ -10,9 +10,16 @@ import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.boot.models.bind.spi.QuotedIdentifierTarget;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
-/**
- * @author Steve Ebersole
- */
+
+/// Small helpers for identifier conversion and global quoting.
+///
+/// These helpers centralize the interaction between [BindingOptionsImpl], the
+/// JDBC identifier helper, and Hibernate's object-name normalizer.  They are used
+/// by table, column, and discriminator binders whenever source text needs to be
+/// converted into a boot-time identifier or SQL fragment with consistent global
+/// quoting rules.
+///
+/// @author Steve Ebersole
 public class BindingHelper {
 	public static Identifier toIdentifier(
 			String name,

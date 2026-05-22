@@ -8,10 +8,17 @@ import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
 
-/// Composition of all binders which process aspects of the domain model
+/// Composition root for reusable binders used while processing the domain model.
+///
+/// Most binders are created per type or per attribute because they carry local
+/// source context.  `ModelBinders` owns the longer-lived collaborators that can be
+/// shared safely across those short-lived binders, such as table binding support.
 ///
 /// @author Steve Ebersole
 public class ModelBinders {
+
+	// todo : keep this?
+
 	private final TableBinder tableBinder;
 
 	public ModelBinders(
@@ -21,7 +28,7 @@ public class ModelBinders {
 		this.tableBinder = new TableBinder( bindingState, bindingOptions, bindingContext, this );
 	}
 
-	/// Binder for tables
+	/// Binder for table references and mapping-model `Table` creation.
 	public TableBinder getTableBinder() {
 		return tableBinder;
 	}

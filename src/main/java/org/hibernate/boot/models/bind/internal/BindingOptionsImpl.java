@@ -16,9 +16,14 @@ import org.hibernate.engine.config.spi.StandardConverters;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 
-/**
- * @author Steve Ebersole
- */
+/// Binding-time options derived from the active metadata-building context.
+///
+/// These options normalize global defaults that many binders need, especially
+/// default catalog/schema names and globally quoted identifier handling.  Keeping
+/// that logic in one place prevents table, column, and constraint binders from
+/// re-reading bootstrap settings or applying quoting rules inconsistently.
+///
+/// @author Steve Ebersole
 public class BindingOptionsImpl implements BindingOptions {
 	private final Identifier defaultCatalogName;
 	private final Identifier defaultSchemaName;

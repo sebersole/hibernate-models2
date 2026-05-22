@@ -14,6 +14,16 @@ import org.hibernate.mapping.Property;
 
 import jakarta.persistence.JoinColumn;
 
+/// Pending binding for a derived identifier association such as `@MapsId`.
+///
+/// Member binding creates the owning to-one property, but `@MapsId` means its
+/// columns are not new association columns.  They are the already-bound columns
+/// of the owner's identifier, or one named attribute inside that identifier.
+/// This record keeps the association, the `mapsId` path, the declared join
+/// columns, and the target identifier columns until the derived-identifier phase
+/// can validate and share the identifier columns.
+///
+/// @author Steve Ebersole
 public record DerivedIdentifierBinding(
 		IdentifiableTypeMetadata ownerType,
 		PersistentClass ownerBinding,

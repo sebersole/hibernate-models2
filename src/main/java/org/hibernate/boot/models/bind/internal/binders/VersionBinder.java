@@ -19,6 +19,13 @@ import static org.hibernate.boot.models.bind.internal.binders.AttributeBinder.pr
 import static org.hibernate.boot.models.bind.internal.binders.BasicValueBinder.bindJavaType;
 import static org.hibernate.boot.models.bind.internal.binders.BasicValueBinder.bindJdbcType;
 
+/// Binds the entity version property.
+///
+/// Version binding is currently part of the entity member phase, but it is kept
+/// separate from normal attribute binding because the mapping model stores the
+/// version property in dedicated `RootClass` state and forces its column to be
+/// non-nullable.
+///
 /// @author Steve Ebersole
 public class VersionBinder {
 	public static void bindVersion(

@@ -9,6 +9,12 @@ import org.hibernate.mapping.ToOne;
 
 /// Centralizes the collector side-channel for associations that reference a unique property.
 ///
+/// Non-primary-key association references still need to inform the metadata
+/// collector about the referenced unique property so `org.hibernate.mapping`
+/// can create property-ref constraints.  Keeping that call here makes the
+/// remaining collector dependency visible and gives target-resolution code one
+/// place to migrate if the mapping model grows a typed property-reference API.
+///
 /// @author Steve Ebersole
 class UniquePropertyReferenceBinder {
 	static void bindUniquePropertyReference(

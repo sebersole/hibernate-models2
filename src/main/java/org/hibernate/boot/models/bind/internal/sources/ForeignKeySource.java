@@ -11,11 +11,14 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.SecondaryTable;
 
-/**
- * Unified source for foreign-key mapping metadata.
- *
- * @author Steve Ebersole
- */
+/// Unified source for foreign-key mapping metadata.
+///
+/// Foreign-key metadata can be declared on join columns, join tables, collection
+/// tables, and secondary tables.  This source descriptor lets association,
+/// table-key, and foreign-key phases carry the same customization information
+/// without each phase re-reading the original annotation type.
+///
+/// @author Steve Ebersole
 public interface ForeignKeySource {
 	static ForeignKeySource from(ForeignKey foreignKey) {
 		return foreignKey == null ? null : new JpaForeignKeySource( foreignKey );

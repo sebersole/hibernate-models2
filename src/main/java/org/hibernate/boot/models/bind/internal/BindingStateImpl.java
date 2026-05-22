@@ -43,9 +43,24 @@ import org.hibernate.mapping.Join;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.type.spi.TypeConfiguration;
 
-/**
- * @author Steve Ebersole
- */
+/// Mutable binding-state implementation shared by all coordinator phases.
+///
+/// `BindingStateImpl` is the local registry for objects that need to be visible
+/// across binders without falling back to global metadata-collector lookups.  It
+/// tracks:
+///
+/// - type binders, keyed by their Hibernate Models [ClassDetails]
+/// - logical and physical table references
+/// - identifier shapes produced by the identifier phase
+/// - typed pending work for later phases, such as association targets, collection
+///   table keys, inverse associations, derived identifiers, and foreign keys
+///
+/// This object is intentionally mutable because binding is incremental.  The
+/// important boundary is that the state is typed and phase-specific; each list is
+/// consumed by a named phase instead of being an opaque "try again later"
+/// callback queue.
+///
+/// @author Steve Ebersole
 public class BindingStateImpl implements BindingState {
 	private final MetadataBuildingContext metadataBuildingContext;
 

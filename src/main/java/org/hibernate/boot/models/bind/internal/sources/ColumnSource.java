@@ -12,11 +12,14 @@ import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.MapKeyJoinColumn;
 import jakarta.persistence.OrderColumn;
 
-/**
- * Unified source for column-like mapping annotations.
- *
- * @author Steve Ebersole
- */
+/// Unified source for column-like mapping annotations.
+///
+/// Several JPA annotations describe a physical column but use slightly different
+/// defaults and applicability rules.  `ColumnSource` gives column binders one
+/// view over those annotations while preserving the source role: attribute
+/// column, join column, map key column, order column, or discriminator column.
+///
+/// @author Steve Ebersole
 public interface ColumnSource {
 	static ColumnSource from(jakarta.persistence.Column column) {
 		return column == null ? null : new JpaColumnSource( column );

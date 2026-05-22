@@ -9,6 +9,13 @@ import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.boot.models.categorize.spi.ManagedTypeMetadata;
 
+/// Base class for binders tied to one categorized managed type.
+///
+/// A managed-type binder owns the Hibernate Models metadata for one type plus the
+/// shared binding context/state/options.  Subclasses decide which
+/// [TypeBindingPhase] contracts they implement, making the coordinator's
+/// phase dispatch explicit without forcing every binder to implement every phase.
+///
 /// @author Steve Ebersole
 public abstract class ManagedTypeBinder {
 	private final ManagedTypeMetadata managedType;

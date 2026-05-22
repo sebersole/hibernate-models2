@@ -8,15 +8,20 @@ import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.models.bind.spi.PhysicalTableReference;
 import org.hibernate.mapping.Table;
 
-/**
- * Models a physical table from the underlying database schema
- *
- * @see jakarta.persistence.Table
- * @see jakarta.persistence.CollectionTable
- * @see jakarta.persistence.JoinTable
- *
- * @author Steve Ebersole
- */
+/// Table reference for a physical table in the relational database.
+///
+/// The binder keeps logical names and physical names together because source
+/// annotations, implicit naming, physical naming, and `org.hibernate.mapping`
+/// lookup often need to ask slightly different questions about the same table.
+/// The [#binding()] is the mapping-model table shell created during table
+/// binding; identifier-derived keys and foreign keys are completed by later
+/// phases.
+///
+/// @see jakarta.persistence.Table
+/// @see jakarta.persistence.CollectionTable
+/// @see jakarta.persistence.JoinTable
+///
+/// @author Steve Ebersole
 public record PhysicalTable(
 		Identifier logicalName,
 		Identifier logicalCatalogName,

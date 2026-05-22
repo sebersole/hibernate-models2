@@ -38,6 +38,18 @@ import static org.hibernate.boot.models.AttributeNature.MANY_TO_MANY;
 import static org.hibernate.boot.models.AttributeNature.ONE_TO_MANY;
 import static org.hibernate.boot.models.AttributeNature.TO_ONE;
 
+/// Binds one persistent attribute into a Hibernate [Property].
+///
+/// This class is the dispatch point from categorized attribute metadata to the
+/// value-specific binders.  It owns the common `Property` setup and delegates the
+/// value shape to basic, to-one, component, element-collection, or plural
+/// association binders.
+///
+/// The attribute's physical table is recorded from the bound value rather than
+/// assumed from the owner's primary table.  That matters for secondary-table
+/// attributes and for collection attributes whose value table is the collection
+/// table.
+///
 /// @author Steve Ebersole
 public class AttributeBinder {
 	private final AttributeMetadata attributeMetadata;

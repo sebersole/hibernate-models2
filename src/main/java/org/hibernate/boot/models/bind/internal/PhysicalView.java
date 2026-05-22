@@ -8,11 +8,16 @@ import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.mapping.Table;
 import org.hibernate.boot.models.bind.spi.PersistentTableReference;
 
-/**
- * @see org.hibernate.annotations.View
- *
- * @author Steve Ebersole
- */
+/// Table reference for a persistent database view.
+///
+/// A view behaves like a persistent table reference for binding purposes, but it
+/// originates from `@View` source metadata rather than from a normal table
+/// annotation.  The record preserves the same logical/physical name split used
+/// by [PhysicalTable].
+///
+/// @see org.hibernate.annotations.View
+///
+/// @author Steve Ebersole
 public record PhysicalView(
 		Identifier logicalName,
 		Identifier logicalCatalogName,

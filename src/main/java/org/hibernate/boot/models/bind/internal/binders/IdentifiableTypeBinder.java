@@ -21,6 +21,14 @@ import org.hibernate.mapping.Table;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Id;
 
+/// Base binder for entity and mapped-superclass types.
+///
+/// The mapping model does not have a single concrete "identifiable type" class,
+/// so this base class keeps shared binding state for entity and mapped-superclass
+/// binders while leaving the actual mapping object type abstract.  It also owns
+/// common member-binding support used by entity binders after identifiers and
+/// tables have been established.
+///
 /// @author Steve Ebersole
 public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 	private final IdentifiableTypeMetadata superType;

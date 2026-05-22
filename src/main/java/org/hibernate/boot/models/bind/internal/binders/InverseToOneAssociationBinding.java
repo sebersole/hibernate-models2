@@ -13,6 +13,11 @@ import org.hibernate.models.spi.ClassDetails;
 
 /// Local state for an inverse to-one association resolved from its owning side.
 ///
+/// A mapped-by one-to-one does not own columns.  It is bound first as a logical
+/// inverse value and completed later from the owning association, after member
+/// binding and table-key binding have made direct-column and join-table owning
+/// forms visible.
+///
 /// @author Steve Ebersole
 public record InverseToOneAssociationBinding(
 		IdentifiableTypeMetadata ownerType,

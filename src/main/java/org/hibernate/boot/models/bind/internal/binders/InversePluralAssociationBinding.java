@@ -13,6 +13,12 @@ import org.hibernate.models.spi.ClassDetails;
 /// Local state for an inverse plural association whose physical table/key details
 /// are resolved from the owning side after table keys have been bound.
 ///
+/// Inverse plural attributes are discovered while binding members, but the
+/// mapping value is mostly a projection of the owning side.  The inverse phase
+/// uses [#mappedBy()] to find the owning property and copies the relevant table,
+/// key, element, and map-key structure once those owning-side structures are
+/// stable.
+///
 /// @author Steve Ebersole
 public record InversePluralAssociationBinding(
 		Nature nature,

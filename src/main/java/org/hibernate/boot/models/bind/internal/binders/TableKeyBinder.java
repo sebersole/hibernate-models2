@@ -21,6 +21,19 @@ import org.hibernate.models.ModelsException;
 
 /// Binds table keys that depend on an already-bound entity hierarchy identifier.
 ///
+/// This phase completes mapping tables whose key columns are derived from an
+/// entity identifier rather than declared independently:
+///
+/// - joined-subclass tables
+/// - secondary tables
+/// - association join tables represented as entity joins
+/// - collection tables
+///
+/// The phase creates dependent key values and primary keys, then records
+/// [TableForeignKeyBinding] work for the later foreign-key phase.  It also
+/// applies collection-table indexes and unique constraints once the table's key
+/// and value columns are available.
+///
 /// @author Steve Ebersole
 public class TableKeyBinder {
 	private final EntityTypeBinder entityBinder;
