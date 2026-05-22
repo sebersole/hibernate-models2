@@ -5,9 +5,6 @@
 package org.hibernate.boot.models.bind.internal.binders;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.hibernate.annotations.Immutable;
 import org.hibernate.annotations.Mutability;
 import org.hibernate.annotations.NaturalId;
@@ -15,8 +12,6 @@ import org.hibernate.annotations.OptimisticLock;
 import org.hibernate.boot.model.convert.spi.RegisteredConversion;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.models.AnnotationPlacementException;
-import org.hibernate.boot.models.bind.internal.BindingHelper;
-import org.hibernate.boot.models.bind.internal.SecondPass;
 import org.hibernate.boot.models.bind.internal.sources.BasicValueSource;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
@@ -54,8 +49,6 @@ public class AttributeBinder {
 
 	private final Property binding;
 	private final Table attributeTable;
-
-	private List<ValueSecondPass> valueSecondPasses;
 
 	public AttributeBinder(
 			IdentifiableTypeMetadata ownerType,
@@ -138,17 +131,6 @@ public class AttributeBinder {
 		}
 		property.setNaturalIdentifier( true );
 		property.setUpdatable( naturalIdAnn.mutable() );
-	}
-
-	private void registerValueSecondPass(ValueSecondPass secondPass) {
-		if ( valueSecondPasses == null ) {
-			valueSecondPasses = new ArrayList<>();
-		}
-		valueSecondPasses.add( secondPass );
-	}
-
-	public void processSecondPasses() {
-		BindingHelper.processSecondPassQueue( valueSecondPasses );
 	}
 
 	private BasicValue createBasicValue(Table primaryTable) {
@@ -236,17 +218,6 @@ public class AttributeBinder {
 		}
 	}
 
-
-	@FunctionalInterface
-	interface ValueSecondPass extends SecondPass {
-
-		boolean processValue();
-
-		@Override
-		default boolean process() {
-			return processValue();
-		}
-	}
 
 	public static org.hibernate.mapping.Column processColumn(
 			MemberDetails member,

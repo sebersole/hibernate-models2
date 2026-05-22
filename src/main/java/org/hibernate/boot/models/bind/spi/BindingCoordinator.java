@@ -110,21 +110,12 @@ public class BindingCoordinator {
 		runPhase( binders, TypeBindingPhase.Members.class, TypeBindingPhase.Members::bindMembers );
 		runPhase( binders, TypeBindingPhase.TableKeys.class, TypeBindingPhase.TableKeys::bindTableKeys );
 
-		// complete tables
-		modelBinders.getTableBinder().processSecondPasses();
-
 		// process identifiers
 		categorizedDomainModel.forEachEntityHierarchy( (index, hierarchy) -> {
 			final EntityTypeBinder typeBinder = (EntityTypeBinder) bindingState.getTypeBinder( hierarchy.getRoot() );
 			final RootClass binding = (RootClass) typeBinder.getTypeBinding();
 			ModelBindingLogging.MODEL_BINDING_LOGGER.tracef( "Bound entity hierarchy - %s", binding.getEntityName() );
 		} );
-
-		bindingState.forEachType( this::processModelSecondPasses );
-	}
-
-	private void processModelSecondPasses(String typeName, ManagedTypeBinder binder) {
-		binder.processSecondPasses();
 	}
 
 	private void coordinateGlobalBindings() {

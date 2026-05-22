@@ -134,10 +134,4 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 		}
 		throw new IllegalArgumentException( "Could not locate Table for name - " + attributeTable.getName() );
 	}
-
-	@Override
-	public void processSecondPasses() {
-		attributeBinders.forEach( AttributeBinder::processSecondPasses );
-	}
-
 }

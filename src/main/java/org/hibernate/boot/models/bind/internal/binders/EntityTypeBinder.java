@@ -905,12 +905,6 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 		return result.isEmpty() ? null : result;
 	}
 
-	@Override
-	public void processSecondPasses() {
-		modelBinders.getTableBinder().processSecondPasses();
-		super.processSecondPasses();
-	}
-
 	private void processSecondaryTable(SecondaryTable secondaryTable) {
 		final Join join = new Join();
 		join.setTable( secondaryTable.binding() );
