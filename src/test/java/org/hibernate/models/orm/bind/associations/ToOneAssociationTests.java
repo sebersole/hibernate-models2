@@ -113,6 +113,37 @@ public class ToOneAssociationTests {
 
 	@Test
 	@ServiceRegistry
+	void testInverseOneToOneMappedByJoinTable(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass inverseEntityBinding = context.getMetadataCollector()
+							.getEntityBinding( MappedByJoinTableOneToOneParent.class.getName() );
+					final Join inverseJoin = inverseEntityBinding.getJoins().get( 0 );
+					final org.hibernate.mapping.Property property = inverseJoin.getProperties().get( 0 );
+					assertThat( property.getValue() ).isInstanceOf( ManyToOne.class );
+					final ManyToOne value = (ManyToOne) property.getValue();
+
+					assertThat( inverseJoin.isInverse() ).isTrue();
+					assertThat( inverseJoin.getTable().getName() ).isEqualTo( "mapped_by_one_to_one_links" );
+					assertThat( inverseJoin.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_id" );
+					assertThat( value.isLogicalOneToOne() ).isTrue();
+					assertThat( value.getReferencedEntityName() ).isEqualTo( MappedByJoinTableOneToOneChild.class.getName() );
+					assertThat( value.getReferencedPropertyName() ).isEqualTo( "parent" );
+					assertThat( value.isReferenceToPrimaryKey() ).isFalse();
+					assertThat( value.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "child_id" );
+				},
+				scope.getRegistry(),
+				MappedByJoinTableOneToOneParent.class,
+				MappedByJoinTableOneToOneChild.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testInverseOneToOneMappedByManyToOneFails(ServiceRegistryScope scope) {
 		assertThatThrownBy( () -> checkDomainModel(
 				(context) -> {
@@ -614,6 +645,29 @@ public class ToOneAssociationTests {
 		@OneToOne
 		@JoinColumn(name = "parent_fk", referencedColumnName = "id")
 		private MappedByOneToOneParent parent;
+	}
+
+	@Entity(name="MappedByJoinTableOneToOneParent")
+	@Table(name="mapped_by_join_table_one_to_one_parents")
+	public static class MappedByJoinTableOneToOneParent {
+		@Id
+		private Integer id;
+		@OneToOne(mappedBy = "parent")
+		private MappedByJoinTableOneToOneChild child;
+	}
+
+	@Entity(name="MappedByJoinTableOneToOneChild")
+	@Table(name="mapped_by_join_table_one_to_one_children")
+	public static class MappedByJoinTableOneToOneChild {
+		@Id
+		private Integer id;
+		@OneToOne
+		@JoinTable(
+				name = "mapped_by_one_to_one_links",
+				joinColumns = @JoinColumn(name = "child_id", referencedColumnName = "id"),
+				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
+		)
+		private MappedByJoinTableOneToOneParent parent;
 	}
 
 	@Entity(name="InvalidMappedByOneToOneParent")
