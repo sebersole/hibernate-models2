@@ -7,6 +7,7 @@ package org.hibernate.boot.models.bind.internal.binders;
 import org.hibernate.MappingException;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
+import org.hibernate.boot.models.bind.internal.sources.ComponentSource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
@@ -20,7 +21,6 @@ import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
 import org.hibernate.models.spi.MemberDetails;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 
 import java.util.Locale;
@@ -36,7 +36,7 @@ class EmbeddableAttributeBinder {
 	private final BindingState bindingState;
 	private final BindingOptions bindingOptions;
 	private final BindingContext bindingContext;
-	private OverrideAndConverterCollector overrideAndConverterCollector;
+	private ComponentSource componentSource;
 
 	EmbeddableAttributeBinder(
 			IdentifiableTypeMetadata ownerType,
@@ -57,7 +57,7 @@ class EmbeddableAttributeBinder {
 
 	Component bind(Property property) {
 		final MemberDetails member = attributeMetadata.getMember();
-		overrideAndConverterCollector = new OverrideAndConverterCollector( member, bindingContext );
+		componentSource = ComponentSource.embeddedAttribute( member, bindingContext );
 		final Table componentTable = resolveComponentTable( member );
 		final Component component = new Component(
 				bindingState.getMetadataBuildingContext(),
@@ -72,12 +72,9 @@ class EmbeddableAttributeBinder {
 		new ComponentBinder( bindingState, bindingOptions, bindingContext ).bindBasicProperties(
 				ownerType,
 				ownerBinding,
-				member.getType().determineRawClass(),
+				componentSource,
 				component,
 				componentTable,
-				this::resolveColumnSource,
-				this::resolveConversion,
-				this::resolveAssociationOverride,
 				(ignored, column) -> {
 				},
 				false,
@@ -142,28 +139,14 @@ class EmbeddableAttributeBinder {
 	}
 
 	private ColumnSource resolveColumnSource(String memberPath, MemberDetails member) {
-		final var override = overrideAndConverterCollector.locateAttributeOverride( memberPath );
-		if ( override != null ) {
-			return ColumnSource.from( override.column() );
-		}
-
-		final Column columnAnn = member.getDirectAnnotationUsage( Column.class );
-		return ColumnSource.from( columnAnn );
+		return componentSource.columnSource( memberPath, member );
 	}
 
 	private Convert resolveConversion(String memberPath, MemberDetails member) {
-		final Convert override = overrideAndConverterCollector.locateConversion( memberPath );
-		if ( override != null ) {
-			return override;
-		}
-
-		final Convert directConversion = member.getDirectAnnotationUsage( Convert.class );
-		return directConversion != null && StringHelper.isEmpty( directConversion.attributeName() )
-				? directConversion
-				: null;
+		return componentSource.conversion( memberPath, member );
 	}
 
 	private jakarta.persistence.AssociationOverride resolveAssociationOverride(String memberPath, MemberDetails member) {
-		return overrideAndConverterCollector.locateAssociationOverride( memberPath );
+		return componentSource.associationOverride( memberPath );
 	}
 }

@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright Red Hat Inc. and Hibernate Authors
  */
-package org.hibernate.boot.models.bind.internal.binders;
+package org.hibernate.boot.models.bind.internal.sources;
 
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.models.spi.TypeDetails;
@@ -55,6 +55,8 @@ import jakarta.persistence.MapKeyClass;
 /// That would let later type resolution work from source-model facts instead of captured
 /// lambdas and ad hoc binder state.  This local record keeps the experiment scoped while
 /// still making those upstream requirements visible.
+///
+/// @author Steve Ebersole
 public record BasicValueSource(
 		/// The role this basic value plays relative to its source member.
 		///
@@ -103,7 +105,7 @@ public record BasicValueSource(
 	/// [org.hibernate.mapping.IndexedCollection#getIndex()] value, but callers should
 	/// not need to know that physical representation in order to decide whether
 	/// `@MapKeyTemporal` applies.
-	enum Kind {
+	public enum Kind {
 		/// A normal singular basic attribute.
 		ATTRIBUTE,
 
@@ -144,7 +146,7 @@ public record BasicValueSource(
 	}
 
 	/// Creates a source for a normal singular basic attribute.
-	static BasicValueSource attribute(MemberDetails member) {
+	public static BasicValueSource attribute(MemberDetails member) {
 		return new BasicValueSource( Kind.ATTRIBUTE, member, member.getType(), null );
 	}
 
@@ -153,12 +155,12 @@ public record BasicValueSource(
 	/// This is distinct from [#attribute(MemberDetails)] so embeddable-member-specific
 	/// override handling can be modeled explicitly later.  Today much of that is still
 	/// handled by [ComponentBinder] before the basic value is created.
-	static BasicValueSource embeddableMember(MemberDetails member) {
+	public static BasicValueSource embeddableMember(MemberDetails member) {
 		return new BasicValueSource( Kind.EMBEDDABLE_MEMBER, member, member.getType(), null );
 	}
 
 	/// Creates a source for the basic value side of an element collection.
-	static BasicValueSource collectionElement(MemberDetails member) {
+	public static BasicValueSource collectionElement(MemberDetails member) {
 		return new BasicValueSource( Kind.COLLECTION_ELEMENT, member, member.getElementType(), null );
 	}
 
@@ -166,7 +168,7 @@ public record BasicValueSource(
 	///
 	/// The index is synthetic.  We intentionally keep the source [MemberDetails] so
 	/// index annotations on the list attribute can be consumed by the same basic-value binder.
-	static BasicValueSource listIndex(MemberDetails member) {
+	public static BasicValueSource listIndex(MemberDetails member) {
 		return new BasicValueSource( Kind.LIST_INDEX, member, null, Integer.class );
 	}
 
@@ -175,7 +177,7 @@ public record BasicValueSource(
 	/// The effective type is normally [MemberDetails#getMapKeyType()].  JPA's
 	/// [MapKeyClass] is represented as an explicit Java type override because it
 	/// changes the key type used for the mapping independent of the declared generic.
-	static BasicValueSource mapKey(MemberDetails member) {
+	public static BasicValueSource mapKey(MemberDetails member) {
 		final MapKeyClass mapKeyClass = member.getDirectAnnotationUsage( MapKeyClass.class );
 		return new BasicValueSource(
 				Kind.MAP_KEY,
@@ -186,7 +188,7 @@ public record BasicValueSource(
 	}
 
 	/// Creates a source for a basic identifier value.
-	static BasicValueSource identifier(MemberDetails member) {
+	public static BasicValueSource identifier(MemberDetails member) {
 		return new BasicValueSource( Kind.IDENTIFIER, member, member.getType(), null );
 	}
 
@@ -197,7 +199,7 @@ public record BasicValueSource(
 	/// type.  In an upstream model that directly carries Hibernate Models references, callers
 	/// should prefer [#type()] when available and only fall back to an explicit Java
 	/// type for synthetic or override-driven cases.
-	Class<?> javaType() {
+	public Class<?> javaType() {
 		if ( explicitJavaType != null ) {
 			return explicitJavaType;
 		}

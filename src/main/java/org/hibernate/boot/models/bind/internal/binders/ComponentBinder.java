@@ -10,7 +10,9 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
 import org.hibernate.boot.model.convert.spi.RegisteredConversion;
+import org.hibernate.boot.models.bind.internal.sources.BasicValueSource;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
+import org.hibernate.boot.models.bind.internal.sources.ComponentSource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
@@ -45,6 +47,33 @@ class ComponentBinder {
 		this.state = state;
 		this.options = options;
 		this.context = context;
+	}
+
+	List<Column> bindBasicProperties(
+			IdentifiableTypeMetadata ownerType,
+			PersistentClass ownerBinding,
+			ComponentSource source,
+			Component component,
+			Table table,
+			BiConsumer<MemberDetails, Column> columnConsumer,
+			boolean uniqueByDefault,
+			boolean nullableByDefault,
+			boolean updatable) {
+		return bindProperties(
+				ownerType,
+				ownerBinding,
+				source.componentType(),
+				component,
+				table,
+				"",
+				source::columnSource,
+				source::conversion,
+				(path, member) -> source.associationOverride( path ),
+				columnConsumer,
+				uniqueByDefault,
+				nullableByDefault,
+				updatable
+		);
 	}
 
 	List<Column> bindBasicProperties(
