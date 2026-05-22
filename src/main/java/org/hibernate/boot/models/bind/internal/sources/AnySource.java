@@ -27,6 +27,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorType;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
 
 /// Source-model facts for a Hibernate `@Any` association value.
 ///
@@ -56,6 +57,9 @@ import jakarta.persistence.JoinColumn;
 /// - `@AnyKeyJavaClass`, `@AnyKeyJavaType`, `@AnyKeyJdbcType`, and
 ///   `@AnyKeyJdbcTypeCode` describe the key/id value type.
 /// - For singular `@Any`, `@JoinColumn` controls the key/id column.
+/// - For singular `@Any`, `@JoinTable` controls an association table when
+///   present, `@JoinTable#joinColumns` controls the owner key, and
+///   `@JoinTable#inverseJoinColumns` controls the any key/id column.
 /// - For plural `@ManyToAny`, `@JoinTable` controls the collection table,
 ///   `@JoinTable#joinColumns` controls the owner key, and
 ///   `@JoinTable#inverseJoinColumns` controls the any key/id column.
@@ -65,6 +69,7 @@ import jakarta.persistence.JoinColumn;
 /// - singular `@Any`
 /// - plural `@ManyToAny`
 /// - explicit or implicit `@ManyToAny` collection tables
+/// - explicit singular `@Any` association tables
 /// - one any key column
 /// - explicit `@AnyKeyJavaClass`
 /// - explicit discriminator values or an implicit discriminator strategy
@@ -79,7 +84,7 @@ import jakarta.persistence.JoinColumn;
 /// - discriminator `@Formula`
 /// - inferring the key Java type from target identifiers
 /// - composite any keys
-/// - singular `@Any` through `@JoinTable`
+/// - implicit singular `@Any` association-table names
 /// - map-valued `@ManyToAny`
 /// - optionality derived from explicit discriminator/key column nullability
 ///
@@ -94,6 +99,7 @@ public record AnySource(
 		AnyDiscriminator discriminator,
 		List<AnyDiscriminatorValue> discriminatorValues,
 		AnyDiscriminatorImplicitValues implicitDiscriminatorValues,
+		JoinTable joinTable,
 		JoinColumn keyColumn,
 		Class<?> keyJavaClass) {
 
@@ -104,6 +110,15 @@ public record AnySource(
 		}
 
 		final var anyKeyJavaClass = member.getDirectAnnotationUsage( AnyKeyJavaClass.class );
+		final JoinTable joinTable = member.getDirectAnnotationUsage( JoinTable.class );
+		final List<JoinColumn> inverseJoinColumns = joinTable == null
+				? List.of()
+				: listJoinColumns( joinTable.inverseJoinColumns() );
+		if ( inverseJoinColumns.size() > 1 ) {
+			throw new UnsupportedOperationException(
+					"@Any @JoinTable requires at most one inverse join column in this binder - " + member.getName()
+			);
+		}
 		return new AnySource(
 				member,
 				any.fetch() == FetchType.LAZY,
@@ -113,7 +128,10 @@ public record AnySource(
 				member.getDirectAnnotationUsage( AnyDiscriminator.class ),
 				discriminatorValues( member, bindingContext ),
 				member.getDirectAnnotationUsage( AnyDiscriminatorImplicitValues.class ),
-				member.getDirectAnnotationUsage( JoinColumn.class ),
+				joinTable,
+				joinTable == null
+						? member.getDirectAnnotationUsage( JoinColumn.class )
+						: inverseJoinColumns.isEmpty() ? null : inverseJoinColumns.get( 0 ),
 				anyKeyJavaClass == null ? null : anyKeyJavaClass.value()
 		);
 	}
@@ -145,6 +163,7 @@ public record AnySource(
 				member.getDirectAnnotationUsage( AnyDiscriminator.class ),
 				discriminatorValues( member, bindingContext ),
 				member.getDirectAnnotationUsage( AnyDiscriminatorImplicitValues.class ),
+				collectionSource.joinTable(),
 				inverseJoinColumns.isEmpty() ? null : inverseJoinColumns.get( 0 ),
 				anyKeyJavaClass == null ? null : anyKeyJavaClass.value()
 		);
@@ -184,6 +203,19 @@ public record AnySource(
 				}
 			}
 		}
+		return List.copyOf( result );
+	}
+
+	public List<JoinColumn> ownerJoinColumns() {
+		return joinTable == null ? List.of() : listJoinColumns( joinTable.joinColumns() );
+	}
+
+	private static List<JoinColumn> listJoinColumns(JoinColumn[] joinColumns) {
+		if ( joinColumns.length == 0 ) {
+			return List.of();
+		}
+		final ArrayList<JoinColumn> result = new ArrayList<>( joinColumns.length );
+		result.addAll( Arrays.asList( joinColumns ) );
 		return List.copyOf( result );
 	}
 }
