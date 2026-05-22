@@ -10,6 +10,39 @@ package org.hibernate.boot.models.bind.internal.binders;
 /// Binders implement only the phases that apply to them, avoiding no-op phase
 /// methods while still making the coordinator's ordering explicit.
 ///
+/// The coordinator runs participating binders in this order:
+///
+/// 1. [TypeSkeleton] publishes minimal mapping objects so later phases can
+///    resolve local type binders without falling back to global metadata lookups.
+/// 2. [Tables] creates primary, secondary, joined-subclass, and other table
+///    shells before values need to attach to them.
+/// 3. [SuperType] connects identifiable mapping objects to their already-created
+///    super type skeletons.
+/// 4. [EntityMetadata] applies entity-level metadata that does not depend on
+///    member value binding.
+/// 5. [Identifiers] creates root identifier value shapes.
+/// 6. [AssociationIdentifiers] completes identifier attributes that are
+///    associations, after every root identifier shape is known.
+/// 7. [Members] binds discriminator, version, tenant id, and persistent
+///    attributes.
+/// 8. [CollectionIndexes] resolves collection index/key values that refer to
+///    element properties, such as `@MapKey(name)`.
+/// 9. [CollectionOrderings] resolves JPA `@OrderBy` fragments that refer to
+///    element properties or identifiers.
+/// 10. [AssociationTargets] resolves non-primary-key association targets.
+/// 11. [DerivedIdentifiers] resolves derived identifier associations such as
+///     `@MapsId`.
+/// 12. [TableKeys] creates dependent table keys for joined-subclass,
+///     secondary-table, and collection/association-table structures.
+/// 13. [InverseAssociations] copies owning-side key/value state for `mappedBy`
+///     associations.
+/// 14. [ForeignKeys] creates and customizes physical foreign-key constraints.
+///
+/// Later phases should consume typed state produced by earlier phases rather than
+/// searching the partially-built mapping model opportunistically.  When a new
+/// ordering dependency appears, prefer adding a narrow phase or typed pending
+/// binding over reintroducing callback-style "second pass" work.
+///
 /// @author Steve Ebersole
 public interface TypeBindingPhase {
 	/// Publish the minimal type skeleton so other binders can resolve it.
