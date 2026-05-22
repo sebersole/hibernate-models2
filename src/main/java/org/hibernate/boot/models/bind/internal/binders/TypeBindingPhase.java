@@ -80,6 +80,17 @@ public interface TypeBindingPhase {
 		void bindCollectionIndexes();
 	}
 
+	/// Resolve JPA collection ordering fragments that depend on element property
+	/// and identifier mappings.
+	///
+	/// Hibernate `@SQLOrder` can be applied immediately because it is already a
+	/// SQL fragment.  JPA `@OrderBy` names element properties, and an empty value
+	/// means the element entity identifier, so it is translated after members are
+	/// available.
+	interface CollectionOrderings {
+		void bindCollectionOrderings();
+	}
+
 	/// Resolve association target properties for non-primary-key references.
 	interface AssociationTargets {
 		void bindAssociationTargets();

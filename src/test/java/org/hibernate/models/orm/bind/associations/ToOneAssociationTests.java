@@ -36,6 +36,7 @@ import jakarta.persistence.MapKeyJoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.OrderColumn;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.SecondaryTable;
 import jakarta.persistence.Table;
 
@@ -395,6 +396,23 @@ public class ToOneAssociationTests {
 				scope.getRegistry(),
 				Parent.class,
 				ManyToManyListOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testOwningManyToManyEmptyOrderBy(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ManyToManyEmptyOrderByOwner.class.getName() );
+					final Collection collection = (Collection) entityBinding.getProperty( "parents" ).getValue();
+
+					assertThat( collection.getOrderBy() ).isEqualTo( "id" );
+				},
+				scope.getRegistry(),
+				Parent.class,
+				ManyToManyEmptyOrderByOwner.class
 		);
 	}
 
@@ -1329,6 +1347,21 @@ public class ToOneAssociationTests {
 		)
 		@OrderColumn(name = "position")
 		private List<Parent> parents;
+	}
+
+	@Entity(name="ManyToManyEmptyOrderByOwner")
+	@Table(name="many_to_many_empty_order_by_owners")
+	public static class ManyToManyEmptyOrderByOwner {
+		@Id
+		private Integer id;
+		@ManyToMany
+		@JoinTable(
+				name = "owner_parent_ordered_sets",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
+		)
+		@OrderBy
+		private Set<Parent> parents;
 	}
 
 	@Entity(name="CascadeManyToManyTarget")

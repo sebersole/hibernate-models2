@@ -98,7 +98,7 @@ class PluralAssociationAttributeBinder {
 		collection.setMutable( true );
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
-		CollectionShapeBinder.apply( source, collection );
+		CollectionShapeBinder.apply( source, collection, bindingState );
 		applyCascade( source, property, collection );
 
 		bindingState.addInversePluralAssociationBinding( new InversePluralAssociationBinding(
@@ -123,7 +123,7 @@ class PluralAssociationAttributeBinder {
 		collection.setMutable( true );
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
-		CollectionShapeBinder.apply( source, collection );
+		CollectionShapeBinder.apply( source, collection, bindingState );
 		applyCascade( source, property, collection );
 
 		bindingState.addInversePluralAssociationBinding( new InversePluralAssociationBinding(
@@ -159,7 +159,7 @@ class PluralAssociationAttributeBinder {
 		collection.setMutable( true );
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
-		CollectionShapeBinder.apply( source, collection );
+		CollectionShapeBinder.apply( source, collection, bindingState );
 		applyCascade( source, property, collection );
 
 		final ManyToOne element = bindElementValue( source, target, table, uniqueTargetColumns );
@@ -232,7 +232,7 @@ class PluralAssociationAttributeBinder {
 		collection.setMutable( true );
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
-		CollectionShapeBinder.apply( source, collection );
+		CollectionShapeBinder.apply( source, collection, bindingState );
 
 		final AnySource anySource = AnySource.createManyToAny( source, bindingContext, bindingState );
 		final org.hibernate.mapping.Any element = new AnyValueBinder(

@@ -84,7 +84,7 @@ class ElementCollectionAttributeBinder {
 		collection.setMutable( true );
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
-		CollectionShapeBinder.apply( source, collection );
+		CollectionShapeBinder.apply( source, collection, bindingState );
 
 		final Value element = bindElementValue( source, collection, table );
 		collection.setElement( element );
