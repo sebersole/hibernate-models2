@@ -22,9 +22,11 @@ import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Join;
 import org.hibernate.mapping.ManyToOne;
+import org.hibernate.mapping.OneToOne;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
+import org.hibernate.mapping.Value;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MemberDetails;
 
@@ -65,9 +67,19 @@ class ToOneAttributeBinder {
 		this.bindingContext = bindingContext;
 	}
 
-	ManyToOne bind(Property property) {
+	Value bind(Property property) {
 		final MemberDetails member = attributeMetadata.getMember();
+		final ToOneSource source = ToOneSource.create(
+				member,
+				ownerType.getClassDetails().getClassName(),
+				attributeMetadata.getName(),
+				null
+		);
+		if ( source.isInverseOneToOne() ) {
+			return bindInverseOneToOne( source, property );
+		}
 		return bindToOne(
+				source,
 				ownerType,
 				ownerBinding,
 				ownerType.getClassDetails().getClassName(),
@@ -75,7 +87,6 @@ class ToOneAttributeBinder {
 				member,
 				property,
 				primaryTable,
-				null,
 				modelBinders,
 				bindingOptions,
 				bindingState,
@@ -100,7 +111,35 @@ class ToOneAttributeBinder {
 		if ( source.isInverseOneToOne() ) {
 			throw new UnsupportedOperationException( "Inverse @OneToOne is not yet implemented" );
 		}
+		return bindToOne(
+				source,
+				ownerType,
+				ownerBinding,
+				ownerClassName,
+				propertyName,
+				member,
+				property,
+				primaryTable,
+				modelBinders,
+				bindingOptions,
+				bindingState,
+				bindingContext
+		);
+	}
 
+	private static ManyToOne bindToOne(
+			ToOneSource source,
+			IdentifiableTypeMetadata ownerType,
+			PersistentClass ownerBinding,
+			String ownerClassName,
+			String propertyName,
+			MemberDetails member,
+			Property property,
+			Table primaryTable,
+			ModelBinders modelBinders,
+			BindingOptions bindingOptions,
+			BindingState bindingState,
+			BindingContext bindingContext) {
 		final TargetEntityBinding target = resolveTargetEntityBinding( source, bindingState, bindingContext );
 		final JoinTable joinTable = source.joinTable();
 		final Table associationTable = joinTable == null
@@ -146,6 +185,35 @@ class ToOneAttributeBinder {
 				propertyName
 		);
 		value.createForeignKey();
+		return value;
+	}
+
+	private OneToOne bindInverseOneToOne(ToOneSource source, Property property) {
+		final TargetEntityBinding target = resolveTargetEntityBinding( source, bindingState, bindingContext );
+		final OneToOne value = new OneToOne(
+				bindingState.getMetadataBuildingContext(),
+				primaryTable,
+				ownerBinding
+		);
+		value.setPropertyName( attributeMetadata.getName() );
+		value.setReferencedEntityName( target.entityName() );
+		value.setTypeName( target.entityName() );
+		value.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
+		value.setLazy( source.fetchType() == FetchType.LAZY );
+		value.setConstrained( !source.optional() );
+		value.setForeignKeyType( org.hibernate.type.ForeignKeyDirection.TO_PARENT );
+		value.setMappedByProperty( source.oneToOne().mappedBy() );
+		property.setOptional( source.optional() );
+
+		bindingState.addInverseToOneAssociationBinding( new InverseToOneAssociationBinding(
+				ownerType,
+				ownerBinding,
+				attributeMetadata,
+				property,
+				value,
+				target.entityNaming().getClassDetails(),
+				source.oneToOne().mappedBy()
+		) );
 		return value;
 	}
 

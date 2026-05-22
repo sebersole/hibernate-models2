@@ -11,6 +11,7 @@ import org.hibernate.boot.models.bind.internal.binders.CollectionTableBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifiableTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.InversePluralAssociationBinding;
+import org.hibernate.boot.models.bind.internal.binders.InverseToOneAssociationBinding;
 import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.FilterDefRegistration;
@@ -80,6 +81,12 @@ public interface BindingState {
 
 	/// Visit inverse plural association bindings waiting for owning-side resolution.
 	void forEachInversePluralAssociationBinding(java.util.function.Consumer<InversePluralAssociationBinding> consumer);
+
+	/// Register an inverse to-one association to resolve after all members exist.
+	void addInverseToOneAssociationBinding(InverseToOneAssociationBinding inverseToOneAssociationBinding);
+
+	/// Visit inverse to-one association bindings waiting for owning-side resolution.
+	void forEachInverseToOneAssociationBinding(java.util.function.Consumer<InverseToOneAssociationBinding> consumer);
 
 	/// Register the identifier binding produced for an entity hierarchy root.
 	void addIdentifierBinding(EntityTypeMetadata rootType, IdentifierBinding identifierBinding);

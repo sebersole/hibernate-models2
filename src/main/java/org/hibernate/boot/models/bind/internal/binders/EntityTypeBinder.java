@@ -258,6 +258,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 	/// associations can copy the owning-side key and element columns without
 	/// depending on binder iteration order.
 	public void bindInverseAssociations() {
+		new InverseToOneAssociationBinder( this ).bindInverseAssociations();
 		new InversePluralAssociationBinder( this ).bindInverseAssociations();
 	}
 
