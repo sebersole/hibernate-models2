@@ -44,6 +44,12 @@ public interface TypeBindingPhase {
 		void bindTableKeys();
 	}
 
+	/// Resolve inverse associations that depend on key/value state produced by
+	/// owning-side association binding.
+	interface InverseAssociations {
+		void bindInverseAssociations();
+	}
+
 	/// Bind discriminator, version, tenant id, and attributes.
 	interface Members {
 		void bindMembers();

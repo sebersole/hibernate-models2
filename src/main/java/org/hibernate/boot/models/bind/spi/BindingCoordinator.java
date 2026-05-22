@@ -41,8 +41,8 @@ import org.hibernate.models.spi.ClassDetails;
 ///
 /// The coordinator is the entry point for the binding phase.  It applies global
 /// registrations, visits each categorized entity hierarchy, creates the appropriate
-/// type binders, and then runs binding second passes that require tables or types to
-/// be known first.
+/// type binders, and then runs ordered binding phases that make type, table,
+/// identifier, member, and association state available to later phases.
 ///
 /// @author Steve Ebersole
 public class BindingCoordinator {
@@ -109,6 +109,7 @@ public class BindingCoordinator {
 		runPhase( binders, TypeBindingPhase.Identifiers.class, TypeBindingPhase.Identifiers::bindIdentifier );
 		runPhase( binders, TypeBindingPhase.Members.class, TypeBindingPhase.Members::bindMembers );
 		runPhase( binders, TypeBindingPhase.TableKeys.class, TypeBindingPhase.TableKeys::bindTableKeys );
+		runPhase( binders, TypeBindingPhase.InverseAssociations.class, TypeBindingPhase.InverseAssociations::bindInverseAssociations );
 
 		// process identifiers
 		categorizedDomainModel.forEachEntityHierarchy( (index, hierarchy) -> {
