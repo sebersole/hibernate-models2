@@ -34,6 +34,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.AssociationOverride;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
+import jakarta.persistence.MapsId;
 
 /// Binds simple owning to-one associations.
 ///
@@ -75,6 +76,11 @@ class ToOneAttributeBinder {
 				attributeMetadata.getName(),
 				null
 		);
+		if ( member.hasDirectAnnotationUsage( MapsId.class ) ) {
+			throw new UnsupportedOperationException(
+					"Derived identifiers via @MapsId need a dedicated binding phase and are not yet implemented"
+			);
+		}
 		if ( source.isInverseOneToOne() ) {
 			return bindInverseOneToOne( source, property );
 		}
@@ -108,6 +114,11 @@ class ToOneAttributeBinder {
 			BindingState bindingState,
 			BindingContext bindingContext) {
 		final ToOneSource source = ToOneSource.create( member, ownerClassName, propertyName, associationOverride );
+		if ( member.hasDirectAnnotationUsage( MapsId.class ) ) {
+			throw new UnsupportedOperationException(
+					"Derived identifiers via @MapsId need a dedicated binding phase and are not yet implemented"
+			);
+		}
 		if ( source.isInverseOneToOne() ) {
 			throw new UnsupportedOperationException( "Inverse @OneToOne is not yet implemented" );
 		}
@@ -161,8 +172,10 @@ class ToOneAttributeBinder {
 				bindingState.getMetadataBuildingContext(),
 				associationTable
 		);
+		final List<JoinColumn> valueJoinColumns = source.valueJoinColumns( joinTable );
+		final boolean referenceToPrimaryKey = referencesPrimaryKey( valueJoinColumns, target.identifierColumns() );
 		value.setReferencedEntityName( target.entityName() );
-		value.setReferenceToPrimaryKey( true );
+		value.setReferenceToPrimaryKey( referenceToPrimaryKey );
 		value.setTypeName( target.entityName() );
 		value.setTypeUsingReflection( ownerClassName, propertyName );
 		value.setLazy( source.fetchType() == FetchType.LAZY );
@@ -176,15 +189,29 @@ class ToOneAttributeBinder {
 		property.setOptional( optional );
 
 		bindJoinColumns(
-				source.valueJoinColumns( joinTable ),
+				valueJoinColumns,
 				value,
 				target,
+				referenceToPrimaryKey,
 				logicalOneToOne,
 				optional,
 				ownerClassName,
 				propertyName
 		);
-		value.createForeignKey();
+		if ( !referenceToPrimaryKey ) {
+			bindingState.addAssociationTargetBinding( new AssociationTargetBinding(
+					ownerBinding,
+					value,
+					target.typeBinder(),
+					referencedColumnNames( valueJoinColumns ),
+					ownerClassName + "." + propertyName
+			) );
+		}
+		bindingState.addForeignKeyBinding( new ForeignKeyBinding(
+				ownerBinding,
+				value,
+				source.valueForeignKeySource( joinTable )
+		) );
 		return value;
 	}
 
@@ -221,31 +248,32 @@ class ToOneAttributeBinder {
 			List<JoinColumn> joinColumnAnns,
 			ManyToOne value,
 			TargetEntityBinding target,
+			boolean referenceToPrimaryKey,
 			boolean uniqueByDefault,
 			boolean optional,
 			String ownerClassName,
 			String propertyName) {
 		final List<Column> targetColumns = target.identifierColumns();
 
-		if ( !joinColumnAnns.isEmpty() && joinColumnAnns.size() != targetColumns.size() ) {
+		if ( referenceToPrimaryKey && !joinColumnAnns.isEmpty() && joinColumnAnns.size() != targetColumns.size() ) {
 			throw new MappingException(
 					"Composite to-one join column count did not match target identifier column count - "
 							+ ownerClassName + "." + propertyName
 			);
 		}
 
-		final List<JoinColumn> orderedJoinColumns = orderJoinColumns(
-				joinColumnAnns,
-				targetColumns,
-				ownerClassName,
-				propertyName
-		);
-		for ( int i = 0; i < targetColumns.size(); i++ ) {
-			final Column targetColumn = targetColumns.get( i );
+		final List<JoinColumn> orderedJoinColumns = referenceToPrimaryKey
+				? orderJoinColumns( joinColumnAnns, targetColumns, ownerClassName, propertyName )
+				: joinColumnAnns;
+		final int columnCount = referenceToPrimaryKey ? targetColumns.size() : joinColumnAnns.size();
+		for ( int i = 0; i < columnCount; i++ ) {
 			final JoinColumn joinColumnAnn = orderedJoinColumns.isEmpty() ? null : orderedJoinColumns.get( i );
+			final String targetColumnName = referenceToPrimaryKey
+					? targetColumns.get( i ).getName()
+					: joinColumnAnn.referencedColumnName();
 			final Column column = ColumnBinder.bindColumn(
 					ColumnSource.from( joinColumnAnn ),
-					() -> propertyName + "_" + targetColumn.getName(),
+					() -> propertyName + "_" + targetColumnName,
 					uniqueByDefault,
 					optional
 			);
@@ -257,6 +285,42 @@ class ToOneAttributeBinder {
 			}
 			value.addColumn( column );
 		}
+	}
+
+	static boolean referencesPrimaryKey(List<JoinColumn> joinColumns, List<Column> targetColumns) {
+		if ( joinColumns.isEmpty()
+				|| joinColumns.stream().noneMatch( (joinColumn) -> StringHelper.isNotEmpty( joinColumn.referencedColumnName() ) ) ) {
+			return true;
+		}
+		if ( joinColumns.size() != targetColumns.size() ) {
+			return false;
+		}
+		final ArrayList<Column> unmatchedTargetColumns = new ArrayList<>( targetColumns );
+		for ( JoinColumn joinColumn : joinColumns ) {
+			final Column targetColumn = findTargetColumn( unmatchedTargetColumns, joinColumn.referencedColumnName() );
+			if ( targetColumn == null ) {
+				return false;
+			}
+			unmatchedTargetColumns.remove( targetColumn );
+		}
+		return unmatchedTargetColumns.isEmpty();
+	}
+
+	static List<String> referencedColumnNames(List<JoinColumn> joinColumns) {
+		final ArrayList<String> result = new ArrayList<>( joinColumns.size() );
+		for ( JoinColumn joinColumn : joinColumns ) {
+			result.add( joinColumn.referencedColumnName() );
+		}
+		return result;
+	}
+
+	private static Column findTargetColumn(List<Column> targetColumns, String columnName) {
+		for ( Column targetColumn : targetColumns ) {
+			if ( targetColumn.getName().equals( columnName ) ) {
+				return targetColumn;
+			}
+		}
+		return null;
 	}
 
 	static List<JoinColumn> orderJoinColumns(
@@ -423,6 +487,7 @@ class ToOneAttributeBinder {
 
 		return new TargetEntityBinding(
 				targetTypeBinder.getTypeBinding().getEntityName(),
+				targetTypeBinder,
 				targetTypeBinder.getManagedType(),
 				targetTypeBinder.getTable(),
 				identifierBinding.columns()
@@ -438,6 +503,7 @@ class ToOneAttributeBinder {
 
 	private record TargetEntityBinding(
 			String entityName,
+			EntityTypeBinder typeBinder,
 			EntityTypeMetadata entityNaming,
 			Table primaryTable,
 			List<Column> identifierColumns) {

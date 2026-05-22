@@ -108,8 +108,11 @@ public class BindingCoordinator {
 		runPhase( binders, TypeBindingPhase.EntityMetadata.class, TypeBindingPhase.EntityMetadata::bindEntityMetadata );
 		runPhase( binders, TypeBindingPhase.Identifiers.class, TypeBindingPhase.Identifiers::bindIdentifier );
 		runPhase( binders, TypeBindingPhase.Members.class, TypeBindingPhase.Members::bindMembers );
+		runPhase( binders, TypeBindingPhase.CollectionIndexes.class, TypeBindingPhase.CollectionIndexes::bindCollectionIndexes );
+		runPhase( binders, TypeBindingPhase.AssociationTargets.class, TypeBindingPhase.AssociationTargets::bindAssociationTargets );
 		runPhase( binders, TypeBindingPhase.TableKeys.class, TypeBindingPhase.TableKeys::bindTableKeys );
 		runPhase( binders, TypeBindingPhase.InverseAssociations.class, TypeBindingPhase.InverseAssociations::bindInverseAssociations );
+		runPhase( binders, TypeBindingPhase.ForeignKeys.class, TypeBindingPhase.ForeignKeys::bindForeignKeys );
 
 		// process identifiers
 		categorizedDomainModel.forEachEntityHierarchy( (index, hierarchy) -> {

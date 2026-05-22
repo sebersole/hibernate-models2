@@ -163,6 +163,15 @@ public record ToOneSource(
 		return joinColumns();
 	}
 
+	/// Resolves foreign-key metadata for the value-side columns.
+	public ForeignKeySource valueForeignKeySource(JoinTable joinTable) {
+		if ( joinTable != null ) {
+			return ForeignKeySource.inverseFrom( joinTable );
+		}
+		final List<JoinColumn> joinColumns = joinColumns();
+		return joinColumns.isEmpty() ? null : ForeignKeySource.from( joinColumns.get( 0 ) );
+	}
+
 	/// Resolves the normal source join columns, considering association overrides first.
 	///
 	/// This method intentionally returns source annotations, not physical columns.  The

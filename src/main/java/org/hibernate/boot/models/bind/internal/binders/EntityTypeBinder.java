@@ -92,11 +92,17 @@ import static org.hibernate.internal.util.StringHelper.coalesce;
 /// 6. {@link #bindIdentifier()} - bind the root identifier shape for the hierarchy.
 /// 7. {@link #bindMembers()} - bind the remaining currently coarse member phase:
 /// discriminator, version, tenant id, and persistent attributes.
-/// 8. {@link #bindTableKeys()} - bind joined-subclass, secondary-table, and
+/// 8. {@link #bindCollectionIndexes()} - resolve collection indexes that depend
+/// on fully-bound member state, such as property-derived map keys.
+/// 9. {@link #bindAssociationTargets()} - resolve association target properties
+/// for non-primary-key references.
+/// 10. {@link #bindTableKeys()} - bind joined-subclass, secondary-table, and
 /// association-table keys that depend on the root identifier shape and on joins
 /// discovered while binding members.
-/// 9. {@link #bindInverseAssociations()} - resolve inverse association values
+/// 11. {@link #bindInverseAssociations()} - resolve inverse association values
 /// from owning-side association mappings whose keys are now available.
+/// 12. {@link #bindForeignKeys()} - create physical foreign-key constraints from
+/// the association values and table keys prepared by earlier phases.
 ///
 /// The implemented {@link TypeBindingPhase} contracts identify which phases this
 /// binder participates in.  The coordinator owns the ordering while this class
@@ -109,8 +115,11 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 				TypeBindingPhase.SuperType,
 				TypeBindingPhase.EntityMetadata,
 				TypeBindingPhase.Identifiers,
+				TypeBindingPhase.CollectionIndexes,
+				TypeBindingPhase.AssociationTargets,
 				TypeBindingPhase.TableKeys,
 				TypeBindingPhase.InverseAssociations,
+				TypeBindingPhase.ForeignKeys,
 				TypeBindingPhase.Members {
 	private final PersistentClass binding;
 
@@ -242,6 +251,25 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 		return identifierBinding;
 	}
 
+	/// Resolve collection indexes that need all member properties to exist.
+	///
+	/// Property-derived map keys, for example {@code @MapKey(name = "code")}, are
+	/// registered while binding the collection member but resolved here so the
+	/// target entity's named property can be found regardless of type iteration
+	/// order.
+	public void bindCollectionIndexes() {
+		getBindingState().forEachPropertyMapKeyBinding( (propertyMapKeyBinding) -> {
+			if ( propertyMapKeyBinding.collection().getOwner() == getTypeBinding() ) {
+				CollectionIndexBinder.bindPropertyMapKey( propertyMapKeyBinding, getBindingState() );
+			}
+		} );
+	}
+
+	/// Resolve non-primary-key association targets after all target members exist.
+	public void bindAssociationTargets() {
+		new AssociationTargetBinder( this ).bindAssociationTargets();
+	}
+
 	/// Bind table keys that depend on a completed root identifier shape.
 	///
 	/// Joined-subclass tables, secondary tables, and association tables use dependent
@@ -260,6 +288,11 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 	public void bindInverseAssociations() {
 		new InverseToOneAssociationBinder( this ).bindInverseAssociations();
 		new InversePluralAssociationBinder( this ).bindInverseAssociations();
+	}
+
+	/// Create physical foreign-key constraints after values and keys are complete.
+	public void bindForeignKeys() {
+		new ForeignKeyBinder( this ).bindForeignKeys();
 	}
 
 	/// Bind discriminator, version, tenant id, and persistent attributes.
