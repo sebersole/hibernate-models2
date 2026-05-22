@@ -34,6 +34,11 @@ public class TableKeyBinder {
 		}
 
 		entityBinder.getTypeBinding().getJoins().forEach( this::bindSecondaryTableKey );
+		bindingState.forEachCollectionTableBinding( (collectionTableBinding) -> {
+			if ( collectionTableBinding.collection().getOwner() == entityBinder.getTypeBinding() ) {
+				bindCollectionTableKey( collectionTableBinding );
+			}
+		} );
 	}
 
 	private void bindJoinedSubclassKey(JoinedSubclass joinedSubclass) {
@@ -55,6 +60,17 @@ public class TableKeyBinder {
 		if ( !join.isInverse() ) {
 			join.createForeignKey();
 		}
+	}
+
+	private void bindCollectionTableKey(CollectionTableBinding collectionTableBinding) {
+		final IdentifierBinding rootIdentifierBinding = resolveIdentifierBinding();
+		final DependantValue key = createDependentKeyValue(
+				collectionTableBinding.collection().getCollectionTable(),
+				rootIdentifierBinding,
+				collectionTableBinding
+		);
+		collectionTableBinding.collection().setKey( key );
+		collectionTableBinding.collection().createAllKeys();
 	}
 
 	private IdentifierBinding resolveIdentifierBinding() {
@@ -97,6 +113,35 @@ public class TableKeyBinder {
 				identifierBinding.columns(),
 				entityBinder.getManagedType().getClassDetails().getClassName(),
 				associationTableBinding.join().getTable().getName()
+		);
+		for ( int i = 0; i < identifierBinding.columns().size(); i++ ) {
+			final Column identifierColumn = identifierBinding.columns().get( i );
+			key.addColumn(
+					bindKeyColumn( identifierColumn, orderedJoinColumns.isEmpty() ? null : orderedJoinColumns.get( i ) ),
+					true,
+					false
+			);
+		}
+		return key;
+	}
+
+	private DependantValue createDependentKeyValue(
+			Table table,
+			IdentifierBinding identifierBinding,
+			CollectionTableBinding collectionTableBinding) {
+		final DependantValue key = new DependantValue(
+				bindingState.getMetadataBuildingContext(),
+				table,
+				identifierBinding.value()
+		);
+		key.setNullable( false );
+		key.setUpdateable( false );
+
+		final var orderedJoinColumns = ToOneAttributeBinder.orderJoinColumns(
+				collectionTableBinding.joinColumns(),
+				identifierBinding.columns(),
+				entityBinder.getManagedType().getClassDetails().getClassName(),
+				collectionTableBinding.collection().getRole()
 		);
 		for ( int i = 0; i < identifierBinding.columns().size(); i++ ) {
 			final Column identifierColumn = identifierBinding.columns().get( i );

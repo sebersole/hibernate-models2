@@ -12,6 +12,7 @@ import java.util.function.BiConsumer;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.models.bind.internal.binders.AssociationTableBinding;
+import org.hibernate.boot.models.bind.internal.binders.CollectionTableBinding;
 import org.hibernate.boot.models.bind.internal.binders.EntityTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.IdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifiableTypeBinder;
@@ -46,6 +47,7 @@ public class BindingStateImpl implements BindingState {
 	private final Map<String, TableReference> tableMap = new HashMap<>();
 	private final Map<TableOwner, TableReference> tableByOwnerMap = new HashMap<>();
 	private final Map<Join, AssociationTableBinding> associationTableBindings = new HashMap<>();
+	private final java.util.List<CollectionTableBinding> collectionTableBindings = new java.util.ArrayList<>();
 
 	private final Map<ClassDetails, ManagedTypeBinder> typeBinders = new HashMap<>();
 	private final Map<ClassDetails, IdentifiableTypeBinder> typeBindersBySuper = new HashMap<>();
@@ -163,6 +165,16 @@ public class BindingStateImpl implements BindingState {
 	@Override
 	public AssociationTableBinding getAssociationTableBinding(Join join) {
 		return associationTableBindings.get( join );
+	}
+
+	@Override
+	public void addCollectionTableBinding(CollectionTableBinding collectionTableBinding) {
+		collectionTableBindings.add( collectionTableBinding );
+	}
+
+	@Override
+	public void forEachCollectionTableBinding(java.util.function.Consumer<CollectionTableBinding> consumer) {
+		collectionTableBindings.forEach( consumer );
 	}
 
 	private String resolveSchemaName(Identifier explicit) {

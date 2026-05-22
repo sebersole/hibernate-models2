@@ -113,7 +113,7 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 
 			attributeBinders.add( attributeBinder );
 			final Table attributeTable = value.getTable();
-			if ( attributeTable == primaryTable ) {
+			if ( attributeTable == primaryTable || value instanceof org.hibernate.mapping.Collection ) {
 				getTypeBinding().applyProperty( property );
 			}
 			else {
