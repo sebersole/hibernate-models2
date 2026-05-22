@@ -62,7 +62,7 @@ class PluralAssociationAttributeBinder {
 		if ( manyToMany != null && StringHelper.isNotEmpty( manyToMany.mappedBy() ) ) {
 			throw new UnsupportedOperationException( "Inverse @ManyToMany is not yet implemented" );
 		}
-		if ( source.kind() == CollectionSource.Kind.MAP ) {
+		if ( source.classification().toJpaClassification() == jakarta.persistence.metamodel.PluralAttribute.CollectionType.MAP ) {
 			throw new UnsupportedOperationException( "Map-valued @ManyToMany is not yet implemented" );
 		}
 
@@ -100,11 +100,16 @@ class PluralAssociationAttributeBinder {
 	}
 
 	private Collection createCollection(CollectionSource source) {
-		return switch ( source.kind() ) {
-			case SET -> new org.hibernate.mapping.Set( bindingState.getMetadataBuildingContext(), ownerBinding );
+		return switch ( source.classification() ) {
+			case SET, ORDERED_SET, SORTED_SET -> new org.hibernate.mapping.Set( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case LIST -> new org.hibernate.mapping.List( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case BAG -> new org.hibernate.mapping.Bag( bindingState.getMetadataBuildingContext(), ownerBinding );
-			case MAP -> throw new UnsupportedOperationException( "Map-valued @ManyToMany is not yet implemented" );
+			case MAP, ORDERED_MAP, SORTED_MAP -> throw new UnsupportedOperationException(
+					"Map-valued @ManyToMany is not yet implemented"
+			);
+			case ARRAY, ID_BAG -> throw new UnsupportedOperationException(
+					source.classification() + " @ManyToMany collections are not yet implemented"
+			);
 		};
 	}
 

@@ -110,11 +110,14 @@ class ElementCollectionAttributeBinder {
 	}
 
 	private Collection createCollection(CollectionSource source) {
-		return switch ( source.kind() ) {
-			case SET -> new org.hibernate.mapping.Set( bindingState.getMetadataBuildingContext(), ownerBinding );
+		return switch ( source.classification() ) {
+			case SET, ORDERED_SET, SORTED_SET -> new org.hibernate.mapping.Set( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case LIST -> new org.hibernate.mapping.List( bindingState.getMetadataBuildingContext(), ownerBinding );
-			case MAP -> new org.hibernate.mapping.Map( bindingState.getMetadataBuildingContext(), ownerBinding );
+			case MAP, ORDERED_MAP, SORTED_MAP -> new org.hibernate.mapping.Map( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case BAG -> new org.hibernate.mapping.Bag( bindingState.getMetadataBuildingContext(), ownerBinding );
+			case ARRAY, ID_BAG -> throw new UnsupportedOperationException(
+					source.classification() + " element collections are not yet implemented"
+			);
 		};
 	}
 

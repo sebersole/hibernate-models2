@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.hibernate.annotations.Bag;
+import org.hibernate.metamodel.CollectionClassification;
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.models.spi.TypeDetails;
 
@@ -50,12 +51,13 @@ import jakarta.persistence.OrderColumn;
 /// binders do not need to rediscover that `member.getElementType()` is the element source
 /// while `member.getMapKeyType()` is the map-key source.
 ///
-/// The [#kind()] is deliberately source-oriented.  It says what semantic collection
-/// classification the source member requested: set, bag, list, or map.  That is related
-/// to, but not identical with, the concrete `org.hibernate.mapping.Collection` subclass.
-/// For example, a Java `List` without `@Bag` is modeled as an indexed list, while a
-/// Java `List` with Hibernate `@Bag` is modeled as a bag.  Keeping that decision on the
-/// source object makes the classification explicit and testable.
+/// The [#classification()] is deliberately source-oriented.  It says what semantic
+/// collection classification the source member requested: set, bag, list, map, and
+/// eventually ordered/sorted/id-bag/array variants.  That is related to, but not identical
+/// with, the concrete `org.hibernate.mapping.Collection` subclass.  For example, a Java
+/// `List` without `@Bag` is modeled as an indexed list, while a Java `List` with
+/// Hibernate `@Bag` is modeled as a bag.  Keeping that decision on the source object makes
+/// the classification explicit and testable.
 ///
 /// In an upstream mapping-model version, a collection mapping might directly retain some
 /// equivalent of:
@@ -80,7 +82,7 @@ public record CollectionSource(
 		/// This is the source-level decision that eventually drives which
 		/// [org.hibernate.mapping.Collection] subclass is created.  Keeping it here makes
 		/// rules such as "`List` means indexed list unless `@Bag` is present" explicit.
-		Kind kind,
+		CollectionClassification classification,
 
 		/// The plural Hibernate Models member that contributed this collection mapping.
 		///
@@ -121,22 +123,10 @@ public record CollectionSource(
 		MANY_TO_MANY,
 
 		/// An association collection declared with `@OneToMany`.
-		ONE_TO_MANY
-	}
+		ONE_TO_MANY,
 
-	/// Source-level collection classification.
-	public enum Kind {
-		/// A set-valued collection.
-		SET,
-
-		/// A bag-valued collection, including explicit Hibernate `@Bag`.
-		BAG,
-
-		/// An indexed list-valued collection.
-		LIST,
-
-		/// A map-valued collection with a distinct key/index value.
-		MAP
+		/// A heterogeneous association collection declared with Hibernate `@ManyToAny`.
+		MANY_TO_ANY
 	}
 
 	/// Creates a collection source for an element collection member.
@@ -146,28 +136,16 @@ public record CollectionSource(
 	/// upstream mapping model stores source facts directly instead of asking each binder
 	/// to inspect Java collection classes and annotations independently.
 	public static CollectionSource elementCollection(MemberDetails member) {
-		final Class<?> collectionType = member.getType().determineRawClass().toJavaClass();
-		final Kind kind;
-		if ( java.util.Set.class.isAssignableFrom( collectionType ) ) {
-			kind = Kind.SET;
-		}
-		else if ( java.util.List.class.isAssignableFrom( collectionType )
-				&& !member.hasDirectAnnotationUsage( Bag.class ) ) {
-			kind = Kind.LIST;
-		}
-		else if ( java.util.Map.class.isAssignableFrom( collectionType ) ) {
-			kind = Kind.MAP;
-		}
-		else {
-			kind = Kind.BAG;
-		}
+		final CollectionClassification classification = determineClassification( member );
 
 		return new CollectionSource(
 				Nature.ELEMENT_COLLECTION,
-				kind,
+				classification,
 				member,
 				member.getElementType(),
-				kind == Kind.MAP ? member.getMapKeyType() : null,
+				classification.toJpaClassification() == jakarta.persistence.metamodel.PluralAttribute.CollectionType.MAP
+						? member.getMapKeyType()
+						: null,
 				member.getDirectAnnotationUsage( CollectionTable.class ),
 				null
 		);
@@ -178,13 +156,28 @@ public record CollectionSource(
 		final CollectionSource source = elementCollection( member );
 		return new CollectionSource(
 				Nature.MANY_TO_MANY,
-				source.kind,
+				source.classification,
 				source.member,
 				source.elementType,
 				source.mapKeyType,
 				null,
 				member.getDirectAnnotationUsage( JoinTable.class )
 		);
+	}
+
+	private static CollectionClassification determineClassification(MemberDetails member) {
+		final Class<?> collectionType = member.getType().determineRawClass().toJavaClass();
+		if ( java.util.Set.class.isAssignableFrom( collectionType ) ) {
+			return CollectionClassification.SET;
+		}
+		if ( java.util.List.class.isAssignableFrom( collectionType )
+				&& !member.hasDirectAnnotationUsage( Bag.class ) ) {
+			return CollectionClassification.LIST;
+		}
+		if ( java.util.Map.class.isAssignableFrom( collectionType ) ) {
+			return CollectionClassification.MAP;
+		}
+		return CollectionClassification.BAG;
 	}
 
 	/// The direct `@ManyToMany` annotation.
