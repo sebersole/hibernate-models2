@@ -88,6 +88,44 @@ public class ToOneAssociationTests {
 
 	@Test
 	@ServiceRegistry
+	void testInverseOneToOneMappedBy(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass inverseEntityBinding = context.getMetadataCollector()
+							.getEntityBinding( MappedByOneToOneParent.class.getName() );
+					final org.hibernate.mapping.Property property = inverseEntityBinding.getProperty( "child" );
+					assertThat( property.getValue() ).isInstanceOf( org.hibernate.mapping.OneToOne.class );
+					final org.hibernate.mapping.OneToOne value = (org.hibernate.mapping.OneToOne) property.getValue();
+
+					assertThat( value.getReferencedEntityName() ).isEqualTo( MappedByOneToOneChild.class.getName() );
+					assertThat( value.getMappedByProperty() ).isEqualTo( "parent" );
+					assertThat( value.getReferencedPropertyName() ).isEqualTo( "parent" );
+					assertThat( value.isReferenceToPrimaryKey() ).isFalse();
+					assertThat( value.getForeignKeyType() ).isEqualTo( org.hibernate.type.ForeignKeyDirection.TO_PARENT );
+					assertThat( value.getTable().getName() ).isEqualTo( "mapped_by_one_to_one_parents" );
+					assertThat( value.getColumns() ).isEmpty();
+				},
+				scope.getRegistry(),
+				MappedByOneToOneParent.class,
+				MappedByOneToOneChild.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testInverseOneToOneMappedByManyToOneFails(ServiceRegistryScope scope) {
+		assertThatThrownBy( () -> checkDomainModel(
+				(context) -> {
+				},
+				scope.getRegistry(),
+				InvalidMappedByOneToOneParent.class,
+				InvalidMappedByManyToOneChild.class
+		) ).isInstanceOf( MappingException.class )
+				.hasMessageContaining( "mappedBy did not name an owning one-to-one attribute" );
+	}
+
+	@Test
+	@ServiceRegistry
 	void testCompositeManyToOne(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -557,6 +595,44 @@ public class ToOneAssociationTests {
 		@OneToOne(optional = false)
 		@JoinColumn(name = "parent_fk")
 		private Parent parent;
+	}
+
+	@Entity(name="MappedByOneToOneParent")
+	@Table(name="mapped_by_one_to_one_parents")
+	public static class MappedByOneToOneParent {
+		@Id
+		private Integer id;
+		@OneToOne(mappedBy = "parent")
+		private MappedByOneToOneChild child;
+	}
+
+	@Entity(name="MappedByOneToOneChild")
+	@Table(name="mapped_by_one_to_one_children")
+	public static class MappedByOneToOneChild {
+		@Id
+		private Integer id;
+		@OneToOne
+		@JoinColumn(name = "parent_fk", referencedColumnName = "id")
+		private MappedByOneToOneParent parent;
+	}
+
+	@Entity(name="InvalidMappedByOneToOneParent")
+	@Table(name="invalid_mapped_by_one_to_one_parents")
+	public static class InvalidMappedByOneToOneParent {
+		@Id
+		private Integer id;
+		@OneToOne(mappedBy = "parent")
+		private InvalidMappedByManyToOneChild child;
+	}
+
+	@Entity(name="InvalidMappedByManyToOneChild")
+	@Table(name="invalid_mapped_by_many_to_one_children")
+	public static class InvalidMappedByManyToOneChild {
+		@Id
+		private Integer id;
+		@jakarta.persistence.ManyToOne
+		@JoinColumn(name = "parent_fk", referencedColumnName = "id")
+		private InvalidMappedByOneToOneParent parent;
 	}
 
 	@Entity(name="CompositeParent")

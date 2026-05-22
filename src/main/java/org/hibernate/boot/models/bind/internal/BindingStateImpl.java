@@ -17,6 +17,7 @@ import org.hibernate.boot.models.bind.internal.binders.EntityTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.IdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifiableTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.InversePluralAssociationBinding;
+import org.hibernate.boot.models.bind.internal.binders.InverseToOneAssociationBinding;
 import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.MappedSuperTypeBinder;
 import org.hibernate.boot.models.bind.spi.BindingState;
@@ -50,6 +51,7 @@ public class BindingStateImpl implements BindingState {
 	private final Map<Join, AssociationTableBinding> associationTableBindings = new HashMap<>();
 	private final java.util.List<CollectionTableBinding> collectionTableBindings = new java.util.ArrayList<>();
 	private final java.util.List<InversePluralAssociationBinding> inversePluralAssociationBindings = new java.util.ArrayList<>();
+	private final java.util.List<InverseToOneAssociationBinding> inverseToOneAssociationBindings = new java.util.ArrayList<>();
 
 	private final Map<ClassDetails, ManagedTypeBinder> typeBinders = new HashMap<>();
 	private final Map<ClassDetails, IdentifiableTypeBinder> typeBindersBySuper = new HashMap<>();
@@ -187,6 +189,16 @@ public class BindingStateImpl implements BindingState {
 	@Override
 	public void forEachInversePluralAssociationBinding(java.util.function.Consumer<InversePluralAssociationBinding> consumer) {
 		inversePluralAssociationBindings.forEach( consumer );
+	}
+
+	@Override
+	public void addInverseToOneAssociationBinding(InverseToOneAssociationBinding inverseToOneAssociationBinding) {
+		inverseToOneAssociationBindings.add( inverseToOneAssociationBinding );
+	}
+
+	@Override
+	public void forEachInverseToOneAssociationBinding(java.util.function.Consumer<InverseToOneAssociationBinding> consumer) {
+		inverseToOneAssociationBindings.forEach( consumer );
 	}
 
 	private String resolveSchemaName(Identifier explicit) {
