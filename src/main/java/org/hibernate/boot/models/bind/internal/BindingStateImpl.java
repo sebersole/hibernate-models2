@@ -12,14 +12,17 @@ import java.util.function.BiConsumer;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.models.bind.internal.binders.AssociationTableBinding;
+import org.hibernate.boot.models.bind.internal.binders.AssociationTargetBinding;
 import org.hibernate.boot.models.bind.internal.binders.CollectionTableBinding;
 import org.hibernate.boot.models.bind.internal.binders.EntityTypeBinder;
+import org.hibernate.boot.models.bind.internal.binders.ForeignKeyBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifiableTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.InversePluralAssociationBinding;
 import org.hibernate.boot.models.bind.internal.binders.InverseToOneAssociationBinding;
 import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.MappedSuperTypeBinder;
+import org.hibernate.boot.models.bind.internal.binders.PropertyMapKeyBinding;
 import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.boot.models.bind.spi.TableOwner;
 import org.hibernate.boot.models.bind.spi.TableReference;
@@ -50,8 +53,11 @@ public class BindingStateImpl implements BindingState {
 	private final Map<TableOwner, TableReference> tableByOwnerMap = new HashMap<>();
 	private final Map<Join, AssociationTableBinding> associationTableBindings = new HashMap<>();
 	private final java.util.List<CollectionTableBinding> collectionTableBindings = new java.util.ArrayList<>();
+	private final java.util.List<PropertyMapKeyBinding> propertyMapKeyBindings = new java.util.ArrayList<>();
+	private final java.util.List<AssociationTargetBinding> associationTargetBindings = new java.util.ArrayList<>();
 	private final java.util.List<InversePluralAssociationBinding> inversePluralAssociationBindings = new java.util.ArrayList<>();
 	private final java.util.List<InverseToOneAssociationBinding> inverseToOneAssociationBindings = new java.util.ArrayList<>();
+	private final java.util.List<ForeignKeyBinding> foreignKeyBindings = new java.util.ArrayList<>();
 
 	private final Map<ClassDetails, ManagedTypeBinder> typeBinders = new HashMap<>();
 	private final Map<ClassDetails, IdentifiableTypeBinder> typeBindersBySuper = new HashMap<>();
@@ -182,6 +188,26 @@ public class BindingStateImpl implements BindingState {
 	}
 
 	@Override
+	public void addPropertyMapKeyBinding(PropertyMapKeyBinding propertyMapKeyBinding) {
+		propertyMapKeyBindings.add( propertyMapKeyBinding );
+	}
+
+	@Override
+	public void forEachPropertyMapKeyBinding(java.util.function.Consumer<PropertyMapKeyBinding> consumer) {
+		propertyMapKeyBindings.forEach( consumer );
+	}
+
+	@Override
+	public void addAssociationTargetBinding(AssociationTargetBinding associationTargetBinding) {
+		associationTargetBindings.add( associationTargetBinding );
+	}
+
+	@Override
+	public void forEachAssociationTargetBinding(java.util.function.Consumer<AssociationTargetBinding> consumer) {
+		associationTargetBindings.forEach( consumer );
+	}
+
+	@Override
 	public void addInversePluralAssociationBinding(InversePluralAssociationBinding inversePluralAssociationBinding) {
 		inversePluralAssociationBindings.add( inversePluralAssociationBinding );
 	}
@@ -199,6 +225,16 @@ public class BindingStateImpl implements BindingState {
 	@Override
 	public void forEachInverseToOneAssociationBinding(java.util.function.Consumer<InverseToOneAssociationBinding> consumer) {
 		inverseToOneAssociationBindings.forEach( consumer );
+	}
+
+	@Override
+	public void addForeignKeyBinding(ForeignKeyBinding foreignKeyBinding) {
+		foreignKeyBindings.add( foreignKeyBinding );
+	}
+
+	@Override
+	public void forEachForeignKeyBinding(java.util.function.Consumer<ForeignKeyBinding> consumer) {
+		foreignKeyBindings.forEach( consumer );
 	}
 
 	private String resolveSchemaName(Identifier explicit) {

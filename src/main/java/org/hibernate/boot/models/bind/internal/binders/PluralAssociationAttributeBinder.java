@@ -17,7 +17,6 @@ import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.Collection;
-import org.hibernate.mapping.ForeignKey;
 import org.hibernate.mapping.ManyToOne;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
@@ -191,21 +190,39 @@ class PluralAssociationAttributeBinder {
 			Table table,
 			boolean uniqueByDefault) {
 		final ManyToOne element = new ManyToOne( bindingState.getMetadataBuildingContext(), table );
+		final List<JoinColumn> inverseJoinColumns = source.associationInverseJoinColumns();
+		final boolean referenceToPrimaryKey = ToOneAttributeBinder.referencesPrimaryKey(
+				inverseJoinColumns,
+				target.identifierColumns()
+		);
 		element.setReferencedEntityName( target.entityName() );
-		element.setReferenceToPrimaryKey( true );
+		element.setReferenceToPrimaryKey( referenceToPrimaryKey );
 		element.setTypeName( target.entityName() );
 		element.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
 
 		bindJoinColumns(
-				source.associationInverseJoinColumns(),
+				inverseJoinColumns,
 				element,
 				target,
+				referenceToPrimaryKey,
 				table,
 				uniqueByDefault,
 				attributeMetadata.getName()
 		);
-		element.createForeignKey();
-		applyInverseForeignKey( source, table, target );
+		if ( !referenceToPrimaryKey ) {
+			bindingState.addAssociationTargetBinding( new AssociationTargetBinding(
+					ownerBinding,
+					element,
+					target.typeBinder(),
+					ToOneAttributeBinder.referencedColumnNames( inverseJoinColumns ),
+					ownerType.getClassDetails().getClassName() + "." + attributeMetadata.getName()
+			) );
+		}
+		bindingState.addForeignKeyBinding( new ForeignKeyBinding(
+				ownerBinding,
+				element,
+				ForeignKeySource.inverseFrom( source.joinTable() )
+		) );
 		return element;
 	}
 
@@ -213,30 +230,36 @@ class PluralAssociationAttributeBinder {
 			List<JoinColumn> joinColumnAnns,
 			ManyToOne value,
 			TargetEntityBinding target,
+			boolean referenceToPrimaryKey,
 			Table table,
 			boolean uniqueByDefault,
 			String propertyName) {
 		final List<org.hibernate.mapping.Column> targetColumns = target.identifierColumns();
 
-		if ( !joinColumnAnns.isEmpty() && joinColumnAnns.size() != targetColumns.size() ) {
+		if ( referenceToPrimaryKey && !joinColumnAnns.isEmpty() && joinColumnAnns.size() != targetColumns.size() ) {
 			throw new MappingException(
 					"Plural association inverse join column count did not match target identifier column count - "
 							+ ownerType.getClassDetails().getClassName() + "." + propertyName
 			);
 		}
 
-		final List<JoinColumn> orderedJoinColumns = ToOneAttributeBinder.orderJoinColumns(
-				joinColumnAnns,
-				targetColumns,
-				ownerType.getClassDetails().getClassName(),
-				propertyName
-		);
-		for ( int i = 0; i < targetColumns.size(); i++ ) {
-			final org.hibernate.mapping.Column targetColumn = targetColumns.get( i );
+		final List<JoinColumn> orderedJoinColumns = referenceToPrimaryKey
+				? ToOneAttributeBinder.orderJoinColumns(
+						joinColumnAnns,
+						targetColumns,
+						ownerType.getClassDetails().getClassName(),
+						propertyName
+				)
+				: joinColumnAnns;
+		final int columnCount = referenceToPrimaryKey ? targetColumns.size() : joinColumnAnns.size();
+		for ( int i = 0; i < columnCount; i++ ) {
 			final JoinColumn joinColumnAnn = orderedJoinColumns.isEmpty() ? null : orderedJoinColumns.get( i );
+			final String targetColumnName = referenceToPrimaryKey
+					? targetColumns.get( i ).getName()
+					: joinColumnAnn.referencedColumnName();
 			final org.hibernate.mapping.Column column = ColumnBinder.bindColumn(
 					org.hibernate.boot.models.bind.internal.sources.ColumnSource.from( joinColumnAnn ),
-					() -> propertyName + "_" + targetColumn.getName(),
+					() -> propertyName + "_" + targetColumnName,
 					uniqueByDefault,
 					false
 			);
@@ -245,31 +268,6 @@ class PluralAssociationAttributeBinder {
 			}
 			table.addColumn( column );
 			value.addColumn( column );
-		}
-	}
-
-	private void applyInverseForeignKey(
-			CollectionSource source,
-			Table table,
-			TargetEntityBinding target) {
-		final ForeignKeySource foreignKeySource = ForeignKeySource.inverseFrom( source.joinTable() );
-		if ( foreignKeySource == null ) {
-			return;
-		}
-
-		for ( ForeignKey foreignKey : table.getForeignKeyCollection() ) {
-			if ( target.entityName().equals( foreignKey.getReferencedEntityName() ) ) {
-				if ( foreignKeySource.isNoConstraint() ) {
-					foreignKey.disableCreation();
-				}
-				if ( StringHelper.isNotEmpty( foreignKeySource.name() ) ) {
-					foreignKey.setName( foreignKeySource.name() );
-				}
-				if ( StringHelper.isNotEmpty( foreignKeySource.definition() ) ) {
-					foreignKey.setKeyDefinition( foreignKeySource.definition() );
-				}
-				return;
-			}
 		}
 	}
 
@@ -297,6 +295,7 @@ class PluralAssociationAttributeBinder {
 
 		return new TargetEntityBinding(
 				targetTypeBinder.getTypeBinding().getEntityName(),
+				targetTypeBinder,
 				targetTypeBinder.getManagedType(),
 				targetTypeBinder.getTable(),
 				identifierBinding.columns()
@@ -324,6 +323,7 @@ class PluralAssociationAttributeBinder {
 
 	private record TargetEntityBinding(
 			String entityName,
+			EntityTypeBinder typeBinder,
 			EntityTypeMetadata entityType,
 			Table primaryTable,
 			List<org.hibernate.mapping.Column> identifierColumns) {

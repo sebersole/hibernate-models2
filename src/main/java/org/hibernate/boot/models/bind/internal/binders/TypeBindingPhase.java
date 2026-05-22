@@ -52,8 +52,30 @@ public interface TypeBindingPhase {
 		void bindInverseAssociations();
 	}
 
+	/// Create and customize physical foreign-key constraints after association
+	/// values, table keys, and inverse association structures are available.
+	interface ForeignKeys {
+		void bindForeignKeys();
+	}
+
 	/// Bind discriminator, version, tenant id, and attributes.
 	interface Members {
 		void bindMembers();
+	}
+
+	/// Resolve collection index values that depend on member bindings from
+	/// another type.
+	///
+	/// For example, {@code @MapKey(name)} points at a property of the collection
+	/// element type.  The collection member can be created before that property is
+	/// bound, so this phase runs after all members and before table keys call
+	/// collection key creation.
+	interface CollectionIndexes {
+		void bindCollectionIndexes();
+	}
+
+	/// Resolve association target properties for non-primary-key references.
+	interface AssociationTargets {
+		void bindAssociationTargets();
 	}
 }

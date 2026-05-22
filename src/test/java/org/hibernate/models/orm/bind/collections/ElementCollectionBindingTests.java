@@ -269,6 +269,30 @@ public class ElementCollectionBindingTests {
 
 	@Test
 	@ServiceRegistry
+	void testEntityMapKeyElementCollectionNonPrimaryKeyReference(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( EntityMapKeyNonPkOwner.class.getName() );
+					final org.hibernate.mapping.Map collection = (org.hibernate.mapping.Map) entityBinding.getProperty( "labels" )
+							.getValue();
+					final ManyToOne key = (ManyToOne) collection.getIndex();
+
+					assertThat( key.isReferenceToPrimaryKey() ).isFalse();
+					assertThat( key.getReferencedPropertyName() ).isEqualTo( "code" );
+					assertThat( key.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "label_key_code" );
+					assertThat( collection.getCollectionTable().getForeignKeyCollection() ).hasSize( 2 );
+				},
+				scope.getRegistry(),
+				EntityMapKeyNonPkOwner.class,
+				LabelKeyNonPk.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testCompositeEntityMapKeyElementCollection(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -734,6 +758,29 @@ public class ElementCollectionBindingTests {
 	public static class LabelKey {
 		@Id
 		private Integer id;
+	}
+
+	@Entity(name="EntityMapKeyNonPkOwner")
+	@Table(name="entity_map_key_non_pk_owners")
+	public static class EntityMapKeyNonPkOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "entity_map_key_non_pk_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@MapKeyJoinColumn(name = "label_key_code", referencedColumnName = "code")
+		@Column(name = "label")
+		private Map<LabelKeyNonPk, String> labels;
+	}
+
+	@Entity(name="LabelKeyNonPk")
+	@Table(name="label_key_non_pks")
+	public static class LabelKeyNonPk {
+		@Id
+		private Integer id;
+		private String code;
 	}
 
 	@Entity(name="CompositeEntityMapKeyOwner")

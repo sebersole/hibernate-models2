@@ -6,13 +6,16 @@ package org.hibernate.boot.models.bind.spi;
 
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.models.bind.internal.SecondaryTable;
+import org.hibernate.boot.models.bind.internal.binders.AssociationTargetBinding;
 import org.hibernate.boot.models.bind.internal.binders.AssociationTableBinding;
 import org.hibernate.boot.models.bind.internal.binders.CollectionTableBinding;
+import org.hibernate.boot.models.bind.internal.binders.ForeignKeyBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifiableTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.InversePluralAssociationBinding;
 import org.hibernate.boot.models.bind.internal.binders.InverseToOneAssociationBinding;
 import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
+import org.hibernate.boot.models.bind.internal.binders.PropertyMapKeyBinding;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.FilterDefRegistration;
 import org.hibernate.boot.models.categorize.spi.ManagedTypeMetadata;
@@ -76,6 +79,18 @@ public interface BindingState {
 	/// Visit registered collection table bindings.
 	void forEachCollectionTableBinding(java.util.function.Consumer<CollectionTableBinding> consumer);
 
+	/// Register a property-derived map key to resolve after all members are bound.
+	void addPropertyMapKeyBinding(PropertyMapKeyBinding propertyMapKeyBinding);
+
+	/// Visit property-derived map keys waiting for collection-index binding.
+	void forEachPropertyMapKeyBinding(java.util.function.Consumer<PropertyMapKeyBinding> consumer);
+
+	/// Register a non-primary-key association target to resolve after members are bound.
+	void addAssociationTargetBinding(AssociationTargetBinding associationTargetBinding);
+
+	/// Visit non-primary-key association targets waiting for late binding.
+	void forEachAssociationTargetBinding(java.util.function.Consumer<AssociationTargetBinding> consumer);
+
 	/// Register an inverse plural association to resolve after owning collection keys exist.
 	void addInversePluralAssociationBinding(InversePluralAssociationBinding inversePluralAssociationBinding);
 
@@ -87,6 +102,12 @@ public interface BindingState {
 
 	/// Visit inverse to-one association bindings waiting for owning-side resolution.
 	void forEachInverseToOneAssociationBinding(java.util.function.Consumer<InverseToOneAssociationBinding> consumer);
+
+	/// Register a foreign-key constraint to create after table keys are bound.
+	void addForeignKeyBinding(ForeignKeyBinding foreignKeyBinding);
+
+	/// Visit foreign-key constraints waiting for late binding.
+	void forEachForeignKeyBinding(java.util.function.Consumer<ForeignKeyBinding> consumer);
 
 	/// Register the identifier binding produced for an entity hierarchy root.
 	void addIdentifierBinding(EntityTypeMetadata rootType, IdentifierBinding identifierBinding);
