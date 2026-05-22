@@ -127,7 +127,17 @@ public class AttributeBinder {
 			attributeTable = collectionValue.getCollectionTable();
 		}
 		else if ( attributeMetadata.getNature() == ONE_TO_MANY ) {
-			throw new UnsupportedOperationException( "@OneToMany is not yet implemented" );
+			final var collectionValue = new PluralAssociationAttributeBinder(
+					ownerType,
+					ownerBinding,
+					attributeMetadata,
+					modelBinders,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			).bindOneToMany( binding );
+			binding.setValue( collectionValue );
+			attributeTable = collectionValue.getCollectionTable();
 		}
 		else if ( attributeMetadata.getNature() == ANY ) {
 			throw new UnsupportedOperationException( "@Any is not yet implemented" );

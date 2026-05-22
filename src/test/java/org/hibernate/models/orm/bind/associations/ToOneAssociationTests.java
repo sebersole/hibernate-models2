@@ -24,6 +24,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinColumns;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.SecondaryTable;
 import jakarta.persistence.Table;
@@ -217,6 +218,35 @@ public class ToOneAssociationTests {
 
 	@Test
 	@ServiceRegistry
+	void testUnidirectionalOneToManyJoinTable(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( OneToManyJoinTableOwner.class.getName() );
+					final Collection collection = (Collection) entityBinding.getProperty( "children" ).getValue();
+					final ManyToOne element = (ManyToOne) collection.getElement();
+
+					assertThat( collection ).isInstanceOf( org.hibernate.mapping.Set.class );
+					assertThat( collection.getRole() ).isEqualTo( OneToManyJoinTableOwner.class.getName() + ".children" );
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "owner_child_links" );
+					assertThat( collection.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_id" );
+					assertThat( element.getReferencedEntityName() ).isEqualTo( Child.class.getName() );
+					assertThat( element.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "child_id" );
+					assertThat( element.getColumns().get( 0 ).isUnique() ).isTrue();
+					assertThat( collection.getCollectionTable().getForeignKeyCollection() ).hasSize( 2 );
+				},
+				scope.getRegistry(),
+				Child.class,
+				OneToManyJoinTableOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testCompositeManyToOneJoinTableWithReferencedColumnNames(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -264,6 +294,14 @@ public class ToOneAssociationTests {
 	@Entity(name="Parent")
 	@Table(name="parents")
 	public static class Parent {
+		@Id
+		private Integer id;
+		private String name;
+	}
+
+	@Entity(name="Child")
+	@Table(name="children")
+	public static class Child {
 		@Id
 		private Integer id;
 		private String name;
@@ -371,6 +409,20 @@ public class ToOneAssociationTests {
 				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
 		)
 		private Set<Parent> parents;
+	}
+
+	@Entity(name="OneToManyJoinTableOwner")
+	@Table(name="one_to_many_join_table_owners")
+	public static class OneToManyJoinTableOwner {
+		@Id
+		private Integer id;
+		@OneToMany
+		@JoinTable(
+				name = "owner_child_links",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = @JoinColumn(name = "child_id", referencedColumnName = "id")
+		)
+		private Set<Child> children;
 	}
 
 	@Entity(name="JoinTableCompositeManyToOneOwner")

@@ -26,6 +26,7 @@ import org.hibernate.models.spi.ClassDetails;
 
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
 
 /**
  * Binds association-valued plural attributes.
@@ -62,8 +63,21 @@ class PluralAssociationAttributeBinder {
 		if ( manyToMany != null && StringHelper.isNotEmpty( manyToMany.mappedBy() ) ) {
 			throw new UnsupportedOperationException( "Inverse @ManyToMany is not yet implemented" );
 		}
+		return bindAssociation( source, false );
+	}
+
+	Collection bindOneToMany(Property property) {
+		final CollectionSource source = CollectionSource.oneToMany( attributeMetadata.getMember() );
+		final OneToMany oneToMany = source.oneToMany();
+		if ( oneToMany != null && StringHelper.isNotEmpty( oneToMany.mappedBy() ) ) {
+			throw new UnsupportedOperationException( "Inverse @OneToMany is not yet implemented" );
+		}
+		return bindAssociation( source, true );
+	}
+
+	private Collection bindAssociation(CollectionSource source, boolean uniqueTargetColumns) {
 		if ( source.classification().toJpaClassification() == jakarta.persistence.metamodel.PluralAttribute.CollectionType.MAP ) {
-			throw new UnsupportedOperationException( "Map-valued @ManyToMany is not yet implemented" );
+			throw new UnsupportedOperationException( "Map-valued plural associations are not yet implemented" );
 		}
 
 		final TargetEntityBinding target = resolveTargetEntityBinding( source );
@@ -86,7 +100,7 @@ class PluralAssociationAttributeBinder {
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
 
-		final ManyToOne element = bindElementValue( source, target, table );
+		final ManyToOne element = bindElementValue( source, target, table, uniqueTargetColumns );
 		collection.setElement( element );
 		bindingState.addCollectionTableBinding( new CollectionTableBinding(
 				collection,
@@ -105,10 +119,10 @@ class PluralAssociationAttributeBinder {
 			case LIST -> new org.hibernate.mapping.List( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case BAG -> new org.hibernate.mapping.Bag( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case MAP, ORDERED_MAP, SORTED_MAP -> throw new UnsupportedOperationException(
-					"Map-valued @ManyToMany is not yet implemented"
+					"Map-valued plural associations are not yet implemented"
 			);
 			case ARRAY, ID_BAG -> throw new UnsupportedOperationException(
-					source.classification() + " @ManyToMany collections are not yet implemented"
+					source.classification() + " plural associations are not yet implemented"
 			);
 		};
 	}
@@ -116,7 +130,8 @@ class PluralAssociationAttributeBinder {
 	private ManyToOne bindElementValue(
 			CollectionSource source,
 			TargetEntityBinding target,
-			Table table) {
+			Table table,
+			boolean uniqueByDefault) {
 		final ManyToOne element = new ManyToOne( bindingState.getMetadataBuildingContext(), table );
 		element.setReferencedEntityName( target.entityName() );
 		element.setReferenceToPrimaryKey( true );
@@ -128,6 +143,7 @@ class PluralAssociationAttributeBinder {
 				element,
 				target,
 				table,
+				uniqueByDefault,
 				attributeMetadata.getName()
 		);
 		element.createForeignKey();
@@ -140,12 +156,13 @@ class PluralAssociationAttributeBinder {
 			ManyToOne value,
 			TargetEntityBinding target,
 			Table table,
+			boolean uniqueByDefault,
 			String propertyName) {
 		final List<org.hibernate.mapping.Column> targetColumns = target.identifierColumns();
 
 		if ( !joinColumnAnns.isEmpty() && joinColumnAnns.size() != targetColumns.size() ) {
 			throw new MappingException(
-					"Many-to-many inverse join column count did not match target identifier column count - "
+					"Plural association inverse join column count did not match target identifier column count - "
 							+ ownerType.getClassDetails().getClassName() + "." + propertyName
 			);
 		}
@@ -162,9 +179,12 @@ class PluralAssociationAttributeBinder {
 			final org.hibernate.mapping.Column column = ColumnBinder.bindColumn(
 					org.hibernate.boot.models.bind.internal.sources.ColumnSource.from( joinColumnAnn ),
 					() -> propertyName + "_" + targetColumn.getName(),
-					false,
+					uniqueByDefault,
 					false
 			);
+			if ( uniqueByDefault ) {
+				column.setUnique( true );
+			}
 			table.addColumn( column );
 			value.addColumn( column );
 		}
@@ -202,7 +222,7 @@ class PluralAssociationAttributeBinder {
 		);
 		if ( targetTypeBinder == null ) {
 			throw new MappingException(
-					"Could not resolve local type binding for many-to-many target entity - "
+					"Could not resolve local type binding for plural association target entity - "
 							+ targetClassDetails.getClassName()
 			);
 		}
@@ -212,7 +232,7 @@ class PluralAssociationAttributeBinder {
 		);
 		if ( identifierBinding == null ) {
 			throw new MappingException(
-					"Could not resolve identifier binding for many-to-many target entity - "
+					"Could not resolve identifier binding for plural association target entity - "
 							+ targetTypeBinder.getTypeBinding().getEntityName()
 			);
 		}
