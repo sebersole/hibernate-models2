@@ -151,7 +151,10 @@ public class AttributeBinder {
 		}
 		else if ( attributeMetadata.getNature() == ANY ) {
 			final var anyValue = new AnyAttributeBinder(
+					ownerType,
+					ownerBinding,
 					attributeMetadata,
+					modelBinders,
 					bindingOptions,
 					bindingState,
 					bindingContext

@@ -52,9 +52,9 @@ import jakarta.persistence.DiscriminatorType;
 /// - `@AnyKeyJavaClass` supplies the key Java type.
 /// - `@AnyKeyJavaType`, `@AnyKeyJdbcType`, and `@AnyKeyJdbcTypeCode` are applied
 ///   by [BasicValueBinder] to the key value.
-/// - Singular `@JoinColumn` or plural `@JoinTable#inverseJoinColumns` names the
-///   key column.  If absent, the binder uses the current implicit key-column
-///   default for this prototype.
+/// - Singular `@JoinColumn`, singular `@JoinTable#inverseJoinColumns`, or plural
+///   `@JoinTable#inverseJoinColumns` names the key column.  If absent, the binder
+///   uses the current implicit key-column default for this prototype.
 ///
 /// Not yet supported:
 ///
@@ -62,7 +62,7 @@ import jakarta.persistence.DiscriminatorType;
 /// - discriminator `@Formula`
 /// - inferred key Java type
 /// - composite keys / multiple key columns
-/// - singular `@Any` join-table mappings
+/// - implicit singular `@Any` join-table names
 /// - map-valued `@ManyToAny`
 /// - optionality becoming non-optional when either explicit discriminator or key
 ///   column is non-nullable

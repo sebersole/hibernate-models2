@@ -215,6 +215,32 @@ public class AnyAssociationTests {
 
 	@Test
 	@ServiceRegistry
+	void testAnyJoinTable(ServiceRegistryScope scope) {
+		BindingTestingHelper.checkDomainModel(
+				(context) -> {
+					final RootClass entityBinding = (RootClass) context.getMetadataCollector()
+							.getEntityBinding( JoinTableHolder.class.getName() );
+					final org.hibernate.mapping.Join join = entityBinding.getJoins().get( 0 );
+					final Property property = join.getProperties().get( 0 );
+					final org.hibernate.mapping.Any value = (org.hibernate.mapping.Any) property.getValue();
+
+					assertThat( join.getTable().getName() ).isEqualTo( "any_holder_targets" );
+					assertThat( join.getKey().getColumns() ).extracting( Column::getName )
+							.containsExactly( "holder_id" );
+					assertThat( value.getTable() ).isSameAs( join.getTable() );
+					assertThat( ( (Column) value.getDiscriminatorDescriptor().getColumn() ).getName() )
+							.isEqualTo( "target_type" );
+					assertThat( ( (Column) value.getKeyDescriptor().getColumn() ).getName() )
+							.isEqualTo( "target_id" );
+				},
+				scope.getRegistry(),
+				JoinTableHolder.class,
+				TargetOne.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testManyToAnyAssociation(ServiceRegistryScope scope) {
 		BindingTestingHelper.checkDomainModel(
 				(context) -> {
@@ -412,6 +438,23 @@ public class AnyAssociationTests {
 		@AnyDiscriminatorValue(discriminator = "one", entity = TargetOne.class)
 		@AnyKeyJavaClass(Integer.class)
 		@JoinColumn(name = "target_id")
+		private Object target;
+	}
+
+	@Entity(name = "JoinTableAnyHolder")
+	public static class JoinTableHolder {
+		@Id
+		private Integer id;
+
+		@Any
+		@JoinTable(
+				name = "any_holder_targets",
+				joinColumns = @JoinColumn(name = "holder_id"),
+				inverseJoinColumns = @JoinColumn(name = "target_id")
+		)
+		@jakarta.persistence.Column(name = "target_type")
+		@AnyDiscriminatorValue(discriminator = "one", entity = TargetOne.class)
+		@AnyKeyJavaClass(Integer.class)
 		private Object target;
 	}
 
