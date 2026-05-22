@@ -15,10 +15,15 @@ import org.hibernate.models.spi.ClassDetails;
  * are resolved from the owning side after table keys have been bound.
  */
 public record InversePluralAssociationBinding(
+		Nature nature,
 		IdentifiableTypeMetadata ownerType,
 		PersistentClass ownerBinding,
 		AttributeMetadata attributeMetadata,
 		Collection collection,
 		ClassDetails targetClassDetails,
 		String mappedBy) {
+	public enum Nature {
+		MANY_TO_MANY,
+		ONE_TO_MANY
+	}
 }

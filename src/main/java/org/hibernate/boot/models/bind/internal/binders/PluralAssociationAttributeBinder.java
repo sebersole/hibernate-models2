@@ -70,7 +70,7 @@ class PluralAssociationAttributeBinder {
 		final CollectionSource source = CollectionSource.oneToMany( attributeMetadata.getMember() );
 		final OneToMany oneToMany = source.oneToMany();
 		if ( oneToMany != null && StringHelper.isNotEmpty( oneToMany.mappedBy() ) ) {
-			throw new UnsupportedOperationException( "Inverse @OneToMany is not yet implemented" );
+			return bindInverseOneToMany( source, oneToMany.mappedBy() );
 		}
 		return bindAssociation( source, true );
 	}
@@ -90,6 +90,34 @@ class PluralAssociationAttributeBinder {
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
 
 		bindingState.addInversePluralAssociationBinding( new InversePluralAssociationBinding(
+				InversePluralAssociationBinding.Nature.MANY_TO_MANY,
+				ownerType,
+				ownerBinding,
+				attributeMetadata,
+				collection,
+				targetClassDetails,
+				mappedBy
+		) );
+		bindingState.getMetadataBuildingContext().getMetadataCollector().addCollectionBinding( collection );
+		return collection;
+	}
+
+	private Collection bindInverseOneToMany(CollectionSource source, String mappedBy) {
+		if ( source.classification().toJpaClassification() == jakarta.persistence.metamodel.PluralAttribute.CollectionType.MAP ) {
+			throw new UnsupportedOperationException( "Map-valued plural associations are not yet implemented" );
+		}
+
+		final ClassDetails targetClassDetails = resolveTargetClassDetails( source );
+		final Collection collection = createCollection( source );
+		collection.setRole( ownerBinding.getEntityName() + "." + attributeMetadata.getName() );
+		collection.setInverse( true );
+		collection.setMappedByProperty( mappedBy );
+		collection.setMutable( true );
+		collection.setOptimisticLocked( true );
+		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
+
+		bindingState.addInversePluralAssociationBinding( new InversePluralAssociationBinding(
+				InversePluralAssociationBinding.Nature.ONE_TO_MANY,
 				ownerType,
 				ownerBinding,
 				attributeMetadata,
@@ -275,6 +303,10 @@ class PluralAssociationAttributeBinder {
 		final ManyToMany manyToMany = source.manyToMany();
 		if ( manyToMany != null && manyToMany.targetEntity() != void.class ) {
 			return bindingContext.getClassDetailsRegistry().resolveClassDetails( manyToMany.targetEntity().getName() );
+		}
+		final OneToMany oneToMany = source.oneToMany();
+		if ( oneToMany != null && oneToMany.targetEntity() != void.class ) {
+			return bindingContext.getClassDetailsRegistry().resolveClassDetails( oneToMany.targetEntity().getName() );
 		}
 		return source.elementType().determineRawClass();
 	}

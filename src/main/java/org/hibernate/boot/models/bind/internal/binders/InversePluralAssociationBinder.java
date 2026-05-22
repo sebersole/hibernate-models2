@@ -11,8 +11,10 @@ import org.hibernate.mapping.Column;
 import org.hibernate.mapping.DependantValue;
 import org.hibernate.mapping.KeyValue;
 import org.hibernate.mapping.ManyToOne;
+import org.hibernate.mapping.OneToMany;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
+import org.hibernate.mapping.Value;
 
 /**
  * Resolves inverse plural associations from their owning-side mapping objects.
@@ -29,7 +31,10 @@ class InversePluralAssociationBinder {
 	void bindInverseAssociations() {
 		bindingState.forEachInversePluralAssociationBinding( (inverseBinding) -> {
 			if ( inverseBinding.ownerBinding() == entityBinder.getTypeBinding() ) {
-				bindInverseManyToMany( inverseBinding );
+				switch ( inverseBinding.nature() ) {
+					case MANY_TO_MANY -> bindInverseManyToMany( inverseBinding );
+					case ONE_TO_MANY -> bindInverseOneToMany( inverseBinding );
+				}
 			}
 		} );
 	}
@@ -82,6 +87,35 @@ class InversePluralAssociationBinder {
 		inverseCollection.createAllKeys();
 	}
 
+	private void bindInverseOneToMany(InversePluralAssociationBinding inverseBinding) {
+		final EntityTypeBinder targetTypeBinder = resolveTargetTypeBinder( inverseBinding );
+		final Property owningProperty = targetTypeBinder.getTypeBinding().getProperty( inverseBinding.mappedBy() );
+		final Value owningValue = owningProperty.getValue();
+		if ( !( owningValue instanceof ManyToOne owningToOne ) ) {
+			throw new MappingException(
+					"Inverse @OneToMany mappedBy did not name an owning to-one attribute - "
+							+ inverseBinding.ownerType().getClassDetails().getClassName()
+							+ "." + inverseBinding.attributeMetadata().getName()
+			);
+		}
+		if ( !inverseBinding.ownerBinding().getEntityName().equals( owningToOne.getReferencedEntityName() ) ) {
+			throw new MappingException(
+					"Inverse @OneToMany mappedBy named a to-one attribute that targets `"
+							+ owningToOne.getReferencedEntityName() + "` rather than `"
+							+ inverseBinding.ownerBinding().getEntityName() + "` - "
+							+ inverseBinding.ownerType().getClassDetails().getClassName()
+							+ "." + inverseBinding.attributeMetadata().getName()
+			);
+		}
+
+		final Collection inverseCollection = inverseBinding.collection();
+		final Table collectionTable = owningToOne.getTable();
+		inverseCollection.setCollectionTable( collectionTable );
+		inverseCollection.setKey( createInverseKey( inverseBinding, collectionTable, owningToOne ) );
+		inverseCollection.setElement( createOneToManyElement( inverseBinding, targetTypeBinder ) );
+		inverseCollection.createAllKeys();
+	}
+
 	private KeyValue createInverseKey(
 			InversePluralAssociationBinding inverseBinding,
 			Table collectionTable,
@@ -126,6 +160,35 @@ class InversePluralAssociationBinder {
 			element.addColumn( copyColumn( collectionTable, owningKeyColumn, owningKeyColumn.isUnique() ) );
 		}
 		return element;
+	}
+
+	private OneToMany createOneToManyElement(
+			InversePluralAssociationBinding inverseBinding,
+			EntityTypeBinder targetTypeBinder) {
+		final OneToMany element = new OneToMany(
+				bindingState.getMetadataBuildingContext(),
+				inverseBinding.ownerBinding()
+		);
+		element.setAssociatedClass( targetTypeBinder.getTypeBinding() );
+		element.setReferencedEntityName( targetTypeBinder.getTypeBinding().getEntityName() );
+		element.setTypeUsingReflection(
+				inverseBinding.ownerType().getClassDetails().getClassName(),
+				inverseBinding.attributeMetadata().getName()
+		);
+		return element;
+	}
+
+	private EntityTypeBinder resolveTargetTypeBinder(InversePluralAssociationBinding inverseBinding) {
+		final EntityTypeBinder targetTypeBinder = (EntityTypeBinder) bindingState.getTypeBinder(
+				inverseBinding.targetClassDetails()
+		);
+		if ( targetTypeBinder == null ) {
+			throw new MappingException(
+					"Could not resolve local type binding for inverse plural association target entity - "
+							+ inverseBinding.targetClassDetails().getClassName()
+			);
+		}
+		return targetTypeBinder;
 	}
 
 	private Column copyColumn(Table table, Column source, boolean unique) {
