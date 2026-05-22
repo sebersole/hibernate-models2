@@ -38,13 +38,14 @@ class AnyAttributeBinder {
 	}
 
 	Any bind(Property property, Table table) {
-		final AnySource source = AnySource.create( attributeMetadata.getMember(), bindingContext );
+		final AnySource source = AnySource.create( attributeMetadata.getMember(), bindingContext, bindingState );
 		final Any value = new AnyValueBinder(
 				bindingOptions,
 				bindingState,
 				bindingContext
 		).bind( source, attributeMetadata.getName(), table );
 		property.setOptional( source.optional() );
+		property.setCascade( source.cascades() );
 		return value;
 	}
 }

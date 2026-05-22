@@ -70,26 +70,26 @@ class PluralAssociationAttributeBinder {
 		final CollectionSource source = CollectionSource.manyToMany( attributeMetadata.getMember() );
 		final ManyToMany manyToMany = source.manyToMany();
 		if ( manyToMany != null && StringHelper.isNotEmpty( manyToMany.mappedBy() ) ) {
-			return bindInverseManyToMany( source, manyToMany.mappedBy() );
+			return bindInverseManyToMany( source, manyToMany.mappedBy(), property );
 		}
-		return bindAssociation( source, false );
+		return bindAssociation( source, false, property );
 	}
 
 	Collection bindOneToMany(Property property) {
 		final CollectionSource source = CollectionSource.oneToMany( attributeMetadata.getMember() );
 		final OneToMany oneToMany = source.oneToMany();
 		if ( oneToMany != null && StringHelper.isNotEmpty( oneToMany.mappedBy() ) ) {
-			return bindInverseOneToMany( source, oneToMany.mappedBy() );
+			return bindInverseOneToMany( source, oneToMany.mappedBy(), property );
 		}
-		return bindAssociation( source, true );
+		return bindAssociation( source, true, property );
 	}
 
 	Collection bindManyToAny(Property property) {
 		final CollectionSource source = CollectionSource.manyToAny( attributeMetadata.getMember() );
-		return bindManyToAny( source );
+		return bindManyToAny( source, property );
 	}
 
-	private Collection bindInverseManyToMany(CollectionSource source, String mappedBy) {
+	private Collection bindInverseManyToMany(CollectionSource source, String mappedBy, Property property) {
 		final ClassDetails targetClassDetails = resolveTargetClassDetails( source );
 		final Collection collection = createCollection( source );
 		collection.setRole( ownerBinding.getEntityName() + "." + attributeMetadata.getName() );
@@ -98,6 +98,7 @@ class PluralAssociationAttributeBinder {
 		collection.setMutable( true );
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
+		applyCascade( source, property, collection );
 
 		bindingState.addInversePluralAssociationBinding( new InversePluralAssociationBinding(
 				InversePluralAssociationBinding.Nature.MANY_TO_MANY,
@@ -112,7 +113,7 @@ class PluralAssociationAttributeBinder {
 		return collection;
 	}
 
-	private Collection bindInverseOneToMany(CollectionSource source, String mappedBy) {
+	private Collection bindInverseOneToMany(CollectionSource source, String mappedBy, Property property) {
 		final ClassDetails targetClassDetails = resolveTargetClassDetails( source );
 		final Collection collection = createCollection( source );
 		collection.setRole( ownerBinding.getEntityName() + "." + attributeMetadata.getName() );
@@ -121,6 +122,7 @@ class PluralAssociationAttributeBinder {
 		collection.setMutable( true );
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
+		applyCascade( source, property, collection );
 
 		bindingState.addInversePluralAssociationBinding( new InversePluralAssociationBinding(
 				InversePluralAssociationBinding.Nature.ONE_TO_MANY,
@@ -135,7 +137,7 @@ class PluralAssociationAttributeBinder {
 		return collection;
 	}
 
-	private Collection bindAssociation(CollectionSource source, boolean uniqueTargetColumns) {
+	private Collection bindAssociation(CollectionSource source, boolean uniqueTargetColumns, Property property) {
 		final TargetEntityBinding target = resolveTargetEntityBinding( source );
 		final Table table = modelBinders.getTableBinder()
 				.bindAssociationTable(
@@ -155,6 +157,7 @@ class PluralAssociationAttributeBinder {
 		collection.setMutable( true );
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
+		applyCascade( source, property, collection );
 
 		final ManyToOne element = bindElementValue( source, target, table, uniqueTargetColumns );
 		collection.setElement( element );
@@ -179,7 +182,8 @@ class PluralAssociationAttributeBinder {
 		return collection;
 	}
 
-	private Collection bindManyToAny(CollectionSource source) {
+	@SuppressWarnings("removal")
+	private Collection bindManyToAny(CollectionSource source, Property property) {
 		if ( source.classification().toJpaClassification() == jakarta.persistence.metamodel.PluralAttribute.CollectionType.MAP ) {
 			throw new UnsupportedOperationException(
 					"Map-valued @ManyToAny is not yet implemented - "
@@ -216,12 +220,17 @@ class PluralAssociationAttributeBinder {
 		collection.setOptimisticLocked( true );
 		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
 
+		final AnySource anySource = AnySource.createManyToAny( source, bindingContext, bindingState );
 		final org.hibernate.mapping.Any element = new AnyValueBinder(
 				bindingOptions,
 				bindingState,
 				bindingContext
-		).bind( AnySource.createManyToAny( source, bindingContext ), attributeMetadata.getName(), table );
+		).bind( anySource, attributeMetadata.getName(), table );
 		collection.setElement( element );
+		property.setCascade( anySource.cascades() );
+		if ( CascadeBinder.hasOrphanDelete( anySource.cascades() ) ) {
+			collection.setOrphanDelete( true );
+		}
 		if ( collection instanceof IndexedCollection indexedCollection ) {
 			CollectionIndexBinder.bindListIndex(
 					source,
@@ -241,6 +250,14 @@ class PluralAssociationAttributeBinder {
 		) );
 		bindingState.getMetadataBuildingContext().getMetadataCollector().addCollectionBinding( collection );
 		return collection;
+	}
+
+	private void applyCascade(CollectionSource source, Property property, Collection collection) {
+		final var cascades = source.cascades( bindingState );
+		property.setCascade( cascades );
+		if ( CascadeBinder.hasOrphanDelete( cascades ) ) {
+			collection.setOrphanDelete( true );
+		}
 	}
 
 	private Collection createCollection(CollectionSource source) {

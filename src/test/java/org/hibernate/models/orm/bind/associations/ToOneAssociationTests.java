@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.hibernate.MappingException;
+import org.hibernate.annotations.Cascade;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.Join;
@@ -18,6 +19,7 @@ import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.ServiceRegistryScope;
 import org.junit.jupiter.api.Test;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -42,6 +44,7 @@ import static org.hibernate.models.orm.bind.BindingTestingHelper.checkDomainMode
 /**
  * @author Steve Ebersole
  */
+@SuppressWarnings("removal")
 public class ToOneAssociationTests {
 	@Test
 	@ServiceRegistry
@@ -63,6 +66,25 @@ public class ToOneAssociationTests {
 				scope.getRegistry(),
 				Parent.class,
 				ManyToOneOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testManyToOneCascade(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( CascadeManyToOneOwner.class.getName() );
+					final var property = entityBinding.getProperty( "target" );
+
+					assertThat( property.getCascade() )
+							.contains( "persist" )
+							.contains( "lock" );
+				},
+				scope.getRegistry(),
+				CascadeManyToOneOwner.class,
+				CascadeToOneTarget.class
 		);
 	}
 
@@ -110,6 +132,26 @@ public class ToOneAssociationTests {
 				scope.getRegistry(),
 				Parent.class,
 				OneToOneOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testOwningOneToOneCascadeAndOrphanRemoval(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( CascadeOneToOneOwner.class.getName() );
+					final var property = entityBinding.getProperty( "target" );
+
+					assertThat( property.getCascade() )
+							.contains( "merge" )
+							.contains( "delete" )
+							.contains( "delete-orphan" );
+				},
+				scope.getRegistry(),
+				CascadeOneToOneOwner.class,
+				CascadeToOneTarget.class
 		);
 	}
 
@@ -312,6 +354,23 @@ public class ToOneAssociationTests {
 				scope.getRegistry(),
 				Parent.class,
 				ManyToManyOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testManyToManyCascade(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( CascadeManyToManyOwner.class.getName() );
+					final var property = entityBinding.getProperty( "targets" );
+
+					assertThat( property.getCascade() ).contains( "refresh" );
+				},
+				scope.getRegistry(),
+				CascadeManyToManyOwner.class,
+				CascadeManyToManyTarget.class
 		);
 	}
 
@@ -615,6 +674,27 @@ public class ToOneAssociationTests {
 				scope.getRegistry(),
 				MappedByOneToManyParent.class,
 				MappedByChild.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testInverseOneToManyCascadeAndOrphanRemoval(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( CascadeOneToManyParent.class.getName() );
+					final var property = entityBinding.getProperty( "children" );
+					final Collection collection = (Collection) property.getValue();
+
+					assertThat( property.getCascade() )
+							.contains( "delete" )
+							.contains( "delete-orphan" );
+					assertThat( collection.hasOrphanDelete() ).isTrue();
+				},
+				scope.getRegistry(),
+				CascadeOneToManyParent.class,
+				CascadeOneToManyChild.class
 		);
 	}
 
@@ -1000,6 +1080,13 @@ public class ToOneAssociationTests {
 		private String name;
 	}
 
+	@Entity(name="CascadeToOneTarget")
+	@Table(name="cascade_to_one_targets")
+	public static class CascadeToOneTarget {
+		@Id
+		private Integer id;
+	}
+
 	@Entity(name="ManyToOneOwner")
 	@Table(name="many_to_one_owners")
 	public static class ManyToOneOwner {
@@ -1007,6 +1094,16 @@ public class ToOneAssociationTests {
 		private Integer id;
 		@jakarta.persistence.ManyToOne
 		private Parent parent;
+	}
+
+	@Entity(name="CascadeManyToOneOwner")
+	@Table(name="cascade_many_to_one_owners")
+	public static class CascadeManyToOneOwner {
+		@Id
+		private Integer id;
+		@jakarta.persistence.ManyToOne(cascade = CascadeType.PERSIST)
+		@Cascade(org.hibernate.annotations.CascadeType.LOCK)
+		private CascadeToOneTarget target;
 	}
 
 	@Entity(name="SelfReferentialManyToOneNonPkOwner")
@@ -1028,6 +1125,15 @@ public class ToOneAssociationTests {
 		@OneToOne(optional = false)
 		@JoinColumn(name = "parent_fk")
 		private Parent parent;
+	}
+
+	@Entity(name="CascadeOneToOneOwner")
+	@Table(name="cascade_one_to_one_owners")
+	public static class CascadeOneToOneOwner {
+		@Id
+		private Integer id;
+		@OneToOne(cascade = CascadeType.MERGE, orphanRemoval = true)
+		private CascadeToOneTarget target;
 	}
 
 	@Entity(name="MappedByOneToOneParent")
@@ -1184,6 +1290,22 @@ public class ToOneAssociationTests {
 				inverseForeignKey = @ForeignKey(name = "fk_owner_parent_sets_parent")
 		)
 		private Set<Parent> parents;
+	}
+
+	@Entity(name="CascadeManyToManyTarget")
+	@Table(name="cascade_many_to_many_targets")
+	public static class CascadeManyToManyTarget {
+		@Id
+		private Integer id;
+	}
+
+	@Entity(name="CascadeManyToManyOwner")
+	@Table(name="cascade_many_to_many_owners")
+	public static class CascadeManyToManyOwner {
+		@Id
+		private Integer id;
+		@ManyToMany(cascade = CascadeType.REFRESH)
+		private Set<CascadeManyToManyTarget> targets;
 	}
 
 	@Entity(name="ManyToManyNonPkReferenceTarget")
@@ -1386,6 +1508,25 @@ public class ToOneAssociationTests {
 		private Integer id;
 		@OneToMany(mappedBy = "parent")
 		private Set<MappedByChild> children;
+	}
+
+	@Entity(name="CascadeOneToManyParent")
+	@Table(name="cascade_one_to_many_parents")
+	public static class CascadeOneToManyParent {
+		@Id
+		private Integer id;
+		@OneToMany(mappedBy = "parent", cascade = CascadeType.REMOVE, orphanRemoval = true)
+		private Set<CascadeOneToManyChild> children;
+	}
+
+	@Entity(name="CascadeOneToManyChild")
+	@Table(name="cascade_one_to_many_children")
+	public static class CascadeOneToManyChild {
+		@Id
+		private Integer id;
+		@jakarta.persistence.ManyToOne
+		@JoinColumn(name = "parent_fk", referencedColumnName = "id")
+		private CascadeOneToManyParent parent;
 	}
 
 	@Entity(name="MappedByChild")
