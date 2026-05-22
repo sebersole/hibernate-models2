@@ -7,8 +7,10 @@ package org.hibernate.boot.models.bind.spi;
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.models.bind.internal.SecondaryTable;
 import org.hibernate.boot.models.bind.internal.binders.AssociationTargetBinding;
+import org.hibernate.boot.models.bind.internal.binders.AssociationIdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.AssociationTableBinding;
 import org.hibernate.boot.models.bind.internal.binders.CollectionTableBinding;
+import org.hibernate.boot.models.bind.internal.binders.DerivedIdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.ForeignKeyBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifiableTypeBinder;
@@ -89,11 +91,23 @@ public interface BindingState {
 	/// Visit property-derived map keys waiting for collection-index binding.
 	void forEachPropertyMapKeyBinding(java.util.function.Consumer<PropertyMapKeyBinding> consumer);
 
+	/// Register an association-valued identifier attribute to resolve after identifiers.
+	void addAssociationIdentifierBinding(AssociationIdentifierBinding associationIdentifierBinding);
+
+	/// Visit association-valued identifier attributes waiting for late binding.
+	void forEachAssociationIdentifierBinding(java.util.function.Consumer<AssociationIdentifierBinding> consumer);
+
 	/// Register a non-primary-key association target to resolve after members are bound.
 	void addAssociationTargetBinding(AssociationTargetBinding associationTargetBinding);
 
 	/// Visit non-primary-key association targets waiting for late binding.
 	void forEachAssociationTargetBinding(java.util.function.Consumer<AssociationTargetBinding> consumer);
+
+	/// Register a derived identifier association to resolve after member binding.
+	void addDerivedIdentifierBinding(DerivedIdentifierBinding derivedIdentifierBinding);
+
+	/// Visit derived identifier associations waiting for late binding.
+	void forEachDerivedIdentifierBinding(java.util.function.Consumer<DerivedIdentifierBinding> consumer);
 
 	/// Register an inverse plural association to resolve after owning collection keys exist.
 	void addInversePluralAssociationBinding(InversePluralAssociationBinding inversePluralAssociationBinding);

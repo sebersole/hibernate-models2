@@ -10,9 +10,12 @@ import java.util.List;
 import org.hibernate.boot.models.bind.internal.sources.BasicValueSource;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.internal.sources.ComponentSource;
+import org.hibernate.boot.models.bind.internal.sources.ForeignKeySource;
+import org.hibernate.boot.models.bind.internal.sources.ToOneSource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
+import org.hibernate.boot.models.AttributeNature;
 import org.hibernate.boot.models.categorize.spi.AggregatedKeyMapping;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
 import org.hibernate.boot.models.categorize.spi.BasicKeyMapping;
@@ -21,6 +24,7 @@ import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.KeyMapping;
 import org.hibernate.boot.models.categorize.spi.NonAggregatedKeyMapping;
 import org.hibernate.mapping.BasicValue;
+import org.hibernate.mapping.ManyToOne;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.PrimaryKey;
 import org.hibernate.mapping.Property;
@@ -30,6 +34,8 @@ import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MemberDetails;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinTable;
 
 /// @author Steve Ebersole
 public class IdentifierBinder {
@@ -159,15 +165,31 @@ public class IdentifierBinder {
 		final List<org.hibernate.mapping.Column> columns = new ArrayList<>( idMapping.getIdAttributes().size() );
 		for ( AttributeMetadata idAttribute : idMapping.getIdAttributes() ) {
 			final MemberDetails member = idAttribute.getMember();
-			final BasicValue basicValue = createBasicIdValue( table, member );
-			final Property rootProperty = createProperty( idAttribute.getName(), basicValue );
-			typeBinding.addProperty( rootProperty );
+			if ( idAttribute.getNature() == AttributeNature.BASIC ) {
+				final BasicValue basicValue = createBasicIdValue( table, member );
+				final Property rootProperty = createProperty( idAttribute.getName(), basicValue );
+				typeBinding.addProperty( rootProperty );
 
-			final Property componentProperty = createProperty( idAttribute.getName(), basicValue );
-			idValue.addProperty( componentProperty );
+				final Property componentProperty = createProperty( idAttribute.getName(), basicValue );
+				idValue.addProperty( componentProperty );
 
-			final org.hibernate.mapping.Column column = bindIdColumn( member, idAttribute::getName, basicValue, table );
-			columns.add( column );
+				final org.hibernate.mapping.Column column = bindIdColumn( member, idAttribute::getName, basicValue, table );
+				columns.add( column );
+			}
+			else if ( idAttribute.getNature() == AttributeNature.TO_ONE ) {
+				final ManyToOne manyToOne = bindToOneIdentifier( idAttribute, table, type, typeBinding, columns );
+				final Property rootProperty = createProperty( idAttribute.getName(), manyToOne );
+				typeBinding.addProperty( rootProperty );
+
+				final Property componentProperty = createProperty( idAttribute.getName(), manyToOne );
+				idValue.addProperty( componentProperty );
+			}
+			else {
+				throw new UnsupportedOperationException(
+						"IdClass identifier attributes are only implemented for basic and to-one attributes - "
+								+ typeBinding.getEntityName() + "." + idAttribute.getName()
+				);
+			}
 		}
 
 		return new IdentifierBinding(
@@ -179,6 +201,65 @@ public class IdentifierBinder {
 				table,
 				columns
 		);
+	}
+
+	private ManyToOne bindToOneIdentifier(
+			AttributeMetadata idAttribute,
+			Table table,
+			EntityTypeMetadata type,
+			RootClass typeBinding,
+			List<org.hibernate.mapping.Column> identifierColumns) {
+		final ToOneSource source = ToOneSource.create(
+				idAttribute.getMember(),
+				type.getClassDetails().getClassName(),
+				idAttribute.getName(),
+				null
+		);
+		if ( source.isInverseOneToOne() ) {
+			throw new UnsupportedOperationException(
+					"Association identifiers are only implemented for owning to-one attributes - "
+							+ typeBinding.getEntityName() + "." + idAttribute.getName()
+			);
+		}
+
+		final EntityTypeBinder targetTypeBinder = (EntityTypeBinder) state.getTypeBinder(
+				source.targetClassDetails( context )
+		);
+		if ( targetTypeBinder == null ) {
+			throw new org.hibernate.MappingException(
+					"Could not resolve local type binding for association identifier target entity - "
+							+ source.targetClassDetails( context ).getClassName()
+			);
+		}
+
+		final ManyToOne manyToOne = new ManyToOne( state.getMetadataBuildingContext(), table );
+		manyToOne.setReferencedEntityName( targetTypeBinder.getTypeBinding().getEntityName() );
+		manyToOne.setReferenceToPrimaryKey( true );
+		manyToOne.setTypeName( targetTypeBinder.getTypeBinding().getEntityName() );
+		manyToOne.setTypeUsingReflection( type.getClassDetails().getClassName(), idAttribute.getName() );
+		manyToOne.setLazy( source.fetchType() == FetchType.LAZY );
+		if ( source.isLogicalOneToOne() ) {
+			manyToOne.markAsLogicalOneToOne();
+		}
+
+		final JoinTable joinTable = source.joinTable();
+		if ( joinTable != null ) {
+			throw new UnsupportedOperationException(
+					"Association identifiers with @JoinTable are not yet implemented - "
+							+ typeBinding.getEntityName() + "." + idAttribute.getName()
+			);
+		}
+		state.addAssociationIdentifierBinding( new AssociationIdentifierBinding(
+				type,
+				typeBinding,
+				createProperty( idAttribute.getName(), manyToOne ),
+				manyToOne,
+				targetTypeBinder,
+				source.valueJoinColumns( null ),
+				source.joinColumns().isEmpty() ? null : ForeignKeySource.from( source.joinColumns().get( 0 ) ),
+				identifierColumns
+		) );
+		return manyToOne;
 	}
 
 	private List<org.hibernate.mapping.Column> bindComponentIdentifierProperties(
