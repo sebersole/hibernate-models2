@@ -19,6 +19,12 @@ import org.hibernate.mapping.Table;
 /// This captures the identifier shape produced by the identifier phase so later
 /// phases can consume it directly rather than rediscovering partially-bound state
 /// from the metadata collector or retrying generic second-pass callbacks.
+///
+/// The [#columns()] list is intentionally ordered.  Table keys, association
+/// identifiers, derived identifiers, and implicit join columns all need the
+/// identifier column order selected while binding the root hierarchy id.
+///
+/// @author Steve Ebersole
 public record IdentifierBinding(
 		EntityTypeMetadata entityType,
 		RootClass rootClass,

@@ -9,11 +9,17 @@ import org.hibernate.boot.models.bind.internal.sources.ForeignKeySource;
 import org.hibernate.boot.models.bind.spi.PhysicalTableReference;
 import org.hibernate.mapping.Table;
 
-/**
- * @see jakarta.persistence.SecondaryTable
- *
- * @author Steve Ebersole
- */
+/// Table reference for a JPA secondary table bound to an entity.
+///
+/// The record keeps both the source-level logical identifiers and the physical
+/// identifiers chosen during table binding.  The associated `org.hibernate.mapping.Table`
+/// is created before its key can be completed; [#foreignKeySource] is retained so
+/// the table-key and foreign-key phases can later apply the `@SecondaryTable`
+/// key metadata.
+///
+/// @see jakarta.persistence.SecondaryTable
+///
+/// @author Steve Ebersole
 public record SecondaryTable(
 		Identifier logicalName,
 		Identifier logicalCatalogName,

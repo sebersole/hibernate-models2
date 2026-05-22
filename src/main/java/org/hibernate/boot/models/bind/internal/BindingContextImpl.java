@@ -13,9 +13,15 @@ import org.hibernate.boot.models.categorize.spi.GlobalRegistrations;
 
 import jakarta.persistence.SharedCacheMode;
 
-/**
- * @author Steve Ebersole
- */
+/// Immutable binding context derived from the categorized model and bootstrap context.
+///
+/// The context exposes global source-model registrations and bootstrap services
+/// that are stable for the whole binding run.  Per-run mutable state belongs in
+/// [BindingStateImpl]; this object is for shared options such as naming
+/// strategies, cache mode, and global registrations that later coordinator work
+/// will bind into the metadata collector.
+///
+/// @author Steve Ebersole
 public class BindingContextImpl implements BindingContext {
 	private final GlobalRegistrations globalRegistrations;
 

@@ -37,6 +37,18 @@ import jakarta.persistence.Column;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinTable;
 
+/// Binds the root identifier shape for an entity hierarchy.
+///
+/// The identifier phase creates the mapping model's primary identifier value,
+/// identifier property, primary-key columns, and an [IdentifierBinding] snapshot
+/// consumed by later phases.  It supports basic ids, aggregated component ids,
+/// and non-aggregated `IdClass` ids.
+///
+/// Association-valued `IdClass` attributes are only partially bound here.  Their
+/// `ManyToOne` value is created so the identifier component has the right shape,
+/// but the actual join columns are deferred through [AssociationIdentifierBinding]
+/// until target identifier bindings are available.
+///
 /// @author Steve Ebersole
 public class IdentifierBinder {
 	private final ModelBinders modelBinders;

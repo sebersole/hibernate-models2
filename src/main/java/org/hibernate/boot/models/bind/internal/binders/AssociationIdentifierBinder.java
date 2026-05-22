@@ -16,6 +16,14 @@ import org.hibernate.mapping.Component;
 import jakarta.persistence.JoinColumn;
 
 /// Resolves association-valued identifier attributes after all identifiers exist.
+///
+/// This phase completes the deferred pieces of `IdClass` identifiers that include
+/// owning to-one attributes.  It copies target identifier column order into the
+/// owner table, adds those columns to the primary key, reorders composite primary
+/// keys to match the identifier component, and records the association foreign
+/// key for the later foreign-key phase.
+///
+/// @author Steve Ebersole
 class AssociationIdentifierBinder {
 	private final EntityTypeBinder entityBinder;
 	private final BindingState bindingState;

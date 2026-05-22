@@ -23,6 +23,13 @@ import org.hibernate.type.spi.TypeConfiguration;
 import static java.util.Collections.singletonMap;
 import static org.hibernate.boot.models.bind.internal.binders.AttributeBinder.processColumn;
 
+/// Binds the entity tenant-id property and shared tenant filter definition.
+///
+/// `@TenantId` contributes both a normal basic property and global filter
+/// metadata.  The binder therefore validates the tenant-id type against any
+/// previously registered tenant filter parameter before adding the property to
+/// the root entity mapping.
+///
 /// @author Steve Ebersole
 public class TenantIdBinder {
 	public static final String FILTER_NAME = "_tenantId";

@@ -9,7 +9,13 @@ import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.ForeignKey;
 import org.hibernate.mapping.ManyToOne;
 
-/// Creates physical foreign-key constraints for pending association values.
+/// Creates physical foreign-key constraints for pending association and table keys.
+///
+/// Earlier phases create value/key columns and record source metadata, but do not
+/// immediately create constraints.  Deferring constraint creation keeps the
+/// order-sensitive parts explicit: property-ref associations need their target
+/// property resolved, table keys need identifier-derived columns, and source
+/// `@ForeignKey` customization should be applied in one place.
 ///
 /// @author Steve Ebersole
 class ForeignKeyBinder {

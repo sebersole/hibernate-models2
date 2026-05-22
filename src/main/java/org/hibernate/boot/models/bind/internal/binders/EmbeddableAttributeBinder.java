@@ -25,7 +25,14 @@ import jakarta.persistence.Convert;
 
 import java.util.Locale;
 
-/// Binds simple component-valued attributes.
+/// Binds component-valued singular attributes.
+///
+/// The binder creates the `Component` value for an embedded attribute and then
+/// delegates nested member binding to [ComponentBinder].  The component has a
+/// single physical table: either the owner's primary table or one secondary table
+/// selected by effective column/join-column declarations.  Hibernate does not
+/// support a single embeddable attribute spanning multiple tables, so conflicting
+/// nested table declarations are rejected here.
 ///
 /// @author Steve Ebersole
 class EmbeddableAttributeBinder {

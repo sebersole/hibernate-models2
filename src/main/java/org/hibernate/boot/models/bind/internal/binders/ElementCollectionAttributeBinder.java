@@ -33,8 +33,18 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.UniqueConstraint;
 
-/// Binds the first supported element-collection shape: a basic element collection
-/// with an explicit collection table.
+/// Binds element-collection attributes.
+///
+/// This binder creates the collection mapping, collection table, element value,
+/// and any synthetic index value for list/map variants.  The owner key is
+/// intentionally deferred through [CollectionTableBinding] because it depends on
+/// the owner hierarchy's identifier binding and participates in later foreign-key
+/// creation.
+///
+/// Element values may be basic or embeddable.  For embeddable elements, the
+/// collection member remains the source for path-based overrides and converter
+/// declarations, even though the bound component members come from the embeddable
+/// element type.
 ///
 /// @author Steve Ebersole
 class ElementCollectionAttributeBinder {

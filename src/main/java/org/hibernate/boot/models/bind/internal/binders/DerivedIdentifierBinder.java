@@ -18,6 +18,14 @@ import org.hibernate.mapping.Value;
 import jakarta.persistence.JoinColumn;
 
 /// Resolves derived identifier to-one columns after identifiers and members exist.
+///
+/// `@MapsId` is order-sensitive: the association member can be discovered before
+/// the owner identifier component and target identifier columns are ready.  This
+/// phase resolves the named or implicit identifier part, validates explicit join
+/// columns against that identifier part, and makes the association reuse the
+/// identifier columns as non-insertable and non-updatable columns.
+///
+/// @author Steve Ebersole
 class DerivedIdentifierBinder {
 	private final EntityTypeBinder entityBinder;
 	private final BindingState bindingState;

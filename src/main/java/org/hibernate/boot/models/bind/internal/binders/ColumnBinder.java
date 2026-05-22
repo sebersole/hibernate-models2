@@ -22,6 +22,14 @@ import jakarta.persistence.DiscriminatorType;
 
 import static org.hibernate.internal.util.NullnessHelper.nullif;
 
+/// Creates mapping-model columns from source column annotations.
+///
+/// Column binding is deliberately small and reusable because columns are created
+/// in many roles: basic attributes, identifier parts, collection values, map
+/// keys, discriminator values, and dependent keys.  The caller supplies the
+/// role-specific default name and defaults for uniqueness, nullability, length,
+/// precision, and scale.
+///
 /// @author Steve Ebersole
 public class ColumnBinder {
 	public static Column bindColumn(

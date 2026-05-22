@@ -8,13 +8,15 @@ import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.models.bind.spi.TableReference;
 import org.hibernate.mapping.Table;
 
-/**
- * Models a from-clause sub-query.
- *
- * @see org.hibernate.annotations.Subselect
- *
- * @author Steve Ebersole
- */
+/// Table reference for a from-clause subquery.
+///
+/// `@Subselect` entities use an inline SQL query as their table expression.  The
+/// mapping table is registered so associations and entity metadata can refer to
+/// it, but it is not exportable schema state.
+///
+/// @see org.hibernate.annotations.Subselect
+///
+/// @author Steve Ebersole
 public record InLineView(Identifier logicalName, Table binding) implements TableReference {
 	@Override
 	public Identifier logicalName() {

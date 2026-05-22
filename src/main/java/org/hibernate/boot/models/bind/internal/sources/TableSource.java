@@ -10,11 +10,14 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.SecondaryTable;
 
-/**
- * Unified source for physical table-like mapping annotations.
- *
- * @author Steve Ebersole
- */
+/// Unified source for physical table-like mapping annotations.
+///
+/// Entity tables, secondary tables, join tables, and collection tables all
+/// provide table name, catalog, schema, comment, and options.  `TableSource`
+/// keeps those common facts available to [org.hibernate.boot.models.bind.internal.binders.TableBinder]
+/// while allowing the caller to retain the source role separately.
+///
+/// @author Steve Ebersole
 public interface TableSource {
 	static TableSource from(jakarta.persistence.Table table) {
 		return table == null ? null : new JpaTableSource( table );

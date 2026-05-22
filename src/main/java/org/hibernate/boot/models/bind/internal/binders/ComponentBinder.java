@@ -30,6 +30,15 @@ import jakarta.persistence.Convert;
 
 /// Shared support for binding component-valued mappings.
 ///
+/// Components appear in several source roles: embedded attributes, embedded ids,
+/// nested embeddables, and embeddable collection elements.  This binder walks the
+/// component type's persistent members and applies path-aware column overrides,
+/// association overrides, and converter overrides supplied by [ComponentSource].
+///
+/// Nested to-one associations are delegated back to [ToOneAttributeBinder] so
+/// they participate in the same target-resolution, derived-identifier, and
+/// foreign-key phases as top-level associations.
+///
 /// @author Steve Ebersole
 class ComponentBinder {
 	private final ModelBinders modelBinders;

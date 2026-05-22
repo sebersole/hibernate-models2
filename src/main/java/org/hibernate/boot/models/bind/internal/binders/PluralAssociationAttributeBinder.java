@@ -29,6 +29,13 @@ import jakarta.persistence.OneToMany;
 
 /// Binds association-valued plural attributes.
 ///
+/// Owning many-to-many and unidirectional one-to-many mappings create their
+/// collection table and element association immediately, then defer the owner key
+/// through [CollectionTableBinding].  Inverse plural mappings are registered as
+/// [InversePluralAssociationBinding] because their table, key, element, and map
+/// key details are copied from the owning side after member and table-key phases
+/// have run.
+///
 /// @author Steve Ebersole
 class PluralAssociationAttributeBinder {
 	private final IdentifiableTypeMetadata ownerType;

@@ -48,6 +48,17 @@ import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.SecondaryTable;
 
+/// Creates and registers table references used by mapping-model binders.
+///
+/// Table binding bridges source annotations, implicit naming, physical naming,
+/// and `org.hibernate.mapping.Table` creation.  It handles primary tables,
+/// secondary tables, collection tables, association join tables, inheritance
+/// tables, subselects, and denormalized union-subclass tables.
+///
+/// Only the table shell is created here.  Keys that depend on identifiers are
+/// deliberately deferred to [TableKeyBinder], and physical foreign-key
+/// constraints are deferred again to [ForeignKeyBinder].
+///
 /// @author Steve Ebersole
 public class TableBinder {
 	private final ModelBinders modelBinders;

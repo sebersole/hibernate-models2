@@ -15,6 +15,13 @@ import org.hibernate.mapping.Property;
 
 /// Resolves association targets that do not point at the target primary key.
 ///
+/// An owning to-one can reference a unique property instead of the target
+/// identifier by naming non-id `referencedColumnName` values.  Member binding can
+/// create the association value, but it cannot reliably identify the referenced
+/// property until the target entity's basic properties have been bound.  This
+/// phase matches the referenced target columns to a target property and registers
+/// the unique property reference for later foreign-key creation.
+///
 /// @author Steve Ebersole
 class AssociationTargetBinder {
 	private final EntityTypeBinder entityBinder;

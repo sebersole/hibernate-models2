@@ -13,6 +13,12 @@ import jakarta.persistence.JoinColumn;
 
 /// Local state for an association table modeled as a Hibernate [Join].
 ///
+/// An owning to-one may be mapped through a join table.  The join itself is
+/// attached while binding the member, but its dependent key is an owner-table
+/// concern and must be created in the table-key phase from the owner's identifier
+/// columns.  This record keeps the association-specific join columns and foreign
+/// key source available for that later phase.
+///
 /// @author Steve Ebersole
 public record AssociationTableBinding(
 		Join join,

@@ -46,6 +46,19 @@ import static jakarta.persistence.EnumType.ORDINAL;
 import static org.hibernate.annotations.TimeZoneStorageType.AUTO;
 import static org.hibernate.annotations.TimeZoneStorageType.COLUMN;
 
+/// Applies source-model basic-value details to an `org.hibernate.mapping.BasicValue`.
+///
+/// The same `BasicValue` mapping type is used for normal basic attributes,
+/// identifier parts, collection elements, map keys, and list indexes.  The
+/// [BasicValueSource] records which source role is being bound so this binder
+/// can read the correct annotation family, such as `@Enumerated` versus
+/// `@MapKeyEnumerated`, or normal Java/JDBC type annotations versus list-index
+/// and map-key variants.
+///
+/// Conversion is also centralized here.  That keeps explicit `@Convert`
+/// handling tied to the source descriptor rather than scattered across each
+/// caller that happens to create a basic value.
+///
 /// @author Steve Ebersole
 public class BasicValueBinder {
 

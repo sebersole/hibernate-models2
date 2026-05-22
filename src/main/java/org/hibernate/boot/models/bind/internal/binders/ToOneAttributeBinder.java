@@ -37,7 +37,20 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.MapsId;
 
-/// Binds simple owning to-one associations.
+/// Binds to-one attributes and association values.
+///
+/// The immediate work is to create a `ManyToOne` or inverse `OneToOne` mapping
+/// value, bind its local columns or join table, and attach it to the owning
+/// property.  Order-sensitive pieces are made explicit as typed pending state:
+///
+/// - non-primary-key targets become [AssociationTargetBinding]
+/// - `@MapsId` associations become [DerivedIdentifierBinding]
+/// - inverse one-to-one associations become [InverseToOneAssociationBinding]
+/// - physical constraints become [ForeignKeyBinding] or [TableForeignKeyBinding]
+///
+/// This keeps source-level association facts close to the member binder while
+/// letting later phases resolve target, identifier, table-key, and constraint
+/// details deterministically.
 ///
 /// @author Steve Ebersole
 class ToOneAttributeBinder {

@@ -30,7 +30,13 @@ import org.hibernate.models.ModelsException;
 import jakarta.persistence.MapKey;
 import jakarta.persistence.MapKeyJoinColumn;
 
-/// Binds synthetic collection index values such as list indexes and basic map keys.
+/// Binds synthetic collection index values such as list indexes and map keys.
+///
+/// Collection index binding is split between immediate work and deferred work.
+/// Synthetic list indexes and basic map keys can be created while binding the
+/// collection member.  Property-derived map keys, especially `@MapKey(name)` on
+/// entity-valued elements, need the element type's members to exist first and are
+/// completed in the collection-index phase from [PropertyMapKeyBinding].
 ///
 /// @author Steve Ebersole
 class CollectionIndexBinder {
