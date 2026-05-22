@@ -154,42 +154,14 @@ public class AttributeBinder {
 		final BasicValue basicValue = new BasicValue( bindingState.getMetadataBuildingContext() );
 
 		final MemberDetails member = attributeMetadata.getMember();
-		bindImplicitJavaType( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
 		bindMutability( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
 		bindOptimisticLocking( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
 		bindConversion( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
 
 		processColumn( member, binding, basicValue, primaryTable, bindingOptions, bindingState, bindingContext );
 
-		BasicValueBinder.bindJavaType( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
-		BasicValueBinder.bindJdbcType( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
-		BasicValueBinder.bindLob( member, binding, basicValue, bindingOptions, bindingState, bindingContext );
-		BasicValueBinder.bindNationalized(
-				member,
-				binding,
-				basicValue,
-				bindingOptions,
-				bindingState,
-				bindingContext
-		);
-		BasicValueBinder.bindEnumerated(
-				member,
-				binding,
-				basicValue,
-				bindingOptions,
-				bindingState,
-				bindingContext
-		);
-		BasicValueBinder.bindTemporalPrecision(
-				member,
-				binding,
-				basicValue,
-				bindingOptions,
-				bindingState,
-				bindingContext
-		);
-		BasicValueBinder.bindTimeZoneStorage(
-				member,
+		BasicValueBinder.bindBasicValue(
+				BasicValueSource.attribute( member ),
 				binding,
 				basicValue,
 				bindingOptions,

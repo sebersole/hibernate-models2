@@ -206,10 +206,14 @@ public class IdentifierBinder {
 	private BasicValue createBasicIdValue(Table table, MemberDetails member) {
 		final BasicValue basicValue = new BasicValue( state.getMetadataBuildingContext(), table );
 		basicValue.setTable( table );
-		AttributeBinder.bindImplicitJavaType( member, null, basicValue, options, state, context );
-		BasicValueBinder.bindJavaType( member, null, basicValue, options, state, context );
-		BasicValueBinder.bindJdbcType( member, null, basicValue, options, state, context );
-		BasicValueBinder.bindNationalized( member, null, basicValue, options, state, context );
+		BasicValueBinder.bindBasicValue(
+				BasicValueSource.identifier( member ),
+				null,
+				basicValue,
+				options,
+				state,
+				context
+		);
 		return basicValue;
 	}
 

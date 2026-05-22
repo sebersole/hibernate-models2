@@ -36,10 +36,7 @@ import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.MapKeyClass;
 import jakarta.persistence.MapKeyColumn;
-import jakarta.persistence.MapKeyEnumerated;
-import jakarta.persistence.MapKeyTemporal;
 import jakarta.persistence.OrderColumn;
 
 /**
@@ -142,7 +139,14 @@ class ElementCollectionAttributeBinder {
 
 		final BasicValue index = new BasicValue( bindingState.getMetadataBuildingContext(), table );
 		index.setTable( table );
-		index.setImplicitJavaTypeAccess( (typeConfiguration) -> Integer.class );
+		BasicValueBinder.bindBasicValue(
+				BasicValueSource.listIndex( member ),
+				null,
+				index,
+				bindingOptions,
+				bindingState,
+				bindingContext
+		);
 
 		final org.hibernate.mapping.Column indexColumn = ColumnBinder.bindColumn(
 				ColumnSource.from( orderColumn ),
@@ -162,14 +166,15 @@ class ElementCollectionAttributeBinder {
 
 		final BasicValue index = new BasicValue( bindingState.getMetadataBuildingContext(), table );
 		index.setTable( table );
-		final MapKeyClass mapKeyClass = member.getDirectAnnotationUsage( MapKeyClass.class );
-		index.setImplicitJavaTypeAccess( (typeConfiguration) -> {
-			if ( mapKeyClass != null ) {
-				return mapKeyClass.value();
-			}
-			return member.getMapKeyType().determineRawClass().toJavaClass();
-		} );
-		bindMapKeyAnnotations( member, index );
+		BasicValueBinder.bindBasicValue(
+				BasicValueSource.mapKey( member ),
+				null,
+				index,
+				bindingOptions,
+				bindingState,
+				bindingContext
+		);
+		bindMapKeyConversion( member, index );
 
 		final org.hibernate.mapping.Column indexColumn = ColumnBinder.bindColumn(
 				ColumnSource.from( mapKeyColumn ),
@@ -186,17 +191,7 @@ class ElementCollectionAttributeBinder {
 		collection.setIndex( index );
 	}
 
-	private void bindMapKeyAnnotations(MemberDetails member, BasicValue index) {
-		final MapKeyEnumerated mapKeyEnumerated = member.getDirectAnnotationUsage( MapKeyEnumerated.class );
-		if ( mapKeyEnumerated != null ) {
-			index.setEnumerationStyle( mapKeyEnumerated.value() );
-		}
-
-		final MapKeyTemporal mapKeyTemporal = member.getDirectAnnotationUsage( MapKeyTemporal.class );
-		if ( mapKeyTemporal != null ) {
-			index.setTemporalPrecision( mapKeyTemporal.value() );
-		}
-
+	private void bindMapKeyConversion(MemberDetails member, BasicValue index) {
 		final Convert conversion = locateMapKeyConversion( member );
 		if ( conversion != null && !conversion.disableConversion() ) {
 			final Class<AttributeConverter<?, ?>> javaClass = (Class<AttributeConverter<?, ?>>) conversion.converter();
@@ -308,14 +303,14 @@ class ElementCollectionAttributeBinder {
 	private BasicValue bindBasicElementValue(MemberDetails member, Table table) {
 		final BasicValue element = new BasicValue( bindingState.getMetadataBuildingContext(), table );
 		element.setTable( table );
-		element.setImplicitJavaTypeAccess( (typeConfiguration) -> member.getElementType().determineRawClass().toJavaClass() );
-		BasicValueBinder.bindJavaType( member, null, element, bindingOptions, bindingState, bindingContext );
-		BasicValueBinder.bindJdbcType( member, null, element, bindingOptions, bindingState, bindingContext );
-		BasicValueBinder.bindLob( member, null, element, bindingOptions, bindingState, bindingContext );
-		BasicValueBinder.bindNationalized( member, null, element, bindingOptions, bindingState, bindingContext );
-		BasicValueBinder.bindEnumerated( member, null, element, bindingOptions, bindingState, bindingContext );
-		BasicValueBinder.bindTemporalPrecision( member, null, element, bindingOptions, bindingState, bindingContext );
-		BasicValueBinder.bindTimeZoneStorage( member, null, element, bindingOptions, bindingState, bindingContext );
+		BasicValueBinder.bindBasicValue(
+				BasicValueSource.collectionElement( member ),
+				null,
+				element,
+				bindingOptions,
+				bindingState,
+				bindingContext
+		);
 
 		final jakarta.persistence.Column column = member.getDirectAnnotationUsage( jakarta.persistence.Column.class );
 		final org.hibernate.mapping.Column elementColumn = ColumnBinder.bindColumn(
