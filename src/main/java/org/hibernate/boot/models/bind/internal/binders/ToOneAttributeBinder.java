@@ -207,17 +207,13 @@ class ToOneAttributeBinder {
 			);
 		}
 		else {
-			if ( !referenceToPrimaryKey ) {
-				throw new UnsupportedOperationException(
-						"@MapsId with non-primary-key to-one references is not yet implemented - "
-								+ ownerClassName + "." + propertyName
-				);
-			}
 			bindingState.addDerivedIdentifierBinding( new DerivedIdentifierBinding(
 					ownerType,
 					ownerBinding,
 					property,
 					value,
+					target.typeBinder(),
+					referenceToPrimaryKey,
 					mapsId.value(),
 					valueJoinColumns,
 					target.identifierColumns()

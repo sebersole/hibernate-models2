@@ -1,0 +1,143 @@
+= Remaining Binding Gaps
+
+This document tracks known remaining gaps in the phased binder prototype for
+building `org.hibernate.mapping` from Hibernate and JPA annotations.
+
+The intent is to keep implementation gaps separate from broader ORM integration
+notes.  Some items here may eventually imply mapping-model API changes, but they
+first need a clear local prototype story.
+
+
+== Association Identifiers and Derived Identifiers
+
+Recently covered:
+
+* `@Id` to-one association identifiers using `@JoinTable`
+* `@MapsId` to-one associations referencing a non-primary-key target property
+* `@MapsId` identifier/target column-count mismatches now fail as mapping
+  validation errors rather than unsupported feature errors
+
+Known remaining gaps:
+
+* `@MapsId` targeting a to-one attribute inside the owner embedded id.
++
+For example, an embedded id containing a `@ManyToOne` part, with a separate
+entity attribute using `@MapsId("thatToOnePart")`.
++
+The current binder fails before the derived-identifier phase because the
+embedded-id component binder tries to bind the nested to-one during the
+`Identifiers` phase.  That nested to-one requires the target entity identifier
+binding, but root identifiers for all entity hierarchies are not guaranteed to be
+available yet.
++
+This needs a deeper deferral than ordinary component binding currently provides:
++
+** embedded-id component binding should be able to create the nested to-one
+   value shape without resolving target identifier columns immediately, or
+** identifier binding should get a sub-phase for association-valued component id
+   parts after all root identifier shells exist, similar in spirit to the current
+   `AssociationIdentifiers` phase for `IdClass` to-one attributes.
++
+Prototype touchpoints:
++
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/IdentifierBinder.java[`IdentifierBinder`]
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/ComponentBinder.java[`ComponentBinder`]
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/DerivedIdentifierBinder.java[`DerivedIdentifierBinder`]
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/ToOneAttributeBinder.java[`ToOneAttributeBinder`]
+* link:../src/test/java/org/hibernate/models/orm/bind/id/SimpleIdTests.java[`SimpleIdTests`]
+
+* Inverse `@OneToOne` association identifiers.
++
+`IdClass` association identifiers currently support owning to-one attributes.
+The inverse `@OneToOne(mappedBy = ...)` case still fails explicitly.  This likely
+belongs near the inverse to-one association phase, because the identifier value
+needs to be reconciled with the owning-side property after members and table keys
+exist.
++
+Prototype touchpoints:
++
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/IdentifierBinder.java[`IdentifierBinder`]
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/InverseToOneAssociationBinder.java[`InverseToOneAssociationBinder`]
+* link:../src/test/java/org/hibernate/models/orm/bind/id/SimpleIdTests.java[`SimpleIdTests`]
+
+
+== Inverse Map-Valued Associations
+
+Known remaining gaps:
+
+* Inverse map-valued `@ManyToMany` with property-based map keys.
+* Inverse map-valued `@ManyToMany` with non-basic owning map keys.
+* Inverse map-valued `@OneToMany` with implicit `@MapKey`.
+
+These are currently explicit unsupported paths in
+link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/InversePluralAssociationBinder.java[`InversePluralAssociationBinder`].
+
+The likely implementation direction is to make inverse map-key resolution mirror
+the owning-side collection-index phase more closely.  In particular, property
+map keys need to resolve the target property after member binding rather than
+trying to copy only a concrete basic index value from the owning collection.
+
+
+== Any and Many-To-Any
+
+Known remaining gaps:
+
+* Implicit `@Any @JoinTable` naming without a single target entity.
+* `@Any` key Java type inference when `@AnyKeyJavaClass` is absent.
+* `@Any` discriminator mappings without explicit discriminator values or
+  `@AnyDiscriminatorImplicitValues`.
+* Map-valued `@ManyToAny`.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/AnyAttributeBinder.java[`AnyAttributeBinder`]
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/AnyValueBinder.java[`AnyValueBinder`]
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/PluralAssociationAttributeBinder.java[`PluralAssociationAttributeBinder`]
+* link:../src/test/java/org/hibernate/models/orm/bind/associations/AnyAssociationTests.java[`AnyAssociationTests`]
+
+
+== Collection Long Tail
+
+Known remaining gaps:
+
+* `ID_BAG` element collections.
+* `ID_BAG` plural associations.
+* Nested JPA `@OrderBy` property paths.
+* Empty `@OrderBy` for non-entity-valued collections.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/ElementCollectionAttributeBinder.java[`ElementCollectionAttributeBinder`]
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/PluralAssociationAttributeBinder.java[`PluralAssociationAttributeBinder`]
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/CollectionOrderingBinder.java[`CollectionOrderingBinder`]
+
+
+== Global Registrations and Named Objects
+
+Known remaining gaps:
+
+* Annotation and XML named query collection/binding.
+* Annotation and XML named entity graph collection/binding.
+* Plain `@Converter` / `AttributeConverter` discovery separate from
+  `@ConverterRegistration`.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/categorize/internal/DomainModelCategorizationCollector.java[`DomainModelCategorizationCollector`]
+* link:../src/main/java/org/hibernate/boot/models/categorize/spi/GlobalRegistrations.java[`GlobalRegistrations`]
+* link:../src/main/java/org/hibernate/boot/models/categorize/internal/NamedQueryRegistration.java[`NamedQueryRegistration`]
+
+
+== Annotation and XML Coverage Triage
+
+The ad-hoc list in link:../todos.adoc[`todos.adoc`] should be split into:
+
+* parity-required annotation support
+* ORM 9 nice-to-have annotation support
+* XML/dynamic-model-only vocabulary
+
+Current examples needing triage include `@OnDelete`, `@Parent`, `@PartitionKey`,
+`@RowId`, `@SecondaryRow`, secondary-table custom SQL, `@Struct`,
+`@CreationTimestamp`, `@UpdateTimestamp`, `@View`, generated values, and dynamic
+model XML annotations such as `@Abstract`, `@Extends`, and
+`@CollectionClassification`.

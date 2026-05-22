@@ -369,15 +369,31 @@ public class SimpleIdTests {
 
 	@Test
 	@ServiceRegistry
-	void testAssociationIdWithJoinTableFails(ServiceRegistryScope scope) {
-		assertThatThrownBy( () -> checkDomainModel(
+	void testAssociationIdWithJoinTable(ServiceRegistryScope scope) {
+		checkDomainModel(
 				(context) -> {
+					final RootClass entityBinding = (RootClass) context.getMetadataCollector()
+							.getEntityBinding( JoinTableAssociationIdChild.class.getName() );
+					final Component identifier = (Component) entityBinding.getIdentifier();
+					final ManyToOne parent = (ManyToOne) entityBinding.getProperty( "parent" ).getValue();
+
+					assertThat( identifier.getProperty( "parent" ).getValue() ).isSameAs( parent );
+					assertThat( parent.getTable().getName() ).isEqualTo( "association_id_join_table" );
+					assertThat( parent.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_id" );
+					assertThat( entityBinding.getJoins() ).singleElement()
+							.satisfies( (join) -> {
+								assertThat( join.getTable().getName() ).isEqualTo( "association_id_join_table" );
+								assertThat( join.getKey().getColumns() )
+										.extracting( org.hibernate.mapping.Column::getName )
+										.containsExactly( "child_id" );
+							} );
 				},
 				scope.getRegistry(),
 				MapsIdParent.class,
 				JoinTableAssociationIdChild.class
-		) ).isInstanceOf( UnsupportedOperationException.class )
-				.hasMessageContaining( "Association identifiers with @JoinTable are not yet implemented" );
+		);
 	}
 
 	@Test
@@ -476,15 +492,25 @@ public class SimpleIdTests {
 
 	@Test
 	@ServiceRegistry
-	void testMapsIdWithNonPrimaryKeyReferenceFails(ServiceRegistryScope scope) {
-		assertThatThrownBy( () -> checkDomainModel(
+	void testMapsIdWithNonPrimaryKeyReference(ServiceRegistryScope scope) {
+		checkDomainModel(
 				(context) -> {
+					final RootClass entityBinding = (RootClass) context.getMetadataCollector()
+							.getEntityBinding( NonPrimaryKeyMapsIdChild.class.getName() );
+					final ManyToOne parent = (ManyToOne) entityBinding.getProperty( "parent" ).getValue();
+
+					assertThat( parent.isReferenceToPrimaryKey() ).isFalse();
+					assertThat( parent.getReferencedPropertyName() ).isEqualTo( "code" );
+					assertThat( parent.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_id" );
+					assertThat( parent.getColumnInsertability() ).containsExactly( false );
+					assertThat( parent.getColumnUpdateability() ).containsExactly( false );
 				},
 				scope.getRegistry(),
 				NonPrimaryKeyMapsIdParent.class,
 				NonPrimaryKeyMapsIdChild.class
-		) ).isInstanceOf( UnsupportedOperationException.class )
-				.hasMessageContaining( "@MapsId with non-primary-key to-one references is not yet implemented" );
+		);
 	}
 
 	@Test
@@ -528,7 +554,7 @@ public class SimpleIdTests {
 				scope.getRegistry(),
 				CompositeMapsIdParent.class,
 				JoinColumnCountMismatchMapsIdChild.class
-		) ).isInstanceOf( UnsupportedOperationException.class )
+		) ).isInstanceOf( org.hibernate.MappingException.class )
 				.hasMessageContaining( "@MapsId identifier attribute column count did not match target identifier column count" );
 	}
 

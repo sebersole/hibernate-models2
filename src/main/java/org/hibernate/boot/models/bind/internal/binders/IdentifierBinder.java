@@ -26,6 +26,7 @@ import org.hibernate.boot.models.categorize.spi.NonAggregatedKeyMapping;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.ManyToOne;
 import org.hibernate.mapping.Component;
+import org.hibernate.mapping.Join;
 import org.hibernate.mapping.PrimaryKey;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.RootClass;
@@ -35,6 +36,7 @@ import org.hibernate.models.spi.MemberDetails;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 
 /// Binds the root identifier shape for an entity hierarchy.
@@ -244,7 +246,12 @@ public class IdentifierBinder {
 			);
 		}
 
-		final ManyToOne manyToOne = new ManyToOne( state.getMetadataBuildingContext(), table );
+		final JoinTable joinTable = source.joinTable();
+		final Table valueTable = joinTable == null
+				? table
+				: bindAssociationIdentifierTable( type, typeBinding, table, idAttribute.getName(), joinTable );
+
+		final ManyToOne manyToOne = new ManyToOne( state.getMetadataBuildingContext(), valueTable );
 		manyToOne.setReferencedEntityName( targetTypeBinder.getTypeBinding().getEntityName() );
 		manyToOne.setReferenceToPrimaryKey( true );
 		manyToOne.setTypeName( targetTypeBinder.getTypeBinding().getEntityName() );
@@ -254,24 +261,60 @@ public class IdentifierBinder {
 			manyToOne.markAsLogicalOneToOne();
 		}
 
-		final JoinTable joinTable = source.joinTable();
-		if ( joinTable != null ) {
-			throw new UnsupportedOperationException(
-					"Association identifiers with @JoinTable are not yet implemented - "
-							+ typeBinding.getEntityName() + "." + idAttribute.getName()
-			);
-		}
 		state.addAssociationIdentifierBinding( new AssociationIdentifierBinding(
 				type,
 				typeBinding,
 				createProperty( idAttribute.getName(), manyToOne ),
 				manyToOne,
 				targetTypeBinder,
-				source.valueJoinColumns( null ),
-				source.joinColumns().isEmpty() ? null : ForeignKeySource.from( source.joinColumns().get( 0 ) ),
+				source.valueJoinColumns( joinTable ),
+				source.valueForeignKeySource( joinTable ),
 				identifierColumns
 		) );
 		return manyToOne;
+	}
+
+	private Table bindAssociationIdentifierTable(
+			EntityTypeMetadata type,
+			RootClass typeBinding,
+			Table primaryTable,
+			String propertyName,
+			JoinTable joinTable) {
+		final Table associationTable = modelBinders.getTableBinder()
+				.bindAssociationTable(
+						type,
+						primaryTable,
+						propertyName,
+						type,
+						primaryTable,
+						joinTable
+				)
+				.binding();
+
+		final Join join = new Join();
+		join.setTable( associationTable );
+		join.setPersistentClass( typeBinding );
+		join.setOptional( false );
+		join.setInverse( false );
+		typeBinding.addJoin( join );
+
+		state.addAssociationTableBinding( new AssociationTableBinding(
+				join,
+				listJoinColumns( joinTable.joinColumns() ),
+				ForeignKeySource.from( joinTable )
+		) );
+		return associationTable;
+	}
+
+	private static List<JoinColumn> listJoinColumns(JoinColumn[] joinColumns) {
+		if ( joinColumns.length == 0 ) {
+			return List.of();
+		}
+		final ArrayList<JoinColumn> result = new ArrayList<>( joinColumns.length );
+		for ( JoinColumn joinColumn : joinColumns ) {
+			result.add( joinColumn );
+		}
+		return result;
 	}
 
 	private List<org.hibernate.mapping.Column> bindComponentIdentifierProperties(
