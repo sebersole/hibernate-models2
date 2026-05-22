@@ -7,11 +7,9 @@ package org.hibernate.boot.models.bind.internal.binders;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
-import org.hibernate.boot.models.bind.internal.sources.ForeignKeySource;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.DependantValue;
-import org.hibernate.mapping.ForeignKey;
 import org.hibernate.mapping.Index;
 import org.hibernate.mapping.Join;
 import org.hibernate.mapping.JoinedSubclass;
@@ -51,7 +49,12 @@ public class TableKeyBinder {
 		final DependantValue key = createDependentKeyValue( joinedSubclass.getTable(), rootIdentifierBinding );
 		joinedSubclass.setKey( key );
 		createPrimaryKey( joinedSubclass.getTable(), key );
-		key.createForeignKeyOfEntity( entityBinder.getSuperEntityBinder().getTypeBinding().getEntityName() );
+		bindingState.addTableForeignKeyBinding( new TableForeignKeyBinding(
+				entityBinder.getTypeBinding(),
+				key,
+				entityBinder.getSuperEntityBinder().getTypeBinding().getEntityName(),
+				null
+		) );
 	}
 
 	private void bindSecondaryTableKey(Join join) {
@@ -63,7 +66,14 @@ public class TableKeyBinder {
 		join.setKey( key );
 		join.createPrimaryKey();
 		if ( !join.isInverse() ) {
-			join.createForeignKey();
+			bindingState.addTableForeignKeyBinding( new TableForeignKeyBinding(
+					entityBinder.getTypeBinding(),
+					key,
+					entityBinder.getTypeBinding().getEntityName(),
+					associationTableBinding == null
+							? findSecondaryTableForeignKeySource( join )
+							: associationTableBinding.foreignKeySource()
+			) );
 		}
 	}
 
@@ -76,39 +86,14 @@ public class TableKeyBinder {
 		);
 		collectionTableBinding.collection().setKey( key );
 		collectionTableBinding.collection().createAllKeys();
-		applyForeignKey( collectionTableBinding );
+		bindingState.addTableForeignKeyBinding( new TableForeignKeyBinding(
+				entityBinder.getTypeBinding(),
+				key,
+				entityBinder.getTypeBinding().getEntityName(),
+				collectionTableBinding.foreignKeySource()
+		) );
 		applyUniqueConstraints( collectionTableBinding );
 		applyIndexes( collectionTableBinding );
-	}
-
-	private void applyForeignKey(CollectionTableBinding collectionTableBinding) {
-		final ForeignKeySource foreignKeySource = collectionTableBinding.foreignKeySource();
-		if ( foreignKeySource == null ) {
-			return;
-		}
-
-		final ForeignKey foreignKey = findCollectionForeignKey( collectionTableBinding );
-		if ( foreignKey == null ) {
-			return;
-		}
-		if ( foreignKeySource.isNoConstraint() ) {
-			foreignKey.disableCreation();
-		}
-		if ( StringHelper.isNotEmpty( foreignKeySource.name() ) ) {
-			foreignKey.setName( foreignKeySource.name() );
-		}
-		if ( StringHelper.isNotEmpty( foreignKeySource.definition() ) ) {
-			foreignKey.setKeyDefinition( foreignKeySource.definition() );
-		}
-	}
-
-	private ForeignKey findCollectionForeignKey(CollectionTableBinding collectionTableBinding) {
-		for ( ForeignKey foreignKey : collectionTableBinding.collection().getCollectionTable().getForeignKeyCollection() ) {
-			if ( entityBinder.getTypeBinding().getEntityName().equals( foreignKey.getReferencedEntityName() ) ) {
-				return foreignKey;
-			}
-		}
-		return null;
 	}
 
 	private void applyUniqueConstraints(CollectionTableBinding collectionTableBinding) {
@@ -157,6 +142,11 @@ public class TableKeyBinder {
 				index.addColumn( resolveColumn( table, columnName.trim() ) );
 			}
 		}
+	}
+
+	private org.hibernate.boot.models.bind.internal.sources.ForeignKeySource findSecondaryTableForeignKeySource(Join join) {
+		final org.hibernate.boot.models.bind.internal.SecondaryTable secondaryTable = bindingState.getSecondaryTable( join.getTable() );
+		return secondaryTable == null ? null : secondaryTable.foreignKeySource();
 	}
 
 	private Column resolveColumn(Table table, String columnName) {

@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinColumns;
@@ -303,6 +304,9 @@ public class ToOneAssociationTests {
 							.extracting( org.hibernate.mapping.Column::getName )
 							.containsExactly( "parent_id" );
 					assertThat( collection.getCollectionTable().getForeignKeyCollection() ).hasSize( 2 );
+					assertThat( collection.getCollectionTable().getForeignKeyCollection() )
+							.extracting( org.hibernate.mapping.ForeignKey::getName )
+							.contains( "fk_owner_parent_sets_owner", "fk_owner_parent_sets_parent" );
 					assertThat( context.getMetadataCollector().getCollectionBinding( collection.getRole() ) ).isSameAs( collection );
 				},
 				scope.getRegistry(),
@@ -1055,7 +1059,9 @@ public class ToOneAssociationTests {
 		@JoinTable(
 				name = "owner_parent_sets",
 				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
-				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
+				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id"),
+				foreignKey = @ForeignKey(name = "fk_owner_parent_sets_owner"),
+				inverseForeignKey = @ForeignKey(name = "fk_owner_parent_sets_parent")
 		)
 		private Set<Parent> parents;
 	}

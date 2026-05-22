@@ -23,6 +23,7 @@ import org.hibernate.boot.models.bind.internal.binders.InverseToOneAssociationBi
 import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.MappedSuperTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.PropertyMapKeyBinding;
+import org.hibernate.boot.models.bind.internal.binders.TableForeignKeyBinding;
 import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.boot.models.bind.spi.TableOwner;
 import org.hibernate.boot.models.bind.spi.TableReference;
@@ -51,6 +52,7 @@ public class BindingStateImpl implements BindingState {
 
 	private final Map<String, TableReference> tableMap = new HashMap<>();
 	private final Map<TableOwner, TableReference> tableByOwnerMap = new HashMap<>();
+	private final Map<org.hibernate.mapping.Table, SecondaryTable> secondaryTableByBinding = new HashMap<>();
 	private final Map<Join, AssociationTableBinding> associationTableBindings = new HashMap<>();
 	private final java.util.List<CollectionTableBinding> collectionTableBindings = new java.util.ArrayList<>();
 	private final java.util.List<PropertyMapKeyBinding> propertyMapKeyBindings = new java.util.ArrayList<>();
@@ -58,6 +60,7 @@ public class BindingStateImpl implements BindingState {
 	private final java.util.List<InversePluralAssociationBinding> inversePluralAssociationBindings = new java.util.ArrayList<>();
 	private final java.util.List<InverseToOneAssociationBinding> inverseToOneAssociationBindings = new java.util.ArrayList<>();
 	private final java.util.List<ForeignKeyBinding> foreignKeyBindings = new java.util.ArrayList<>();
+	private final java.util.List<TableForeignKeyBinding> tableForeignKeyBindings = new java.util.ArrayList<>();
 
 	private final Map<ClassDetails, ManagedTypeBinder> typeBinders = new HashMap<>();
 	private final Map<ClassDetails, IdentifiableTypeBinder> typeBindersBySuper = new HashMap<>();
@@ -165,6 +168,12 @@ public class BindingStateImpl implements BindingState {
 	@Override
 	public void addSecondaryTable(SecondaryTable table) {
 		tableMap.put( table.logicalName().getCanonicalName(), table );
+		secondaryTableByBinding.put( table.binding(), table );
+	}
+
+	@Override
+	public SecondaryTable getSecondaryTable(org.hibernate.mapping.Table table) {
+		return secondaryTableByBinding.get( table );
 	}
 
 	@Override
@@ -235,6 +244,16 @@ public class BindingStateImpl implements BindingState {
 	@Override
 	public void forEachForeignKeyBinding(java.util.function.Consumer<ForeignKeyBinding> consumer) {
 		foreignKeyBindings.forEach( consumer );
+	}
+
+	@Override
+	public void addTableForeignKeyBinding(TableForeignKeyBinding tableForeignKeyBinding) {
+		tableForeignKeyBindings.add( tableForeignKeyBinding );
+	}
+
+	@Override
+	public void forEachTableForeignKeyBinding(java.util.function.Consumer<TableForeignKeyBinding> consumer) {
+		tableForeignKeyBindings.forEach( consumer );
 	}
 
 	private String resolveSchemaName(Identifier explicit) {

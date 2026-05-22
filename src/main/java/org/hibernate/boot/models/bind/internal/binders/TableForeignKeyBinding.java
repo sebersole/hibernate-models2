@@ -4,18 +4,16 @@
  */
 package org.hibernate.boot.models.bind.internal.binders;
 
-import java.util.List;
-
 import org.hibernate.boot.models.bind.internal.sources.ForeignKeySource;
-import org.hibernate.mapping.Join;
+import org.hibernate.mapping.KeyValue;
+import org.hibernate.mapping.PersistentClass;
 
-import jakarta.persistence.JoinColumn;
-
-/// Local state for an association table modeled as a Hibernate [Join].
+/// Pending foreign-key binding for a table key value.
 ///
 /// @author Steve Ebersole
-public record AssociationTableBinding(
-		Join join,
-		List<JoinColumn> joinColumns,
+public record TableForeignKeyBinding(
+		PersistentClass ownerBinding,
+		KeyValue key,
+		String referencedEntityName,
 		ForeignKeySource foreignKeySource) {
 }

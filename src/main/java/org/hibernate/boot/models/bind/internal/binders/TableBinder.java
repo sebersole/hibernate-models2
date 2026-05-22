@@ -23,6 +23,7 @@ import org.hibernate.boot.models.AnnotationPlacementException;
 import org.hibernate.boot.models.bind.internal.BindingHelper;
 import org.hibernate.boot.models.bind.internal.InLineView;
 import org.hibernate.boot.models.bind.internal.PhysicalTable;
+import org.hibernate.boot.models.bind.internal.sources.ForeignKeySource;
 import org.hibernate.boot.models.bind.internal.sources.TableSource;
 import org.hibernate.boot.models.bind.internal.UnionTable;
 import org.hibernate.boot.models.bind.spi.BindingContext;
@@ -570,6 +571,7 @@ public class TableBinder {
 				physicalNamingStrategy.toPhysicalSchemaName( schemaName, jdbcEnvironment ),
 				optional,
 				owned,
+				ForeignKeySource.from( secondaryTableAnn ),
 				binding
 		);
 	}
