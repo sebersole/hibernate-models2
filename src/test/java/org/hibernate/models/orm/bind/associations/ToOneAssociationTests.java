@@ -4,7 +4,10 @@
  */
 package org.hibernate.models.orm.bind.associations;
 
+import java.util.Set;
+
 import org.hibernate.MappingException;
+import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.Join;
 import org.hibernate.mapping.ManyToOne;
 import org.hibernate.mapping.PersistentClass;
@@ -20,6 +23,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinColumns;
 import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.SecondaryTable;
 import jakarta.persistence.Table;
@@ -184,6 +188,35 @@ public class ToOneAssociationTests {
 
 	@Test
 	@ServiceRegistry
+	void testOwningManyToManyJoinTable(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ManyToManyOwner.class.getName() );
+					final Collection collection = (Collection) entityBinding.getProperty( "parents" ).getValue();
+					final ManyToOne element = (ManyToOne) collection.getElement();
+
+					assertThat( collection ).isInstanceOf( org.hibernate.mapping.Set.class );
+					assertThat( collection.getRole() ).isEqualTo( ManyToManyOwner.class.getName() + ".parents" );
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "owner_parent_sets" );
+					assertThat( collection.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_id" );
+					assertThat( element.getReferencedEntityName() ).isEqualTo( Parent.class.getName() );
+					assertThat( element.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_id" );
+					assertThat( collection.getCollectionTable().getForeignKeyCollection() ).hasSize( 2 );
+					assertThat( context.getMetadataCollector().getCollectionBinding( collection.getRole() ) ).isSameAs( collection );
+				},
+				scope.getRegistry(),
+				Parent.class,
+				ManyToManyOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testCompositeManyToOneJoinTableWithReferencedColumnNames(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -324,6 +357,20 @@ public class ToOneAssociationTests {
 				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
 		)
 		private Parent parent;
+	}
+
+	@Entity(name="ManyToManyOwner")
+	@Table(name="many_to_many_owners")
+	public static class ManyToManyOwner {
+		@Id
+		private Integer id;
+		@ManyToMany
+		@JoinTable(
+				name = "owner_parent_sets",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
+		)
+		private Set<Parent> parents;
 	}
 
 	@Entity(name="JoinTableCompositeManyToOneOwner")
