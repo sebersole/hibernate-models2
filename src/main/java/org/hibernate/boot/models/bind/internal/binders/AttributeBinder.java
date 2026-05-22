@@ -29,9 +29,11 @@ import org.hibernate.type.descriptor.java.MutabilityPlan;
 
 import jakarta.persistence.Column;
 
+import static org.hibernate.boot.models.AttributeNature.ANY;
 import static org.hibernate.boot.models.AttributeNature.BASIC;
 import static org.hibernate.boot.models.AttributeNature.EMBEDDED;
 import static org.hibernate.boot.models.AttributeNature.ELEMENT_COLLECTION;
+import static org.hibernate.boot.models.AttributeNature.MANY_TO_ANY;
 import static org.hibernate.boot.models.AttributeNature.MANY_TO_MANY;
 import static org.hibernate.boot.models.AttributeNature.ONE_TO_MANY;
 import static org.hibernate.boot.models.AttributeNature.TO_ONE;
@@ -126,6 +128,12 @@ public class AttributeBinder {
 		}
 		else if ( attributeMetadata.getNature() == ONE_TO_MANY ) {
 			throw new UnsupportedOperationException( "@OneToMany is not yet implemented" );
+		}
+		else if ( attributeMetadata.getNature() == ANY ) {
+			throw new UnsupportedOperationException( "@Any is not yet implemented" );
+		}
+		else if ( attributeMetadata.getNature() == MANY_TO_ANY ) {
+			throw new UnsupportedOperationException( "@ManyToAny is not yet implemented" );
 		}
 		else {
 			throw new UnsupportedOperationException( "Not yet implemented" );
