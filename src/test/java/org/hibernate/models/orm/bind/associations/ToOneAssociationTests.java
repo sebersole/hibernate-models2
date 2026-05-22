@@ -244,6 +244,37 @@ public class ToOneAssociationTests {
 
 	@Test
 	@ServiceRegistry
+	void testInverseManyToManyMappedBy(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass inverseEntityBinding = context.getMetadataCollector()
+							.getEntityBinding( MappedByManyToManyParent.class.getName() );
+					final Collection inverseCollection = (Collection) inverseEntityBinding.getProperty( "owners" ).getValue();
+					final ManyToOne inverseElement = (ManyToOne) inverseCollection.getElement();
+
+					assertThat( inverseCollection ).isInstanceOf( org.hibernate.mapping.Set.class );
+					assertThat( inverseCollection.isInverse() ).isTrue();
+					assertThat( inverseCollection.getMappedByProperty() ).isEqualTo( "parents" );
+					assertThat( inverseCollection.getCollectionTable().getName() ).isEqualTo( "mapped_by_owner_parent_sets" );
+					assertThat( inverseCollection.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_id" );
+					assertThat( inverseElement.getReferencedEntityName() )
+							.isEqualTo( MappedByManyToManyOwner.class.getName() );
+					assertThat( inverseElement.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_id" );
+					assertThat( context.getMetadataCollector().getCollectionBinding( inverseCollection.getRole() ) )
+							.isSameAs( inverseCollection );
+				},
+				scope.getRegistry(),
+				MappedByManyToManyParent.class,
+				MappedByManyToManyOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testUnidirectionalOneToManyJoinTable(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -578,6 +609,29 @@ public class ToOneAssociationTests {
 		private Integer id;
 		@ManyToMany
 		private Set<Parent> parents;
+	}
+
+	@Entity(name="MappedByManyToManyParent")
+	@Table(name="mapped_by_many_to_many_parents")
+	public static class MappedByManyToManyParent {
+		@Id
+		private Integer id;
+		@ManyToMany(mappedBy = "parents")
+		private Set<MappedByManyToManyOwner> owners;
+	}
+
+	@Entity(name="MappedByManyToManyOwner")
+	@Table(name="mapped_by_many_to_many_owners")
+	public static class MappedByManyToManyOwner {
+		@Id
+		private Integer id;
+		@ManyToMany
+		@JoinTable(
+				name = "mapped_by_owner_parent_sets",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
+		)
+		private Set<MappedByManyToManyParent> parents;
 	}
 
 	@Entity(name="OneToManyJoinTableOwner")

@@ -16,6 +16,7 @@ import org.hibernate.boot.models.bind.internal.binders.CollectionTableBinding;
 import org.hibernate.boot.models.bind.internal.binders.EntityTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.IdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifiableTypeBinder;
+import org.hibernate.boot.models.bind.internal.binders.InversePluralAssociationBinding;
 import org.hibernate.boot.models.bind.internal.binders.ManagedTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.MappedSuperTypeBinder;
 import org.hibernate.boot.models.bind.spi.BindingState;
@@ -48,6 +49,7 @@ public class BindingStateImpl implements BindingState {
 	private final Map<TableOwner, TableReference> tableByOwnerMap = new HashMap<>();
 	private final Map<Join, AssociationTableBinding> associationTableBindings = new HashMap<>();
 	private final java.util.List<CollectionTableBinding> collectionTableBindings = new java.util.ArrayList<>();
+	private final java.util.List<InversePluralAssociationBinding> inversePluralAssociationBindings = new java.util.ArrayList<>();
 
 	private final Map<ClassDetails, ManagedTypeBinder> typeBinders = new HashMap<>();
 	private final Map<ClassDetails, IdentifiableTypeBinder> typeBindersBySuper = new HashMap<>();
@@ -175,6 +177,16 @@ public class BindingStateImpl implements BindingState {
 	@Override
 	public void forEachCollectionTableBinding(java.util.function.Consumer<CollectionTableBinding> consumer) {
 		collectionTableBindings.forEach( consumer );
+	}
+
+	@Override
+	public void addInversePluralAssociationBinding(InversePluralAssociationBinding inversePluralAssociationBinding) {
+		inversePluralAssociationBindings.add( inversePluralAssociationBinding );
+	}
+
+	@Override
+	public void forEachInversePluralAssociationBinding(java.util.function.Consumer<InversePluralAssociationBinding> consumer) {
+		inversePluralAssociationBindings.forEach( consumer );
 	}
 
 	private String resolveSchemaName(Identifier explicit) {

@@ -95,6 +95,8 @@ import static org.hibernate.internal.util.StringHelper.coalesce;
 /// 8. {@link #bindTableKeys()} - bind joined-subclass, secondary-table, and
 /// association-table keys that depend on the root identifier shape and on joins
 /// discovered while binding members.
+/// 9. {@link #bindInverseAssociations()} - resolve inverse association values
+/// from owning-side association mappings whose keys are now available.
 ///
 /// The implemented {@link TypeBindingPhase} contracts identify which phases this
 /// binder participates in.  The coordinator owns the ordering while this class
@@ -108,6 +110,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 				TypeBindingPhase.EntityMetadata,
 				TypeBindingPhase.Identifiers,
 				TypeBindingPhase.TableKeys,
+				TypeBindingPhase.InverseAssociations,
 				TypeBindingPhase.Members {
 	private final PersistentClass binding;
 
@@ -247,6 +250,15 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 	/// resolved.
 	public void bindTableKeys() {
 		new TableKeyBinder( this ).bindTableKeys();
+	}
+
+	/// Resolve inverse associations owned by this entity.
+	///
+	/// This phase runs after all table keys have been created, so inverse
+	/// associations can copy the owning-side key and element columns without
+	/// depending on binder iteration order.
+	public void bindInverseAssociations() {
+		new InversePluralAssociationBinder( this ).bindInverseAssociations();
 	}
 
 	/// Bind discriminator, version, tenant id, and persistent attributes.

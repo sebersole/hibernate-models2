@@ -61,7 +61,7 @@ class PluralAssociationAttributeBinder {
 		final CollectionSource source = CollectionSource.manyToMany( attributeMetadata.getMember() );
 		final ManyToMany manyToMany = source.manyToMany();
 		if ( manyToMany != null && StringHelper.isNotEmpty( manyToMany.mappedBy() ) ) {
-			throw new UnsupportedOperationException( "Inverse @ManyToMany is not yet implemented" );
+			return bindInverseManyToMany( source, manyToMany.mappedBy() );
 		}
 		return bindAssociation( source, false );
 	}
@@ -73,6 +73,32 @@ class PluralAssociationAttributeBinder {
 			throw new UnsupportedOperationException( "Inverse @OneToMany is not yet implemented" );
 		}
 		return bindAssociation( source, true );
+	}
+
+	private Collection bindInverseManyToMany(CollectionSource source, String mappedBy) {
+		if ( source.classification().toJpaClassification() == jakarta.persistence.metamodel.PluralAttribute.CollectionType.MAP ) {
+			throw new UnsupportedOperationException( "Map-valued plural associations are not yet implemented" );
+		}
+
+		final ClassDetails targetClassDetails = resolveTargetClassDetails( source );
+		final Collection collection = createCollection( source );
+		collection.setRole( ownerBinding.getEntityName() + "." + attributeMetadata.getName() );
+		collection.setInverse( true );
+		collection.setMappedByProperty( mappedBy );
+		collection.setMutable( true );
+		collection.setOptimisticLocked( true );
+		collection.setTypeUsingReflection( ownerType.getClassDetails().getClassName(), attributeMetadata.getName() );
+
+		bindingState.addInversePluralAssociationBinding( new InversePluralAssociationBinding(
+				ownerType,
+				ownerBinding,
+				attributeMetadata,
+				collection,
+				targetClassDetails,
+				mappedBy
+		) );
+		bindingState.getMetadataBuildingContext().getMetadataCollector().addCollectionBinding( collection );
+		return collection;
 	}
 
 	private Collection bindAssociation(CollectionSource source, boolean uniqueTargetColumns) {
