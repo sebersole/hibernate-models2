@@ -10,6 +10,7 @@ import java.util.List;
 import org.hibernate.MappingException;
 import org.hibernate.annotations.Bag;
 import org.hibernate.boot.model.naming.Identifier;
+import org.hibernate.boot.model.convert.spi.RegisteredConversion;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.internal.sources.ForeignKeySource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
@@ -31,10 +32,14 @@ import org.hibernate.models.spi.MemberDetails;
 
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Convert;
+import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapKeyClass;
 import jakarta.persistence.MapKeyColumn;
+import jakarta.persistence.MapKeyEnumerated;
+import jakarta.persistence.MapKeyTemporal;
 import jakarta.persistence.OrderColumn;
 
 /**
@@ -157,7 +162,14 @@ class ElementCollectionAttributeBinder {
 
 		final BasicValue index = new BasicValue( bindingState.getMetadataBuildingContext(), table );
 		index.setTable( table );
-		index.setImplicitJavaTypeAccess( (typeConfiguration) -> member.getMapKeyType().determineRawClass().toJavaClass() );
+		final MapKeyClass mapKeyClass = member.getDirectAnnotationUsage( MapKeyClass.class );
+		index.setImplicitJavaTypeAccess( (typeConfiguration) -> {
+			if ( mapKeyClass != null ) {
+				return mapKeyClass.value();
+			}
+			return member.getMapKeyType().determineRawClass().toJavaClass();
+		} );
+		bindMapKeyAnnotations( member, index );
 
 		final org.hibernate.mapping.Column indexColumn = ColumnBinder.bindColumn(
 				ColumnSource.from( mapKeyColumn ),
@@ -172,6 +184,36 @@ class ElementCollectionAttributeBinder {
 				mapKeyColumn == null || mapKeyColumn.updatable()
 		);
 		collection.setIndex( index );
+	}
+
+	private void bindMapKeyAnnotations(MemberDetails member, BasicValue index) {
+		final MapKeyEnumerated mapKeyEnumerated = member.getDirectAnnotationUsage( MapKeyEnumerated.class );
+		if ( mapKeyEnumerated != null ) {
+			index.setEnumerationStyle( mapKeyEnumerated.value() );
+		}
+
+		final MapKeyTemporal mapKeyTemporal = member.getDirectAnnotationUsage( MapKeyTemporal.class );
+		if ( mapKeyTemporal != null ) {
+			index.setTemporalPrecision( mapKeyTemporal.value() );
+		}
+
+		final Convert conversion = locateMapKeyConversion( member );
+		if ( conversion != null && !conversion.disableConversion() ) {
+			final Class<AttributeConverter<?, ?>> javaClass = (Class<AttributeConverter<?, ?>>) conversion.converter();
+			index.setJpaAttributeConverterDescriptor(
+					new RegisteredConversion( null, javaClass, false ).getConverterDescriptor()
+			);
+		}
+	}
+
+	private Convert locateMapKeyConversion(MemberDetails member) {
+		final var modelsContext = bindingContext.getBootstrapContext().getModelsContext();
+		for ( Convert conversion : member.getRepeatedAnnotationUsages( Convert.class, modelsContext ) ) {
+			if ( "key".equals( conversion.attributeName() ) ) {
+				return conversion;
+			}
+		}
+		return null;
 	}
 
 	private Table bindCollectionTable(CollectionTable collectionTable) {
