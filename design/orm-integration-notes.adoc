@@ -168,18 +168,33 @@ When moving this work upstream, consider whether unique property references shou
 
 Prototype touchpoints:
 
-* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/AssociationTargetBinder.java[`AssociationTargetBinder`] calls `addUniquePropertyReference` after resolving non-PK association targets.
-* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/InverseToOneAssociationBinder.java[`InverseToOneAssociationBinder`] still calls `addUniquePropertyReference` directly while resolving inverse one-to-one mappings.
-  This is a remaining one-off path that should likely fold into the same association-target model.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/UniquePropertyReferenceBinder.java[`UniquePropertyReferenceBinder`] centralizes the local `addUniquePropertyReference` side channel.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/AssociationTargetBinder.java[`AssociationTargetBinder`] uses it after resolving non-PK association targets.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/InverseToOneAssociationBinder.java[`InverseToOneAssociationBinder`] uses the same helper while resolving inverse one-to-one mappings whose value references the owning-side property.
+
+The collector call is still a side channel, but it is now isolated in one prototype touchpoint.
+When integrating upstream, consider whether this should be represented directly as association target metadata rather than as separate collector state.
 
 == Derived identifiers
 
 `@MapsId` needs dedicated typed state and phase ordering.
 It connects identifier binding with association binding, which means it should not be handled as an ordinary to-one member during the coarse member phase.
 
-The prototype currently rejects `@MapsId` deliberately rather than accidentally binding it as a normal association.
+The prototype now has two related phase concepts:
+
+* association-valued identifiers, such as `@IdClass` plus `@Id @ManyToOne`, which need all target identifiers to exist before their identifier columns can be resolved
+* derived identifiers, such as `@EmbeddedId` plus `@MapsId`, which need both the owner identifier component and the association member value to exist before the association can share identifier columns
 
 Prototype touchpoints:
 
-* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/ToOneAttributeBinder.java[`ToOneAttributeBinder`] explicitly rejects `@MapsId` in both direct to-one binding and embeddable override binding paths.
-* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/IdentifierBinder.java[`IdentifierBinder`] binds identifiers before normal members, which is the ordering pressure that makes derived identifiers need their own typed state and phase.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/AssociationIdentifierBinding.java[`AssociationIdentifierBinding`] records association-valued identifier attributes whose columns are resolved after all root identifiers exist.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/AssociationIdentifierBinder.java[`AssociationIdentifierBinder`] resolves those association-id columns, adds them to the primary key in identifier-property order, and registers the association FK for the late FK phase.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/DerivedIdentifierBinding.java[`DerivedIdentifierBinding`] records `@MapsId` associations while member values are bound.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/DerivedIdentifierBinder.java[`DerivedIdentifierBinder`] reconciles the association value with the owner identifier component, including implicit whole-id `@MapsId`, component-valued id parts, `@IdClass` scalar parts, and embeddable-contained `@MapsId` to-ones.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/ToOneAttributeBinder.java[`ToOneAttributeBinder`] registers derived identifier bindings rather than treating `@MapsId` as an ordinary to-one.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/IdentifierBinder.java[`IdentifierBinder`] registers association-valued identifier attributes rather than resolving target identifier columns during initial identifier construction.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/TypeBindingPhase.java[`TypeBindingPhase.AssociationIdentifiers`] runs after `Identifiers`, and link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/TypeBindingPhase.java[`TypeBindingPhase.DerivedIdentifiers`] runs after members and association-target resolution.
+
+Upstream integration should keep these concerns separate.
+Association-valued identifier attributes are part of identifier construction but still depend on target identifier availability.
+`@MapsId` is part of member binding but depends on identifier and association values that are only complete after earlier phases.

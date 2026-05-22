@@ -81,10 +81,11 @@ class InverseToOneAssociationBinder {
 			);
 		}
 
-		inverseBinding.value().setReferencedPropertyName( inverseBinding.mappedBy() );
-		inverseBinding.value().setReferenceToPrimaryKey( false );
-		bindingState.getMetadataBuildingContext().getMetadataCollector()
-				.addUniquePropertyReference( inverseBinding.value().getReferencedEntityName(), inverseBinding.mappedBy() );
+		UniquePropertyReferenceBinder.bindUniquePropertyReference(
+				bindingState,
+				inverseBinding.value(),
+				inverseBinding.mappedBy()
+		);
 		inverseBinding.value().sortProperties();
 	}
 
@@ -102,8 +103,6 @@ class InverseToOneAssociationBinder {
 		inverseBinding.property().setValue( inverseValue );
 		inverseBinding.ownerBinding().addJoin( inverseJoin );
 		inverseBinding.ownerBinding().movePropertyToJoin( inverseBinding.property(), inverseJoin );
-		bindingState.getMetadataBuildingContext().getMetadataCollector()
-				.addUniquePropertyReference( inverseValue.getReferencedEntityName(), inverseBinding.mappedBy() );
 	}
 
 	private Join createInverseJoin(
@@ -144,6 +143,11 @@ class InverseToOneAssociationBinder {
 				inverseBinding.attributeMetadata().getName()
 		);
 		value.markAsLogicalOneToOne();
+		UniquePropertyReferenceBinder.bindUniquePropertyReference(
+				bindingState,
+				value,
+				inverseBinding.mappedBy()
+		);
 		for ( Column column : owningJoin.getKey().getColumns() ) {
 			value.addColumn( copyColumn( owningJoin.getTable(), column ) );
 		}

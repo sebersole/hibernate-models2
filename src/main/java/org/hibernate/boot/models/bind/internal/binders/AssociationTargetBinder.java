@@ -33,13 +33,11 @@ class AssociationTargetBinder {
 
 	private void bindAssociationTarget(AssociationTargetBinding associationTargetBinding) {
 		final Property property = resolveReferencedProperty( associationTargetBinding );
-		associationTargetBinding.value().setReferencedPropertyName( property.getName() );
-		associationTargetBinding.value().setReferenceToPrimaryKey( false );
-		entityBinder.getBindingState().getMetadataBuildingContext().getMetadataCollector()
-				.addUniquePropertyReference(
-						associationTargetBinding.value().getReferencedEntityName(),
-						property.getName()
-				);
+		UniquePropertyReferenceBinder.bindUniquePropertyReference(
+				entityBinder.getBindingState(),
+				associationTargetBinding.value(),
+				property.getName()
+		);
 	}
 
 	private Property resolveReferencedProperty(AssociationTargetBinding associationTargetBinding) {
