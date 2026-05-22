@@ -6,8 +6,12 @@ package org.hibernate.boot.models.bind.internal.binders;
 
 import org.hibernate.MappingException;
 import org.hibernate.boot.models.bind.spi.BindingState;
+import org.hibernate.mapping.Column;
+import org.hibernate.mapping.DependantValue;
+import org.hibernate.mapping.Join;
 import org.hibernate.mapping.ManyToOne;
 import org.hibernate.mapping.Property;
+import org.hibernate.mapping.Table;
 import org.hibernate.mapping.Value;
 
 /**
@@ -66,9 +70,14 @@ class InverseToOneAssociationBinder {
 							+ "." + inverseBinding.attributeMetadata().getName()
 			);
 		}
+		final Join owningJoin = findAssociationJoinContainingProperty( targetTypeBinder, owningProperty );
+		if ( owningJoin != null ) {
+			bindInverseJoinTableOneToOne( inverseBinding, targetTypeBinder, owningToOne, owningJoin );
+			return;
+		}
 		if ( owningToOne.getTable() != targetTypeBinder.getTable() ) {
 			throw new UnsupportedOperationException(
-					"Inverse @OneToOne mappedBy through @JoinTable is not yet implemented"
+					"Inverse @OneToOne mappedBy through a joined table is not yet implemented"
 			);
 		}
 
@@ -77,5 +86,89 @@ class InverseToOneAssociationBinder {
 		bindingState.getMetadataBuildingContext().getMetadataCollector()
 				.addUniquePropertyReference( inverseBinding.value().getReferencedEntityName(), inverseBinding.mappedBy() );
 		inverseBinding.value().sortProperties();
+	}
+
+	private void bindInverseJoinTableOneToOne(
+			InverseToOneAssociationBinding inverseBinding,
+			EntityTypeBinder targetTypeBinder,
+			ManyToOne owningToOne,
+			Join owningJoin) {
+		final Join inverseJoin = createInverseJoin( inverseBinding, owningToOne, owningJoin.getTable() );
+		final ManyToOne inverseValue = createInverseJoinTableValue(
+				inverseBinding,
+				targetTypeBinder,
+				owningJoin
+		);
+		inverseBinding.property().setValue( inverseValue );
+		inverseBinding.ownerBinding().addJoin( inverseJoin );
+		inverseBinding.ownerBinding().movePropertyToJoin( inverseBinding.property(), inverseJoin );
+		bindingState.getMetadataBuildingContext().getMetadataCollector()
+				.addUniquePropertyReference( inverseValue.getReferencedEntityName(), inverseBinding.mappedBy() );
+	}
+
+	private Join createInverseJoin(
+			InverseToOneAssociationBinding inverseBinding,
+			ManyToOne owningToOne,
+			Table table) {
+		final Join inverseJoin = new Join();
+		inverseJoin.setPersistentClass( inverseBinding.ownerBinding() );
+		inverseJoin.setTable( table );
+		inverseJoin.setInverse( true );
+		inverseJoin.setOptional( true );
+
+		final DependantValue key = new DependantValue(
+				bindingState.getMetadataBuildingContext(),
+				table,
+				inverseBinding.ownerBinding().getIdentifier()
+		);
+		key.setNullable( false );
+		key.setUpdateable( false );
+		for ( Column column : owningToOne.getColumns() ) {
+			key.addColumn( copyColumn( table, column ), true, false );
+		}
+		inverseJoin.setKey( key );
+		return inverseJoin;
+	}
+
+	private ManyToOne createInverseJoinTableValue(
+			InverseToOneAssociationBinding inverseBinding,
+			EntityTypeBinder targetTypeBinder,
+			Join owningJoin) {
+		final ManyToOne value = new ManyToOne( bindingState.getMetadataBuildingContext(), owningJoin.getTable() );
+		value.setReferencedEntityName( targetTypeBinder.getTypeBinding().getEntityName() );
+		value.setReferencedPropertyName( inverseBinding.mappedBy() );
+		value.setReferenceToPrimaryKey( false );
+		value.setTypeName( targetTypeBinder.getTypeBinding().getEntityName() );
+		value.setTypeUsingReflection(
+				inverseBinding.ownerType().getClassDetails().getClassName(),
+				inverseBinding.attributeMetadata().getName()
+		);
+		value.markAsLogicalOneToOne();
+		for ( Column column : owningJoin.getKey().getColumns() ) {
+			value.addColumn( copyColumn( owningJoin.getTable(), column ) );
+		}
+		return value;
+	}
+
+	private Join findAssociationJoinContainingProperty(EntityTypeBinder targetTypeBinder, Property property) {
+		for ( Join join : targetTypeBinder.getTypeBinding().getJoins() ) {
+			if ( join.containsProperty( property ) && bindingState.getAssociationTableBinding( join ) != null ) {
+				return join;
+			}
+		}
+		return null;
+	}
+
+	private Column copyColumn(Table table, Column source) {
+		final Column result = new Column( source.getName() );
+		result.setLength( source.getLength() );
+		result.setPrecision( source.getPrecision() );
+		result.setScale( source.getScale() );
+		result.setSqlType( source.getSqlType() );
+		result.setNullable( false );
+		result.setUnique( source.isUnique() );
+		table.addColumn( result );
+		final Column canonicalColumn = table.getColumn( result );
+		return canonicalColumn == null ? result : canonicalColumn;
 	}
 }
