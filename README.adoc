@@ -1,4 +1,4 @@
-= Hibernate boot models
+= Redesigned Boot Model Building
 
 This project is a work-in-progress exploration of using Hibernate Models to
 build Hibernate ORM's boot-time mapping model, `org.hibernate.mapping`.
