@@ -10,6 +10,8 @@ import java.util.Set;
 
 import org.hibernate.MappingException;
 import org.hibernate.annotations.Cascade;
+import org.hibernate.annotations.CollectionId;
+import org.hibernate.annotations.CollectionIdJavaClass;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.Join;
@@ -401,6 +403,35 @@ public class ToOneAssociationTests {
 
 	@Test
 	@ServiceRegistry
+	void testOwningManyToManyIdBagJoinTable(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ManyToManyIdBagOwner.class.getName() );
+					final org.hibernate.mapping.IdentifierBag collection = (org.hibernate.mapping.IdentifierBag) entityBinding
+							.getProperty( "parents" )
+							.getValue();
+					final BasicValue identifier = (BasicValue) collection.getIdentifier();
+					final ManyToOne element = (ManyToOne) collection.getElement();
+
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "owner_parent_idbags" );
+					assertThat( identifier.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "link_id" );
+					assertThat( identifier.getColumns().get( 0 ).isNullable() ).isFalse();
+					assertThat( identifier.resolve().getDomainJavaType().getJavaType() ).isEqualTo( Long.class );
+					assertThat( element.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_id" );
+				},
+				scope.getRegistry(),
+				Parent.class,
+				ManyToManyIdBagOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testOwningManyToManyEmptyOrderBy(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -408,7 +439,7 @@ public class ToOneAssociationTests {
 							.getEntityBinding( ManyToManyEmptyOrderByOwner.class.getName() );
 					final Collection collection = (Collection) entityBinding.getProperty( "parents" ).getValue();
 
-					assertThat( collection.getOrderBy() ).isEqualTo( "id" );
+					assertThat( collection.getOrderBy() ).isEmpty();
 				},
 				scope.getRegistry(),
 				Parent.class,
@@ -1413,6 +1444,22 @@ public class ToOneAssociationTests {
 		)
 		@OrderColumn(name = "position")
 		private List<Parent> parents;
+	}
+
+	@Entity(name="ManyToManyIdBagOwner")
+	@Table(name="many_to_many_idbag_owners")
+	public static class ManyToManyIdBagOwner {
+		@Id
+		private Integer id;
+		@ManyToMany
+		@JoinTable(
+				name = "owner_parent_idbags",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
+		)
+		@CollectionId(generator = "increment", column = @jakarta.persistence.Column(name = "link_id"))
+		@CollectionIdJavaClass(idType = Long.class)
+		private java.util.Collection<Parent> parents;
 	}
 
 	@Entity(name="ManyToManyEmptyOrderByOwner")

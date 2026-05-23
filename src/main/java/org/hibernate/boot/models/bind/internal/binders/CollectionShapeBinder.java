@@ -34,11 +34,7 @@ class CollectionShapeBinder {
 
 		final var orderBy = source.orderBy();
 		if ( orderBy != null ) {
-			bindingState.addCollectionOrderingBinding( new CollectionOrderingBinding(
-					collection,
-					source,
-					orderBy.value()
-			) );
+			collection.setOrderBy( orderBy.value() );
 		}
 	}
 

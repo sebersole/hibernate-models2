@@ -6,6 +6,9 @@ package org.hibernate.boot.models.bind.internal.binders;
 
 import java.lang.reflect.InvocationTargetException;
 
+import org.hibernate.annotations.CollectionIdJavaType;
+import org.hibernate.annotations.CollectionIdJdbcType;
+import org.hibernate.annotations.CollectionIdJdbcTypeCode;
 import org.hibernate.annotations.JavaType;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -161,6 +164,12 @@ public class BasicValueBinder {
 					applyJavaType( member, basicValue, javaTypeAnn.value() );
 				}
 			}
+			case COLLECTION_ID -> {
+				final var javaTypeAnn = member.getDirectAnnotationUsage( CollectionIdJavaType.class );
+				if ( javaTypeAnn != null ) {
+					applyJavaType( member, basicValue, javaTypeAnn.value() );
+				}
+			}
 			default -> bindJavaType( member, property, basicValue, bindingOptions, bindingState, bindingContext );
 		}
 	}
@@ -187,6 +196,11 @@ public class BasicValueBinder {
 			case ANY_KEY -> {
 				final var jdbcTypeAnn = member.getDirectAnnotationUsage( AnyKeyJdbcType.class );
 				final var jdbcTypeCodeAnn = member.getDirectAnnotationUsage( AnyKeyJdbcTypeCode.class );
+				bindExplicitJdbcType( member, basicValue, jdbcTypeAnn == null ? null : jdbcTypeAnn.value(), jdbcTypeCodeAnn == null ? null : jdbcTypeCodeAnn.value() );
+			}
+			case COLLECTION_ID -> {
+				final var jdbcTypeAnn = member.getDirectAnnotationUsage( CollectionIdJdbcType.class );
+				final var jdbcTypeCodeAnn = member.getDirectAnnotationUsage( CollectionIdJdbcTypeCode.class );
 				bindExplicitJdbcType( member, basicValue, jdbcTypeAnn == null ? null : jdbcTypeAnn.value(), jdbcTypeCodeAnn == null ? null : jdbcTypeCodeAnn.value() );
 			}
 			case ANY_DISCRIMINATOR -> {

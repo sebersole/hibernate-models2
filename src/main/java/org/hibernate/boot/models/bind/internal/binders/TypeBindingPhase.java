@@ -27,16 +27,14 @@ package org.hibernate.boot.models.bind.internal.binders;
 ///    attributes.
 /// 8. [CollectionIndexes] resolves collection index/key values that refer to
 ///    element properties, such as `@MapKey(name)`.
-/// 9. [CollectionOrderings] resolves JPA `@OrderBy` fragments that refer to
-///    element properties or identifiers.
-/// 10. [AssociationTargets] resolves non-primary-key association targets.
-/// 11. [DerivedIdentifiers] resolves derived identifier associations such as
+/// 9. [AssociationTargets] resolves non-primary-key association targets.
+/// 10. [DerivedIdentifiers] resolves derived identifier associations such as
 ///     `@MapsId`.
-/// 12. [TableKeys] creates dependent table keys for joined-subclass,
+/// 11. [TableKeys] creates dependent table keys for joined-subclass,
 ///     secondary-table, and collection/association-table structures.
-/// 13. [InverseAssociations] copies owning-side key/value state for `mappedBy`
+/// 12. [InverseAssociations] copies owning-side key/value state for `mappedBy`
 ///     associations.
-/// 14. [ForeignKeys] creates and customizes physical foreign-key constraints.
+/// 13. [ForeignKeys] creates and customizes physical foreign-key constraints.
 ///
 /// Later phases should consume typed state produced by earlier phases rather than
 /// searching the partially-built mapping model opportunistically.  When a new
@@ -111,17 +109,6 @@ public interface TypeBindingPhase {
 	/// collection key creation.
 	interface CollectionIndexes {
 		void bindCollectionIndexes();
-	}
-
-	/// Resolve JPA collection ordering fragments that depend on element property
-	/// and identifier mappings.
-	///
-	/// Hibernate `@SQLOrder` can be applied immediately because it is already a
-	/// SQL fragment.  JPA `@OrderBy` names element properties, and an empty value
-	/// means the element entity identifier, so it is translated after members are
-	/// available.
-	interface CollectionOrderings {
-		void bindCollectionOrderings();
 	}
 
 	/// Resolve association target properties for non-primary-key references.

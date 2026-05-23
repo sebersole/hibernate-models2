@@ -10,7 +10,6 @@ import org.hibernate.boot.models.bind.internal.binders.AssociationTargetBinding;
 import org.hibernate.boot.models.bind.internal.binders.AssociationIdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.AssociationTableBinding;
 import org.hibernate.boot.models.bind.internal.binders.CollectionTableBinding;
-import org.hibernate.boot.models.bind.internal.binders.CollectionOrderingBinding;
 import org.hibernate.boot.models.bind.internal.binders.DerivedIdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.ForeignKeyBinding;
 import org.hibernate.boot.models.bind.internal.binders.IdentifierBinding;
@@ -91,12 +90,6 @@ public interface BindingState {
 
 	/// Visit property-derived map keys waiting for collection-index binding.
 	void forEachPropertyMapKeyBinding(java.util.function.Consumer<PropertyMapKeyBinding> consumer);
-
-	/// Register a JPA `@OrderBy` collection ordering to resolve after members are bound.
-	void addCollectionOrderingBinding(CollectionOrderingBinding collectionOrderingBinding);
-
-	/// Visit JPA `@OrderBy` collection orderings waiting for property-path resolution.
-	void forEachCollectionOrderingBinding(java.util.function.Consumer<CollectionOrderingBinding> consumer);
 
 	/// Register an association-valued identifier attribute to resolve after identifiers.
 	void addAssociationIdentifierBinding(AssociationIdentifierBinding associationIdentifierBinding);
