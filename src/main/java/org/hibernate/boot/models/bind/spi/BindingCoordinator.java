@@ -22,6 +22,7 @@ import org.hibernate.boot.model.IdentifierGeneratorDefinition;
 import org.hibernate.boot.model.convert.spi.RegisteredConversion;
 import org.hibernate.boot.model.internal.AnnotationHelper;
 import org.hibernate.boot.model.internal.GeneratorParameters;
+import org.hibernate.boot.model.internal.QueryBinder;
 import org.hibernate.boot.models.AnnotationPlacementException;
 import org.hibernate.boot.models.bind.ModelBindingLogging;
 import org.hibernate.boot.models.bind.internal.binders.EntityTypeBinder;
@@ -154,6 +155,8 @@ public class BindingCoordinator {
 		final GlobalRegistrations globalRegistrations = categorizedDomainModel.getGlobalRegistrations();
 		processGenerators( globalRegistrations );
 		processConverters( globalRegistrations );
+		processNamedQueries( globalRegistrations );
+		processNamedEntityGraphs( globalRegistrations );
 		processJavaTypeRegistrations( globalRegistrations );
 		processJdbcTypeRegistrations( globalRegistrations );
 		processCustomTypes( globalRegistrations );
@@ -232,6 +235,56 @@ public class BindingCoordinator {
 		globalRegistrations.getConverterRegistrations().forEach( this::processConverter );
 	}
 
+	private void processNamedQueries(GlobalRegistrations globalRegistrations) {
+		globalRegistrations.getNamedQueryRegistrations().values().forEach( (registration) -> {
+			if ( registration.isJpa() ) {
+				QueryBinder.bindQuery(
+						(jakarta.persistence.NamedQuery) registration.getConfiguration(),
+						bindingState.getMetadataBuildingContext(),
+						false,
+						null
+				);
+			}
+			else {
+				QueryBinder.bindQuery(
+						(org.hibernate.annotations.NamedQuery) registration.getConfiguration(),
+						bindingState.getMetadataBuildingContext(),
+						null
+				);
+			}
+		} );
+		globalRegistrations.getNamedNativeQueryRegistrations().values().forEach( (registration) -> {
+			if ( registration.isJpa() ) {
+				QueryBinder.bindNativeQuery(
+						(jakarta.persistence.NamedNativeQuery) registration.getConfiguration(),
+						bindingState.getMetadataBuildingContext(),
+						null,
+						false
+				);
+			}
+			else {
+				QueryBinder.bindNativeQuery(
+						(org.hibernate.annotations.NamedNativeQuery) registration.getConfiguration(),
+						bindingState.getMetadataBuildingContext(),
+						null
+				);
+			}
+		} );
+		globalRegistrations.getNamedStoredProcedureQueryRegistrations().values().forEach( (registration) ->
+				QueryBinder.bindNamedStoredProcedureQuery(
+						(jakarta.persistence.NamedStoredProcedureQuery) registration.getConfiguration(),
+						bindingState.getMetadataBuildingContext(),
+						false
+				)
+		);
+	}
+
+	private void processNamedEntityGraphs(GlobalRegistrations globalRegistrations) {
+		globalRegistrations.getNamedEntityGraphRegistrations().values().forEach(
+				bindingState.getMetadataBuildingContext().getMetadataCollector()::addNamedEntityGraph
+		);
+	}
+
 	private void processJavaTypeRegistrations(GlobalRegistrations globalRegistrations) {
 		globalRegistrations.getJavaTypeRegistrations().forEach( this::processJavaTypeRegistration );
 	}
@@ -291,10 +344,16 @@ public class BindingCoordinator {
 	}
 
 	private void processConverter(ConversionRegistration registration) {
+		if ( registration.explicitDomainType() == null ) {
+			bindingState.getMetadataBuildingContext()
+					.getMetadataCollector()
+					.addAttributeConverter( attributeConverterClass( registration.converterType() ) );
+			return;
+		}
 		bindingState.getMetadataBuildingContext()
 				.getMetadataCollector()
 				.addRegisteredConversion( new RegisteredConversion(
-						registration.explicitDomainType() == null ? null : registration.explicitDomainType().toJavaClass(),
+						registration.explicitDomainType().toJavaClass(),
 						attributeConverterClass( registration.converterType() ),
 						registration.autoApply()
 				) );

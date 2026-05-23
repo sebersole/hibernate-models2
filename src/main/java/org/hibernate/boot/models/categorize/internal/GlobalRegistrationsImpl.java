@@ -7,6 +7,7 @@ package org.hibernate.boot.models.categorize.internal;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -18,6 +19,7 @@ import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.ParamDef;
 import org.hibernate.annotations.Parameter;
+import org.hibernate.boot.model.NamedEntityGraphDefinition;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbCollectionUserTypeRegistrationImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbCompositeUserTypeRegistrationImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbConfigurationParameterImpl;
@@ -43,6 +45,7 @@ import org.hibernate.boot.models.categorize.spi.JavaTypeRegistration;
 import org.hibernate.boot.models.categorize.spi.JdbcTypeRegistration;
 import org.hibernate.boot.models.categorize.spi.JpaEventListener;
 import org.hibernate.boot.models.categorize.spi.JpaEventListenerStyle;
+import org.hibernate.boot.models.categorize.spi.NamedQueryRegistration;
 import org.hibernate.boot.models.categorize.spi.SequenceGeneratorRegistration;
 import org.hibernate.boot.models.categorize.spi.TableGeneratorRegistration;
 import org.hibernate.boot.models.categorize.spi.UserTypeRegistration;
@@ -56,11 +59,20 @@ import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.ClassDetailsRegistry;
 import org.hibernate.models.spi.ModelsContext;
 
+import jakarta.persistence.Converter;
+import jakarta.persistence.Entity;
+import jakarta.persistence.NamedEntityGraph;
+import jakarta.persistence.NamedNativeQuery;
+import jakarta.persistence.NamedQuery;
+import jakarta.persistence.NamedStoredProcedureQuery;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.TableGenerator;
+import jakarta.persistence.AttributeConverter;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
+import static org.hibernate.internal.util.GenericsHelper.typeArguments;
+import static org.hibernate.internal.util.StringHelper.isNotEmpty;
 import static org.hibernate.internal.util.collections.CollectionHelper.isEmpty;
 /**
  * @author Steve Ebersole
@@ -83,6 +95,10 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	private Map<String, SequenceGeneratorRegistration> sequenceGeneratorRegistrations;
 	private Map<String, TableGeneratorRegistration> tableGeneratorRegistrations;
 	private Map<String, GenericGeneratorRegistration> genericGeneratorRegistrations;
+	private Map<String, NamedQueryRegistration> namedQueryRegistrations;
+	private Map<String, NamedQueryRegistration> namedNativeQueryRegistrations;
+	private Map<String, NamedQueryRegistration> namedStoredProcedureQueryRegistrations;
+	private Map<String, NamedEntityGraphDefinition> namedEntityGraphRegistrations;
 
 	public GlobalRegistrationsImpl(ModelsContext modelsContext) {
 		this( modelsContext, modelsContext.getClassDetailsRegistry(), modelsContext.getAnnotationDescriptorRegistry() );
@@ -155,6 +171,26 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 	@Override
 	public Map<String, GenericGeneratorRegistration> getGenericGeneratorRegistrations() {
 		return genericGeneratorRegistrations == null ? emptyMap() : genericGeneratorRegistrations;
+	}
+
+	@Override
+	public Map<String, NamedQueryRegistration> getNamedQueryRegistrations() {
+		return namedQueryRegistrations == null ? emptyMap() : namedQueryRegistrations;
+	}
+
+	@Override
+	public Map<String, NamedQueryRegistration> getNamedNativeQueryRegistrations() {
+		return namedNativeQueryRegistrations == null ? emptyMap() : namedNativeQueryRegistrations;
+	}
+
+	@Override
+	public Map<String, NamedQueryRegistration> getNamedStoredProcedureQueryRegistrations() {
+		return namedStoredProcedureQueryRegistrations == null ? emptyMap() : namedStoredProcedureQueryRegistrations;
+	}
+
+	@Override
+	public Map<String, NamedEntityGraphDefinition> getNamedEntityGraphRegistrations() {
+		return namedEntityGraphRegistrations == null ? emptyMap() : namedEntityGraphRegistrations;
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -232,6 +268,28 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 		} );
 	}
 
+	public void collectConverter(AnnotationTarget annotationTarget) {
+		final Converter converter = annotationTarget.getDirectAnnotationUsage( Converter.class );
+		if ( converter == null || !( annotationTarget instanceof ClassDetails converterType ) ) {
+			return;
+		}
+		final ClassDetails domainType = converterDomainType( converterType );
+		collectConverterRegistration( new ConversionRegistration(
+				domainType,
+				converterType,
+				converter.autoApply(),
+				descriptorRegistry.getDescriptor( Converter.class )
+		) );
+	}
+
+	private ClassDetails converterDomainType(ClassDetails converterType) {
+		final Type[] typeArguments = typeArguments( AttributeConverter.class, converterType.toJavaClass() );
+		if ( typeArguments.length == 0 || !( typeArguments[0] instanceof Class<?> domainType ) ) {
+			return null;
+		}
+		return classDetailsRegistry.resolveClassDetails( domainType.getName() );
+	}
+
 	public void collectConverterRegistrations(List<JaxbConverterRegistrationImpl> registrations) {
 		if ( CollectionHelper.isEmpty( registrations ) ) {
 			return;
@@ -257,6 +315,105 @@ public class GlobalRegistrationsImpl implements GlobalRegistrations {
 			converterRegistrations = new ArrayList<>();
 		}
 		converterRegistrations.add( conversion );
+	}
+
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Named queries and graphs
+
+	public void collectNamedQueryRegistrations(AnnotationTarget annotationTarget) {
+		for ( NamedQuery usage : annotationTarget.getRepeatedAnnotationUsages( NamedQuery.class, modelsContext ) ) {
+			collectNamedQueryRegistration( usage.name(), NamedQueryRegistration.Kind.HQL, true, usage );
+		}
+		for ( NamedNativeQuery usage : annotationTarget.getRepeatedAnnotationUsages( NamedNativeQuery.class, modelsContext ) ) {
+			collectNamedQueryRegistration( usage.name(), NamedQueryRegistration.Kind.NATIVE, true, usage );
+		}
+		for ( NamedStoredProcedureQuery usage : annotationTarget.getRepeatedAnnotationUsages( NamedStoredProcedureQuery.class, modelsContext ) ) {
+			collectNamedQueryRegistration( usage.name(), NamedQueryRegistration.Kind.CALLABLE, true, usage );
+		}
+		for ( org.hibernate.annotations.NamedQuery usage : annotationTarget.getRepeatedAnnotationUsages(
+				org.hibernate.annotations.NamedQuery.class,
+				modelsContext
+		) ) {
+			collectNamedQueryRegistration( usage.name(), NamedQueryRegistration.Kind.HQL, false, usage );
+		}
+		for ( org.hibernate.annotations.NamedNativeQuery usage : annotationTarget.getRepeatedAnnotationUsages(
+				org.hibernate.annotations.NamedNativeQuery.class,
+				modelsContext
+		) ) {
+			collectNamedQueryRegistration( usage.name(), NamedQueryRegistration.Kind.NATIVE, false, usage );
+		}
+	}
+
+	private void collectNamedQueryRegistration(
+			String name,
+			NamedQueryRegistration.Kind kind,
+			boolean isJpa,
+			Annotation configuration) {
+		final Map<String, NamedQueryRegistration> registrations = switch ( kind ) {
+			case HQL -> {
+				if ( namedQueryRegistrations == null ) {
+					namedQueryRegistrations = new HashMap<>();
+				}
+				yield namedQueryRegistrations;
+			}
+			case NATIVE -> {
+				if ( namedNativeQueryRegistrations == null ) {
+					namedNativeQueryRegistrations = new HashMap<>();
+				}
+				yield namedNativeQueryRegistrations;
+			}
+			case CALLABLE -> {
+				if ( namedStoredProcedureQueryRegistrations == null ) {
+					namedStoredProcedureQueryRegistrations = new HashMap<>();
+				}
+				yield namedStoredProcedureQueryRegistrations;
+			}
+		};
+		registrations.put( name, new NamedQueryRegistration( name, kind, isJpa, configuration ) );
+	}
+
+	public void collectNamedEntityGraphRegistrations(ClassDetails classDetails) {
+		for ( NamedEntityGraph usage : classDetails.getRepeatedAnnotationUsages( NamedEntityGraph.class, modelsContext ) ) {
+			collectNamedEntityGraphRegistration( graphName( classDetails, usage ), jpaEntityName( classDetails ), usage );
+		}
+		for ( org.hibernate.annotations.NamedEntityGraph usage : classDetails.getRepeatedAnnotationUsages(
+				org.hibernate.annotations.NamedEntityGraph.class,
+				modelsContext
+		) ) {
+			collectNamedEntityGraphRegistration( usage.name(), null, usage );
+		}
+	}
+
+	private void collectNamedEntityGraphRegistration(
+			String name,
+			String entityName,
+			Annotation configuration) {
+		if ( namedEntityGraphRegistrations == null ) {
+			namedEntityGraphRegistrations = new HashMap<>();
+		}
+		namedEntityGraphRegistrations.put( name, new NamedEntityGraphDefinition(
+				name,
+				entityName,
+				configuration instanceof NamedEntityGraph ? NamedEntityGraphDefinition.Source.JPA : NamedEntityGraphDefinition.Source.PARSED,
+				(entityDomainClassResolver, entityDomainNameResolver, serviceRegistry) -> {
+					throw new UnsupportedOperationException(
+							"Named entity graph creation is deferred to ORM runtime integration - " + name
+					);
+				}
+		) );
+	}
+
+	private static String graphName(ClassDetails classDetails, NamedEntityGraph graph) {
+		return isNotEmpty( graph.name() ) ? graph.name() : jpaEntityName( classDetails );
+	}
+
+	private static String jpaEntityName(ClassDetails classDetails) {
+		final Entity entity = classDetails.getDirectAnnotationUsage( Entity.class );
+		if ( entity != null && isNotEmpty( entity.name() ) ) {
+			return entity.name();
+		}
+		return StringHelper.unqualify( classDetails.getName() );
 	}
 
 

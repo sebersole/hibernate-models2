@@ -2,16 +2,16 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright Red Hat Inc. and Hibernate Authors
  */
-package org.hibernate.boot.models.categorize.internal;
+package org.hibernate.boot.models.categorize.spi;
 
 import java.lang.annotation.Annotation;
 
 /**
- * @see JpaAnnotations#NAMED_QUERY
- * @see JpaAnnotations#NAMED_NATIVE_QUERY
- * @see JpaAnnotations#NAMED_STORED_PROCEDURE_QUERY
- * @see HibernateAnnotations#NAMED_QUERY
- * @see HibernateAnnotations#NAMED_NATIVE_QUERY
+ * @see org.hibernate.boot.models.JpaAnnotations#NAMED_QUERY
+ * @see org.hibernate.boot.models.JpaAnnotations#NAMED_NATIVE_QUERY
+ * @see org.hibernate.boot.models.JpaAnnotations#NAMED_STORED_PROCEDURE_QUERY
+ * @see org.hibernate.boot.models.HibernateAnnotations#NAMED_QUERY
+ * @see org.hibernate.boot.models.HibernateAnnotations#NAMED_NATIVE_QUERY
  *
  * @author Steve Ebersole
  */

@@ -109,10 +109,9 @@ Prototype touchpoints:
 
 Known remaining gaps:
 
-* Annotation and XML named query collection/binding.
-* Annotation and XML named entity graph collection/binding.
-* Plain `@Converter` / `AttributeConverter` discovery separate from
-  `@ConverterRegistration`.
+* XML named query collection/binding.
+* XML named entity graph collection/binding.
+* Runtime graph creator integration for collected named entity graphs.
 
 Prototype touchpoints:
 
