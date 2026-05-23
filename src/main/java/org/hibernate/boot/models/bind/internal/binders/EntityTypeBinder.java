@@ -121,7 +121,6 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 				TypeBindingPhase.Identifiers,
 				TypeBindingPhase.AssociationIdentifiers,
 				TypeBindingPhase.CollectionIndexes,
-				TypeBindingPhase.CollectionOrderings,
 				TypeBindingPhase.AssociationTargets,
 				TypeBindingPhase.DerivedIdentifiers,
 				TypeBindingPhase.TableKeys,
@@ -275,11 +274,6 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 				CollectionIndexBinder.bindPropertyMapKey( propertyMapKeyBinding, getBindingState() );
 			}
 		} );
-	}
-
-	/// Resolve JPA collection orderings after element identifiers and properties exist.
-	public void bindCollectionOrderings() {
-		new CollectionOrderingBinder( this ).bindCollectionOrderings();
 	}
 
 	/// Resolve non-primary-key association targets after all target members exist.

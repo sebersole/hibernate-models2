@@ -13,6 +13,8 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 
 import org.hibernate.annotations.Bag;
+import org.hibernate.annotations.CollectionId;
+import org.hibernate.annotations.CollectionIdJavaClass;
 import org.hibernate.annotations.SQLOrder;
 import org.hibernate.annotations.SortComparator;
 import org.hibernate.annotations.SortNatural;
@@ -196,6 +198,35 @@ public class ElementCollectionBindingTests {
 				},
 				scope.getRegistry(),
 				BagListOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testIdBagElementCollection(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( IdBagOwner.class.getName() );
+					final Property property = entityBinding.getProperty( "labels" );
+
+					assertThat( property.getValue() ).isInstanceOf( org.hibernate.mapping.IdentifierBag.class );
+					final org.hibernate.mapping.IdentifierBag collection = (org.hibernate.mapping.IdentifierBag) property.getValue();
+					final BasicValue identifier = (BasicValue) collection.getIdentifier();
+					final BasicValue element = (BasicValue) collection.getElement();
+
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "idbag_owner_labels" );
+					assertThat( identifier.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "label_row_id" );
+					assertThat( identifier.getColumns().get( 0 ).isNullable() ).isFalse();
+					assertThat( identifier.resolve().getDomainJavaType().getJavaType() ).isEqualTo( Integer.class );
+					assertThat( element.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "label" );
+				},
+				scope.getRegistry(),
+				IdBagOwner.class
 		);
 	}
 
@@ -814,6 +845,22 @@ public class ElementCollectionBindingTests {
 		)
 		@Column(name = "label")
 		private List<String> labels;
+	}
+
+	@Entity(name="IdBagOwner")
+	@Table(name="idbag_owners")
+	public static class IdBagOwner {
+		@Id
+		private Integer id;
+		@ElementCollection
+		@CollectionTable(
+				name = "idbag_owner_labels",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id")
+		)
+		@CollectionId(generator = "increment", column = @Column(name = "label_row_id"))
+		@CollectionIdJavaClass(idType = Integer.class)
+		@Column(name = "label")
+		private java.util.Collection<String> labels;
 	}
 
 	@Entity(name="ArrayOwner")

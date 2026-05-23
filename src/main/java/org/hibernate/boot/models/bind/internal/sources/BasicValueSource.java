@@ -4,6 +4,7 @@
  */
 package org.hibernate.boot.models.bind.internal.sources;
 
+import org.hibernate.annotations.CollectionIdJavaClass;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.models.spi.TypeDetails;
@@ -151,6 +152,13 @@ public record BasicValueSource(
 		/// `@Enumerated`, `@MapKeyTemporal` from `@Temporal`, and so on.
 		MAP_KEY,
 
+		/// The synthetic identifier value of an id-bag.
+		///
+		/// The source member is the plural attribute, but this value is neither the
+		/// collection element nor an index.  Its type and column details come from
+		/// Hibernate's collection-id annotation family.
+		COLLECTION_ID,
+
 		/// A basic identifier value.
 		///
 		/// This currently behaves mostly like [#ATTRIBUTE], but it is kept distinct
@@ -240,6 +248,18 @@ public record BasicValueSource(
 		);
 	}
 
+	/// Creates a source for an id-bag collection identifier.
+	public static BasicValueSource collectionId(MemberDetails member) {
+		final CollectionIdJavaClass collectionIdJavaClass = member.getDirectAnnotationUsage( CollectionIdJavaClass.class );
+		return new BasicValueSource(
+				Kind.COLLECTION_ID,
+				member,
+				null,
+				collectionIdJavaClass == null ? null : collectionIdJavaClass.idType(),
+				null
+		);
+	}
+
 	/// Creates a source for a basic identifier value.
 	public static BasicValueSource identifier(MemberDetails member) {
 		return new BasicValueSource( Kind.IDENTIFIER, member, member.getType(), null, directConversion( member ) );
@@ -265,6 +285,9 @@ public record BasicValueSource(
 	public Class<?> javaType() {
 		if ( explicitJavaType != null ) {
 			return explicitJavaType;
+		}
+		if ( type == null ) {
+			return null;
 		}
 		return type.determineRawClass().toJavaClass();
 	}

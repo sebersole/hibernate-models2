@@ -136,7 +136,6 @@ public class BindingCoordinator {
 		runPhase( binders, TypeBindingPhase.AssociationIdentifiers.class, TypeBindingPhase.AssociationIdentifiers::bindAssociationIdentifiers );
 		runPhase( binders, TypeBindingPhase.Members.class, TypeBindingPhase.Members::bindMembers );
 		runPhase( binders, TypeBindingPhase.CollectionIndexes.class, TypeBindingPhase.CollectionIndexes::bindCollectionIndexes );
-		runPhase( binders, TypeBindingPhase.CollectionOrderings.class, TypeBindingPhase.CollectionOrderings::bindCollectionOrderings );
 		runPhase( binders, TypeBindingPhase.AssociationTargets.class, TypeBindingPhase.AssociationTargets::bindAssociationTargets );
 		runPhase( binders, TypeBindingPhase.DerivedIdentifiers.class, TypeBindingPhase.DerivedIdentifiers::bindDerivedIdentifiers );
 		runPhase( binders, TypeBindingPhase.TableKeys.class, TypeBindingPhase.TableKeys::bindTableKeys );

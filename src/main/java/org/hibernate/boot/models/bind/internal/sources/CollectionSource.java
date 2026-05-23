@@ -10,6 +10,11 @@ import java.util.List;
 
 import org.hibernate.annotations.Bag;
 import org.hibernate.annotations.CascadeType;
+import org.hibernate.annotations.CollectionId;
+import org.hibernate.annotations.CollectionIdJavaClass;
+import org.hibernate.annotations.CollectionIdJavaType;
+import org.hibernate.annotations.CollectionIdJdbcType;
+import org.hibernate.annotations.CollectionIdJdbcTypeCode;
 import org.hibernate.annotations.ManyToAny;
 import org.hibernate.annotations.SQLOrder;
 import org.hibernate.annotations.SortComparator;
@@ -198,6 +203,9 @@ public record CollectionSource(
 		if ( collectionType.isArray() ) {
 			return CollectionClassification.ARRAY;
 		}
+		if ( isIdentifierBag( member ) ) {
+			return CollectionClassification.ID_BAG;
+		}
 		if ( java.util.Set.class.isAssignableFrom( collectionType ) ) {
 			if ( isSorted( member, collectionType ) ) {
 				return CollectionClassification.SORTED_SET;
@@ -221,6 +229,14 @@ public record CollectionSource(
 			return CollectionClassification.MAP;
 		}
 		return CollectionClassification.BAG;
+	}
+
+	private static boolean isIdentifierBag(MemberDetails member) {
+		return member.hasDirectAnnotationUsage( CollectionId.class )
+				|| member.hasDirectAnnotationUsage( CollectionIdJavaClass.class )
+				|| member.hasDirectAnnotationUsage( CollectionIdJavaType.class )
+				|| member.hasDirectAnnotationUsage( CollectionIdJdbcType.class )
+				|| member.hasDirectAnnotationUsage( CollectionIdJdbcTypeCode.class );
 	}
 
 	private static boolean isSorted(MemberDetails member, Class<?> collectionType) {

@@ -18,6 +18,8 @@ import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.Collection;
+import org.hibernate.mapping.IdentifierBag;
+import org.hibernate.mapping.IdentifierCollection;
 import org.hibernate.mapping.IndexedCollection;
 import org.hibernate.mapping.ManyToOne;
 import org.hibernate.mapping.PersistentClass;
@@ -184,6 +186,16 @@ class PluralAssociationAttributeBinder {
 					bindingContext
 			);
 		}
+		else if ( collection instanceof IdentifierCollection identifierCollection ) {
+			CollectionIdBinder.bindCollectionId(
+					source,
+					identifierCollection,
+					table,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			);
+		}
 		bindingState.addCollectionTableBinding( new CollectionTableBinding(
 				collection,
 				source.associationJoinColumns(),
@@ -255,6 +267,16 @@ class PluralAssociationAttributeBinder {
 					bindingContext
 			);
 		}
+		else if ( collection instanceof IdentifierCollection identifierCollection ) {
+			CollectionIdBinder.bindCollectionId(
+					source,
+					identifierCollection,
+					table,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			);
+		}
 		bindingState.addCollectionTableBinding( new CollectionTableBinding(
 				collection,
 				source.associationJoinColumns(),
@@ -279,15 +301,13 @@ class PluralAssociationAttributeBinder {
 			case SET, ORDERED_SET, SORTED_SET -> new org.hibernate.mapping.Set( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case LIST -> new org.hibernate.mapping.List( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case BAG -> new org.hibernate.mapping.Bag( bindingState.getMetadataBuildingContext(), ownerBinding );
+			case ID_BAG -> new IdentifierBag( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case MAP, ORDERED_MAP, SORTED_MAP -> new org.hibernate.mapping.Map( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case ARRAY -> {
 				final org.hibernate.mapping.Array array = new org.hibernate.mapping.Array( bindingState.getMetadataBuildingContext(), ownerBinding );
 				array.setElementClassName( source.elementType().determineRawClass().getClassName() );
 				yield array;
 			}
-			case ID_BAG -> throw new UnsupportedOperationException(
-					source.classification() + " plural associations are not yet implemented"
-			);
 		};
 	}
 

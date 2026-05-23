@@ -21,6 +21,8 @@ import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.Component;
+import org.hibernate.mapping.IdentifierBag;
+import org.hibernate.mapping.IdentifierCollection;
 import org.hibernate.mapping.IndexedCollection;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
@@ -108,6 +110,16 @@ class ElementCollectionAttributeBinder {
 					bindingContext
 			);
 		}
+		else if ( collection instanceof IdentifierCollection identifierCollection ) {
+			CollectionIdBinder.bindCollectionId(
+					source,
+					identifierCollection,
+					table,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			);
+		}
 
 		final List<JoinColumn> joinColumns = source.joinColumns();
 		final IdentifierBinding ownerIdentifierBinding = bindingState.getIdentifierBinding( ownerType.getHierarchy().getRoot() );
@@ -140,14 +152,12 @@ class ElementCollectionAttributeBinder {
 			case LIST -> new org.hibernate.mapping.List( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case MAP, ORDERED_MAP, SORTED_MAP -> new org.hibernate.mapping.Map( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case BAG -> new org.hibernate.mapping.Bag( bindingState.getMetadataBuildingContext(), ownerBinding );
+			case ID_BAG -> new IdentifierBag( bindingState.getMetadataBuildingContext(), ownerBinding );
 			case ARRAY -> {
 				final org.hibernate.mapping.Array array = new org.hibernate.mapping.Array( bindingState.getMetadataBuildingContext(), ownerBinding );
 				array.setElementClassName( source.elementType().determineRawClass().getClassName() );
 				yield array;
 			}
-			case ID_BAG -> throw new UnsupportedOperationException(
-					source.classification() + " element collections are not yet implemented"
-			);
 		};
 	}
 
