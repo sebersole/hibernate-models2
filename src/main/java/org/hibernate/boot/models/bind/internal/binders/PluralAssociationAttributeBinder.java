@@ -209,13 +209,6 @@ class PluralAssociationAttributeBinder {
 
 	@SuppressWarnings("removal")
 	private Collection bindManyToAny(CollectionSource source, Property property) {
-		if ( source.classification().toJpaClassification() == jakarta.persistence.metamodel.PluralAttribute.CollectionType.MAP ) {
-			throw new UnsupportedOperationException(
-					"Map-valued @ManyToAny is not yet implemented - "
-							+ ownerType.getClassDetails().getClassName() + "." + attributeMetadata.getName()
-			);
-		}
-
 		final JoinTable joinTable = source.joinTable();
 		final Table table = joinTable == null
 				? modelBinders.getTableBinder()
@@ -257,7 +250,17 @@ class PluralAssociationAttributeBinder {
 		if ( CascadeBinder.hasOrphanDelete( anySource.cascades() ) ) {
 			collection.setOrphanDelete( true );
 		}
-		if ( collection instanceof IndexedCollection indexedCollection ) {
+		if ( collection instanceof org.hibernate.mapping.Map map ) {
+			CollectionIndexBinder.bindMapKey(
+					source,
+					map,
+					table,
+					bindingOptions,
+					bindingState,
+					bindingContext
+			);
+		}
+		else if ( collection instanceof IndexedCollection indexedCollection ) {
 			CollectionIndexBinder.bindListIndex(
 					source,
 					indexedCollection,

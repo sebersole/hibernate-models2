@@ -85,7 +85,6 @@ import jakarta.persistence.JoinTable;
 /// - discriminator `@Formula`
 /// - inferring the key Java type from target identifiers
 /// - implicit singular `@Any` association-table names
-/// - map-valued `@ManyToAny`
 /// - optionality derived from explicit discriminator/key column nullability
 ///
 /// @author Steve Ebersole

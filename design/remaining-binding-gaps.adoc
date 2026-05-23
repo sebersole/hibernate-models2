@@ -70,7 +70,6 @@ Known remaining gaps:
 * `@Any` key Java type inference when `@AnyKeyJavaClass` is absent.
 * `@Any` discriminator mappings without explicit discriminator values or
   `@AnyDiscriminatorImplicitValues`.
-* Map-valued `@ManyToAny`.
 
 Prototype touchpoints:
 
