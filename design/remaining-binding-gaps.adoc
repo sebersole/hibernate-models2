@@ -117,12 +117,12 @@ Prototype touchpoints:
 
 * link:../src/main/java/org/hibernate/boot/models/categorize/internal/DomainModelCategorizationCollector.java[`DomainModelCategorizationCollector`]
 * link:../src/main/java/org/hibernate/boot/models/categorize/spi/GlobalRegistrations.java[`GlobalRegistrations`]
-* link:../src/main/java/org/hibernate/boot/models/categorize/internal/NamedQueryRegistration.java[`NamedQueryRegistration`]
+* link:../src/main/java/org/hibernate/boot/models/categorize/spi/NamedQueryRegistration.java[`NamedQueryRegistration`]
 
 
 == Annotation and XML Coverage Triage
 
-The ad-hoc list in link:../todos.adoc[`todos.adoc`] should be split into:
+The ad-hoc list in link:annotation-xml-coverage-triage.adoc[`annotation-xml-coverage-triage.adoc`] should be promoted into:
 
 * parity-required annotation support
 * ORM 9 nice-to-have annotation support
