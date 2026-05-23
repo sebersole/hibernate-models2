@@ -679,15 +679,55 @@ public class ToOneAssociationTests {
 
 	@Test
 	@ServiceRegistry
-	void testInverseManyToManyMapMappedByPropertyMapKeyFails(ServiceRegistryScope scope) {
-		assertThatThrownBy( () -> checkDomainModel(
+	void testInverseManyToManyMapMappedByPropertyMapKey(ServiceRegistryScope scope) {
+		checkDomainModel(
 				(context) -> {
+					final PersistentClass inverseEntityBinding = context.getMetadataCollector()
+							.getEntityBinding( MappedByManyToManyPropertyMapKeyParent.class.getName() );
+					final org.hibernate.mapping.Map inverseCollection = (org.hibernate.mapping.Map) inverseEntityBinding
+							.getProperty( "owners" )
+							.getValue();
+
+					assertThat( inverseCollection.isInverse() ).isTrue();
+					assertThat( inverseCollection.getMappedByProperty() ).isEqualTo( "parents" );
+					assertThat( inverseCollection.hasMapKeyProperty() ).isTrue();
+					assertThat( inverseCollection.getMapKeyPropertyName() ).isEqualTo( "code" );
+					assertThat( inverseCollection.getCollectionTable().getName() ).isEqualTo( "mapped_by_owner_parent_property_maps" );
+					assertThat( inverseCollection.getIndex().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "code" );
 				},
 				scope.getRegistry(),
 				MappedByManyToManyPropertyMapKeyParent.class,
 				MappedByManyToManyPropertyMapKeyOwner.class
-		) ).isInstanceOf( UnsupportedOperationException.class )
-				.hasMessageContaining( "Inverse map-valued @ManyToMany with property-based map keys is not yet implemented" );
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testInverseManyToManyMapMappedByEntityMapKey(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass inverseEntityBinding = context.getMetadataCollector()
+							.getEntityBinding( MappedByManyToManyEntityMapKeyParent.class.getName() );
+					final org.hibernate.mapping.Map inverseCollection = (org.hibernate.mapping.Map) inverseEntityBinding
+							.getProperty( "owners" )
+							.getValue();
+					final ManyToOne inverseIndex = (ManyToOne) inverseCollection.getIndex();
+
+					assertThat( inverseCollection.isInverse() ).isTrue();
+					assertThat( inverseCollection.getMappedByProperty() ).isEqualTo( "parents" );
+					assertThat( inverseCollection.getCollectionTable().getName() ).isEqualTo( "mapped_by_owner_parent_entity_key_maps" );
+					assertThat( inverseIndex.getReferencedEntityName() ).isEqualTo( Child.class.getName() );
+					assertThat( inverseIndex.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "child_key_id" );
+				},
+				scope.getRegistry(),
+				Child.class,
+				MappedByManyToManyEntityMapKeyParent.class,
+				MappedByManyToManyEntityMapKeyOwner.class
+		);
 	}
 
 	@Test
@@ -775,28 +815,54 @@ public class ToOneAssociationTests {
 
 	@Test
 	@ServiceRegistry
-	void testInverseOneToManyMapMappedByWithoutMapKeyFails(ServiceRegistryScope scope) {
-		assertThatThrownBy( () -> checkDomainModel(
+	void testInverseOneToManyMapMappedByWithoutMapKey(ServiceRegistryScope scope) {
+		checkDomainModel(
 				(context) -> {
+					final PersistentClass inverseEntityBinding = context.getMetadataCollector()
+							.getEntityBinding( MappedByOneToManyMapWithoutMapKeyParent.class.getName() );
+					final org.hibernate.mapping.Map inverseCollection = (org.hibernate.mapping.Map) inverseEntityBinding
+							.getProperty( "children" )
+							.getValue();
+
+					assertThat( inverseCollection.isInverse() ).isTrue();
+					assertThat( inverseCollection.isOneToMany() ).isTrue();
+					assertThat( inverseCollection.getMappedByProperty() ).isEqualTo( "parent" );
+					assertThat( inverseCollection.hasMapKeyProperty() ).isTrue();
+					assertThat( inverseCollection.getMapKeyPropertyName() ).isNull();
+					assertThat( inverseCollection.getIndex().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "id" );
 				},
 				scope.getRegistry(),
 				MappedByOneToManyMapWithoutMapKeyParent.class,
 				MappedByMapWithoutMapKeyChild.class
-		) ).isInstanceOf( UnsupportedOperationException.class )
-				.hasMessageContaining( "Inverse map-valued @OneToMany is only implemented for property-based map keys" );
+		);
 	}
 
 	@Test
 	@ServiceRegistry
-	void testInverseOneToManyMapMappedByImplicitMapKeyFails(ServiceRegistryScope scope) {
-		assertThatThrownBy( () -> checkDomainModel(
+	void testInverseOneToManyMapMappedByImplicitMapKey(ServiceRegistryScope scope) {
+		checkDomainModel(
 				(context) -> {
+					final PersistentClass inverseEntityBinding = context.getMetadataCollector()
+							.getEntityBinding( MappedByOneToManyMapImplicitMapKeyParent.class.getName() );
+					final org.hibernate.mapping.Map inverseCollection = (org.hibernate.mapping.Map) inverseEntityBinding
+							.getProperty( "children" )
+							.getValue();
+
+					assertThat( inverseCollection.isInverse() ).isTrue();
+					assertThat( inverseCollection.isOneToMany() ).isTrue();
+					assertThat( inverseCollection.getMappedByProperty() ).isEqualTo( "parent" );
+					assertThat( inverseCollection.hasMapKeyProperty() ).isTrue();
+					assertThat( inverseCollection.getMapKeyPropertyName() ).isNull();
+					assertThat( inverseCollection.getIndex().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "id" );
 				},
 				scope.getRegistry(),
 				MappedByOneToManyMapImplicitMapKeyParent.class,
 				MappedByMapImplicitMapKeyChild.class
-		) ).isInstanceOf( UnsupportedOperationException.class )
-				.hasMessageContaining( "Inverse map-valued @OneToMany with implicit @MapKey is not yet implemented" );
+		);
 	}
 
 	@Test
@@ -1571,6 +1637,30 @@ public class ToOneAssociationTests {
 		)
 		@MapKey(name = "code")
 		private Map<String, MappedByManyToManyPropertyMapKeyParent> parents;
+	}
+
+	@Entity(name="MappedByManyToManyEntityMapKeyParent")
+	@Table(name="mapped_by_many_to_many_entity_map_key_parents")
+	public static class MappedByManyToManyEntityMapKeyParent {
+		@Id
+		private Integer id;
+		@ManyToMany(mappedBy = "parents")
+		private Map<Child, MappedByManyToManyEntityMapKeyOwner> owners;
+	}
+
+	@Entity(name="MappedByManyToManyEntityMapKeyOwner")
+	@Table(name="mapped_by_many_to_many_entity_map_key_owners")
+	public static class MappedByManyToManyEntityMapKeyOwner {
+		@Id
+		private Integer id;
+		@ManyToMany
+		@JoinTable(
+				name = "mapped_by_owner_parent_entity_key_maps",
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
+		)
+		@MapKeyJoinColumn(name = "child_key_id", referencedColumnName = "id")
+		private Map<Child, MappedByManyToManyEntityMapKeyParent> parents;
 	}
 
 	@Entity(name="MappedByOneToManyParent")

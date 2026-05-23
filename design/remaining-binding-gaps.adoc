@@ -61,22 +61,6 @@ Prototype touchpoints:
 * link:../src/test/java/org/hibernate/models/orm/bind/id/SimpleIdTests.java[`SimpleIdTests`]
 
 
-== Inverse Map-Valued Associations
-
-Known remaining gaps:
-
-* Inverse map-valued `@ManyToMany` with property-based map keys.
-* Inverse map-valued `@ManyToMany` with non-basic owning map keys.
-* Inverse map-valued `@OneToMany` with implicit `@MapKey`.
-
-These are currently explicit unsupported paths in
-link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/InversePluralAssociationBinder.java[`InversePluralAssociationBinder`].
-
-The likely implementation direction is to make inverse map-key resolution mirror
-the owning-side collection-index phase more closely.  In particular, property
-map keys need to resolve the target property after member binding rather than
-trying to copy only a concrete basic index value from the owning collection.
-
 
 == Any and Many-To-Any
 
