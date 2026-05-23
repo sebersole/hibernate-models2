@@ -1,0 +1,72 @@
+= Annotation and XML Coverage Triage
+
+This document is an intake list for annotation and XML coverage that has not yet
+been promoted into a focused design note or implementation gap.
+
+Items here should eventually move into one of:
+
+* link:remaining-binding-gaps.adoc[`remaining-binding-gaps.adoc`]
+* link:orm-integration-notes.adoc[`orm-integration-notes.adoc`]
+* focused implementation tests
+* the resolved/remove section below
+
+
+== Parity-Required Annotation Support
+
+These are annotations or mapping features that likely matter for parity with
+current Hibernate ORM annotation binding.
+
+* `@Comment`
+* `@OnDelete`
+* `@Parent`
+* `@PartitionKey`
+* `@RowId`
+* `@SecondaryRow`
+* `@SoftDelete`
+* `@TenantId`
+* `@TimeZoneStorage`
+* `@TimeZoneColumn`
+* `@CreationTimestamp`
+* `@UpdateTimestamp`
+* generated values
+
+
+== ORM 9 Nice-To-Have Annotation Support
+
+These may be valuable, but need a clearer prototype story or upstream mapping
+model direction before being treated as parity blockers.
+
+* `@Struct`
+* `@View`
+* hierarchical package metadata
++
+Open question: should mappings defined on package `com.acme` apply to
+`com.acme.model`?  If so, should `PackageDetails` expose its parent package?
+
+
+== XML Parity and XSD Coverage
+
+These are XML/XSD coverage questions for annotations or mapping features that
+already exist in the annotation model.
+
+* `@LazyGroup` in XSD
+* `@ListIndexBase` in XSD
+* `@Mutability` in XSD
+* `@SQLInsert`, `@SQLUpdate`, and `@SQLDelete` for secondary tables in XSD
+
+
+== XML/Dynamic-Model-Only Vocabulary
+
+These are mostly for dynamic models or XML concepts that do not map cleanly to
+ordinary Java annotations.
+
+* `<mapped-superclass/>` support in dynamic models
+* `@Abstract`
+* `@Extends`
+* `@CollectionClassification`
+* `@Target`
++
+`org.hibernate.annotations.Target` exists, but is deprecated.  We need to decide
+whether to repurpose it for XML/dynamic-model use or define a replacement.
+
+
