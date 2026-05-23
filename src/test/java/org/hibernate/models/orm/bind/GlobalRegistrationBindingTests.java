@@ -44,9 +44,14 @@ import org.hibernate.usertype.UserType;
 import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Converter;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.NamedAttributeNode;
+import jakarta.persistence.NamedEntityGraph;
+import jakarta.persistence.NamedNativeQuery;
+import jakarta.persistence.NamedQuery;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.TableGenerator;
 
@@ -73,6 +78,17 @@ public class GlobalRegistrationBindingTests {
 
 					assertThat( metadataCollector.getAttributeConverterManager()
 							.findRegisteredConversion( GlobalConverted.class ) ).isNotNull();
+					assertThat( metadataCollector.getAttributeConverterManager()
+							.findRegisteredConversion( PlainConverted.class ) ).isNotNull();
+
+					assertThat( metadataCollector.getNamedHqlQueryMapping( "globalJpaQuery" ).getHqlString() )
+							.isEqualTo( "from GlobalRegistrationEntity" );
+					assertThat( metadataCollector.getNamedHqlQueryMapping( "globalHibernateQuery" ).getHqlString() )
+							.isEqualTo( "from GlobalRegistrationEntity" );
+					assertThat( metadataCollector.getNamedNativeQueryMapping( "globalNativeQuery" ).getSqlQueryString() )
+							.isEqualTo( "select * from global_registration_entities" );
+					assertThat( metadataCollector.getNamedEntityGraph( "globalGraph" ).entityName() )
+							.isEqualTo( "GlobalRegistrationEntity" );
 
 					final var typeConfiguration = metadataCollector.getTypeConfiguration();
 					assertThat( typeConfiguration.getJavaTypeRegistry().findDescriptor( GlobalJavaTypeDomain.class ) )
@@ -97,14 +113,20 @@ public class GlobalRegistrationBindingTests {
 					assertThat( entityBinding ).isNotNull();
 				},
 				scope.getRegistry(),
-				GlobalRegistrationEntity.class
+				GlobalRegistrationEntity.class,
+				PlainConverter.class
 		);
 	}
 
 	@Entity(name = "GlobalRegistrationEntity")
+	@jakarta.persistence.Table(name = "global_registration_entities")
 	@SequenceGenerator(name = "global_seq", sequenceName = "global_sequence")
 	@TableGenerator(name = "global_table", table = "global_id_table")
 	@GenericGenerator(name = "global_increment", type = IncrementGenerator.class)
+	@NamedQuery(name = "globalJpaQuery", query = "from GlobalRegistrationEntity")
+	@NamedNativeQuery(name = "globalNativeQuery", query = "select * from global_registration_entities")
+	@org.hibernate.annotations.NamedQuery(name = "globalHibernateQuery", query = "from GlobalRegistrationEntity")
+	@NamedEntityGraph(name = "globalGraph", attributeNodes = @NamedAttributeNode("id"))
 	@ConverterRegistration(domainType = GlobalConverted.class, converter = GlobalConverter.class, autoApply = true)
 	@JavaTypeRegistration(javaType = GlobalJavaTypeDomain.class, descriptorClass = GlobalJavaType.class)
 	@JdbcTypeRegistration(registrationCode = GlobalJdbcType.CODE, value = GlobalJdbcType.class)
@@ -136,6 +158,22 @@ public class GlobalRegistrationBindingTests {
 		@Override
 		public GlobalConverted convertToEntityAttribute(String dbData) {
 			return dbData == null ? null : new GlobalConverted( dbData );
+		}
+	}
+
+	public record PlainConverted(String value) {
+	}
+
+	@Converter(autoApply = true)
+	public static class PlainConverter implements AttributeConverter<PlainConverted, String> {
+		@Override
+		public String convertToDatabaseColumn(PlainConverted attribute) {
+			return attribute == null ? null : attribute.value();
+		}
+
+		@Override
+		public PlainConverted convertToEntityAttribute(String dbData) {
+			return dbData == null ? null : new PlainConverted( dbData );
 		}
 	}
 

@@ -100,14 +100,12 @@ public class DomainModelCategorizationCollector {
 		getGlobalRegistrations().collectCollectionTypeRegistrations( classDetails );
 		getGlobalRegistrations().collectEmbeddableInstantiatorRegistrations( classDetails );
 		getGlobalRegistrations().collectFilterDefinitions( classDetails );
+		getGlobalRegistrations().collectNamedQueryRegistrations( classDetails );
+		getGlobalRegistrations().collectNamedEntityGraphRegistrations( classDetails );
 
 		if ( areIdGeneratorsGlobal ) {
 			getGlobalRegistrations().collectIdGenerators( classDetails );
 		}
-
-		// todo : named queries
-		// todo : named graphs
-
 		if ( classDetails.hasDirectAnnotationUsage( MappedSuperclass.class ) ) {
 			sourcePersistentTypes.add( classDetails );
 			if ( classDetails.getClassName() != null ) {
@@ -126,7 +124,7 @@ public class DomainModelCategorizationCollector {
 			}
 		}
 
-		// todo : converters?  - @Converter / AttributeConverter, as opposed to @ConverterRegistration which is already collected
+		getGlobalRegistrations().collectConverter( classDetails );
 	}
 
 	/**

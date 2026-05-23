@@ -7,6 +7,8 @@ package org.hibernate.boot.models.categorize.spi;
 import java.util.List;
 import java.util.Map;
 
+import org.hibernate.boot.model.NamedEntityGraphDefinition;
+
 
 /// Persistence-unit scoped registrations collected while categorizing annotations
 /// and XML mappings.
@@ -55,6 +57,15 @@ public interface GlobalRegistrations {
 	/// Generic generator definitions keyed by generator name.
 	Map<String, GenericGeneratorRegistration> getGenericGeneratorRegistrations();
 
-	// todo : named entity graphs
-	// todo : named queries
+	/// Named HQL/query definitions keyed by query name.
+	Map<String, NamedQueryRegistration> getNamedQueryRegistrations();
+
+	/// Named native SQL query definitions keyed by query name.
+	Map<String, NamedQueryRegistration> getNamedNativeQueryRegistrations();
+
+	/// Named stored procedure query definitions keyed by query name.
+	Map<String, NamedQueryRegistration> getNamedStoredProcedureQueryRegistrations();
+
+	/// Named entity graph definitions keyed by graph name.
+	Map<String, NamedEntityGraphDefinition> getNamedEntityGraphRegistrations();
 }
