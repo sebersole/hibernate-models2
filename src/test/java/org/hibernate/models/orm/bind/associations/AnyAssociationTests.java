@@ -6,6 +6,7 @@ package org.hibernate.models.orm.bind.associations;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
 import org.hibernate.annotations.Any;
 import org.hibernate.annotations.AnyDiscriminator;
@@ -41,6 +42,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinColumns;
 import jakarta.persistence.JoinTable;
+import jakarta.persistence.MapKeyColumn;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -412,6 +414,37 @@ public class AnyAssociationTests {
 		);
 	}
 
+	@Test
+	@ServiceRegistry
+	void testMapValuedManyToAnyAssociation(ServiceRegistryScope scope) {
+		BindingTestingHelper.checkDomainModel(
+				(context) -> {
+					final RootClass entityBinding = (RootClass) context.getMetadataCollector()
+							.getEntityBinding( MapManyHolder.class.getName() );
+					final org.hibernate.mapping.Map collection = (org.hibernate.mapping.Map) entityBinding
+							.getProperty( "targets" )
+							.getValue();
+					final BasicValue index = (BasicValue) collection.getIndex();
+					final org.hibernate.mapping.Any element = (org.hibernate.mapping.Any) collection.getElement();
+
+					assertThat( collection.getCollectionTable().getName() ).isEqualTo( "map_many_holder_targets" );
+					assertThat( collection.getKey().getColumns() ).extracting( Column::getName )
+							.containsExactly( "holder_id" );
+					assertThat( index.getColumns() ).extracting( Column::getName )
+							.containsExactly( "target_key" );
+
+					assertThat( ( (Column) element.getDiscriminatorDescriptor().getColumn() ).getName() )
+							.isEqualTo( "target_type" );
+					assertThat( ( (Column) element.getKeyDescriptor().getColumn() ).getName() )
+							.isEqualTo( "target_id" );
+				},
+				scope.getRegistry(),
+				MapManyHolder.class,
+				TargetOne.class,
+				TargetTwo.class
+		);
+	}
+
 	@Entity(name = "AnyHolder")
 	public static class Holder {
 		@Id
@@ -649,6 +682,25 @@ public class AnyAssociationTests {
 		@AnyDiscriminatorValue(discriminator = "one", entity = TargetOne.class)
 		@AnyKeyJavaClass(Integer.class)
 		private List<Object> targets;
+	}
+
+	@Entity(name = "MapManyAnyHolder")
+	public static class MapManyHolder {
+		@Id
+		private Integer id;
+
+		@ManyToAny
+		@JoinTable(
+				name = "map_many_holder_targets",
+				joinColumns = @JoinColumn(name = "holder_id"),
+				inverseJoinColumns = @JoinColumn(name = "target_id")
+		)
+		@MapKeyColumn(name = "target_key")
+		@AnyDiscriminatorValue(discriminator = "one", entity = TargetOne.class)
+		@AnyDiscriminatorValue(discriminator = "two", entity = TargetTwo.class)
+		@AnyKeyJavaClass(Integer.class)
+		@jakarta.persistence.Column(name = "target_type")
+		private Map<String, Object> targets;
 	}
 
 	@Entity(name = "AnyTargetOne")
