@@ -25,11 +25,10 @@ import org.hibernate.type.descriptor.jdbc.ClobJdbcType;
 
 import org.junit.jupiter.api.Test;
 
+import static jakarta.persistence.CascadeType.PERSIST;
+import static jakarta.persistence.CascadeType.REMOVE;
 import static jakarta.persistence.AccessType.FIELD;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.annotations.CascadeType.LOCK;
-import static org.hibernate.annotations.CascadeType.PERSIST;
-import static org.hibernate.annotations.CascadeType.REMOVE;
 import static org.hibernate.models.orm.XmlHelper.loadMapping;
 
 /**
@@ -58,7 +57,7 @@ public class XmlProcessingSmokeTests {
 		assertThat( metadata.useQuotedIdentifiers() ).isTrue();
 
 		// default cascades are additive
-		assertThat( metadata.getDefaultCascadeTypes() ).containsAll( List.of( PERSIST, REMOVE, LOCK ) );
+		assertThat( metadata.getDefaultCascadeTypes() ).containsAll( List.of( PERSIST, REMOVE ) );
 
 		// simple2.xml should take precedence
 		assertThat( metadata.getDefaultCatalog() ).isEqualTo( "catalog2" );
@@ -81,7 +80,7 @@ public class XmlProcessingSmokeTests {
 		assertThat( metadata.useQuotedIdentifiers() ).isTrue();
 
 		// default cascades are additive
-		assertThat( metadata.getDefaultCascadeTypes() ).containsAll( List.of( PERSIST, REMOVE, LOCK ) );
+		assertThat( metadata.getDefaultCascadeTypes() ).containsAll( List.of( PERSIST, REMOVE ) );
 
 		// simple1.xml should take precedence
 		assertThat( metadata.getDefaultCatalog() ).isEqualTo( "catalog1" );

@@ -15,7 +15,6 @@ import org.hibernate.annotations.AnyDiscriminatorValue;
 import org.hibernate.annotations.AnyKeyJavaClass;
 import org.hibernate.annotations.AnyKeyJavaType;
 import org.hibernate.annotations.AnyKeyJdbcTypeCode;
-import org.hibernate.annotations.Cascade;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.ManyToAny;
 import org.hibernate.mapping.BasicValue;
@@ -209,8 +208,7 @@ public class AnyAssociationTests {
 
 					assertThat( property.getCascade() )
 							.contains( "persist" )
-							.contains( "merge" )
-							.contains( "lock" );
+							.contains( "merge" );
 				},
 				scope.getRegistry(),
 				CascadeHolder.class,
@@ -381,8 +379,8 @@ public class AnyAssociationTests {
 
 					assertThat( property.getCascade() )
 							.contains( "refresh" )
-							.contains( "delete-orphan" );
-					assertThat( collection.hasOrphanDelete() ).isTrue();
+							.contains( "delete" );
+					assertThat( collection.hasOrphanDelete() ).isFalse();
 				},
 				scope.getRegistry(),
 				CascadeManyHolder.class,
@@ -541,7 +539,6 @@ public class AnyAssociationTests {
 		private Integer id;
 
 		@Any(cascade = { CascadeType.PERSIST, CascadeType.MERGE })
-		@Cascade(org.hibernate.annotations.CascadeType.LOCK)
 		@AnyDiscriminatorValue(discriminator = "one", entity = TargetOne.class)
 		@AnyKeyJavaClass(Integer.class)
 		@JoinColumn(name = "target_id")
@@ -625,8 +622,7 @@ public class AnyAssociationTests {
 		@Id
 		private Integer id;
 
-		@ManyToAny(cascade = CascadeType.REFRESH)
-		@Cascade(org.hibernate.annotations.CascadeType.DELETE_ORPHAN)
+		@ManyToAny(cascade = { CascadeType.REFRESH, CascadeType.REMOVE })
 		@JoinTable(
 				name = "cascade_many_holder_targets",
 				joinColumns = @JoinColumn(name = "holder_id"),

@@ -4,8 +4,6 @@
  */
 package org.hibernate.models.orm.xml.attr;
 
-import org.hibernate.annotations.Cascade;
-import org.hibernate.annotations.CascadeType;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.JoinColumnsOrFormulas;
@@ -27,6 +25,7 @@ import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.ServiceRegistryScope;
 import org.junit.jupiter.api.Test;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -94,8 +93,8 @@ public class ManyToOneTests {
 		assertThat( targetAnn ).isNotNull();
 		assertThat( targetAnn.value() ).isEqualTo( "org.hibernate.models.orm.xml.attr.ManyToOneTests$SimpleEntity" );
 
-		final Cascade cascadeAnn = parentField.getDirectAnnotationUsage( Cascade.class );
-		final CascadeType[] cascadeTypes = cascadeAnn.value();
+		final ManyToOne cascadeAnn = parentField.getDirectAnnotationUsage( ManyToOne.class );
+		final CascadeType[] cascadeTypes = cascadeAnn.cascade();
 		assertThat( cascadeTypes ).isNotEmpty();
 		assertThat( cascadeTypes ).containsOnly( CascadeType.ALL );
 	}

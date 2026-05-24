@@ -41,9 +41,9 @@ import org.hibernate.boot.spi.MetadataBuildingOptions;
 import org.hibernate.engine.OptimisticLockStyle;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
-import org.hibernate.jpa.event.internal.EntityCallback;
-import org.hibernate.jpa.event.internal.ListenerCallback;
-import org.hibernate.jpa.event.spi.CallbackDefinition;
+import org.hibernate.jpa.boot.spi.CallbackDefinition;
+import org.hibernate.jpa.boot.spi.EntityCallbackDefinition;
+import org.hibernate.jpa.boot.spi.ListenerCallbackDefinition;
 import org.hibernate.jpa.event.spi.CallbackType;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Column;
@@ -439,10 +439,10 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 			CallbackType callbackType) {
 		final CallbackDefinition callback;
 		if ( style == JpaEventListenerStyle.CALLBACK ) {
-			callback = new EntityCallback.Definition( callbackMethod, callbackType );
+			callback = new EntityCallbackDefinition( callbackMethod, callbackType );
 		}
 		else {
-			callback = new ListenerCallback.Definition( listenerClass, callbackMethod, callbackType );
+			callback = new ListenerCallbackDefinition( listenerClass, callbackMethod, callbackType );
 		}
 		return callback;
 	}

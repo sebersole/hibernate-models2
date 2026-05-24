@@ -3,6 +3,9 @@ rootProject.name = "hibernate-models2"
 dependencyResolutionManagement {
 	repositories {
 		mavenCentral()
+
+		// for ORM 9.0.0.BOOT-MODEL
+		mavenLocal()
 	}
 }
 

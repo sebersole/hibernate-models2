@@ -3,6 +3,25 @@
 These are concrete `org.hibernate.mapping` changes suggested by the phased binder prototype.
 They are separate from prototype implementation details: the point is to remember which pieces should move into ORM proper when integrating this work.
 
+== Represent custom SQL mutations as one mapping value
+
+`PersistentClass` and `Collection` currently store custom SQL mutation details as parallel fields, for example:
+
+* the custom SQL string
+* whether the statement is callable
+* the `Supplier<? extends Expectation>` used to verify the JDBC outcome
+
+For 9.0, upstream ORM should replace those parallel field trios with a single `org.hibernate.mapping.CustomSqlMapping` value for each mutation operation.
+This keeps annotation-sourced `verify()` expectations, XML-sourced result-check styles, and binder-created mapping state aligned around the actual mapping-model shape.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/mapping/CustomSqlMapping.java[`CustomSqlMapping`] is the proposed mapping-level value object.
+* link:../src/main/java/org/hibernate/boot/models/categorize/spi/EntityTypeMetadata.java[`EntityTypeMetadata`] exposes custom insert, update, and delete mappings with this type.
+* link:../src/main/java/org/hibernate/boot/models/categorize/internal/EntityTypeMetadataImpl.java[`EntityTypeMetadataImpl`] creates the value from `@SQLInsert`, `@SQLUpdate`, and `@SQLDelete`.
+
+When integrating upstream, `PersistentClass` and `Collection` should expose accessors such as `getCustomSqlInsert()` / `setCustomSqlInsert(CustomSqlMapping)` rather than separate `customSQLInsert`, `customInsertCallable`, and `insertExpectation` state.
+
 == Separate collection key, primary-key, and foreign-key creation
 
 `org.hibernate.mapping.Collection#createAllKeys()` currently does too much for a phased binder.
