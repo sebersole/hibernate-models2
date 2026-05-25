@@ -6,6 +6,19 @@ This guide explains the prototype boot flow from source discovery through
 The goal is to give new contributors a mental model before they start changing
 annotation, XML, categorization, or binding code.
 
+== Before You Start
+
+  This guide assumes you are familiar with:
+
+* JPA annotations such as `@Entity`, `@MappedSuperclass`, `@Embeddable`, and `@ElementCollection`
+* The idea that Hibernate needs to discover your domain classes and turn them into
+an internal model before it can generate SQL — this is the "boot" process
+* `org.hibernate.mapping` is Hibernate's internal boot-time representation of your
+domain model (tables, columns, joins, foreign keys).  It is NOT the runtime
+metamodel — it exists only during startup to build the SessionFactory.
+
+If any of these are unfamiliar, start with the Hibernate ORM documentation on bootstrapping and
+the JPA specification chapter on metadata.
 
 == Big Picture
 
@@ -42,13 +55,31 @@ need?"
 Hibernate's boot-time mapping model in a dependency-safe order?"
 
 The categorizer should be the last place that thinks in terms of raw source
-discovery.  Later binding code should consume categorized contracts instead of
+discovery.  Later binding code should consume categorized contracts (typed Java interfaces that expose already-interpreted facts, rather than raw annotation or XML data) instead of
 rediscovering classes, package metadata, XML documents, or global annotations.
 
+=== Example: A Simple @Entity
+
+Imagine a persistence unit with one class, `Customer`, annotated with `@Entity`.
+
+1. `AvailableResources` receives `Customer` as a managed class detail.
+2. `DomainModelCategorizer` sees `@Entity` on `Customer` and records it as a
+persistent entity type.  It also collects any global registrations declared on
+the class (e.g., `@NamedQuery`).
+3. `EntityHierarchyBuilder` creates a single-class hierarchy with `Customer` as
+the root.
+4. The result — a `CategorizedDomainModel` — now contains one entity hierarchy,
+zero mapped superclasses, and zero embeddables.
+5. `BindingCoordinator` walks that hierarchy, creates a `PersistentClass` mapping
+object for `Customer`, and runs through the binding phases to fill in tables,
+identifiers, attributes, and foreign keys.
+
+At the end, `org.hibernate.mapping` contains everything Hibernate needs to generate the `customer`
+table DDL and build the runtime SessionFactory.
 
 == AvailableResources
 
-`AvailableResources` is a small source inventory.  It has three buckets:
+`AvailableResources` is a small source inventory (the raw inputs: Java classes, `package-info` files, and XML mapping documents).  It has three buckets:
 
 * managed class details
 * package details, represented by `package-info` class details
@@ -64,9 +95,9 @@ The record has convenience factories for two boot entry points:
 * `AvailableResources.from(HibernatePersistenceConfiguration, MetadataBuildingContext)`
 
 Both factories resolve class names through the Hibernate Models
-`ClassDetailsRegistry`.  They also bind mapping files immediately with
+`ClassDetailsRegistry` (Hibernate Models' registry for reflective class metadata — think of it as a richer alternative to `java.lang.Class`).  They also bind mapping files immediately with
 `MappingBinder`, so by the time categorization starts XML mappings are JAXB
-bindings rather than unresolved resource names.
+bindings (Java objects parsed from the XML, as opposed to raw file paths) rather than unresolved resource names.
 
 Tests sometimes construct `AvailableResources` directly.  That is fine when a
 test wants tight control over the source set.
@@ -93,7 +124,7 @@ Categorization starts by pre-processing XML:
 
 This happens before annotation processing because XML can affect what is visible
 to Hibernate Models.  For example, XML can contribute mapped classes, dynamic
-model names, and metadata-complete annotation overlays.
+model names, and metadata-complete (an XML flag that tells Hibernate to ignore annotations on a class and use only the XML mapping) annotation overlays.
 
 After pre-processing, `DomainModelCategorizer` builds an `allKnownClassNames`
 list from:
@@ -299,7 +330,7 @@ Touchpoints:
 * link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/ModelBinders.java[`ModelBinders`]
 
 While each binder is created, the coordinator immediately calls
-`bindTypeSkeleton()`.  The skeleton is the minimal mapping object needed so later
+`bindTypeSkeleton()`.  The skeleton (a partially filled mapping object — just enough structure for other binders to reference it) is needed so later
 types can resolve already-created binders and mapping shells without relying on
 global metadata lookups.
 
@@ -308,6 +339,15 @@ global metadata lookups.
 
 After binder creation, the coordinator runs a fixed sequence of narrow phase
 contracts.
+
+The phases exist because mapping objects have circular dependencies.  For
+example, a foreign key cannot be created until both sides of an association have
+tables and columns.  Rather than using callbacks or lazy resolution, the
+coordinator runs a fixed sequence of narrow phases.  Each phase can assume that
+all prior phases have completed for ALL types in ALL hierarchies.
+
+Think of it like building a house: you pour all foundations before framing any
+walls, and you frame all walls before running any wiring.
 
 The phase contracts live here:
 
@@ -394,6 +434,10 @@ If a new feature cannot be completed in the member phase because another type,
 table, identifier, or association is not ready yet, add typed pending state and
 consume it in the phase where the dependency is guaranteed to exist.
 
+After binding completes, `org.hibernate.mapping` contains a full description of
+every table, column, identifier, association, and constraint in the persistence
+unit.  The SessionFactory builder consumes these mapping objects to produce the
+runtime metamodel and SQL generators, then discards them.
 
 == Source Descriptors
 
@@ -465,31 +509,78 @@ model opportunistically.
 Do not assume every class in `AvailableResources` is persistent.  Package-info,
 plain converter classes, listener classes, and non-persistent support classes may
 all appear in the visible source set.
+*Do instead:* check the class's categorization role (entity, mapped superclass,
+embeddable, or none) before treating it as a persistent type.
 
 Do not assume embeddables are part of entity inheritance.  They are tracked as
 managed types, but entity hierarchy construction uses entities and mapped
 superclasses.
+*Do instead:* use the entity hierarchy APIs for inheritance questions and the
+embeddable registry for embeddable lookups — keep the two paths separate.
 
 Do not skip XML pre-processing when debugging annotation behavior.  XML can add
 mapped classes and can change the annotation model that categorization sees.
+*Do instead:* always run the full categorization pipeline in your test or debug
+scenario, including `AvailableXmlMappingsPreProcessor`, even if the bug looks
+purely annotation-related.
 
 Do not resolve non-primary-key association targets during ordinary member
 binding.  Other members of the target type may not be bound yet.
+*Do instead:* register a typed pending binding during the `Members` phase and
+resolve it in the `AssociationTargets` phase, where all member bindings are
+guaranteed to exist.
 
 Do not create physical foreign keys as soon as a value is created.  FK creation
 belongs after table keys, association targets, derived identifiers, and inverse
 associations have done their work.
+*Do instead:* record the FK requirement as pending state and create the physical
+foreign key in the `ForeignKeys` phase.
 
 Do not assume collection indexes are simple columns.  Property map keys and
 entity-valued map keys depend on element or target bindings.
+*Do instead:* defer index resolution to the `CollectionIndexes` phase, which runs
+after member bindings are complete.
 
 Do not treat inverse associations as ordinary owning associations with a flag
 flipped.  Inverse bindings often need to copy or reconcile state from an
 owning-side mapping that is only complete in a later phase.
+*Do instead:* handle inverse associations in the `InverseAssociations` phase,
+copying or reconciling state from the owning-side mapping that is already
+complete by that point.
 
 Do not add binder-only side channels for source facts that are naturally known
 during categorization.  If a later binding phase needs the fact, categorize it
 once and carry it forward explicitly.
+*Do instead:* add the fact to the appropriate categorized contract or metadata
+object during categorization, so binders can consume it without re-reading raw
+annotations or XML.
+
+
+== Package Layout
+
+[cols="1,2", options="header"]
+|===
+| Package
+| Pipeline stage
+
+| `o.h.boot.models.source`
+| Source inventory (`AvailableResources`, XML pre-processing)
+
+| `o.h.boot.models.categorize.spi`
+| Public categorization contracts (`CategorizedDomainModel`, `EntityHierarchy`, etc.)
+
+| `o.h.boot.models.categorize.internal`
+| Categorization implementation (collector, hierarchy builder, inheritance state)
+
+| `o.h.boot.models.bind.spi`
+| Public binding contract (`BindingCoordinator`)
+
+| `o.h.boot.models.bind.internal.binders`
+| Type and attribute binders, binding phases
+
+| `o.h.boot.models.bind.internal.sources`
+| Source descriptors that normalize annotation/XML facts for binders
+|===
 
 
 == Quick Orientation Map
