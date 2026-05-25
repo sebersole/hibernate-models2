@@ -108,7 +108,7 @@ generate the `customer` table DDL and build the runtime SessionFactory.
 | Bootstrap setting resolution used before source collection and binding
 
 | link:../src/main/java/org/hibernate/boot/models/source/package-info.java[`o.h.boot.models.source`]
-| Source inventory: `AvailableResources` and XML pre-processing
+| Source inventory: `AvailableResources`
 
 | link:../src/main/java/org/hibernate/boot/models/categorize/spi/package-info.java[`o.h.boot.models.categorize.spi`]
 | Public categorization contracts: `CategorizedDomainModel`, `EntityHierarchy`, and related contracts
@@ -184,16 +184,20 @@ or embeddable.
 
 == XML Pre-Processing
 
-Categorization starts by pre-processing XML:
+Categorization starts with XML that has been pre-processed from
+`AvailableResources`:
 
-* link:../src/main/java/org/hibernate/boot/models/source/xml/AvailableXmlMappingsPreProcessor.java[`AvailableXmlMappingsPreProcessor`]
-* link:../src/main/java/org/hibernate/boot/models/source/xml/AvailableXmlMappings.java[`AvailableXmlMappings`]
+* link:../src/main/java/org/hibernate/boot/models/categorize/internal/XmlMappingPreProcessor.java[`XmlMappingPreProcessor`]
 
 This happens before annotation processing because XML can affect what is visible
 to Hibernate Models.  For example, XML can contribute mapped classes, dynamic
 model names, and metadata-complete annotation overlays.  Metadata-complete is
 the XML flag that tells Hibernate to ignore annotations on a class and use only
 the XML mapping.
+
+`XmlMappingPreProcessor` keeps XML pre-processing local to categorization.  It
+consumes `AvailableResources#xmlMappings` directly, so this path no longer needs
+ORM's historical `ManagedResources` source shape.
 
 After pre-processing, `DomainModelCategorizer` builds an `allKnownClassNames`
 list from:
@@ -214,13 +218,11 @@ Touchpoint:
 
 The high-level sequence is:
 
-1. Pre-process XML into
-link:../src/main/java/org/hibernate/boot/models/source/xml/AvailableXmlMappings.java[`AvailableXmlMappings`].
+1. Pre-process XML into ORM's `XmlPreProcessingResult`.
 2. Build the complete list of known class and package names.
 3. Create a
 link:../src/main/java/org/hibernate/boot/models/categorize/internal/DomainModelCategorizationCollector.java[`DomainModelCategorizationCollector`].
-4. Process XML through
-link:../src/main/java/org/hibernate/boot/models/source/xml/AvailableXmlMappingsProcessor.java[`AvailableXmlMappingsProcessor`].
+4. Process XML through ORM's `XmlProcessor`.
 5. Apply each known `ClassDetails` to the collector.
 6. Apply deferred XML overlays.
 7. Build inheritance state from the visible persistent types.
@@ -609,7 +611,7 @@ mapped classes and can change the annotation model that categorization sees.
 
 *Do instead:* run the full categorization pipeline in your test or debug
 scenario, including
-link:../src/main/java/org/hibernate/boot/models/source/xml/AvailableXmlMappingsPreProcessor.java[`AvailableXmlMappingsPreProcessor`],
+link:../src/main/java/org/hibernate/boot/models/categorize/internal/XmlMappingPreProcessor.java[`XmlMappingPreProcessor`],
 even if the bug looks purely annotation-related.
 
 Do not resolve non-primary-key association targets during ordinary member

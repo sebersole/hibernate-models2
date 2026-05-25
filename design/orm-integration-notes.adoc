@@ -35,6 +35,26 @@ query imports inside `AvailableResources`.  This keeps `AvailableResources`
 focused on source material that participates in categorization while still
 giving tests a clear way to request query imports.
 
+== Move XML processing contracts under categorization
+
+The PoC treats XML pre-processing as part of categorization rather than source
+collection.  `AvailableResources` carries already-bound XML mapping documents;
+categorization interprets them to discover mapped classes, dynamic model names,
+metadata-complete contributions, and deferred overlay work.
+
+Upstream ORM 9 should consider moving XML processing contracts such as
+`XmlPreProcessingResult`, `XmlProcessor`, `XmlProcessingResult`,
+`XmlDocumentContext`, and related implementation types under
+`org.hibernate.boot.models.categorize.internal`.  The current upstream
+`XmlPreProcessor` is especially source-shaped only because it accepts
+`ManagedResources`, but it really only needs the XML mapping bindings already
+available from `AvailableResources`.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/categorize/internal/XmlMappingPreProcessor.java[`XmlMappingPreProcessor`] consumes `AvailableResources#xmlMappings()` directly and produces ORM's `XmlPreProcessingResult`.
+* link:../src/main/java/org/hibernate/boot/models/categorize/spi/DomainModelCategorizer.java[`DomainModelCategorizer`] owns XML pre-processing and calls ORM's `XmlProcessor` as part of categorization.
+
 == Represent custom SQL mutations as one mapping value
 
 `PersistentClass` and `Collection` currently store custom SQL mutation details as parallel fields, for example:

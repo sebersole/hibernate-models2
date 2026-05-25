@@ -210,7 +210,23 @@ It should contain:
 
 Today XML preprocessing takes ManagedResources. In the PoC, make XML preprocessing consume AvailableResources directly.
 
-Temporary adapter is fine, but the intended direction should be:
+The pre-processing step itself belongs to categorization because it interprets
+XML bindings to discover mapped classes, dynamic model names, metadata-complete
+contributions, and deferred overlay work.  As this integrates upstream, it
+probably makes sense to move the remaining XML processing contracts such as
+`XmlPreProcessingResult`, `XmlProcessor`, and `XmlProcessingResult` under
+`org.hibernate.boot.models.categorize.internal`.
+
+More precisely, XML pre-processing and processing are source-interpretation
+concerns.  They sit between raw source collection and categorization in the
+abstract.  In this PoC there is no standalone interpreted-source artifact:
+pre-processing immediately feeds categorization, XML processing applies
+metadata-complete mappings for categorization, and deferred XML overlays are
+applied back into the categorization collector.  Until a first-class prepared
+source model emerges, keeping these helpers in categorization internals is the
+clearest representation of the current flow.
+
+The intended direction should be:
 
 [source]
 ----
@@ -277,5 +293,3 @@ The test target should be:
   that ORM currently derives through `EntityManagerFactoryBuilderImpl` and `ManagedResources`
 
 This establishes a clean replacement boundary before touching binder and persister integration.
-
-
