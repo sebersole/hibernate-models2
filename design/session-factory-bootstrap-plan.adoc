@@ -75,7 +75,7 @@ Bootstrap inputs
     -> AvailableResources
     -> CategorizedDomainModel
     -> MetadataImplementor
-    -> ResolvedSessionFactoryOptions
+    -> ResolvedSessionFactorySettings
     -> SessionFactoryBuildContext
     -> SessionFactoryImpl
 ----
@@ -129,14 +129,17 @@ The PoC binder should produce a normal ORM boot mapping model that can satisfy
 
 This is the main proving ground for the binding work.
 
-=== ResolvedSessionFactoryOptions
+=== ResolvedSessionFactorySettings
 
-This is proposed, not yet prototyped.
+This is now prototyped as
+link:../src/main/java/org/hibernate/boot/settings/ResolvedSessionFactorySettings.java[`ResolvedSessionFactorySettings`]
+and
+link:../src/main/java/org/hibernate/boot/settings/SessionFactorySettingsResolver.java[`SessionFactorySettingsResolver`].
 
 `SessionFactoryOptions` is very large and mixes resolved values, service
 references, JPA/native defaults, and raw setting interpretation.  A resolver
-similar to `BootstrapSettingsResolver` would make the factory-build handoff more
-explicit.
+similar to `BootstrapSettingsResolver` makes the factory-build handoff more
+explicit without immediately copying ORM's full options surface.
 
 Potential responsibilities:
 
@@ -148,8 +151,10 @@ Potential responsibilities:
 * preserve a raw settings map for components that still require one
 * expose the `StandardServiceRegistry` used for factory construction
 
-This can initially adapt to ORM's existing `SessionFactoryOptions` interface.
-The design point is to move option resolution out of the final constructor path.
+The current prototype only carries configuration values and JPA bootstrap mode.
+It should grow one setting at a time as `SessionFactoryBuilder` needs them.
+Later, this can adapt to ORM's existing `SessionFactoryOptions` interface.  The
+design point is to move option resolution out of the final constructor path.
 
 === SessionFactoryBuildContext
 
@@ -191,7 +196,7 @@ The aim is to make the handoff visible:
 
 [source]
 ----
-MetadataImplementor + ResolvedSessionFactoryOptions + BootstrapContext
+MetadataImplementor + ResolvedSessionFactorySettings + BootstrapContext
     -> SessionFactoryBuildContext
     -> SessionFactoryImpl
 ----
@@ -270,7 +275,7 @@ large contract simply because the current constructor happens to accept it.
   transaction, statistics, query, compliance, default session behavior, raw
   settings map.
 | Factory construction and runtime behavior.
-| `ResolvedSessionFactoryOptions` plus adapter to ORM's interface if needed.
+| `ResolvedSessionFactorySettings` plus adapter to ORM's interface if needed.
 | Do not prototype until the consumers are grouped by actual need.
 
 | `MetadataImplementor`
@@ -907,12 +912,19 @@ bridge, and the `ResolvedBootstrapSettings`.
 Later slices should add one resolver per gross target rather than growing a
 single SessionFactory-wide orchestrator.
 
+`SessionFactoryBuilder` is the next target shell.  It accepts
+`ResolvedSessionFactorySettings`, `ResolvedMetadata`, and a `ServiceRegistry`,
+and its intended return type is the runtime `SessionFactoryImplementor` itself.
+There is no separate build-result object unless the factory construction path
+proves it needs additional materialized products.
+
 == Open Questions
 
-* Should `ResolvedSessionFactoryOptions` be a record plus adapter, or should the
-  adapter itself be the resolved object?
+* Should `ResolvedSessionFactorySettings` later produce an adapter implementing
+  ORM's `SessionFactoryOptions`, or should the adapter itself be the resolved
+  object?
 * Which settings belong in `ResolvedBootstrapSettings` versus
-  `ResolvedSessionFactoryOptions`?
+  `ResolvedSessionFactorySettings`?
 * Can `BootstrapContext` be narrowed before integration, or should the PoC simply
   reuse ORM's current implementation until the factory path works?
 * Should XML source interpretation remain in categorization internals, or should

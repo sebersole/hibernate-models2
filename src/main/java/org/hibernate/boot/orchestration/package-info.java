@@ -19,7 +19,9 @@
  * settings, source contributions, and a service registry into
  * {@link org.hibernate.boot.orchestration.ResolvedMetadata} by running source
  * resource creation, categorization, binding, metadata registration, ordering,
- * and validation in order.
+ * and validation in order.  {@link org.hibernate.boot.orchestration.SessionFactoryBuilder}
+ * is the next gross target and will own construction of the runtime
+ * SessionFactory from resolved metadata and factory settings.
  *
  * @author Steve Ebersole
  */
