@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import jakarta.persistence.PersistenceConfiguration;
 import org.hibernate.boot.jaxb.Origin;
 import org.hibernate.boot.jaxb.SourceType;
 import org.hibernate.boot.jaxb.internal.MappingBinder;
@@ -96,16 +97,29 @@ public record AvailableResources(
 	/// {@link HibernatePersistenceConfiguration} extension.
 	///
 	/// Explicit managed classes and mapping files are included.  Discovery/scanning is
-	/// not applied here.
+	/// applied here based on [HibernatePersistenceConfiguration#rootUrl()] and
+	/// [HibernatePersistenceConfiguration#jarFileUrls()].
 	///
 	/// @param persistenceConfiguration The PersistenceConfiguration
 	/// @param metadataBuildingContext The bootstrap model building context
 	public static AvailableResources from(
 			HibernatePersistenceConfiguration persistenceConfiguration,
 			MetadataBuildingContext metadataBuildingContext) {
+		// todo : handle discovery/scanning here
+		// 		for now though just assume no scanning
+		return from( (PersistenceConfiguration) persistenceConfiguration, metadataBuildingContext );
+	}
 
-		// todo : I think we need to handle discovery/scanning here
-
+	/// Creates available resources from JPA {@link PersistenceConfiguration}.
+	///
+	/// Explicit managed classes and mapping files are included.  Discovery/scanning is
+	/// not applied here.
+	///
+	/// @param persistenceConfiguration The PersistenceConfiguration
+	/// @param metadataBuildingContext The bootstrap model building context
+	public static AvailableResources from(
+			PersistenceConfiguration persistenceConfiguration,
+			MetadataBuildingContext metadataBuildingContext) {
 		var bootstrapContext = metadataBuildingContext.getBootstrapContext();
 		var classLoading = bootstrapContext.getClassLoaderService();
 		var modelsContext = bootstrapContext.getModelsContext();
