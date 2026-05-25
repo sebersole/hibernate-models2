@@ -3,6 +3,38 @@
 These are concrete `org.hibernate.mapping` changes suggested by the phased binder prototype.
 They are separate from prototype implementation details: the point is to remember which pieces should move into ORM proper when integrating this work.
 
+== Use a narrow scanning helper contract
+
+ORM's `org.hibernate.boot.scan.internal.ScanningHelper` currently accepts a
+`StandardServiceRegistry`, but the scanning implementation only needs:
+
+* scanner-related configuration values
+* `ClassLoaderService`
+* the `HibernatePersistenceConfiguration` URLs to scan
+
+The PoC models this as `HibernatePersistenceConfigurationScanner`, which accepts
+the configuration, `ResolvedBootstrapSettings`, and class-loading access.
+Upstream ORM 9 should either replace `ScanningHelper` with this narrower
+contract or relax `ScanningHelper#performScanning` so it does not require
+`StandardServiceRegistry` this early in source discovery.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/source/HibernatePersistenceConfigurationScanner.java[`HibernatePersistenceConfigurationScanner`] performs scanning without a standard registry dependency.
+* link:../src/main/java/org/hibernate/boot/models/source/AvailableResources.java[`AvailableResources`] applies the returned `ScanningResult` to managed class, package, and XML mapping buckets.
+
+== Represent extra query imports explicitly in tests
+
+`MetadataSources#getExtraQueryImports()` is part of the historical native source
+accumulator, but extra query imports are not really part of categorizing domain
+model classes or XML mappings.
+
+For upstream ORM tests, prefer an explicit test annotation, for example
+`org.hibernate.testing.orm.junit.DomainModel.ExtraQueryImport`, over carrying
+query imports inside `AvailableResources`.  This keeps `AvailableResources`
+focused on source material that participates in categorization while still
+giving tests a clear way to request query imports.
+
 == Represent custom SQL mutations as one mapping value
 
 `PersistentClass` and `Collection` currently store custom SQL mutation details as parallel fields, for example:

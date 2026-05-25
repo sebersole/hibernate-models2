@@ -22,6 +22,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Id;
 
 import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.source.AvailableResourcesContext;
 import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,7 +40,10 @@ public class SimpleOverrideXmlTests {
 			persistenceConfiguration.mappingFile( "mappings/override/simple-override.xml" );
 			final AvailableResources availableResources = AvailableResources.from(
 					persistenceConfiguration,
-					metadataBuildingContext
+					new AvailableResourcesContext(
+							metadataBuildingContext.getBootstrapContext().getModelsContext(),
+							metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+					)
 			);
 			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 					availableResources,

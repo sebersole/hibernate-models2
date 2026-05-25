@@ -19,6 +19,7 @@ import org.hibernate.boot.models.bind.internal.BindingStateImpl;
 import org.hibernate.boot.models.bind.spi.BindingCoordinator;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.source.AvailableResourcesContext;
 import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.boot.spi.MetadataBuildingContext;
@@ -55,7 +56,7 @@ public class BindingTestingHelper {
 		final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 				availableResources,
 				metadataBuildingContext
-		);
+			);
 		final BindingStateImpl bindingState = new BindingStateImpl( metadataBuildingContext );
 		final BindingOptionsImpl bindingOptions = new BindingOptionsImpl( metadataBuildingContext );
 		final BindingContextImpl bindingContext = new BindingContextImpl(
@@ -107,7 +108,10 @@ public class BindingTestingHelper {
 		}
 		return AvailableResources.from(
 				persistenceConfiguration,
-				metadataBuildingContext
+				new AvailableResourcesContext(
+						metadataBuildingContext.getBootstrapContext().getModelsContext(),
+						metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+				)
 		);
 	}
 

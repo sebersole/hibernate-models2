@@ -25,6 +25,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Id;
 
 import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.source.AvailableResourcesContext;
 import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
 import org.hibernate.jdbc.Expectation;
 
@@ -43,7 +44,10 @@ public class SimpleCompleteXmlTests {
 			persistenceConfiguration.mappingFile( "mappings/complete/simple-complete.xml" );
 			final AvailableResources availableResources = AvailableResources.from(
 					persistenceConfiguration,
-					metadataBuildingContext
+					new AvailableResourcesContext(
+							metadataBuildingContext.getBootstrapContext().getModelsContext(),
+							metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+					)
 			);
 			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 					availableResources,

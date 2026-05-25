@@ -39,6 +39,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 
 import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.source.AvailableResourcesContext;
 import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,7 +56,10 @@ public class DynamicModelTests {
 			persistenceConfiguration.mappingFile( "mappings/dynamic/dynamic-simple.xml" );
 			final AvailableResources availableResources = AvailableResources.from(
 					persistenceConfiguration,
-					metadataBuildingContext
+					new AvailableResourcesContext(
+							metadataBuildingContext.getBootstrapContext().getModelsContext(),
+							metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+					)
 			);
 			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 					availableResources,
@@ -88,7 +92,10 @@ public class DynamicModelTests {
 			persistenceConfiguration.mappingFile( "mappings/dynamic/dynamic-semi-simple.xml" );
 			final AvailableResources availableResources = AvailableResources.from(
 					persistenceConfiguration,
-					metadataBuildingContext
+					new AvailableResourcesContext(
+							metadataBuildingContext.getBootstrapContext().getModelsContext(),
+							metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+					)
 			);
 			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 					availableResources,
@@ -135,7 +142,10 @@ public class DynamicModelTests {
 			persistenceConfiguration.mappingFile( "mappings/dynamic/dynamic-id-class.xml" );
 			final AvailableResources availableResources = AvailableResources.from(
 					persistenceConfiguration,
-					metadataBuildingContext
+					new AvailableResourcesContext(
+							metadataBuildingContext.getBootstrapContext().getModelsContext(),
+							metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+					)
 			);
 			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 					availableResources,
@@ -161,7 +171,10 @@ public class DynamicModelTests {
 			persistenceConfiguration.mappingFile( "mappings/dynamic/dynamic-plurals.xml" );
 			final AvailableResources availableResources = AvailableResources.from(
 					persistenceConfiguration,
-					metadataBuildingContext
+					new AvailableResourcesContext(
+							metadataBuildingContext.getBootstrapContext().getModelsContext(),
+							metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+					)
 			);
 			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 					availableResources,

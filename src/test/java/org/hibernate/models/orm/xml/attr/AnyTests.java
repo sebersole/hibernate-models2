@@ -28,6 +28,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 
 import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.source.AvailableResourcesContext;
 import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -49,12 +50,15 @@ public class AnyTests {
 		persistenceConfiguration.mappingFile( "mappings/attr/any/simple.xml" );
 		final AvailableResources availableResources = AvailableResources.from(
 				persistenceConfiguration,
-				metadataBuildingContext
+				new AvailableResourcesContext(
+						metadataBuildingContext.getBootstrapContext().getModelsContext(),
+						metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+				)
 		);
 		final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 				availableResources,
 				metadataBuildingContext
-		);
+			);
 
 		assertThat( categorizedDomainModel.getEntityHierarchies() ).hasSize( 3 );
 		final EntityHierarchy entity3Hierarchy = categorizedDomainModel.getEntityHierarchies()

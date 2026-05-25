@@ -14,6 +14,7 @@ import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.FilterDefRegistration;
 import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.source.AvailableResourcesContext;
 import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
 import org.hibernate.jpa.HibernatePersistenceConfiguration;
 import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
@@ -41,7 +42,10 @@ public class SimpleProcessorTests {
 			persistenceConfiguration.managedClass( MyUuidConverter.class );
 			final AvailableResources availableResources = AvailableResources.from(
 					persistenceConfiguration,
-					metadataBuildingContext
+					new AvailableResourcesContext(
+							metadataBuildingContext.getBootstrapContext().getModelsContext(),
+							metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+					)
 			);
 			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 					availableResources,

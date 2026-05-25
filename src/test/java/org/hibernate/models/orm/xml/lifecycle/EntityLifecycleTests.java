@@ -29,6 +29,7 @@ import jakarta.persistence.PreRemove;
 import jakarta.persistence.PreUpdate;
 
 import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.source.AvailableResourcesContext;
 import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,7 +46,10 @@ public class EntityLifecycleTests {
 			persistenceConfiguration.mappingFile( "mappings/lifecycle/entity-lifecycle.xml" );
 			final AvailableResources availableResources = AvailableResources.from(
 					persistenceConfiguration,
-					metadataBuildingContext
+					new AvailableResourcesContext(
+							metadataBuildingContext.getBootstrapContext().getModelsContext(),
+							metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+					)
 			);
 			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 					availableResources,

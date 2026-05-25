@@ -58,15 +58,25 @@ Touchpoint:
 
 * link:../src/main/java/org/hibernate/boot/models/source/AvailableResources.java[`AvailableResources`]
 
-The record has convenience factories for two boot entry points:
+The record has convenience factories for the source forms used by the PoC:
 
-* `AvailableResources.from(PersistenceUnitDescriptor, MetadataBuildingContext)`
-* `AvailableResources.from(HibernatePersistenceConfiguration, MetadataBuildingContext)`
+* `AvailableResources.from(PersistenceUnitDescriptor, AvailableResourcesContext)`
+* `AvailableResources.from(PersistenceConfiguration, AvailableResourcesContext)`
+* `AvailableResources.from(HibernatePersistenceConfiguration, AvailableResourcesContext)`
+* `AvailableResources.from(HibernatePersistenceConfiguration, AvailableResourcesContext, ResolvedBootstrapSettings)`
+* `AvailableResources.from(MetadataSources, AvailableResourcesContext)`
 
-Both factories resolve class names through the Hibernate Models
+`AvailableResourcesContext` carries the early bootstrap inputs needed to build
+the inventory: `ModelsContext` and `ServiceRegistry`.  This keeps source
+discovery independent of `MetadataBuildingContext`, which is created later when
+available resources are categorized and bound.
+
+The factories resolve class names through the Hibernate Models
 `ClassDetailsRegistry`.  They also bind mapping files immediately with
 `MappingBinder`, so by the time categorization starts XML mappings are JAXB
-bindings rather than unresolved resource names.
+bindings rather than unresolved resource names.  The
+`HibernatePersistenceConfiguration` factory additionally applies archive
+scanning results from `HibernatePersistenceConfigurationScanner`.
 
 Tests sometimes construct `AvailableResources` directly.  That is fine when a
 test wants tight control over the source set.
@@ -516,4 +526,3 @@ For tests, look under:
 * link:../src/test/java/org/hibernate/models/orm/process[`src/test/java/org/hibernate/models/orm/process`]
 * link:../src/test/java/org/hibernate/models/orm/resources[`src/test/java/org/hibernate/models/orm/resources`]
 * link:../src/test/java/org/hibernate/models/orm/bind[`src/test/java/org/hibernate/models/orm/bind`]
-

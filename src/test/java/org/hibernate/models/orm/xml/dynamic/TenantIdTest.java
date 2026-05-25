@@ -28,6 +28,7 @@ import jakarta.persistence.FetchType;
 
 
 import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.source.AvailableResourcesContext;
 import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,7 +43,10 @@ public class TenantIdTest {
 			persistenceConfiguration.mappingFile( "mappings/dynamic/dynamic-tenantid.xml" );
 			final AvailableResources availableResources = AvailableResources.from(
 					persistenceConfiguration,
-					metadataBuildingContext
+					new AvailableResourcesContext(
+							metadataBuildingContext.getBootstrapContext().getModelsContext(),
+							metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+					)
 			);
 			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 					availableResources,

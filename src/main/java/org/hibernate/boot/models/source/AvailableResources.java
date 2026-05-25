@@ -5,21 +5,28 @@
 package org.hibernate.boot.models.source;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
 import jakarta.persistence.PersistenceConfiguration;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.jaxb.Origin;
 import org.hibernate.boot.jaxb.SourceType;
 import org.hibernate.boot.jaxb.internal.MappingBinder;
 import org.hibernate.boot.jaxb.spi.Binding;
 import org.hibernate.boot.jaxb.spi.JaxbBindableMappingDescriptor;
-import org.hibernate.boot.spi.MetadataBuildingContext;
+import org.hibernate.boot.scan.spi.ScanningResult;
+import org.hibernate.boot.settings.BootstrapSettingsResolver;
+import org.hibernate.boot.settings.ResolvedBootstrapSettings;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.jpa.HibernatePersistenceConfiguration;
 import org.hibernate.jpa.boot.spi.PersistenceUnitDescriptor;
+import org.hibernate.models.spi.ModelsContext;
 import org.hibernate.models.spi.ClassDetails;
 
 /// Model resources available to categorization.
@@ -34,28 +41,44 @@ import org.hibernate.models.spi.ClassDetails;
 /// The canonical constructor accepts nullable collections for convenience; the
 /// accessor methods expose them as empty collections.
 ///
+/// @apiNote Hibernate hbm.xml bindings are intentionally ignored here. 9.0 will
+/// drop support for them altogether.
+///
 /// @author Steve Ebersole
 public record AvailableResources(
 		Collection<ClassDetails> managedClassDetails,
 		Collection<ClassDetails> packageDetails,
 		Collection<Binding<? extends JaxbBindableMappingDescriptor>> xmlMappings) {
 
+	@NonNull
+	public Collection<ClassDetails> managedClassDetails() {
+		return managedClassDetails == null ? Collections.emptyList() : managedClassDetails;
+	}
+
+	@NonNull
+	public Collection<ClassDetails> packageDetails() {
+		return packageDetails == null ? Collections.emptyList() : packageDetails;
+	}
+
+	@NonNull
+	public Collection<Binding<? extends JaxbBindableMappingDescriptor>> xmlMappings() {
+		return xmlMappings == null ? Collections.emptyList() : xmlMappings;
+	}
+
 	/// Creates available resources from Hibernate's descriptor for persistence-unit
 	/// information.
 	///
-	/// Managed class names are resolved through the model context associated with
-	/// {@code metadataBuildingContext}.  Mapping file names are located through the
-	/// bootstrap class-loading service and bound immediately.
+	/// Managed class names are resolved through the supplied model context. Mapping
+	/// file names are located through the bootstrap class-loading service and bound
+	/// immediately.
 	///
 	/// @param persistenceUnitDescriptor The persistence-unit wrapper
-	/// @param metadataBuildingContext The bootstrap model building context
+	/// @param context Context used to resolve model details and load resources
 	public static AvailableResources from(
 			PersistenceUnitDescriptor persistenceUnitDescriptor,
-			MetadataBuildingContext metadataBuildingContext) {
-		var bootstrapContext = metadataBuildingContext.getBootstrapContext();
-		var classLoading = bootstrapContext.getClassLoaderService();
-		var modelsContext = bootstrapContext.getModelsContext();
-		var classDetailsRegistry = modelsContext.getClassDetailsRegistry();
+			AvailableResourcesContext context) {
+		var classLoading = context.getClassLoaderService();
+		var classDetailsRegistry = context.modelsContext().getClassDetailsRegistry();
 
 		var managedClassDetails = new ArrayList<ClassDetails>();
 		var packageDetailsList = new ArrayList<ClassDetails>();
@@ -76,7 +99,7 @@ public record AvailableResources(
 		else {
 			xmlBindings = new ArrayList<>();
 
-			var mappingFileBinder = new MappingBinder( bootstrapContext.getServiceRegistry() );
+			var mappingFileBinder = context.createMappingBinder();
 			persistenceUnitDescriptor.getMappingFileNames().forEach( (mappingFile) -> {
 				try (var mappingFileStream = classLoading.locateResourceStream( mappingFile )) {
 					xmlBindings.add( mappingFileBinder.bind(
@@ -101,13 +124,72 @@ public record AvailableResources(
 	/// [HibernatePersistenceConfiguration#jarFileUrls()].
 	///
 	/// @param persistenceConfiguration The PersistenceConfiguration
-	/// @param metadataBuildingContext The bootstrap model building context
+	/// @param context Context used to resolve model details and load resources
 	public static AvailableResources from(
 			HibernatePersistenceConfiguration persistenceConfiguration,
-			MetadataBuildingContext metadataBuildingContext) {
-		// todo : handle discovery/scanning here
-		// 		for now though just assume no scanning
-		return from( (PersistenceConfiguration) persistenceConfiguration, metadataBuildingContext );
+			AvailableResourcesContext context) {
+		return from(
+				persistenceConfiguration,
+				context,
+				new BootstrapSettingsResolver().resolve( persistenceConfiguration )
+		);
+	}
+
+	/// Creates available resources from Hibernate's JPA
+	/// {@link HibernatePersistenceConfiguration} extension.
+	///
+	/// Explicit managed classes and mapping files are included.  Discovery/scanning is
+	/// applied here based on [HibernatePersistenceConfiguration#rootUrl()] and
+	/// [HibernatePersistenceConfiguration#jarFileUrls()].
+	///
+	/// @param persistenceConfiguration The PersistenceConfiguration
+	/// @param context Context used to resolve model details and load resources
+	/// @param bootstrapSettings Resolved bootstrap settings used during source discovery
+	public static AvailableResources from(
+			HibernatePersistenceConfiguration persistenceConfiguration,
+			AvailableResourcesContext context,
+			ResolvedBootstrapSettings bootstrapSettings) {
+		final var classLoading = context.getClassLoaderService();
+		final var classDetailsRegistry = context.modelsContext().getClassDetailsRegistry();
+		final var mappingFileBinder = context.createMappingBinder();
+
+		var managedClassDetails = new ArrayList<ClassDetails>();
+		var packageDetailsList = new ArrayList<ClassDetails>();
+		persistenceConfiguration.managedClasses().forEach( (managedClass) -> {
+			applyClassDetails(
+					classDetailsRegistry.resolveClassDetails( managedClass.getName() ),
+					managedClassDetails,
+					packageDetailsList
+			);
+		} );
+
+		final ScanningResult scanningResult = HibernatePersistenceConfigurationScanner.performScanning(
+				persistenceConfiguration,
+				bootstrapSettings,
+				classLoading
+		);
+		applyDiscoveredClassDetails(
+				scanningResult,
+				context.modelsContext(),
+				managedClassDetails,
+				packageDetailsList
+		);
+
+		final var xmlBindings = new ArrayList<Binding<? extends JaxbBindableMappingDescriptor>>();
+		persistenceConfiguration.mappingFiles().forEach( (mappingFile) -> {
+			try (var mappingFileStream = classLoading.locateResourceStream( mappingFile )) {
+				xmlBindings.add( mappingFileBinder.bind(
+						mappingFileStream,
+						new Origin( SourceType.RESOURCE, mappingFile )
+				) );
+			}
+			catch (IOException e) {
+				throw new RuntimeException( "Error accessing mapping file - " + mappingFile, e );
+			}
+		} );
+		applyDiscoveredXmlMappings( scanningResult, mappingFileBinder, xmlBindings );
+
+		return new AvailableResources( managedClassDetails, packageDetailsList, xmlBindings );
 	}
 
 	/// Creates available resources from JPA {@link PersistenceConfiguration}.
@@ -116,14 +198,12 @@ public record AvailableResources(
 	/// not applied here.
 	///
 	/// @param persistenceConfiguration The PersistenceConfiguration
-	/// @param metadataBuildingContext The bootstrap model building context
+	/// @param context Context used to resolve model details and load resources
 	public static AvailableResources from(
 			PersistenceConfiguration persistenceConfiguration,
-			MetadataBuildingContext metadataBuildingContext) {
-		var bootstrapContext = metadataBuildingContext.getBootstrapContext();
-		var classLoading = bootstrapContext.getClassLoaderService();
-		var modelsContext = bootstrapContext.getModelsContext();
-		var classDetailsRegistry = modelsContext.getClassDetailsRegistry();
+			AvailableResourcesContext context) {
+		var classLoading = context.getClassLoaderService();
+		var classDetailsRegistry = context.modelsContext().getClassDetailsRegistry();
 
 		var managedClassDetails = new ArrayList<ClassDetails>();
 		var packageDetailsList = new ArrayList<ClassDetails>();
@@ -144,7 +224,7 @@ public record AvailableResources(
 		else {
 			xmlBindings = new ArrayList<>();
 
-			var mappingFileBinder = new MappingBinder( bootstrapContext.getServiceRegistry() );
+			var mappingFileBinder = context.createMappingBinder();
 			persistenceConfiguration.mappingFiles().forEach( (mappingFile) -> {
 				try (var mappingFileStream = classLoading.locateResourceStream( mappingFile )) {
 					xmlBindings.add( mappingFileBinder.bind(
@@ -159,6 +239,52 @@ public record AvailableResources(
 		}
 
 		return new AvailableResources( managedClassDetails, packageDetailsList, xmlBindings );
+	}
+
+	/// Creates available resources from Hibernate's native source accumulator.
+	///
+	/// Annotated classes, annotated class names, and package names are resolved
+	/// through the supplied model context.  Mapping XML bindings already collected
+	/// by {@code metadataSources} are carried forward directly.
+	///
+	/// @param metadataSources The native source accumulator
+	/// @param context Context used to resolve model details
+	public static AvailableResources from(
+			MetadataSources metadataSources,
+			AvailableResourcesContext context) {
+		var classDetailsRegistry = context.modelsContext().getClassDetailsRegistry();
+
+		var managedClassDetails = new ArrayList<ClassDetails>();
+		var packageDetailsList = new ArrayList<ClassDetails>();
+		metadataSources.getAnnotatedClasses().forEach( (annotatedClass) -> {
+			applyClassDetails(
+					classDetailsRegistry.resolveClassDetails( annotatedClass.getName() ),
+					managedClassDetails,
+					packageDetailsList
+			);
+		} );
+		metadataSources.getAnnotatedClassNames().forEach( (annotatedClassName) -> {
+			applyClassDetails(
+					classDetailsRegistry.resolveClassDetails( annotatedClassName ),
+					managedClassDetails,
+					packageDetailsList
+			);
+		} );
+		metadataSources.getAnnotatedPackages().forEach( (packageName) -> {
+			applyClassDetails(
+					classDetailsRegistry.resolveClassDetails( packageName + ".package-info" ),
+					managedClassDetails,
+					packageDetailsList
+			);
+		} );
+
+		final var xmlBindings = new ArrayList<Binding<? extends JaxbBindableMappingDescriptor>>();
+		xmlBindings.addAll( metadataSources.getMappingXmlBindings() );
+		return new AvailableResources(
+				managedClassDetails,
+				packageDetailsList,
+				xmlBindings
+		);
 	}
 
 	private static void applyClassDetails(
@@ -176,15 +302,45 @@ public record AvailableResources(
 		}
 	}
 
-	public Collection<ClassDetails> managedClassDetails() {
-		return managedClassDetails == null ? Collections.emptyList() : managedClassDetails;
+	private static void applyDiscoveredClassDetails(
+			ScanningResult scanningResult,
+			ModelsContext modelsContext,
+			Collection<ClassDetails> managedClassDetails,
+			Collection<ClassDetails> packageDetailsList) {
+		var classDetailsRegistry = modelsContext.getClassDetailsRegistry();
+		scanningResult.discoveredClasses().forEach( (className) -> {
+			applyClassDetails(
+					classDetailsRegistry.resolveClassDetails( className ),
+					managedClassDetails,
+					packageDetailsList
+			);
+		} );
+		scanningResult.discoveredPackages().forEach( (packageName) -> {
+			applyClassDetails(
+					classDetailsRegistry.resolveClassDetails( packageName + ".package-info" ),
+					managedClassDetails,
+					packageDetailsList
+			);
+		} );
 	}
 
-	public Collection<ClassDetails> packageDetails() {
-		return packageDetails == null ? Collections.emptyList() : packageDetails;
+	private static void applyDiscoveredXmlMappings(
+			ScanningResult scanningResult,
+			MappingBinder mappingFileBinder,
+			Collection<Binding<? extends JaxbBindableMappingDescriptor>> xmlBindings) {
+		scanningResult.mappingFiles().forEach( (mappingFile) -> {
+			xmlBindings.add( bindMappingFile( mappingFile, mappingFileBinder ) );
+		} );
 	}
 
-	public Collection<Binding<? extends JaxbBindableMappingDescriptor>> xmlMappings() {
-		return xmlMappings == null ? Collections.emptyList() : xmlMappings;
+	private static Binding<? extends JaxbBindableMappingDescriptor> bindMappingFile(
+			URI mappingFile,
+			MappingBinder mappingFileBinder) {
+		try {
+			return org.hibernate.boot.jaxb.internal.UrlXmlSource.fromUrl( mappingFile.toURL(), mappingFileBinder );
+		}
+		catch (MalformedURLException e) {
+			throw new RuntimeException( "Error accessing mapping file - " + mappingFile, e );
+		}
 	}
 }
