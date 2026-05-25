@@ -37,7 +37,6 @@ import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.JpaEventListener;
 import org.hibernate.boot.models.categorize.spi.JpaEventListenerStyle;
 import org.hibernate.boot.models.categorize.spi.NaturalIdCacheRegion;
-import org.hibernate.boot.spi.MetadataBuildingOptions;
 import org.hibernate.engine.OptimisticLockStyle;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
@@ -179,7 +178,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 		binding.setJpaEntityName( importName );
 
 		getBindingState().registerTypeBinder( getManagedType(), this );
-		getBindingState().getMetadataBuildingContext().getMetadataCollector().addImport( importName, entityName );
+		getBindingState().addImport( importName, entityName );
 	}
 
 	/// Bind table shells owned directly by this entity.
@@ -647,9 +646,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 			BindingState bindingState,
 			BindingContext bindingContext) {
 		final Cacheable cacheableAnn = managedType.getClassDetails().getDirectAnnotationUsage( Cacheable.class );
-		final SharedCacheMode sharedCacheMode = bindingState.getMetadataBuildingContext()
-				.getBuildingOptions()
-				.getSharedCacheMode();
+		final SharedCacheMode sharedCacheMode = bindingContext.getSharedCacheMode();
 		typeBinding.setCached( isCacheable( sharedCacheMode, cacheableAnn ) );
 	}
 
@@ -735,16 +732,14 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 
 		if ( inheritanceType == InheritanceType.JOINED ) {
 			// JoinedSubclass can define a discriminator in certain circumstances
-			final MetadataBuildingOptions buildingOptions = bindingState.getMetadataBuildingContext().getBuildingOptions();
-
-			if ( buildingOptions.ignoreExplicitDiscriminatorsForJoinedInheritance() ) {
+			if ( bindingOptions.ignoreExplicitDiscriminatorsForJoinedInheritance() ) {
 				if ( columnAnn != null || formulaAnn != null ) {
 					MODEL_BINDING_LOGGER.debugf( "Skipping explicit discriminator for JOINED hierarchy due to configuration - " + typeBinding.getEntityName() );
 				}
 				return;
 			}
 
-			if ( !buildingOptions.createImplicitDiscriminatorsForJoinedInheritance() ) {
+			if ( !bindingOptions.createImplicitDiscriminatorsForJoinedInheritance() ) {
 				if ( columnAnn == null && formulaAnn == null ) {
 					return;
 				}
@@ -866,7 +861,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 			BindingState state,
 			BindingContext context) {
 		final Database database = state.getMetadataBuildingContext().getMetadataCollector().getDatabase();
-		final PhysicalNamingStrategy namingStrategy = state.getMetadataBuildingContext().getBuildingOptions().getPhysicalNamingStrategy();
+		final PhysicalNamingStrategy namingStrategy = context.getPhysicalNamingStrategy();
 		final SoftDeleteType strategy = softDeleteConfig.strategy();
 		final String logicalColumnName = coalesce(
 				strategy.getDefaultColumnName(),

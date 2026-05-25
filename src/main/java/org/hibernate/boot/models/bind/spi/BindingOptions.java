@@ -23,4 +23,10 @@ public interface BindingOptions {
 
 	/// Identifier categories that should be globally quoted during binding.
 	EnumSet<QuotedIdentifierTarget> getGloballyQuotedIdentifierTargets();
+
+	/// Whether joined inheritance should create implicit discriminator mappings.
+	boolean createImplicitDiscriminatorsForJoinedInheritance();
+
+	/// Whether explicit joined-inheritance discriminator mappings should be ignored.
+	boolean ignoreExplicitDiscriminatorsForJoinedInheritance();
 }

@@ -70,6 +70,7 @@ public class BindingTestingHelper {
 				bindingOptions,
 				bindingContext
 		);
+		bindingState.applyMetadataRegistrations( metadataCollector );
 
 		check.checkDomainModel( new DomainModelCheckContext() {
 			@Override

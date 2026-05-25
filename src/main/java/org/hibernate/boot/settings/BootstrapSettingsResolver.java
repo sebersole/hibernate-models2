@@ -161,6 +161,8 @@ public class BootstrapSettingsResolver {
 						resolveXmlMappingEnabled( configurationValues ),
 						resolveValidateXml( configurationValues ),
 						defaultToOneFetchType,
+						resolveCreateImplicitDiscriminatorsForJoinedInheritance( configurationValues ),
+						resolveIgnoreExplicitDiscriminatorsForJoinedInheritance( configurationValues ),
 						resolveCacheRegionDefinitions( configurationValues )
 				)
 		);
@@ -194,6 +196,16 @@ public class BootstrapSettingsResolver {
 
 	private static boolean resolveValidateXml(Map<String, Object> configurationValues) {
 		final Object enabled = configurationValues.get( MappingSettings.VALIDATE_XML );
+		return enabled != null && parseBoolean( enabled );
+	}
+
+	private static boolean resolveCreateImplicitDiscriminatorsForJoinedInheritance(Map<String, Object> configurationValues) {
+		final Object enabled = configurationValues.get( MappingSettings.IMPLICIT_DISCRIMINATOR_COLUMNS_FOR_JOINED_SUBCLASS );
+		return enabled != null && parseBoolean( enabled );
+	}
+
+	private static boolean resolveIgnoreExplicitDiscriminatorsForJoinedInheritance(Map<String, Object> configurationValues) {
+		final Object enabled = configurationValues.get( MappingSettings.IGNORE_EXPLICIT_DISCRIMINATOR_COLUMNS_FOR_JOINED_SUBCLASS );
 		return enabled != null && parseBoolean( enabled );
 	}
 

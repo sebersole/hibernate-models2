@@ -13,25 +13,37 @@ import org.hibernate.boot.models.categorize.spi.CategorizationContext;
 import org.hibernate.boot.models.categorize.spi.JpaEventListener;
 import org.hibernate.boot.models.xml.spi.PersistenceUnitMetadata;
 import org.hibernate.boot.spi.EffectiveMappingDefaults;
-import org.hibernate.boot.spi.MetadataBuildingContext;
+import org.hibernate.models.spi.ClassDetailsRegistry;
+
+import jakarta.persistence.SharedCacheMode;
 
 /**
  * @author Steve Ebersole
  */
 public class CategorizationContextImpl implements CategorizationContext {
-	private final MetadataBuildingContext metadataBuildingContext;
+	private final PersistenceUnitMetadata persistenceUnitMetadata;
+	private final EffectiveMappingDefaults effectiveMappingDefaults;
+	private final ClassDetailsRegistry classDetailsRegistry;
+	private final SharedCacheMode sharedCacheMode;
 	private final GlobalRegistrations globalRegistrations;
+	private final ConverterRegistry converterRegistry;
+	private final Database database;
 
 	public CategorizationContextImpl(
-			MetadataBuildingContext metadataBuildingContext,
-			GlobalRegistrations globalRegistrations) {
-		this.metadataBuildingContext = metadataBuildingContext;
+			PersistenceUnitMetadata persistenceUnitMetadata,
+			EffectiveMappingDefaults effectiveMappingDefaults,
+			ClassDetailsRegistry classDetailsRegistry,
+			SharedCacheMode sharedCacheMode,
+			GlobalRegistrations globalRegistrations,
+			ConverterRegistry converterRegistry,
+			Database database) {
+		this.persistenceUnitMetadata = persistenceUnitMetadata;
+		this.effectiveMappingDefaults = effectiveMappingDefaults;
+		this.classDetailsRegistry = classDetailsRegistry;
+		this.sharedCacheMode = sharedCacheMode;
 		this.globalRegistrations = globalRegistrations;
-	}
-
-	@Override
-	public MetadataBuildingContext getMetadataBuildingContext() {
-		return metadataBuildingContext;
+		this.converterRegistry = converterRegistry;
+		this.database = database;
 	}
 
 	@Override
@@ -41,22 +53,32 @@ public class CategorizationContextImpl implements CategorizationContext {
 
 	@Override
 	public PersistenceUnitMetadata getPersistenceUnitMetadata() {
-		return metadataBuildingContext.getMetadataCollector().getPersistenceUnitMetadata();
+		return persistenceUnitMetadata;
 	}
 
 	@Override
 	public EffectiveMappingDefaults getEffectiveMappingDefaults() {
-		return metadataBuildingContext.getEffectiveDefaults();
+		return effectiveMappingDefaults;
+	}
+
+	@Override
+	public ClassDetailsRegistry getClassDetailsRegistry() {
+		return classDetailsRegistry;
+	}
+
+	@Override
+	public SharedCacheMode getSharedCacheMode() {
+		return sharedCacheMode;
 	}
 
 	@Override
 	public ConverterRegistry getConverterRegistry() {
-		return metadataBuildingContext.getMetadataCollector().getConverterRegistry();
+		return converterRegistry;
 	}
 
 	@Override
 	public Database getDatabase() {
-		return metadataBuildingContext.getMetadataCollector().getDatabase();
+		return database;
 	}
 
 	@Override

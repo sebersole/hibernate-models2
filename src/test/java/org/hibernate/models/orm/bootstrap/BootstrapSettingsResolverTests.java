@@ -42,6 +42,8 @@ public class BootstrapSettingsResolverTests {
 		assertThat( settings.mappingSettings().xmlMappingEnabled() ).isTrue();
 		assertThat( settings.mappingSettings().validateXml() ).isFalse();
 		assertThat( settings.mappingSettings().defaultToOneFetchType() ).isEqualTo( FetchType.EAGER );
+		assertThat( settings.mappingSettings().createImplicitDiscriminatorsForJoinedInheritance() ).isFalse();
+		assertThat( settings.mappingSettings().ignoreExplicitDiscriminatorsForJoinedInheritance() ).isFalse();
 		assertThat( settings.mappingSettings().cacheRegionDefinitions() ).isEmpty();
 	}
 
@@ -50,12 +52,16 @@ public class BootstrapSettingsResolverTests {
 		final var settings = resolver.resolve( Map.of(
 				MappingSettings.XML_MAPPING_ENABLED, "false",
 				MappingSettings.VALIDATE_XML, true,
+				MappingSettings.IMPLICIT_DISCRIMINATOR_COLUMNS_FOR_JOINED_SUBCLASS, true,
+				MappingSettings.IGNORE_EXPLICIT_DISCRIMINATOR_COLUMNS_FOR_JOINED_SUBCLASS, "true",
 				CLASS_CACHE_PREFIX + ".org.acme.TheEntity", "read-write;entities;all",
 				COLLECTION_CACHE_PREFIX + ".org.acme.TheEntity.items", "nonstrict-read-write,items"
 		) );
 
 		assertThat( settings.mappingSettings().xmlMappingEnabled() ).isFalse();
 		assertThat( settings.mappingSettings().validateXml() ).isTrue();
+		assertThat( settings.mappingSettings().createImplicitDiscriminatorsForJoinedInheritance() ).isTrue();
+		assertThat( settings.mappingSettings().ignoreExplicitDiscriminatorsForJoinedInheritance() ).isTrue();
 		assertThat( settings.mappingSettings().cacheRegionDefinitions() )
 				.extracting( "regionType", "role", "usage", "region", "cacheLazy" )
 				.containsExactlyInAnyOrder(

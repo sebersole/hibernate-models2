@@ -38,11 +38,38 @@ public record ResolvedMappingSettings(
 		/// Jakarta Persistence `DEFAULT` fetch type.
 		FetchType defaultToOneFetchType,
 
+		/// Whether joined-subclass hierarchies should create an implicit
+		/// discriminator when no explicit discriminator mapping is present.
+		///
+		/// @see org.hibernate.cfg.MappingSettings#IMPLICIT_DISCRIMINATOR_COLUMNS_FOR_JOINED_SUBCLASS
+		boolean createImplicitDiscriminatorsForJoinedInheritance,
+
+		/// Whether explicit discriminator mappings on joined-subclass hierarchies
+		/// should be ignored.
+		///
+		/// @see org.hibernate.cfg.MappingSettings#IGNORE_EXPLICIT_DISCRIMINATOR_COLUMNS_FOR_JOINED_SUBCLASS
+		boolean ignoreExplicitDiscriminatorsForJoinedInheritance,
+
 		/// Cache region declarations extracted from configuration settings such
 		/// as `hibernate.classcache.*` and `hibernate.collectioncache.*`.
 		///
 		/// The list is defensively copied by the canonical constructor.
 		List<CacheRegionDefinition> cacheRegionDefinitions) {
+
+	public ResolvedMappingSettings(
+			boolean xmlMappingEnabled,
+			boolean validateXml,
+			FetchType defaultToOneFetchType,
+			List<CacheRegionDefinition> cacheRegionDefinitions) {
+		this(
+				xmlMappingEnabled,
+				validateXml,
+				defaultToOneFetchType,
+				false,
+				false,
+				cacheRegionDefinitions
+		);
+	}
 
 	/// Normalizes nullable collection inputs and exposes immutable snapshots.
 	public ResolvedMappingSettings {

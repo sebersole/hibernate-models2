@@ -10,7 +10,6 @@ import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
-import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.engine.spi.FilterDefinition;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Property;
@@ -42,8 +41,7 @@ public class TenantIdBinder {
 			BindingOptions bindingOptions,
 			BindingState bindingState,
 			BindingContext bindingContext) {
-		final InFlightMetadataCollector collector = bindingState.getMetadataBuildingContext().getMetadataCollector();
-		final TypeConfiguration typeConfiguration = collector.getTypeConfiguration();
+		final TypeConfiguration typeConfiguration = bindingState.getTypeConfiguration();
 
 		final MemberDetails memberDetails = attributeMetadata.getMember();
 		final String returnedClassName = memberDetails.getType().determineRawClass().getClassName();
@@ -51,9 +49,9 @@ public class TenantIdBinder {
 				.getBasicTypeRegistry()
 				.getRegisteredType( returnedClassName );
 
-		final FilterDefinition filterDefinition = collector.getFilterDefinition( FILTER_NAME );
+		final FilterDefinition filterDefinition = bindingState.getFilterDefinition( FILTER_NAME );
 		if ( filterDefinition == null ) {
-			collector.addFilterDefinition( new FilterDefinition(
+			bindingState.addFilterDefinition( new FilterDefinition(
 					FILTER_NAME,
 					"",
 					singletonMap( PARAMETER_NAME, tenantIdType )

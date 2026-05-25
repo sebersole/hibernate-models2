@@ -80,7 +80,7 @@ public class MappedSuperTypeBinder extends IdentifiableTypeBinder
 	public void bindTypeSkeleton() {
 		getBindingState().registerTypeBinder( getManagedType(), this );
 
-		getBindingState().getMetadataBuildingContext().getMetadataCollector().addImport(
+		getBindingState().addImport(
 				StringHelper.unqualify( getManagedType().getClassDetails().getClassName() ),
 				getManagedType().getClassDetails().getClassName()
 		);

@@ -132,8 +132,13 @@ public class DomainModelCategorizer {
 
 		// Collect the entity hierarchies based on the scoped managed type inheritance state
 		final CategorizationContextImpl mappingBuildingContext = new CategorizationContextImpl(
-				metadataBuildingContext,
-				modelCategorizationCollector.getGlobalRegistrations()
+				persistenceUnitMetadata,
+				mappingDefaults,
+				mutableClassDetailsRegistry,
+				bootstrapContext.getMetadataBuildingOptions().getSharedCacheMode(),
+				modelCategorizationCollector.getGlobalRegistrations(),
+				metadataBuildingContext.getMetadataCollector().getConverterRegistry(),
+				metadataBuildingContext.getMetadataCollector().getDatabase()
 		);
 
 		final ManagedTypeInheritanceState inheritanceState = new ManagedTypeInheritanceState(

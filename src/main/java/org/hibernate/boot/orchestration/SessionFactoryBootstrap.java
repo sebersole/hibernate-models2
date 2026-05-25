@@ -65,16 +65,18 @@ public class SessionFactoryBootstrap {
 				metadataBuildingContext
 		);
 
+		final BindingStateImpl bindingState = new BindingStateImpl( metadataBuildingContext );
 		BindingCoordinator.coordinateBinding(
 				categorizedDomainModel,
-				new BindingStateImpl( metadataBuildingContext ),
-				new BindingOptionsImpl( metadataBuildingContext ),
+				bindingState,
+				new BindingOptionsImpl( metadataBuildingContext, bootstrapSettings.mappingSettings() ),
 				new BindingContextImpl(
 						categorizedDomainModel,
 						metadataBuildingContext.getBootstrapContext()
 				)
 		);
 
+		bindingState.applyMetadataRegistrations( metadataBuildingContext.getMetadataCollector() );
 		final MetadataImplementor metadata = metadataBuildingContext.getMetadataCollector();
 		metadata.orderColumns( false );
 		metadata.validate();

@@ -112,7 +112,7 @@ class PluralAssociationAttributeBinder {
 				targetClassDetails,
 				mappedBy
 		) );
-		bindingState.getMetadataBuildingContext().getMetadataCollector().addCollectionBinding( collection );
+		bindingState.addCollectionBinding( collection );
 		return collection;
 	}
 
@@ -137,7 +137,7 @@ class PluralAssociationAttributeBinder {
 				targetClassDetails,
 				mappedBy
 		) );
-		bindingState.getMetadataBuildingContext().getMetadataCollector().addCollectionBinding( collection );
+		bindingState.addCollectionBinding( collection );
 		return collection;
 	}
 
@@ -203,7 +203,7 @@ class PluralAssociationAttributeBinder {
 				source.joinTable() == null ? new jakarta.persistence.UniqueConstraint[0] : source.joinTable().uniqueConstraints(),
 				source.joinTable() == null ? new jakarta.persistence.Index[0] : source.joinTable().indexes()
 		) );
-		bindingState.getMetadataBuildingContext().getMetadataCollector().addCollectionBinding( collection );
+		bindingState.addCollectionBinding( collection );
 		return collection;
 	}
 
@@ -284,7 +284,7 @@ class PluralAssociationAttributeBinder {
 				joinTable == null ? new jakarta.persistence.UniqueConstraint[0] : joinTable.uniqueConstraints(),
 				joinTable == null ? new jakarta.persistence.Index[0] : joinTable.indexes()
 		) );
-		bindingState.getMetadataBuildingContext().getMetadataCollector().addCollectionBinding( collection );
+		bindingState.addCollectionBinding( collection );
 		return collection;
 	}
 

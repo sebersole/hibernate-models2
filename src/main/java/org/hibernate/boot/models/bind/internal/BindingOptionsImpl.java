@@ -9,6 +9,7 @@ import java.util.EnumSet;
 
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.models.bind.spi.QuotedIdentifierTarget;
+import org.hibernate.boot.settings.ResolvedMappingSettings;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.engine.config.spi.ConfigurationService;
@@ -28,8 +29,31 @@ public class BindingOptionsImpl implements BindingOptions {
 	private final Identifier defaultCatalogName;
 	private final Identifier defaultSchemaName;
 	private final EnumSet<QuotedIdentifierTarget> globallyQuotedIdentifierTargets;
+	private final boolean createImplicitDiscriminatorsForJoinedInheritance;
+	private final boolean ignoreExplicitDiscriminatorsForJoinedInheritance;
 
 	public BindingOptionsImpl(MetadataBuildingContext metadataBuildingContext) {
+		this(
+				metadataBuildingContext,
+				metadataBuildingContext.getBuildingOptions().createImplicitDiscriminatorsForJoinedInheritance(),
+				metadataBuildingContext.getBuildingOptions().ignoreExplicitDiscriminatorsForJoinedInheritance()
+		);
+	}
+
+	public BindingOptionsImpl(
+			MetadataBuildingContext metadataBuildingContext,
+			ResolvedMappingSettings mappingSettings) {
+		this(
+				metadataBuildingContext,
+				mappingSettings.createImplicitDiscriminatorsForJoinedInheritance(),
+				mappingSettings.ignoreExplicitDiscriminatorsForJoinedInheritance()
+		);
+	}
+
+	private BindingOptionsImpl(
+			MetadataBuildingContext metadataBuildingContext,
+			boolean createImplicitDiscriminatorsForJoinedInheritance,
+			boolean ignoreExplicitDiscriminatorsForJoinedInheritance) {
 		final boolean globallyQuote = metadataBuildingContext.getBuildingOptions().getMappingDefaults().shouldImplicitlyQuoteIdentifiers();
 		final boolean skipColumnDefinitions = metadataBuildingContext
 				.getBootstrapContext()
@@ -67,6 +91,8 @@ public class BindingOptionsImpl implements BindingOptions {
 				globallyQuotedIdentifierTargets,
 				jdbcEnvironment
 		);
+		this.createImplicitDiscriminatorsForJoinedInheritance = createImplicitDiscriminatorsForJoinedInheritance;
+		this.ignoreExplicitDiscriminatorsForJoinedInheritance = ignoreExplicitDiscriminatorsForJoinedInheritance;
 	}
 
 	public static <A extends Annotation> Identifier toIdentifier(
@@ -89,6 +115,8 @@ public class BindingOptionsImpl implements BindingOptions {
 		this.defaultCatalogName = defaultCatalogName;
 		this.defaultSchemaName = defaultSchemaName;
 		this.globallyQuotedIdentifierTargets = globallyQuotedIdentifierTargets;
+		this.createImplicitDiscriminatorsForJoinedInheritance = false;
+		this.ignoreExplicitDiscriminatorsForJoinedInheritance = false;
 	}
 
 	@Override
@@ -104,5 +132,15 @@ public class BindingOptionsImpl implements BindingOptions {
 	@Override
 	public EnumSet<QuotedIdentifierTarget> getGloballyQuotedIdentifierTargets() {
 		return globallyQuotedIdentifierTargets;
+	}
+
+	@Override
+	public boolean createImplicitDiscriminatorsForJoinedInheritance() {
+		return createImplicitDiscriminatorsForJoinedInheritance;
+	}
+
+	@Override
+	public boolean ignoreExplicitDiscriminatorsForJoinedInheritance() {
+		return ignoreExplicitDiscriminatorsForJoinedInheritance;
 	}
 }

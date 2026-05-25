@@ -236,6 +236,617 @@ That may remain unavoidable in the short term, but it is a useful design smell.
 An eventual factory-build handle could allow services that need factory identity
 to avoid depending on a partially initialized `SessionFactoryImpl`.
 
+== Constructor Dependency Audit
+
+Before adding more resolvers or compatibility adapters, audit each legacy
+constructor dependency as an individual need.  The goal is to avoid preserving a
+large contract simply because the current constructor happens to accept it.
+
+[cols="1,2,2,1,2,2", options="header"]
+|===
+| Legacy contract
+| Current consumers to inspect
+| Actual values needed
+| Phase
+| Replacement candidate
+| Status / notes
+
+| `BootstrapContext`
+| `SessionFactoryImpl`, runtime metamodel creation, type/configuration access,
+  integrator callbacks
+| Unknown.  Likely class-loading, bean access, `TypeConfiguration`, function
+  registry, SQL functions, auxiliary objects, converters, cache region
+  definitions, and JPA bootstrap flags.
+| Early boot and late factory construction are currently mixed.
+| Split into narrower early model-building context and late
+  `SessionFactoryBuildContext`; keep an adapter only where ORM still requires
+  `BootstrapContext`.
+| Needs audit first.  Treat as suspicious because it is overly encompassing.
+
+| `SessionFactoryOptions`
+| `SessionFactoryImpl`, services, runtime model/query infrastructure, session
+  builders
+| Many setting-derived factory decisions: naming, observers, tenant/cache/JDBC,
+  transaction, statistics, query, compliance, default session behavior, raw
+  settings map.
+| Factory construction and runtime behavior.
+| `ResolvedSessionFactoryOptions` plus adapter to ORM's interface if needed.
+| Do not prototype until the consumers are grouped by actual need.
+
+| `MetadataImplementor`
+| `SessionFactoryImpl`, runtime metamodel creation, cache priming, query/import
+  registration, schema/database access
+| Boot mapping model: entity/collection bindings, database model, type
+  configuration, filters, fetch profiles, named queries, imports, cache regions.
+| Handoff from boot-model binding to factory construction.
+| Probably remains a bridge initially.  Longer term, consider whether a narrower
+  immutable boot model can replace direct collector-style access.
+| Main current proving ground for the PoC binder.
+
+| `InFlightMetadataCollector`
+| Binding internals, second passes, table/database registration, metadata
+  validation/order, named objects, imports, type/converter registrations
+| Unknown split between mutable binding state and final metadata output.
+| Boot-model binding.
+| Prefer `BindingState` as the mutable binding target if it can own the missing
+  responsibilities.
+| Audit `BindingState` gaps one by one before accepting collector dependence.
+
+| `MetadataBuildingContext`
+| Binders, naming/default resolution, table/column creation, access to bootstrap
+  context and metadata collector
+| Services, naming/options/defaults, type configuration, binding state, current
+  contributor, temporal/audit defaults.
+| Boot-model binding.
+| Narrow binding context composed from services, resolved settings/defaults, and
+  `BindingState`.
+| Current PoC still uses ORM's root implementation; identify which methods the
+  boot-model binder actually calls.
+
+| `MetadataBuildingOptions`
+| `MetadataBuildingContext`, metadata collector, naming strategies, column
+  ordering, cache defaults, XML mapping flag, type options
+| Mapping defaults and strategy choices used during binding and metadata
+  validation.
+| Boot-model binding.
+| Resolved mapping options, possibly derived from `ResolvedBootstrapSettings`
+  plus service-registry settings.
+| Local copy may be useful if `MetadataBuilderImpl` remains too coupled.
+
+| `SessionFactoryServiceRegistry`
+| Constructed by `SessionFactoryImpl`; consumed by runtime services and
+  integrators
+| Service instances that may need factory identity, plus initiator-provided
+  services.
+| Factory construction.
+| Factory-build handle or late service-registry creation phase.
+| Audit whether services really require a fully constructed factory or just a
+  build-time handle.
+|===
+
+Audit process for each row:
+
+. Find concrete consumers in ORM.
+. List the accessed methods/values rather than the nominal type.
+. Assign each accessed value to source discovery, binding, factory option
+  resolution, runtime model creation, or service construction.
+. Decide whether the PoC should use the legacy contract, provide a narrow local
+  replacement, or create a temporary adapter.
+. Record required upstream follow-up in
+  link:orm-integration-notes.adoc[`orm-integration-notes.adoc`] when a local
+  copy or narrowed replacement is introduced.
+
+=== BootstrapContext
+
+Initial inspection target: `SessionFactoryImpl` and the first pass-through level
+(`Integrator` and `RuntimeModelCreationContext` consumers).
+
+Direct `SessionFactoryImpl` usage:
+
+* `bootstrapContext.getTypeConfiguration()` is read at constructor start and
+  stored as the factory `TypeConfiguration`.
+* the full `BootstrapContext` is passed to `Integrator#integrate`.
+* the full `BootstrapContext` is passed through
+  `RuntimeModelCreationContext#getBootstrapContext()` during mapping/JPA
+  runtime model creation.
+
+This means the constructor itself does not appear to need the whole contract.
+The broad need comes from extension and runtime-model pass-through.
+
+[cols="1,2,2,2", options="header"]
+|===
+| Consumer area
+| Observed access
+| Likely narrower dependency
+| Notes
+
+| `SessionFactoryImpl`
+| `getTypeConfiguration()`
+| `TypeConfiguration`
+| Direct constructor need.  This can be made explicit in a later
+  `SessionFactoryBuildContext`.
+
+| Integrators
+| `Integrator#integrate(Metadata, BootstrapContext, SessionFactoryImplementor)`
+| Compatibility adapter for existing `Integrator` contract
+| This is an extension compatibility concern.  Existing integrators may use any
+  `BootstrapContext` method, so narrowing probably requires a staged SPI change
+  or adapter.
+
+| Runtime model creation
+| `RuntimeModelCreationContext#getBootstrapContext()`
+| Runtime model creation context with explicit values
+| Known downstream uses include class-loading access, bean registry/access,
+  representation strategy selection, metadata building options, service registry,
+  and type/configuration access.
+
+| Runtime JPA metamodel
+| `runtimeModelCreationContext.getBootstrapContext().getClassLoaderService()`
+| `ClassLoaderService` or class-loading access
+| Example direct use in `JpaMetamodelImpl`.
+
+| Runtime representation strategies
+| `getClassLoaderAccess()`, `getManagedBeanRegistry()`,
+  `getRepresentationStrategySelector()`
+| representation strategy creation services
+| Examples include POJO/entity/embeddable representation strategy construction.
+
+| Persister/runtime mapping construction
+| `getMetadataBuildingOptions()`, `getServiceRegistry()`
+| mapping/runtime creation options and service access
+| Examples include collection/entity persister initialization and multi-table
+  strategy support.
+|===
+
+Preliminary conclusion:
+
+`BootstrapContext` should not be treated as a single required constructor
+dependency.  For the PoC, keeping it as an adapter may be acceptable for
+integrator compatibility and current runtime model creation, but the design
+target should be to split it into:
+
+* explicit direct constructor inputs such as `TypeConfiguration`;
+* a narrower runtime model creation context;
+* an integrator compatibility adapter until the extension SPI can be revisited;
+* early boot-only services that should not reach `SessionFactoryImpl`.
+
+==== Usage Buckets
+
+The specific `BootstrapContext` uses still need to be classified.  The intended
+classification is:
+
+Early boot only::
+Should not reach `SessionFactoryImpl`.
++
+Likely examples include source discovery, XML processing, metadata binding
+helpers, `ModelsContext`, temporary classloader access, and scanning artifacts.
+
+Runtime model creation::
+Should move onto, or remain available through, a narrower
+`RuntimeModelCreationContext`.
++
+Likely examples include `ClassLoaderService`, `ManagedBeanRegistry`,
+representation strategy selection, and any mapping/runtime options that are
+still proven necessary.
+
+Integrator compatibility::
+May require a legacy `BootstrapContext` adapter in the short term.
++
+`Integrator#integrate(Metadata, BootstrapContext, SessionFactoryImplementor)` is
+the strongest compatibility reason to preserve a `BootstrapContext` view until a
+new extension SPI exists.
+
+This classification has not been completed yet.  Each observed use should be
+assigned to one of these buckets before introducing a replacement contract.
+
+==== PoC Decision
+
+The PoC should not treat `BootstrapContext` as a primary bootstrap product.
+Where existing ORM integration points still require the legacy contract, the PoC
+may create or carry an adapter.  New PoC phases should request explicit values
+instead of accepting `BootstrapContext`.
+
+Follow-up questions:
+
+* Which `BootstrapContext` methods are actually used by built-in integrators,
+  especially Bean Validation?
+* Can `RuntimeModelCreationContext` expose the needed values directly and
+  deprecate `getBootstrapContext()`?
+* Does runtime model creation still need `MetadataBuildingOptions`, or only a
+  smaller set of resolved mapping/runtime options?
+* Can `TypeConfiguration` be produced/scoped without retaining an early
+  `BootstrapContext` reference?
+
+
+==== RuntimeModelCreationContext Usages
+
+* ModelsContext
+* ServiceRegistry
+* _ClassLoaderService_ (available from ServiceRegistry)
+* ManagedBeanRegistry
+* _ManagedTypeRepresentationResolver_ (uses static impl)
+* _CollectionSemanticsResolver_ (uses a static impl)
+
+
+==== BeanValidationIntegrator Usages
+
+* None
+
+=== SessionFactoryOptions
+
+Not audited yet.
+
+=== MetadataImplementor
+
+Not audited yet.
+
+=== InFlightMetadataCollector
+
+Initial inspection target: PoC orchestration and binding code.
+
+`InFlightMetadataCollector` is currently the mutable ORM metadata target.  The
+PoC uses it both directly and indirectly through `MetadataBuildingContext`.
+Unlike `MetadataBuildingContext`, most collector uses are not merely accidental
+service access; many are real writes to the ORM boot metadata model that is
+returned as `MetadataImplementor`.
+
+Observed usage in the PoC:
+
+[cols="1,2,2,2", options="header"]
+|===
+| Consumer area
+| Observed access
+| Likely narrower dependency
+| Notes
+
+| `SessionFactoryBootstrap`
+| creates `InFlightMetadataCollectorImpl`; after binding calls
+  `orderColumns(false)` and `validate()` on the metadata result
+| metadata target factory plus finalization step
+| This is the clearest orchestration-level dependency.  Longer term this could
+  become a `MetadataBuildTarget` / finalizer pair, but for now it is the bridge
+  that proves the PoC can produce ORM metadata.
+
+| `DomainModelCategorizer`
+| reads `getPersistenceUnitMetadata()`, `getConverterRegistry()`, and
+  `getDatabase()` from the collector before constructing `CategorizationContext`
+| persistence-unit metadata, converter registry, database
+| The categorization model no longer sees the collector.  Remaining reads are
+  entry-point plumbing while `DomainModelCategorizer` still accepts
+  `MetadataBuildingContext`.
+
+| `BindingStateImpl`
+| reads `getDatabase()` during construction; writes `addEntityBinding`,
+  `addMappedSuperclass`, and `addFilterDefinition`
+| database, managed-type registration target, filter-definition target
+| Partly done: `BindingState` now localizes these writes.  Entity bindings still
+  publish immediately because property-reference binding validates against the
+  collector during the same binding run; mapped-superclass, collection, import,
+  filter, and global-registration writes use the explicit final bridge.
+
+| `BindingCoordinator` global registrations
+| writes identifier generators, named entity graphs, converters, Java/JDBC type
+  registrations, user/composite user types, collection type registrations, and
+  embeddable instantiators
+| global-registration target
+| Done for non-query registrations: these now write to `BindingState` and are
+  applied to the collector by the final bridge.  Query registrations still use
+  ORM's legacy query binders.
+
+| Query binding
+| `QueryBinder.bindQuery`, `bindNativeQuery`, and
+  `bindNamedStoredProcedureQuery` require `MetadataBuildingContext`
+| query registration adapter
+| This likely waits for upstream integration.  ORM's query binders currently
+  consume the legacy context and write to the collector internally.
+
+| Table binding
+| `addTable` and `addDenormalizedTable`; table naming callbacks also expose
+  `MetadataBuildingContext`
+| database namespace/table factory
+| This is a core collector responsibility today.  A narrow table factory would
+  be cleaner, but ORM's `Table` creation and namespace registration currently
+  live on the collector.
+
+| Collection binding
+| `addCollectionBinding`
+| collection metadata target
+| Done: collection binders now record collection bindings in `BindingState`;
+  the collector remains the final storage target.
+
+| Entity and mapped-superclass imports
+| `addImport`
+| import registration target
+| Done: imports now record in `BindingState` and publish during the final bridge.
+
+| Unique property references
+| `addUniquePropertyReference`
+| property-reference registration target
+| Still an immediate collector side channel, but now localized behind
+  `BindingState#addUniquePropertyReference`.  It cannot wait for the final
+  bridge because later binding phases consume it during the same binding run.
+  Upstream should ideally grow a typed property-reference API.
+
+| Tenant-id binding
+| reads `getTypeConfiguration()` and `getFilterDefinition()`; may write
+  `addFilterDefinition`
+| type configuration plus filter-definition registry
+| Partly done: type configuration and filter lookup/write now go through
+  `BindingState` so tenant-id validation sees pending filter definitions.
+
+| `BindingOptionsImpl`
+| reads `getDatabase().getJdbcEnvironment()`
+| JDBC environment
+| This is settings/defaults support, not a conceptual collector dependency.
+|===
+
+Preliminary conclusion:
+
+`InFlightMetadataCollector` is not just an overly broad service locator.  In the
+current bridge it is the mutable ORM metadata product.  The healthier split is:
+
+* keep the collector as the short-term final metadata target;
+* hide simple writes behind `BindingState` or a future boot metadata target
+  (`addEntityBinding`, `addMappedSuperclass`, `addCollectionBinding`,
+  `addImport`, filter definitions, global registrations);
+* isolate table/namespace creation separately if upstream ORM is changed;
+* leave query binding and mapping-object construction on the legacy adapter until
+  those upstream APIs can be changed;
+* keep final ordering/validation as an explicit orchestration step.
+
+This audit suggests that removing collector exposure locally is useful only when
+it improves binder shape without fighting ORM's mapping constructors.  The PoC
+now uses `BindingState#applyMetadataRegistrations` as the explicit bridge for
+simple metadata writes that can wait until the end of binding.  Entity bindings
+and unique property references remain immediate but are localized behind
+`BindingState` because later binding phases depend on the collector side effects.
+Table creation and query binding still need upstream work before a local rewrite
+is worthwhile.
+
+=== MetadataBuildingContext
+
+Initial inspection target: PoC categorization, binding, and orchestration code.
+
+`MetadataBuildingContext` is not currently part of the `SessionFactoryImpl`
+constructor boundary, but it is a major reason the PoC still creates an ORM
+`BootstrapContext`, `MetadataBuildingOptions`, and `InFlightMetadataCollector`.
+It is also passed into many ORM mapping model constructors.
+
+Observed usage in the PoC:
+
+[cols="1,2,2,2", options="header"]
+|===
+| Consumer area
+| Observed access
+| Likely narrower dependency
+| Notes
+
+| `SessionFactoryBootstrap`
+| Creates `AvailableResourcesContext` from
+  `metadataBuildingContext.getBootstrapContext().getModelsContext()` and
+  `getServiceRegistry()`; reads `getMetadataCollector()` after binding.
+| `ModelsContext`, `ServiceRegistry`, final metadata result
+| Source collection no longer needs the whole context.  This is already mostly a
+  convenience leak from current orchestration.
+
+| `DomainModelCategorizer`
+| `getBootstrapContext()`, `getMetadataCollector().getPersistenceUnitMetadata()`,
+  `getEffectiveDefaults()`, `getBuildingOptions().getMappingDefaults()`
+| models context, XML persistence-unit metadata, effective mapping defaults,
+  converter/global registration/database access, shared cache mode
+| Categorization still receives `MetadataBuildingContext` at its entry point for
+  now, but `CategorizationContext` no longer exposes it to the categorization
+  model.
+
+| `CategorizationContextImpl`
+| direct constructor inputs: persistence-unit metadata, effective defaults,
+  class details registry, shared cache mode, global registrations, converter
+  registry, database
+| explicit categorization collaborators
+| Done: this no longer adapts or exposes `MetadataBuildingContext` or
+  `BootstrapContext`.
+
+| `BindingStateImpl`
+| Stores the full context; initializes `Database` from
+  `getMetadataCollector().getDatabase()` and `JdbcServices` from
+  `getBootstrapContext().getServiceRegistry()`
+| database, JDBC services, mutable binding target
+| `BindingState` already owns much of the real binding state, but still exposes
+  `getMetadataBuildingContext()` as an escape hatch.
+
+| Binding coordinator/global registration binding
+| Frequent `getMetadataCollector()` calls to add named queries, result-set
+  mappings, fetch profiles, filters, imports, named entity graphs, and other
+  global metadata.
+| typed global-registration appliers on `BindingState` or a boot metadata target
+| This is one of the main places where `BindingState` could absorb collector
+  side effects.
+
+| Mapping object construction
+| `new RootClass(context)`, `new BasicValue(context)`, `new Component(context)`,
+  `new ManyToOne(context, table)`, collection mappings, `Join`, `Table`
+  creation through collector APIs
+| legacy ORM mapping-construction context or local adapter
+| This is the strongest short-term reason to keep an ORM-compatible
+  `MetadataBuildingContext`.
+
+| `BindingOptionsImpl`
+| `getBuildingOptions().getMappingDefaults()`,
+  `getBootstrapContext().getServiceRegistry().getService(ConfigurationService)`,
+  `getMetadataCollector().getDatabase().getJdbcEnvironment()`
+| resolved mapping defaults, configuration values, JDBC environment
+| Can become independent of `MetadataBuildingContext`.
+
+| `BindingContextImpl`
+| currently constructed from `BootstrapContext` to extract metadata-building
+  options and expose bootstrap services
+| global registrations, naming strategies, shared cache mode, models/services
+| This should likely depend on explicit values or a narrower binding services
+  contract.
+
+| Default cascade and naming/default lookups
+| `getEffectiveDefaults().getDefaultCascadeTypes()`,
+  `getObjectNameNormalizer()`, mapping defaults from `getBuildingOptions()`
+| effective mapping defaults and name normalization
+| Some of this may belong in resolved mapping options; object-name normalization
+  may require a small adapter while ORM mapping objects remain in use.
+|===
+
+Methods not yet observed as central in the PoC audit:
+
+* `getTypeDefinitionRegistry()`
+* `getCurrentContributorName()`
+* `getTemporalTableStrategy()`
+* `getAuditStrategy()`
+
+They may still be used indirectly by ORM mapping objects during validation or
+runtime model creation, so this is not a final removal claim.
+
+Preliminary conclusion:
+
+`MetadataBuildingContext` is mainly a legacy aggregation point for three
+different concerns:
+
+* services/options/defaults needed during categorization and binding;
+* the mutable metadata collector / binding target;
+* ORM mapping object construction APIs that require the legacy context type.
+
+The PoC should not treat it as the conceptual binding contract.  The likely
+direction is:
+
+* `CategorizationContext` is now independent of `MetadataBuildingContext`;
+* continue growing `BindingState` into the typed mutable binding target;
+* make `BindingOptions` / `BindingContext` consume explicit values;
+* retain a small ORM-compatible `MetadataBuildingContext` adapter only where
+  mapping object constructors or collector APIs still require it.
+
+This audit has not been completed yet.  The next useful step is to list the
+remaining `BindingState#getMetadataBuildingContext()` callers and decide whether
+each one is:
+
+* a real ORM mapping-constructor requirement;
+* a collector side effect that should move to `BindingState`;
+* a settings/defaults lookup that should move to `BindingOptions` or
+  `BindingContext`;
+* or a categorization concern that should move earlier.
+
+Follow-up questions:
+
+* Can `BindingState` hide `MetadataBuildingContext` from most binders?
+* Which collector writes are missing typed methods on `BindingState`?
+* Can ORM mapping constructors be isolated behind local factory methods so the
+  legacy context dependency is contained?
+* Can `CategorizationContext` be built directly from resolved settings,
+  `AvailableResources`, and metadata target services?
+
+=== MetadataBuildingOptions
+
+Initial inspection target: PoC orchestration and binding code.
+
+`MetadataBuildingOptions` is still created by ORM's `MetadataBuilderImpl` and
+threaded through `MetadataBuildingContext`.  In the PoC it acts mostly as a
+container for resolved mapping options and naming strategies, not as a mutable
+metadata target.
+
+Observed usage in the PoC:
+
+[cols="1,2,2,2", options="header"]
+|===
+| Consumer area
+| Observed access
+| Likely narrower dependency
+| Notes
+
+| `SessionFactoryBootstrap`
+| obtains `metadataBuilder.getMetadataBuildingOptions()`; passes it to
+  `InFlightMetadataCollectorImpl` and `MetadataBuildingContextRootImpl`; uses
+  `getMappingDefaults()` to create `RootMappingDefaults`
+| ORM bootstrap adapter inputs, mapping defaults
+| This remains part of the temporary ORM bridge while we reuse
+  `MetadataBuilderImpl`, `InFlightMetadataCollectorImpl`, and
+  `MetadataBuildingContextRootImpl`.
+
+| `BindingOptionsImpl`
+| reads `getMappingDefaults().shouldImplicitlyQuoteIdentifiers()`,
+  `getImplicitCatalogName()`, and `getImplicitSchemaName()`
+| resolved mapping defaults plus quoting policy
+| Good candidate for a narrow `ResolvedMappingSettings` or richer
+  `BindingOptions` constructor.  It also reads skip-column-definition quoting
+  from `ConfigurationService`, so the real input is settings plus mapping
+  defaults plus `JdbcEnvironment`.
+
+| `BindingContextImpl`
+| reads `getImplicitNamingStrategy()`, `getPhysicalNamingStrategy()`, and
+  `getSharedCacheMode()`
+| naming strategies and shared cache mode
+| These are stable binding services/options.  They can be passed explicitly once
+  `BindingContextImpl` stops adapting `BootstrapContext`.
+
+| `TableBinder`
+| reads implicit and physical naming strategies through
+  `bindingContext.getBootstrapContext().getMetadataBuildingOptions()`
+| naming strategies
+| This is redundant with `BindingContext`, which already exposes both
+  strategies.  This can be cleaned locally without upstream API changes.
+
+| `EntityTypeBinder` cache handling
+| reads `getSharedCacheMode()`
+| shared cache mode
+| `BindingContext` already exposes shared cache mode, so this can be cleaned
+  locally.
+
+| `EntityTypeBinder` joined inheritance discriminator handling
+| reads `ignoreExplicitDiscriminatorsForJoinedInheritance()` and
+  `createImplicitDiscriminatorsForJoinedInheritance()`
+| joined-inheritance discriminator settings
+| Done locally: these are resolved onto `ResolvedMappingSettings`, copied into
+  `BindingOptions`, and consumed by `EntityTypeBinder` from there.
+
+| Soft-delete column naming
+| reads `getPhysicalNamingStrategy()`
+| physical naming strategy
+| This can use `BindingContext#getPhysicalNamingStrategy()` locally.
+
+| `DomainModelCategorizer`
+| reads `getSharedCacheMode()` and `getMappingDefaults()` for
+  `RootMappingDefaults`
+| shared cache mode, mapping defaults
+| Categorization already passes shared cache mode through
+  `CategorizationContext`; the remaining mapping defaults are for XML processing
+  and root mapping defaults construction.
+|===
+
+Preliminary conclusion:
+
+`MetadataBuildingOptions` is less problematic than `MetadataBuildingContext` and
+less central than `InFlightMetadataCollector`: it mostly contains values we do
+need, but under a broad legacy container.
+
+The likely direction is:
+
+* keep creating it while the PoC reuses ORM's metadata builder/collector/context
+  bridge;
+* move local consumers toward explicit values already available from
+  `BindingContext` and `BindingOptions`;
+* grow a named mapping-settings contract for joined-inheritance discriminator
+  behavior, implicit catalog/schema, global quoting, naming strategies, and
+  shared cache mode;
+* keep `MetadataBuildingOptions` as an adapter detail until ORM mapping
+  constructors and XML/query processors no longer require the legacy context.
+
+Near-term local cleanup candidates:
+
+* have `TableBinder` use `BindingContext#getImplicitNamingStrategy()` and
+  `getPhysicalNamingStrategy()`;
+* have `EntityTypeBinder` use `BindingContext#getSharedCacheMode()` and
+  `getPhysicalNamingStrategy()`;
+* continue expanding `ResolvedMappingSettings` / `BindingOptions` only for
+  settings that are actually consumed during model processing.
+
+=== SessionFactoryServiceRegistry
+
+Not audited yet.
+
 == Initial Prototype Target
 
 The first implementation target should be deliberately narrow:
