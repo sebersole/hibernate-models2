@@ -21,14 +21,14 @@ import jakarta.persistence.FetchType;
 import static org.hibernate.cfg.AvailableSettings.CLASS_CACHE_PREFIX;
 import static org.hibernate.cfg.AvailableSettings.COLLECTION_CACHE_PREFIX;
 
-/// Resolves the subset of bootstrap settings used while discovering,
+/// Resolves the subset of bootstrap settings used while collecting,
 /// categorizing, and binding boot-model sources.
 ///
 /// The resolver is intentionally a normalization boundary.  Callers may arrive
 /// with a plain configuration map, a Hibernate-specific
 /// [HibernatePersistenceConfiguration], or a parsed [PersistenceUnitDescriptor]
 /// plus integration settings.  Each form is collapsed into the same
-/// [ResolvedBootstrapSettings] contract before source discovery continues.
+/// [ResolvedBootstrapSettings] contract before source collection continues.
 ///
 /// This class should own precedence and interpretation rules for the named
 /// settings in [ResolvedBootstrapSettings].  Settings that are merely carried to

@@ -119,7 +119,7 @@ public record AvailableResources(
 	/// Creates available resources from Hibernate's JPA
 	/// {@link HibernatePersistenceConfiguration} extension.
 	///
-	/// Explicit managed classes and mapping files are included.  Discovery/scanning is
+	/// Explicit managed classes and mapping files are included.  Archive scanning is
 	/// applied here based on [HibernatePersistenceConfiguration#rootUrl()] and
 	/// [HibernatePersistenceConfiguration#jarFileUrls()].
 	///
@@ -138,13 +138,13 @@ public record AvailableResources(
 	/// Creates available resources from Hibernate's JPA
 	/// {@link HibernatePersistenceConfiguration} extension.
 	///
-	/// Explicit managed classes and mapping files are included.  Discovery/scanning is
+	/// Explicit managed classes and mapping files are included.  Archive scanning is
 	/// applied here based on [HibernatePersistenceConfiguration#rootUrl()] and
 	/// [HibernatePersistenceConfiguration#jarFileUrls()].
 	///
 	/// @param persistenceConfiguration The PersistenceConfiguration
 	/// @param context Context used to resolve model details and load resources
-	/// @param bootstrapSettings Resolved bootstrap settings used during source discovery
+	/// @param bootstrapSettings Resolved bootstrap settings used during source collection
 	public static AvailableResources from(
 			HibernatePersistenceConfiguration persistenceConfiguration,
 			AvailableResourcesContext context,
@@ -194,7 +194,7 @@ public record AvailableResources(
 
 	/// Creates available resources from JPA {@link PersistenceConfiguration}.
 	///
-	/// Explicit managed classes and mapping files are included.  Discovery/scanning is
+	/// Explicit managed classes and mapping files are included.  Archive scanning is
 	/// not applied here.
 	///
 	/// @param persistenceConfiguration The PersistenceConfiguration

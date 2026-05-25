@@ -102,7 +102,7 @@ import static org.hibernate.internal.util.StringHelper.coalesce;
 /// associations such as {@code @MapsId}.
 /// 12. {@link #bindTableKeys()} - bind joined-subclass, secondary-table, and
 /// association-table keys that depend on the root identifier shape and on joins
-/// discovered while binding members.
+/// encountered while binding members.
 /// 13. {@link #bindInverseAssociations()} - resolve inverse association values
 /// from owning-side association mappings whose keys are now available.
 /// 14. {@link #bindForeignKeys()} - create physical foreign-key constraints from

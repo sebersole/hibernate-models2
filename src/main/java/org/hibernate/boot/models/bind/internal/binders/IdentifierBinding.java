@@ -17,7 +17,7 @@ import org.hibernate.mapping.Table;
 /// Local binding state for an entity hierarchy identifier.
 ///
 /// This captures the identifier shape produced by the identifier phase so later
-/// phases can consume it directly rather than rediscovering partially-bound state
+/// phases can consume it directly rather than re-reading partially-bound state
 /// from the metadata collector or retrying generic second-pass callbacks.
 ///
 /// The [#columns()] list is intentionally ordered.  Table keys, association

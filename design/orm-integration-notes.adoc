@@ -16,7 +16,7 @@ The PoC models this as `HibernatePersistenceConfigurationScanner`, which accepts
 the configuration, `ResolvedBootstrapSettings`, and class-loading access.
 Upstream ORM 9 should either replace `ScanningHelper` with this narrower
 contract or relax `ScanningHelper#performScanning` so it does not require
-`StandardServiceRegistry` this early in source discovery.
+`StandardServiceRegistry` this early in source collection.
 
 Prototype touchpoints:
 
@@ -159,7 +159,7 @@ A plural Java member contributes several mapping values: the collection containe
 Those values may use different source types and annotation vocabularies even though all annotations are declared on the same member.
 
 Upstream collection mappings should retain the semantic source classification and the effective element/key type facts.
-This avoids repeatedly rediscovering whether a `List` is an indexed list or a bag, whether a map key is basic/entity/property-based, and which annotations apply to the element versus key.
+This avoids repeatedly recomputing whether a `List` is an indexed list or a bag, whether a map key is basic/entity/property-based, and which annotations apply to the element versus key.
 
 Prototype touchpoints:
 

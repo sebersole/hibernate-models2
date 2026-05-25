@@ -14,15 +14,15 @@ import jakarta.persistence.FetchType;
 /// Resolved settings used while processing mapping sources.
 ///
 /// These settings are separated from the bootstrap envelope because they apply
-/// specifically to XML mapping discovery/reading and binding decisions.
+/// specifically to XML mapping collection/reading and binding decisions.
 ///
 /// @author Steve Ebersole
 public record ResolvedMappingSettings(
 		/// Whether XML mapping documents should be processed.
 		///
 		/// When disabled, explicitly named mapping files and conventionally
-		/// discovered `META-INF/orm.xml` resources should be ignored by source
-		/// discovery.
+		/// included `META-INF/orm.xml` resources should be ignored by source
+		/// collection.
 		///
 		/// @see org.hibernate.cfg.MappingSettings#XML_MAPPING_ENABLED
 		boolean xmlMappingEnabled,

@@ -33,9 +33,9 @@ import static org.hibernate.boot.models.categorize.internal.EntityHierarchyBuild
 /// created.
 ///
 /// This is the public entry point for the categorization phase.  It owns the
-/// transition from discovered sources to categorized contracts; later phases should
+/// transition from collected sources to categorized contracts; later phases should
 /// consume the resulting {@link CategorizedDomainModel} rather than repeat source
-/// discovery.
+/// collection.
 ///
 /// @author Steve Ebersole
 public class DomainModelCategorizer {

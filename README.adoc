@@ -17,9 +17,9 @@ This work is intended to replace `org.hibernate.mapping` building as part of ORM
 
 The implementation is organized around three phases.
 
-=== Source discovery
+=== Source collection
 
-Source discovery collects the inputs that should be considered during boot:
+Source collection assembles the inputs that should be considered during boot:
 
 * managed class descriptors
 * package descriptors
@@ -84,7 +84,7 @@ create that result.
 They are working contexts, not domain-model results.
 
 `ManagedTypeInheritanceState` models the visible inheritance relationships used
-while creating entity hierarchies.  A mapped-superclass can be discovered in the
+while creating entity hierarchies.  A mapped-superclass can be included in the
 persistence unit without being visible from a particular entity hierarchy.
 
 `MappedSuperclassTracker` tracks mapped-superclasses that are visited while

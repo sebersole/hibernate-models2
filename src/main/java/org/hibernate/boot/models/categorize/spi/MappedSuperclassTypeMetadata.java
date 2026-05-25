@@ -8,7 +8,7 @@ package org.hibernate.boot.models.categorize.spi;
 /// {@linkplain jakarta.persistence.metamodel.MappedSuperclassType mapped-superclass}.
 ///
 /// Only mapped-superclasses that participate in an entity hierarchy are represented
-/// by this contract.  Other discovered mapped-superclasses remain available from
+/// by this contract.  Other collected mapped-superclasses remain available from
 /// {@link CategorizedDomainModel#getMappedSuperclasses()} as class details.
 ///
 /// @author Steve Ebersole

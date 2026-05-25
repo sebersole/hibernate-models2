@@ -3,7 +3,7 @@
  * Copyright Red Hat Inc. and Hibernate Authors
  */
 
-/// Support for resolving bootstrap settings that affect model discovery,
+/// Support for resolving bootstrap settings that affect source collection,
 /// categorization, and binding.
 ///
 /// This package is a normalization boundary between loosely typed bootstrap

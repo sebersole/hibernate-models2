@@ -66,7 +66,7 @@ import jakarta.persistence.OrderBy;
 ///
 /// Likewise, a `List<E>` contributes both the element value for `E` and a synthetic list
 /// index value.  This record keeps those source-model facts together so downstream
-/// binders do not need to rediscover that `member.getElementType()` is the element source
+/// binders do not need to recompute that `member.getElementType()` is the element source
 /// while `member.getMapKeyType()` is the map-key source.
 ///
 /// The [#classification()] is deliberately source-oriented.  It says what semantic

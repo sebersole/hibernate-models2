@@ -8,7 +8,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/// Resolved bootstrap settings relevant to model-source discovery,
+/// Resolved bootstrap settings relevant to model source collection,
 /// categorization, and binding.
 ///
 /// The raw configuration map remains available for settings consumed downstream,

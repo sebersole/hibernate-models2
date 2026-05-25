@@ -72,9 +72,9 @@ Outputs:
 
 Settings should remain separate from source resources.
 
-== Source Discovery
+== Source Collection
 
-Extract JPA source discovery from `EntityManagerFactoryBuilderImpl` and avoid routing through `MetadataSources`
+Extract JPA source collection from `EntityManagerFactoryBuilderImpl` and avoid routing through `MetadataSources`
 as the primary abstraction.
 
 Inputs:
@@ -93,7 +93,7 @@ Output:
 
 == AvailableResources
 
-`AvailableResources` should be the normalized source model produced by source discovery.
+`AvailableResources` should be the normalized source model produced by source collection.
 
 It should contain:
 
@@ -173,7 +173,7 @@ Output:
 ** bootstrap flags like XML enabled, scanner settings, enhancement settings
 
 
-=== Extract Source Discovery
+=== Extract Source Collection
 
 Create a JPA source collector independent of MetadataSources.
 
@@ -194,7 +194,7 @@ Output:
 
 === Make AvailableResources the Normalized Source Model
 
-AvailableResources should be the output of source discovery.
+AvailableResources should be the output of source collection.
 
 It should contain:
 
@@ -277,6 +277,5 @@ The test target should be:
   that ORM currently derives through `EntityManagerFactoryBuilderImpl` and `ManagedResources`
 
 This establishes a clean replacement boundary before touching binder and persister integration.
-
 
 

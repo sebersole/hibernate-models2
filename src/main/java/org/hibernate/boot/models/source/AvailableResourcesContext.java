@@ -11,7 +11,7 @@ import org.hibernate.service.ServiceRegistry;
 
 /// Context used while assembling [AvailableResources].
 ///
-/// This context keeps source discovery tied to the early services it actually
+/// This context keeps source collection tied to the early services it actually
 /// needs: Hibernate Models access and resource/class-loading services.  It
 /// intentionally does not depend on `MetadataBuildingContext`, which is created
 /// later when the available resources are categorized and bound.
