@@ -499,7 +499,7 @@ Observed usage in the PoC:
 | Likely narrower dependency
 | Notes
 
-| `SessionFactoryBootstrap`
+| `MetadataResolver`
 | creates `InFlightMetadataCollectorImpl`; after binding calls
   `orderColumns(false)` and `validate()` on the metadata result
 | metadata target factory plus finalization step
@@ -621,7 +621,7 @@ Observed usage in the PoC:
 | Likely narrower dependency
 | Notes
 
-| `SessionFactoryBootstrap`
+| `MetadataResolver`
 | Creates `AvailableResourcesContext` from
   `metadataBuildingContext.getBootstrapContext().getModelsContext()` and
   `getServiceRegistry()`; reads `getMetadataCollector()` after binding.
@@ -757,7 +757,7 @@ Observed usage in the PoC:
 | Likely narrower dependency
 | Notes
 
-| `SessionFactoryBootstrap`
+| `MetadataResolver`
 | obtains `metadataBuilder.getMetadataBuildingOptions()`; passes it to
   `InFlightMetadataCollectorImpl` and `MetadataBuildingContextRootImpl`; uses
   `getMappingDefaults()` to create `RootMappingDefaults`
@@ -871,40 +871,41 @@ Success criteria:
 
 == Current PoC Slice
 
-The first orchestration shell is:
+The current metadata target resolver is:
 
-* link:../src/main/java/org/hibernate/boot/orchestration/SessionFactoryBootstrap.java[`SessionFactoryBootstrap`]
-* link:../src/main/java/org/hibernate/boot/orchestration/SessionFactoryBootstrapRequest.java[`SessionFactoryBootstrapRequest`]
+* link:../src/main/java/org/hibernate/boot/settings/BootstrapSettingsResolver.java[`BootstrapSettingsResolver`]
+* link:../src/main/java/org/hibernate/boot/orchestration/MetadataResolver.java[`MetadataResolver`]
+* link:../src/main/java/org/hibernate/boot/orchestration/ResolvedMetadata.java[`ResolvedMetadata`]
 
-The request is intentionally early-input oriented for now:
-
-[source,java]
-----
-record SessionFactoryBootstrapRequest(
-        BootstrapSourceContributions sourceContributions,
-        Map<String, Object> configurationValues,
-        boolean jpaBootstrap,
-        FetchType defaultToOneFetchType,
-        ServiceRegistry serviceRegistry)
-----
-
-`SessionFactoryBootstrap#buildMetadata` currently owns the phase order:
+Settings resolution is a separate target:
 
 [source]
 ----
-BootstrapSourceContributions + configuration values + ServiceRegistry
+configuration values / JPA inputs
+    -> BootstrapSettingsResolver
     -> ResolvedBootstrapSettings
+----
+
+`MetadataResolver#resolve` owns only the metadata target phase order:
+
+[source]
+----
+ResolvedBootstrapSettings + BootstrapSourceContributions + ServiceRegistry
     -> MetadataBuildingContext
     -> AvailableResources
     -> DomainModelCategorizer
     -> BindingCoordinator
     -> order columns
     -> validate
-    -> MetadataImplementor
+    -> ResolvedMetadata
 ----
 
-Later slices should grow this orchestrator rather than introducing separate
-helpers that also own phase order.
+`ResolvedMetadata` carries the finalized `MetadataImplementor`, the
+`CategorizedDomainModel`, the `BindingState` used as the local metadata-write
+bridge, and the `ResolvedBootstrapSettings`.
+
+Later slices should add one resolver per gross target rather than growing a
+single SessionFactory-wide orchestrator.
 
 == Open Questions
 

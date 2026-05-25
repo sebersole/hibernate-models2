@@ -13,13 +13,13 @@
  * source collection, categorization, binding, option resolution, and eventual
  * factory construction.
  * <p>
- * The current PoC slice is deliberately narrow: it starts with neutral source
- * contributions, explicit configuration values, and a service registry.  The
- * orchestrator resolves settings, creates available resources, creates the
- * metadata-building context, and then produces ORM
- * {@link org.hibernate.boot.spi.MetadataImplementor} by running categorization and
- * binding in order.  Later slices should grow the request and orchestrator rather
- * than introducing separate helpers that also own bootstrap phase order.
+ * The current PoC slice is deliberately narrow: settings are resolved by
+ * {@link org.hibernate.boot.settings.BootstrapSettingsResolver}, and then
+ * {@link org.hibernate.boot.orchestration.MetadataResolver} turns resolved
+ * settings, source contributions, and a service registry into
+ * {@link org.hibernate.boot.orchestration.ResolvedMetadata} by running source
+ * resource creation, categorization, binding, metadata registration, ordering,
+ * and validation in order.
  *
  * @author Steve Ebersole
  */

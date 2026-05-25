@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Steve Ebersole
  */
 @ServiceRegistry
-public class SessionFactoryBootstrapMetadataTests {
+public class MetadataResolverTests {
 	@Test
 	void buildsSecondaryTableMetadata(ServiceRegistryScope registryScope) {
 		final MetadataImplementor metadata = buildMetadata( registryScope, SimpleEntity.class );
@@ -197,6 +197,24 @@ public class SessionFactoryBootstrapMetadataTests {
 		assertThat( entityBinding.getProperty( "name" ).getColumns() )
 				.extracting( org.hibernate.mapping.Column::getName )
 				.containsExactly( "description" );
+	}
+
+	@Test
+	void buildResultExposesIntermediateProducts(ServiceRegistryScope registryScope) {
+		final var result = TestBootModelProducer.resolveMetadata(
+				registryScope.getRegistry(),
+				new HibernatePersistenceConfiguration( "test" )
+						.managedClass( SimpleEntity.class )
+		);
+
+		assertThat( result.metadata().getEntityBinding( SimpleEntity.class.getName() ) )
+				.isNotNull();
+		assertThat( result.categorizedDomainModel().getEntityHierarchies() )
+				.hasSize( 1 );
+		assertThat( result.bindingState().getDatabase() )
+				.isSameAs( result.metadata().getDatabase() );
+		assertThat( result.bootstrapSettings().jpaBootstrap() )
+				.isTrue();
 	}
 
 	@Test

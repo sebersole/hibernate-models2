@@ -9,8 +9,8 @@ import java.util.Map;
 import org.hibernate.boot.models.source.AvailableResources;
 import org.hibernate.boot.models.source.AvailableResourcesContext;
 import org.hibernate.boot.models.source.BootstrapSourceContributions;
-import org.hibernate.boot.orchestration.SessionFactoryBootstrap;
-import org.hibernate.boot.orchestration.SessionFactoryBootstrapRequest;
+import org.hibernate.boot.orchestration.MetadataResolver;
+import org.hibernate.boot.orchestration.ResolvedMetadata;
 import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
 import org.hibernate.boot.settings.BootstrapSettingsResolver;
 import org.hibernate.boot.settings.ResolvedBootstrapSettings;
@@ -66,6 +66,23 @@ public class TestBootModelProducer {
 			ServiceRegistry serviceRegistry,
 			HibernatePersistenceConfiguration persistenceConfiguration,
 			Map<String, Object> configurationValues) {
+		return resolveMetadata(
+				serviceRegistry,
+				persistenceConfiguration,
+				configurationValues
+		).metadata();
+	}
+
+	public static ResolvedMetadata resolveMetadata(
+			ServiceRegistry serviceRegistry,
+			HibernatePersistenceConfiguration persistenceConfiguration) {
+		return resolveMetadata( serviceRegistry, persistenceConfiguration, Map.of() );
+	}
+
+	public static ResolvedMetadata resolveMetadata(
+			ServiceRegistry serviceRegistry,
+			HibernatePersistenceConfiguration persistenceConfiguration,
+			Map<String, Object> configurationValues) {
 		final ResolvedBootstrapSettings bootstrapSettings = new BootstrapSettingsResolver().resolve(
 				persistenceConfiguration,
 				configurationValues
@@ -75,14 +92,10 @@ public class TestBootModelProducer {
 				bootstrapSettings,
 				serviceRegistry.requireService( ClassLoaderService.class )
 		);
-		return new SessionFactoryBootstrap().buildMetadata(
-				new SessionFactoryBootstrapRequest(
-						sourceContributions,
-						bootstrapSettings.configurationValues(),
-						bootstrapSettings.jpaBootstrap(),
-						bootstrapSettings.mappingSettings().defaultToOneFetchType(),
-						serviceRegistry
-				)
+		return new MetadataResolver().resolve(
+				bootstrapSettings,
+				sourceContributions,
+				serviceRegistry
 		);
 	}
 
