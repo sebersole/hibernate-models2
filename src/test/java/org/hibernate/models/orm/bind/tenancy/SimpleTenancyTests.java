@@ -43,7 +43,7 @@ public class SimpleTenancyTests {
 					final BasicValue value = (BasicValue) tenantProperty.getValue();
 					final org.hibernate.mapping.Column column = (org.hibernate.mapping.Column) value.getColumn();
 
-					assertThat( tenantProperty.isUpdateable() ).isFalse();
+					assertThat( tenantProperty.isUpdatable() ).isFalse();
 					assertThat( tenantProperty.isOptional() ).isFalse();
 
 					assertThat( value.getEnumerationStyle() ).isEqualTo( EnumType.ORDINAL );
@@ -70,7 +70,7 @@ public class SimpleTenancyTests {
 					final BasicValue value = (BasicValue) tenantProperty.getValue();
 					final org.hibernate.mapping.Column column = (org.hibernate.mapping.Column) value.getColumn();
 
-					assertThat( tenantProperty.isUpdateable() ).isFalse();
+					assertThat( tenantProperty.isUpdatable() ).isFalse();
 					assertThat( tenantProperty.isOptional() ).isFalse();
 
 					assertThat( value.getEnumerationStyle() ).isEqualTo( EnumType.STRING );

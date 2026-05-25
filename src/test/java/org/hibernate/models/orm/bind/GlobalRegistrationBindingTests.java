@@ -245,8 +245,7 @@ public class GlobalRegistrationBindingTests {
 		public GlobalUserTypeDomain nullSafeGet(
 				ResultSet rs,
 				int position,
-				SharedSessionContractImplementor session,
-				Object owner) throws SQLException {
+				WrapperOptions options) throws SQLException {
 			final String value = rs.getString( position );
 			return value == null ? null : new GlobalUserTypeDomain( value );
 		}
@@ -256,7 +255,7 @@ public class GlobalRegistrationBindingTests {
 				PreparedStatement st,
 				GlobalUserTypeDomain value,
 				int index,
-				SharedSessionContractImplementor session) throws SQLException {
+				WrapperOptions options) throws SQLException {
 			st.setString( index, value == null ? null : value.value() );
 		}
 

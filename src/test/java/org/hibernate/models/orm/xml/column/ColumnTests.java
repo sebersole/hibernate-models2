@@ -54,7 +54,6 @@ public class ColumnTests {
 		final Column annotationUsage = nameField.getDirectAnnotationUsage( Column.class );
 		assertThat( annotationUsage.name() ).isEqualTo( "nombre" );
 		assertThat( annotationUsage.length() ).isEqualTo( 256 );
-		assertThat( annotationUsage.comment() ).isEqualTo( "The name column" );
 		assertThat( annotationUsage.table() ).isEqualTo( "tbl" );
 		assertThat( annotationUsage.options() ).isEqualTo( "the options" );
 		assertThat( annotationUsage.check() ).isNotEmpty();

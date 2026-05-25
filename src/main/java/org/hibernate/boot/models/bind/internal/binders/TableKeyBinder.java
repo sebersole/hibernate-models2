@@ -117,9 +117,8 @@ public class TableKeyBinder {
 
 			final Table table = collectionTableBinding.collection().getCollectionTable();
 			final UniqueKey uniqueKey = StringHelper.isEmpty( uniqueConstraint.name() )
-					? new UniqueKey( table )
+					? table.addUniqueKey( new UniqueKey( table ) )
 					: table.getOrCreateUniqueKey( uniqueConstraint.name() );
-			uniqueKey.setTable( table );
 			if ( StringHelper.isNotEmpty( uniqueConstraint.name() ) ) {
 				uniqueKey.setName( uniqueConstraint.name() );
 				uniqueKey.setNameExplicit( true );

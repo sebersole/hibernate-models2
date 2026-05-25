@@ -6,7 +6,6 @@ package org.hibernate.models.orm.xml.attr;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
-import org.hibernate.annotations.JoinColumnsOrFormulas;
 import org.hibernate.annotations.NotFound;
 import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.annotations.OnDelete;
@@ -67,10 +66,12 @@ public class ManyToOneTests {
 		final FieldDetails parentField = root.getClassDetails().findFieldByName( "parent" );
 		final ManyToOne manyToOneAnn = parentField.getDirectAnnotationUsage( ManyToOne.class );
 		assertThat( manyToOneAnn ).isNotNull();
-		final JoinColumnsOrFormulas joinColumnsOrFormulas = parentField.getDirectAnnotationUsage( JoinColumnsOrFormulas.class );
-		assertThat( joinColumnsOrFormulas ).isNotNull();
-		assertThat( joinColumnsOrFormulas.value() ).hasSize( 1 );
-		final JoinColumn joinColumnAnn = joinColumnsOrFormulas.value()[0].column();
+		final JoinColumn[] joinColumns = parentField.getRepeatedAnnotationUsages(
+				JoinColumn.class,
+				metadataBuildingContext.getBootstrapContext().getModelsContext()
+		);
+		assertThat( joinColumns ).hasSize( 1 );
+		final JoinColumn joinColumnAnn = joinColumns[0];
 		assertThat( joinColumnAnn.name() ).isEqualTo( "parent_fk" );
 
 		final NotFound notFoundAnn = parentField.getDirectAnnotationUsage( NotFound.class );

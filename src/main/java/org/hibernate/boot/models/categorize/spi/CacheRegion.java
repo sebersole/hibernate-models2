@@ -87,12 +87,12 @@ public class CacheRegion {
 			return;
 		}
 
-		accessType = AccessType.fromExternalName( overrides.getUsage() );
-		if ( StringHelper.isEmpty( overrides.getRegion() ) ) {
-			regionName = overrides.getRegion();
+		accessType = AccessType.fromExternalName( overrides.usage() );
+		if ( StringHelper.isNotEmpty( overrides.region() ) ) {
+			regionName = overrides.region();
 		}
 		// ugh, primitive boolean
-		cacheLazyProperties = overrides.isCacheLazy();
+		cacheLazyProperties = overrides.cacheLazy();
 	}
 
 	/// Overlay settings from another categorized cache-region descriptor.

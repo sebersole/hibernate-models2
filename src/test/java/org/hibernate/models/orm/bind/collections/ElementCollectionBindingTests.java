@@ -103,8 +103,8 @@ public class ElementCollectionBindingTests {
 							.getIndex( "idx_set_owner_labels_label" );
 					assertThat( index ).isNotNull();
 					assertThat( index.getOptions() ).isEqualTo( "index options" );
-					assertThat( index.getColumns() )
-							.extracting( org.hibernate.mapping.Column::getName )
+					assertThat( index.getSelectables() )
+							.extracting( selectable -> ( (org.hibernate.mapping.Column) selectable ).getName() )
 							.containsExactly( "label" );
 					assertThat( context.getMetadataCollector().getCollectionBinding( collection.getRole() ) ).isSameAs( collection );
 				},

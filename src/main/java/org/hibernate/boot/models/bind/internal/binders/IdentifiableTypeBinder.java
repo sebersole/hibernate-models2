@@ -15,7 +15,9 @@ import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.mapping.IdentifiableTypeClass;
 import org.hibernate.mapping.Join;
+import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
+import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
 
 import jakarta.persistence.EmbeddedId;
@@ -121,7 +123,7 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 			attributeBinders.add( attributeBinder );
 			final Table attributeTable = value.getTable();
 			if ( attributeTable == primaryTable || value instanceof org.hibernate.mapping.Collection ) {
-				getTypeBinding().applyProperty( property );
+				addDeclaredProperty( property );
 			}
 			else {
 				final Join join = findJoin( attributeTable );
@@ -130,6 +132,19 @@ public abstract class IdentifiableTypeBinder extends ManagedTypeBinder {
 		} );
 
 		super.prepareBinding( modelBinders );
+	}
+
+	private void addDeclaredProperty(Property property) {
+		final IdentifiableTypeClass typeBinding = getTypeBinding();
+		if ( typeBinding instanceof PersistentClass persistentClass ) {
+			persistentClass.addProperty( property );
+		}
+		else if ( typeBinding instanceof MappedSuperclass mappedSuperclass ) {
+			mappedSuperclass.addDeclaredProperty( property );
+		}
+		else {
+			throw new IllegalStateException( "Unexpected identifiable mapping type: " + typeBinding );
+		}
 	}
 
 	private Join findJoin(Table attributeTable) {
