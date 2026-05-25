@@ -1,6 +1,6 @@
 = New Contributor Guide: Model Binding Pipeline
 
-This guide explains the prototype boot flow from source discovery through
+This guide explains the prototype boot flow from source resolution through
 `org.hibernate.mapping` binding.
 
 The goal is to give new contributors a mental model before they start changing
@@ -11,7 +11,7 @@ annotation, XML, categorization, or binding code.
   This guide assumes you are familiar with:
 
 * JPA annotations such as `@Entity`, `@MappedSuperclass`, `@Embeddable`, and `@ElementCollection`
-* The idea that Hibernate needs to discover your domain classes and turn them into
+* The idea that Hibernate needs to process your domain classes and turn them into
 an internal model before it can generate SQL — this is the "boot" process
 * `org.hibernate.mapping` is Hibernate's internal boot-time representation of your
 domain model (tables, columns, joins, foreign keys).  It is NOT the runtime
@@ -54,9 +54,11 @@ need?"
 `BindingCoordinator` answers: "How do we turn that categorized model into
 Hibernate's boot-time mapping model in a dependency-safe order?"
 
-The categorizer should be the last place that thinks in terms of raw source
-discovery.  Later binding code should consume categorized contracts (typed Java interfaces that expose already-interpreted facts, rather than raw annotation or XML data) instead of
-rediscovering classes, package metadata, XML documents, or global annotations.
+The categorizer should be the last place that works with raw source material
+(classes, package metadata, XML documents, global annotations).  Later binding
+code should consume categorized contracts (typed Java interfaces that expose
+already-interpreted facts, rather than raw annotation or XML data) instead of
+re-examining that source material directly.
 
 === Example: A Simple @Entity
 
@@ -129,7 +131,7 @@ model names, and metadata-complete (an XML flag that tells Hibernate to ignore a
 After pre-processing, `DomainModelCategorizer` builds an `allKnownClassNames`
 list from:
 
-* mapped classes discovered from XML
+* mapped classes contributed by XML
 * explicitly supplied managed class details
 * explicitly supplied package details
 
@@ -191,7 +193,7 @@ managed types, but they do not participate in entity inheritance.
 
 == Global Registrations
 
-Global registrations are persistence-unit scoped things discovered while
+Global registrations are persistence-unit scoped things collected while
 categorizing.  They are exposed through:
 
 * link:../src/main/java/org/hibernate/boot/models/categorize/spi/GlobalRegistrations.java[`GlobalRegistrations`]
