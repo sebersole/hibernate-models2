@@ -4,6 +4,11 @@
  */
 package org.hibernate.models.orm;
 
+import java.util.Map;
+
+import org.hibernate.boot.settings.BootstrapSettingsResolver;
+import org.hibernate.cfg.MappingSettings;
+import org.hibernate.jpa.HibernatePersistenceConfiguration;
 import org.hibernate.models.orm.resources.SimpleEntity;
 import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
@@ -18,19 +23,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ServiceRegistry
 public class TestBootModelProducerTests {
 	@Test
-	void testExplicitAvailableResources(ServiceRegistryScope registryScope) {
-		final var metadataBuildingContext = new MetadataBuildingContextTestingImpl( registryScope.getRegistry() );
-		final var availableResources = TestBootModelProducer.availableResources(
-				metadataBuildingContext,
+	void testRequestDrivenBootstrap(ServiceRegistryScope registryScope) {
+		final var metadata = TestBootModelProducer.buildMetadata(
+				registryScope.getRegistry(),
 				SimpleEntity.class
 		);
 
-		final var metadata = TestBootModelProducer.buildMetadata(
-				availableResources,
-				metadataBuildingContext
-		);
-
-		assertThat( metadata ).isSameAs( metadataBuildingContext.getMetadataCollector() );
 		final var entityBinding = metadata.getEntityBinding( SimpleEntity.class.getName() );
 		assertThat( entityBinding ).isNotNull();
 		assertThat( entityBinding.getIdentifierProperty().getName() ).isEqualTo( "id" );
@@ -39,10 +37,8 @@ public class TestBootModelProducerTests {
 
 	@Test
 	void testClassConvenienceOverload(ServiceRegistryScope registryScope) {
-		final var metadataBuildingContext = new MetadataBuildingContextTestingImpl( registryScope.getRegistry() );
-
 		final var metadata = TestBootModelProducer.buildMetadata(
-				metadataBuildingContext,
+				registryScope.getRegistry(),
 				SimpleEntity.class
 		);
 
@@ -51,5 +47,23 @@ public class TestBootModelProducerTests {
 		assertThat( entityBinding ).isNotNull();
 		assertThat( entityBinding.getTable() ).isNotNull();
 		assertThat( entityBinding.getTable().getName() ).isNotBlank();
+	}
+
+	@Test
+	void testAvailableResourcesHonorsXmlMappingSetting(ServiceRegistryScope registryScope) {
+		final var metadataBuildingContext = new MetadataBuildingContextTestingImpl( registryScope.getRegistry() );
+		final var persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+		persistenceConfiguration.mappingFile( "mappings/complete/simple-complete.xml" );
+
+		final var settings = new BootstrapSettingsResolver().resolve(
+				Map.of( MappingSettings.XML_MAPPING_ENABLED, false )
+		);
+		final var availableResources = TestBootModelProducer.availableResources(
+				metadataBuildingContext,
+				persistenceConfiguration,
+				settings
+		);
+
+		assertThat( availableResources.xmlMappings() ).isEmpty();
 	}
 }

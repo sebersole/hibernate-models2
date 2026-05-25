@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import jakarta.persistence.PersistenceConfiguration;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -20,13 +21,11 @@ import org.hibernate.boot.jaxb.SourceType;
 import org.hibernate.boot.jaxb.internal.MappingBinder;
 import org.hibernate.boot.jaxb.spi.Binding;
 import org.hibernate.boot.jaxb.spi.JaxbBindableMappingDescriptor;
-import org.hibernate.boot.scan.spi.ScanningResult;
 import org.hibernate.boot.settings.BootstrapSettingsResolver;
 import org.hibernate.boot.settings.ResolvedBootstrapSettings;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.jpa.HibernatePersistenceConfiguration;
 import org.hibernate.jpa.boot.spi.PersistenceUnitDescriptor;
-import org.hibernate.models.spi.ModelsContext;
 import org.hibernate.models.spi.ClassDetails;
 
 /// Model resources available to categorization.
@@ -77,6 +76,27 @@ public record AvailableResources(
 	public static AvailableResources from(
 			PersistenceUnitDescriptor persistenceUnitDescriptor,
 			AvailableResourcesContext context) {
+		return from(
+				persistenceUnitDescriptor,
+				context,
+				new BootstrapSettingsResolver().resolve( persistenceUnitDescriptor, Map.of() )
+		);
+	}
+
+	/// Creates available resources from Hibernate's descriptor for persistence-unit
+	/// information.
+	///
+	/// Managed class names are resolved through the supplied model context. Mapping
+	/// file names are located through the bootstrap class-loading service and bound
+	/// immediately when XML mappings are enabled.
+	///
+	/// @param persistenceUnitDescriptor The persistence-unit wrapper
+	/// @param context Context used to resolve model details and load resources
+	/// @param bootstrapSettings Resolved bootstrap settings used during source collection
+	public static AvailableResources from(
+			PersistenceUnitDescriptor persistenceUnitDescriptor,
+			AvailableResourcesContext context,
+			ResolvedBootstrapSettings bootstrapSettings) {
 		var classLoading = context.getClassLoaderService();
 		var classDetailsRegistry = context.modelsContext().getClassDetailsRegistry();
 
@@ -93,7 +113,8 @@ public record AvailableResources(
 		} );
 
 		final List<Binding<? extends JaxbBindableMappingDescriptor>> xmlBindings;
-		if ( persistenceUnitDescriptor.getMappingFileNames().isEmpty() ) {
+		if ( !bootstrapSettings.mappingSettings().xmlMappingEnabled()
+				|| persistenceUnitDescriptor.getMappingFileNames().isEmpty() ) {
 			xmlBindings = Collections.emptyList();
 		}
 		else {
@@ -119,9 +140,9 @@ public record AvailableResources(
 	/// Creates available resources from Hibernate's JPA
 	/// {@link HibernatePersistenceConfiguration} extension.
 	///
-	/// Explicit managed classes and mapping files are included.  Archive scanning is
-	/// applied here based on [HibernatePersistenceConfiguration#rootUrl()] and
-	/// [HibernatePersistenceConfiguration#jarFileUrls()].
+	/// The configuration is first adapted to [BootstrapSourceContributions], which
+	/// includes archive scanning based on [HibernatePersistenceConfiguration#rootUrl()]
+	/// and [HibernatePersistenceConfiguration#jarFileUrls()].
 	///
 	/// @param persistenceConfiguration The PersistenceConfiguration
 	/// @param context Context used to resolve model details and load resources
@@ -138,9 +159,9 @@ public record AvailableResources(
 	/// Creates available resources from Hibernate's JPA
 	/// {@link HibernatePersistenceConfiguration} extension.
 	///
-	/// Explicit managed classes and mapping files are included.  Archive scanning is
-	/// applied here based on [HibernatePersistenceConfiguration#rootUrl()] and
-	/// [HibernatePersistenceConfiguration#jarFileUrls()].
+	/// The configuration is first adapted to [BootstrapSourceContributions], which
+	/// includes archive scanning based on [HibernatePersistenceConfiguration#rootUrl()]
+	/// and [HibernatePersistenceConfiguration#jarFileUrls()].
 	///
 	/// @param persistenceConfiguration The PersistenceConfiguration
 	/// @param context Context used to resolve model details and load resources
@@ -149,45 +170,75 @@ public record AvailableResources(
 			HibernatePersistenceConfiguration persistenceConfiguration,
 			AvailableResourcesContext context,
 			ResolvedBootstrapSettings bootstrapSettings) {
+		return from(
+				BootstrapSourceContributions.from(
+						persistenceConfiguration,
+						bootstrapSettings,
+						context.getClassLoaderService()
+				),
+				context,
+				bootstrapSettings
+		);
+	}
+
+	/// Creates available resources from neutral bootstrap source contributions.
+	///
+	/// Explicit and discovered managed classes, package metadata, and mapping files
+	/// are included.  Source discovery, including archive scanning, is expected to
+	/// have already happened before these contributions are consumed.
+	///
+	/// @param sourceContributions Source declarations from a bootstrap entry point
+	/// @param context Context used to resolve model details and load resources
+	/// @param bootstrapSettings Resolved bootstrap settings used during source collection
+	public static AvailableResources from(
+			BootstrapSourceContributions sourceContributions,
+			AvailableResourcesContext context,
+			ResolvedBootstrapSettings bootstrapSettings) {
 		final var classLoading = context.getClassLoaderService();
 		final var classDetailsRegistry = context.modelsContext().getClassDetailsRegistry();
 		final var mappingFileBinder = context.createMappingBinder();
 
 		var managedClassDetails = new ArrayList<ClassDetails>();
 		var packageDetailsList = new ArrayList<ClassDetails>();
-		persistenceConfiguration.managedClasses().forEach( (managedClass) -> {
+		sourceContributions.managedClasses().forEach( (managedClass) -> {
 			applyClassDetails(
 					classDetailsRegistry.resolveClassDetails( managedClass.getName() ),
 					managedClassDetails,
 					packageDetailsList
 			);
 		} );
-
-		final ScanningResult scanningResult = HibernatePersistenceConfigurationScanner.performScanning(
-				persistenceConfiguration,
-				bootstrapSettings,
-				classLoading
-		);
-		applyDiscoveredClassDetails(
-				scanningResult,
-				context.modelsContext(),
-				managedClassDetails,
-				packageDetailsList
-		);
+		sourceContributions.managedClassNames().forEach( (managedClassName) -> {
+			applyClassDetails(
+					classDetailsRegistry.resolveClassDetails( managedClassName ),
+					managedClassDetails,
+					packageDetailsList
+			);
+		} );
+		sourceContributions.packageNames().forEach( (packageName) -> {
+			applyClassDetails(
+					classDetailsRegistry.resolveClassDetails( packageName + ".package-info" ),
+					managedClassDetails,
+					packageDetailsList
+			);
+		} );
 
 		final var xmlBindings = new ArrayList<Binding<? extends JaxbBindableMappingDescriptor>>();
-		persistenceConfiguration.mappingFiles().forEach( (mappingFile) -> {
-			try (var mappingFileStream = classLoading.locateResourceStream( mappingFile )) {
-				xmlBindings.add( mappingFileBinder.bind(
-						mappingFileStream,
-						new Origin( SourceType.RESOURCE, mappingFile )
-				) );
-			}
-			catch (IOException e) {
-				throw new RuntimeException( "Error accessing mapping file - " + mappingFile, e );
-			}
-		} );
-		applyDiscoveredXmlMappings( scanningResult, mappingFileBinder, xmlBindings );
+		if ( bootstrapSettings.mappingSettings().xmlMappingEnabled() ) {
+			sourceContributions.mappingFiles().forEach( (mappingFile) -> {
+				try (var mappingFileStream = classLoading.locateResourceStream( mappingFile )) {
+					xmlBindings.add( mappingFileBinder.bind(
+							mappingFileStream,
+							new Origin( SourceType.RESOURCE, mappingFile )
+					) );
+				}
+				catch (IOException e) {
+					throw new RuntimeException( "Error accessing mapping file - " + mappingFile, e );
+				}
+			} );
+			sourceContributions.mappingFileUris().forEach( (mappingFileUri) -> {
+				xmlBindings.add( bindMappingFile( mappingFileUri, mappingFileBinder ) );
+			} );
+		}
 
 		return new AvailableResources( managedClassDetails, packageDetailsList, xmlBindings );
 	}
@@ -300,37 +351,6 @@ public record AvailableResources(
 		else {
 			managedClassDetails.add( classDetails );
 		}
-	}
-
-	private static void applyDiscoveredClassDetails(
-			ScanningResult scanningResult,
-			ModelsContext modelsContext,
-			Collection<ClassDetails> managedClassDetails,
-			Collection<ClassDetails> packageDetailsList) {
-		var classDetailsRegistry = modelsContext.getClassDetailsRegistry();
-		scanningResult.discoveredClasses().forEach( (className) -> {
-			applyClassDetails(
-					classDetailsRegistry.resolveClassDetails( className ),
-					managedClassDetails,
-					packageDetailsList
-			);
-		} );
-		scanningResult.discoveredPackages().forEach( (packageName) -> {
-			applyClassDetails(
-					classDetailsRegistry.resolveClassDetails( packageName + ".package-info" ),
-					managedClassDetails,
-					packageDetailsList
-			);
-		} );
-	}
-
-	private static void applyDiscoveredXmlMappings(
-			ScanningResult scanningResult,
-			MappingBinder mappingFileBinder,
-			Collection<Binding<? extends JaxbBindableMappingDescriptor>> xmlBindings) {
-		scanningResult.mappingFiles().forEach( (mappingFile) -> {
-			xmlBindings.add( bindMappingFile( mappingFile, mappingFileBinder ) );
-		} );
 	}
 
 	private static Binding<? extends JaxbBindableMappingDescriptor> bindMappingFile(

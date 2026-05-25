@@ -12,6 +12,7 @@ import java.util.StringTokenizer;
 
 import org.hibernate.boot.CacheRegionDefinition;
 import org.hibernate.boot.CacheRegionDefinition.CacheRegionType;
+import org.hibernate.cfg.Environment;
 import org.hibernate.cfg.MappingSettings;
 import org.hibernate.jpa.HibernatePersistenceConfiguration;
 import org.hibernate.jpa.boot.spi.PersistenceUnitDescriptor;
@@ -29,6 +30,9 @@ import static org.hibernate.cfg.AvailableSettings.COLLECTION_CACHE_PREFIX;
 /// [HibernatePersistenceConfiguration], or a parsed [PersistenceUnitDescriptor]
 /// plus integration settings.  Each form is collapsed into the same
 /// [ResolvedBootstrapSettings] contract before source collection continues.
+/// ORM's [Environment#getProperties()] supplies the baseline values, including
+/// legacy `/hibernate.properties` handling and system properties; explicit
+/// settings then override that baseline.
 ///
 /// This class should own precedence and interpretation rules for the named
 /// settings in [ResolvedBootstrapSettings].  Settings that are merely carried to
@@ -41,25 +45,45 @@ public class BootstrapSettingsResolver {
 	///
 	/// This overload represents the native/default path.  It does not mark the
 	/// result as JPA bootstrap, uses `FetchType.EAGER` as the default to-one fetch
-	/// type, and resolves model-shaping settings from the supplied map.
+	/// type, and resolves model-shaping settings from ORM's environment baseline
+	/// overlaid with the supplied map.
 	///
 	/// @param configurationValues Raw configuration values
 	///
 	/// @return The resolved bootstrap settings
 	public ResolvedBootstrapSettings resolve(Map<?, ?> configurationValues) {
-		final var resolvedConfigurationValues = copyConfigurationValues( configurationValues );
-		return resolve(
+		return resolve( configurationValues, false, FetchType.EAGER );
+	}
+
+	/// Resolves settings from a raw configuration map with explicit entry-point
+	/// defaults.
+	///
+	/// @param configurationValues Raw configuration values
+	/// @param jpaBootstrap Whether this bootstrap originated from a Jakarta
+	/// Persistence entry point
+	/// @param defaultToOneFetchType Default to-one fetch type for mapping
+	/// processing
+	///
+	/// @return The resolved bootstrap settings
+	public ResolvedBootstrapSettings resolve(
+			Map<?, ?> configurationValues,
+			boolean jpaBootstrap,
+			FetchType defaultToOneFetchType) {
+		final var resolvedConfigurationValues = copyEnvironmentProperties();
+		overlay( configurationValues, resolvedConfigurationValues );
+		return createResolvedSettings(
 				resolvedConfigurationValues,
-				false,
-				FetchType.EAGER
+				jpaBootstrap,
+				defaultToOneFetchType
 		);
 	}
 
 	/// Resolves settings from Hibernate's programmatic JPA bootstrap
 	/// configuration.
 	///
-	/// Values exposed directly by the configuration object, such as default
-	/// to-one fetch type, are used as the named setting sources.  The raw
+	/// ORM's environment baseline is overlaid with the configuration object's raw
+	/// properties.  Values exposed directly by the configuration object, such as
+	/// default to-one fetch type, are used as the named setting sources.  The raw
 	/// properties map is still carried forward in
 	/// [ResolvedBootstrapSettings#configurationValues()].
 	///
@@ -68,8 +92,33 @@ public class BootstrapSettingsResolver {
 	///
 	/// @return The resolved bootstrap settings
 	public ResolvedBootstrapSettings resolve(HibernatePersistenceConfiguration persistenceConfiguration) {
-		final var resolvedConfigurationValues = copyConfigurationValues( persistenceConfiguration.properties() );
-		return resolve(
+		final var resolvedConfigurationValues = copyEnvironmentProperties();
+		overlay( persistenceConfiguration.properties(), resolvedConfigurationValues );
+		return createResolvedSettings(
+				resolvedConfigurationValues,
+				true,
+				persistenceConfiguration.defaultToOneFetchType()
+		);
+	}
+
+	/// Resolves settings from Hibernate's programmatic JPA bootstrap
+	/// configuration and runtime integration settings.
+	///
+	/// ORM's environment baseline is overlaid with the configuration object's raw
+	/// properties, and integration settings overlay them both.
+	///
+	/// @param persistenceConfiguration The programmatic persistence-unit
+	/// configuration
+	/// @param integrationSettings Runtime integration settings to overlay
+	///
+	/// @return The resolved bootstrap settings
+	public ResolvedBootstrapSettings resolve(
+			HibernatePersistenceConfiguration persistenceConfiguration,
+			Map<?, ?> integrationSettings) {
+		final var resolvedConfigurationValues = copyEnvironmentProperties();
+		overlay( persistenceConfiguration.properties(), resolvedConfigurationValues );
+		overlay( integrationSettings, resolvedConfigurationValues );
+		return createResolvedSettings(
 				resolvedConfigurationValues,
 				true,
 				persistenceConfiguration.defaultToOneFetchType()
@@ -79,10 +128,10 @@ public class BootstrapSettingsResolver {
 	/// Resolves settings from a parsed persistence-unit descriptor and runtime
 	/// integration settings.
 	///
-	/// Persistence-unit properties form the baseline, and integration settings
-	/// overlay them.  This matches the JPA bootstrap shape where container or
-	/// caller-provided integration values may override persistence-unit
-	/// configuration.
+	/// ORM's environment baseline is overlaid with persistence-unit properties,
+	/// and integration settings overlay them both.  This matches the JPA
+	/// bootstrap shape where container or caller-provided integration values may
+	/// override persistence-unit configuration.
 	///
 	/// @param persistenceUnitDescriptor The parsed persistence-unit descriptor
 	/// @param integrationSettings Runtime integration settings to overlay
@@ -91,16 +140,17 @@ public class BootstrapSettingsResolver {
 	public ResolvedBootstrapSettings resolve(
 			PersistenceUnitDescriptor persistenceUnitDescriptor,
 			Map<?, ?> integrationSettings) {
-		final var resolvedConfigurationValues = copyConfigurationValues( persistenceUnitDescriptor.getProperties() );
+		final var resolvedConfigurationValues = copyEnvironmentProperties();
+		overlay( persistenceUnitDescriptor.getProperties(), resolvedConfigurationValues );
 		overlay( integrationSettings, resolvedConfigurationValues );
-		return resolve(
+		return createResolvedSettings(
 				resolvedConfigurationValues,
 				true,
 				persistenceUnitDescriptor.getDefaultToOneFetchType()
 		);
 	}
 
-	private ResolvedBootstrapSettings resolve(
+	private ResolvedBootstrapSettings createResolvedSettings(
 			Map<String, Object> configurationValues,
 			boolean jpaBootstrap,
 			FetchType defaultToOneFetchType) {
@@ -114,6 +164,10 @@ public class BootstrapSettingsResolver {
 						resolveCacheRegionDefinitions( configurationValues )
 				)
 		);
+	}
+
+	private static LinkedHashMap<String, Object> copyEnvironmentProperties() {
+		return copyConfigurationValues( Environment.getProperties() );
 	}
 
 	private static LinkedHashMap<String, Object> copyConfigurationValues(Map<?, ?> configurationValues) {

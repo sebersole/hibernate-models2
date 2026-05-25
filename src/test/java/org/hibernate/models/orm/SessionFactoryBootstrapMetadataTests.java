@@ -19,7 +19,6 @@ import org.hibernate.models.orm.bind.callbacks.HierarchySuper;
 import org.hibernate.models.orm.bind.collections.ElementCollectionBindingTests;
 import org.hibernate.models.orm.bind.embeddable.EmbeddableBindingTests;
 import org.hibernate.models.orm.bind.joined.SimpleJoinedTests;
-import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.ServiceRegistryScope;
 import org.junit.jupiter.api.Test;
@@ -182,12 +181,11 @@ public class SessionFactoryBootstrapMetadataTests {
 
 	@Test
 	void buildsXmlCompleteMetadata(ServiceRegistryScope registryScope) {
-		final var metadataBuildingContext = new MetadataBuildingContextTestingImpl( registryScope.getRegistry() );
 		final var persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
 		persistenceConfiguration.mappingFile( "mappings/complete/simple-complete.xml" );
 
 		final MetadataImplementor metadata = TestBootModelProducer.buildMetadata(
-				metadataBuildingContext,
+				registryScope.getRegistry(),
 				persistenceConfiguration
 		);
 
@@ -220,7 +218,7 @@ public class SessionFactoryBootstrapMetadataTests {
 
 	private static MetadataImplementor buildMetadata(ServiceRegistryScope registryScope, Class<?>... domainClasses) {
 		return TestBootModelProducer.buildMetadata(
-				new MetadataBuildingContextTestingImpl( registryScope.getRegistry() ),
+				registryScope.getRegistry(),
 				domainClasses
 		);
 	}

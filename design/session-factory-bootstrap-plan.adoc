@@ -265,20 +265,26 @@ The first orchestration shell is:
 * link:../src/main/java/org/hibernate/boot/orchestration/SessionFactoryBootstrap.java[`SessionFactoryBootstrap`]
 * link:../src/main/java/org/hibernate/boot/orchestration/SessionFactoryBootstrapRequest.java[`SessionFactoryBootstrapRequest`]
 
-The request is intentionally narrow for now:
+The request is intentionally early-input oriented for now:
 
 [source,java]
 ----
 record SessionFactoryBootstrapRequest(
-        AvailableResources availableResources,
-        MetadataBuildingContext metadataBuildingContext)
+        BootstrapSourceContributions sourceContributions,
+        Map<String, Object> configurationValues,
+        boolean jpaBootstrap,
+        FetchType defaultToOneFetchType,
+        ServiceRegistry serviceRegistry)
 ----
 
 `SessionFactoryBootstrap#buildMetadata` currently owns the phase order:
 
 [source]
 ----
-AvailableResources
+BootstrapSourceContributions + configuration values + ServiceRegistry
+    -> ResolvedBootstrapSettings
+    -> MetadataBuildingContext
+    -> AvailableResources
     -> DomainModelCategorizer
     -> BindingCoordinator
     -> order columns

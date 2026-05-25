@@ -6,6 +6,7 @@ package org.hibernate.models.orm.bootstrap;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.hibernate.boot.CacheRegionDefinition;
 import org.hibernate.boot.CacheRegionDefinition.CacheRegionType;
@@ -24,16 +25,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 public class ResolvedBootstrapSettingsTests {
 	@Test
-	void nullableValuesAreNormalized() {
-		final ResolvedBootstrapSettings settings = new ResolvedBootstrapSettings(
+	void requiredValuesAreEnforced() {
+		assertThatThrownBy( () -> new ResolvedBootstrapSettings(
 				null,
 				true,
+				new ResolvedMappingSettings( true, false, FetchType.EAGER, null )
+		) ).isInstanceOf( NullPointerException.class );
+		assertThatThrownBy( () -> new ResolvedBootstrapSettings(
+				Map.of(),
+				true,
 				null
-		);
-
-		assertThat( settings.configurationValues() ).isEmpty();
-		assertThat( settings.mappingSettings().defaultToOneFetchType() ).isEqualTo( FetchType.EAGER );
-		assertThat( settings.mappingSettings().cacheRegionDefinitions() ).isEmpty();
+		) ).isInstanceOf( NullPointerException.class );
 	}
 
 	@Test

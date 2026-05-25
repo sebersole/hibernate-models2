@@ -11,6 +11,7 @@ import java.util.Properties;
 
 import org.hibernate.boot.CacheRegionDefinition.CacheRegionType;
 import org.hibernate.boot.settings.BootstrapSettingsResolver;
+import org.hibernate.cfg.Environment;
 import org.hibernate.cfg.MappingSettings;
 import org.hibernate.jpa.boot.spi.PersistenceUnitDescriptor;
 
@@ -35,7 +36,8 @@ public class BootstrapSettingsResolverTests {
 	void simpleMapResolutionUsesNativeDefaults() {
 		final var settings = resolver.resolve( Map.of() );
 
-		assertThat( settings.configurationValues() ).isEmpty();
+		assertThat( settings.configurationValues() )
+				.containsEntry( "java.version", Environment.getProperties().get( "java.version" ) );
 		assertThat( settings.jpaBootstrap() ).isFalse();
 		assertThat( settings.mappingSettings().xmlMappingEnabled() ).isTrue();
 		assertThat( settings.mappingSettings().validateXml() ).isFalse();
@@ -60,6 +62,16 @@ public class BootstrapSettingsResolverTests {
 						tuple( CacheRegionType.ENTITY, "org.acme.TheEntity", "read-write", "entities", true ),
 						tuple( CacheRegionType.COLLECTION, "org.acme.TheEntity.items", "nonstrict-read-write", "items", false )
 				);
+	}
+
+	@Test
+	void environmentPropertiesAreUsedAsBaselineAndExplicitValuesOverride() {
+		final var settings = resolver.resolve(
+				Map.of( "java.version", "explicit" )
+		);
+
+		assertThat( settings.configurationValues() )
+				.containsEntry( "java.version", "explicit" );
 	}
 
 	@Test

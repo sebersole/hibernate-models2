@@ -7,6 +7,7 @@ package org.hibernate.boot.settings;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /// Resolved bootstrap settings relevant to model source collection,
 /// categorization, and binding.
@@ -38,11 +39,11 @@ public record ResolvedBootstrapSettings(
 		/// Resolved settings used while processing mapping sources.
 		ResolvedMappingSettings mappingSettings) {
 
-	/// Normalizes nullable inputs and exposes immutable snapshots.
+	/// Exposes immutable snapshots.
 	public ResolvedBootstrapSettings {
-		configurationValues = configurationValues == null
-				? Collections.emptyMap()
-				: Collections.unmodifiableMap( new LinkedHashMap<>( configurationValues ) );
-		mappingSettings = mappingSettings == null ? new ResolvedMappingSettings( true, false, null, null ) : mappingSettings;
+		configurationValues = Collections.unmodifiableMap( new LinkedHashMap<>(
+				Objects.requireNonNull( configurationValues )
+		) );
+		Objects.requireNonNull( mappingSettings );
 	}
 }

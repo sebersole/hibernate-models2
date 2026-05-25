@@ -48,6 +48,7 @@ The intended flow is:
 ----
 PersistenceUnitDescriptor / HibernatePersistenceConfiguration
     -> JpaBootstrapSourceCollector
+    -> BootstrapSourceContributions
     -> AvailableResources
     -> DomainModelCategorizer
     -> BindingCoordinator
@@ -89,7 +90,7 @@ Inputs:
 
 Output:
 
-* raw source contributions, not yet categorized
+* `BootstrapSourceContributions`: source contributions after entry-point source discovery, including scanner results, not yet categorized
 
 == AvailableResources
 
