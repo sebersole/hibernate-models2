@@ -1,0 +1,303 @@
+= SessionFactory Bootstrap Plan
+:toc:
+
+This note sketches the next PoC direction: use the boot-model pipeline to build
+enough ORM boot state to instantiate a `SessionFactoryImpl` / `EntityManagerFactory`.
+
+The plan works backward from `org.hibernate.internal.SessionFactoryImpl` because
+that constructor is the current runtime boundary.
+
+== Constructor Boundary
+
+`SessionFactoryImpl` currently accepts three inputs:
+
+[source,java]
+----
+SessionFactoryImpl(
+        MetadataImplementor bootMetamodel,
+        SessionFactoryOptions options,
+        BootstrapContext bootstrapContext)
+----
+
+Those inputs are not independent.  They are all products of bootstrap settings,
+service-registry construction, source discovery, model categorization, and boot
+model binding.
+
+The PoC should make those products explicit rather than recreating the current
+inline flow from `EntityManagerFactoryBuilderImpl` and `MetadataBuildingProcess`.
+
+== Some Assumptions
+
+First, a few assumptions we will be working under...
+
+* We no longer need the split in building the EMF from JPA container.  This was something we did for Wild Fly to address a gap in the EE and JPA spec which should no longer be an issue.
+* We will need to come back and address other Hibernate projects concerns.  Some of them contributor specialized builders, and we need to make sure those needs are addressed.
+* Limit set of bootstrap entries -
+** JPA "SE boostrap" - `Persistence`
+** JPA "SE boostrap" - `(Hibernate)PersistenceConfiguration`
+** JPA "EE bootstrap" - Ultimately `PeristenceUnitDescriptor`
+** Legacy `Configuration`, but deprecated in favor of `HibernatePersistenceConfiguration`
+** Maybe some form that accepts `AvailableResources` + settings?
+
+
+== Current Constructor Responsibilities
+
+The constructor still orchestrates a large amount of factory assembly:
+
+* builds the `SessionFactoryServiceRegistry`
+* creates the `EventEngine`
+* initializes the boot metamodel with the factory
+* resolves factory name, JNDI name, UUID, and masked settings
+* creates `SqlStringGenerationContext`
+* registers integrators and applies integration callbacks
+* orders columns and validates the boot metamodel
+* primes second-level cache regions
+* creates `RuntimeMetamodelsImpl`
+* creates `QueryEngineImpl` before runtime metamodel initialization
+* creates `SqlTranslationEngine`
+* creates and initializes `MappingMetamodelImpl`
+* applies fetch profiles after mapping metamodel creation
+* creates default session and stateless-session builders
+* resolves current-session context
+* extracts frequently used services
+* scopes `TypeConfiguration` to the completed factory
+
+That sequence is delicate.  The PoC should avoid changing all of it at once, but
+it should use named bootstrap products so the handoff into this constructor is
+clear.
+
+== Proposed Flow
+
+[source]
+----
+Bootstrap inputs
+    -> ResolvedBootstrapSettings
+    -> AvailableResources
+    -> CategorizedDomainModel
+    -> MetadataImplementor
+    -> ResolvedSessionFactoryOptions
+    -> SessionFactoryBuildContext
+    -> SessionFactoryImpl
+----
+
+The immediate goal is not to replace `SessionFactoryImpl`.  The immediate goal
+is to produce its three required inputs through the new pipeline.
+
+== Phase Products
+
+=== ResolvedBootstrapSettings
+
+Already prototyped.
+
+Owns early boot settings that affect source collection and mapping processing.
+It should not be a dumping ground for all session-factory behavior.
+
+=== AvailableResources
+
+Already prototyped.
+
+Owns normalized source inventory:
+
+* managed class details
+* package-info class details
+* already-bound XML mapping documents
+
+It should not own XML interpretation, categorization, binding, or settings
+resolution.
+
+=== CategorizedDomainModel
+
+Already prototyped.
+
+Owns interpreted domain metadata before binding to ORM's boot mapping model.
+This is currently where XML source interpretation lives because there is no
+standalone prepared-source artifact.
+
+=== MetadataImplementor
+
+This is the first major bridge into existing ORM runtime bootstrap.
+
+The PoC binder should produce a normal ORM boot mapping model that can satisfy
+`SessionFactoryImpl` expectations:
+
+* persistent classes
+* collections
+* database / namespace / table state
+* type registrations and converter registrations
+* filters, fetch profiles, named queries, imports, and global registrations
+* cache region configuration
+
+This is the main proving ground for the binding work.
+
+=== ResolvedSessionFactoryOptions
+
+This is proposed, not yet prototyped.
+
+`SessionFactoryOptions` is very large and mixes resolved values, service
+references, JPA/native defaults, and raw setting interpretation.  A resolver
+similar to `BootstrapSettingsResolver` would make the factory-build handoff more
+explicit.
+
+Potential responsibilities:
+
+* apply JPA-vs-native defaults
+* resolve factory name, UUID, observer list, interceptor, statement observer,
+  statement inspector, and session defaults
+* resolve tenant, cache, JDBC, transaction, statistics, query, and compliance
+  options
+* preserve a raw settings map for components that still require one
+* expose the `StandardServiceRegistry` used for factory construction
+
+This can initially adapt to ORM's existing `SessionFactoryOptions` interface.
+The design point is to move option resolution out of the final constructor path.
+
+=== SessionFactoryBuildContext
+
+This is proposed, not yet prototyped.
+
+`BootstrapContext` currently spans early source collection, model building, and
+runtime metamodel creation.  That makes it easy for early bootstrap concepts to
+leak into late factory construction.
+
+A later build context could hold only the values needed after boot model binding:
+
+* `BootstrapContext` or a narrowed replacement for runtime model creation
+* `MetadataImplementor`
+* resolved session-factory options
+* service registry
+* `TypeConfiguration`
+* resolved settings map
+* `SqlStringGenerationContext`
+
+This does not need to replace ORM's `BootstrapContext` immediately.  It can
+start as a local planning object used by the PoC factory bootstrap.
+
+== Improvements Worth Prototyping
+
+=== Resolve SessionFactoryOptions Explicitly
+
+Build a resolver that produces an adapter implementing ORM's
+`SessionFactoryOptions` from resolved settings and services.
+
+This makes the PoC path testable without forcing all option interpretation to
+remain hidden in existing builders.
+
+=== Split Early BootstrapContext From Late Build Context
+
+Keep `BootstrapContext` for early model-building concerns.  Introduce a late
+`SessionFactoryBuildContext` only when preparing to instantiate the factory.
+
+The aim is to make the handoff visible:
+
+[source]
+----
+MetadataImplementor + ResolvedSessionFactoryOptions + BootstrapContext
+    -> SessionFactoryBuildContext
+    -> SessionFactoryImpl
+----
+
+=== Make Runtime Model Creation a Named Phase
+
+`SessionFactoryImpl` currently performs runtime metamodel creation inline.  The
+sequence is constrained by query-engine and SQL-translation dependencies.
+
+For now, leave that logic in `SessionFactoryImpl`, but document it as a future
+phase:
+
+[source]
+----
+validated MetadataImplementor
+    -> RuntimeMetamodels
+    -> QueryEngine / SqlTranslationEngine
+    -> fetch profile application
+----
+
+=== Treat Integrators as an Explicit Phase
+
+Integrators currently run inside `SessionFactoryImpl` before boot metamodel
+ordering, validation, cache priming, and runtime metamodel creation.
+
+That phase should eventually be visible:
+
+[source]
+----
+bound boot model
+    -> integrators applied
+    -> boot model ordered and validated
+    -> runtime model created
+----
+
+=== Avoid Requiring an Incomplete SessionFactory
+
+`SessionFactoryImpl` builds the session-factory service registry by passing
+`this` before the factory is fully initialized.
+
+That may remain unavoidable in the short term, but it is a useful design smell.
+An eventual factory-build handle could allow services that need factory identity
+to avoid depending on a partially initialized `SessionFactoryImpl`.
+
+== Initial Prototype Target
+
+The first implementation target should be deliberately narrow:
+
+[source]
+----
+AvailableResources
+    -> DomainModelCategorizer
+    -> BindingCoordinator
+    -> MetadataImplementor
+    -> existing SessionFactoryOptions adapter
+    -> existing BootstrapContext
+    -> new SessionFactoryImpl(...)
+----
+
+Success criteria:
+
+* a small annotated model can bootstrap a usable `SessionFactory`
+* the PoC binder produces a `MetadataImplementor` accepted by the constructor
+* option resolution is explicit enough to see which settings are still missing
+* no new abstraction is added unless it removes an actual handoff ambiguity
+
+== Current PoC Slice
+
+The first orchestration shell is:
+
+* link:../src/main/java/org/hibernate/boot/orchestration/SessionFactoryBootstrap.java[`SessionFactoryBootstrap`]
+* link:../src/main/java/org/hibernate/boot/orchestration/SessionFactoryBootstrapRequest.java[`SessionFactoryBootstrapRequest`]
+
+The request is intentionally narrow for now:
+
+[source,java]
+----
+record SessionFactoryBootstrapRequest(
+        AvailableResources availableResources,
+        MetadataBuildingContext metadataBuildingContext)
+----
+
+`SessionFactoryBootstrap#buildMetadata` currently owns the phase order:
+
+[source]
+----
+AvailableResources
+    -> DomainModelCategorizer
+    -> BindingCoordinator
+    -> order columns
+    -> validate
+    -> MetadataImplementor
+----
+
+Later slices should grow this orchestrator rather than introducing separate
+helpers that also own phase order.
+
+== Open Questions
+
+* Should `ResolvedSessionFactoryOptions` be a record plus adapter, or should the
+  adapter itself be the resolved object?
+* Which settings belong in `ResolvedBootstrapSettings` versus
+  `ResolvedSessionFactoryOptions`?
+* Can `BootstrapContext` be narrowed before integration, or should the PoC simply
+  reuse ORM's current implementation until the factory path works?
+* Should XML source interpretation remain in categorization internals, or should
+  a prepared-source phase emerge if more source interpretation steps appear?
+* Can service-registry creation be moved before `SessionFactoryImpl` without
+  breaking services that expect a concrete factory reference?
