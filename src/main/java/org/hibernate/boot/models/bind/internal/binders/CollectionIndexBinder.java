@@ -193,6 +193,9 @@ class CollectionIndexBinder {
 					false,
 					false
 			);
+			index.setImplicitJavaTypeAccess( (typeConfiguration) -> basicValue.resolve()
+					.getDomainJavaType()
+					.getJavaType() );
 			for ( Column column : basicValue.getColumns() ) {
 				index.addColumn( column.clone(), false, false );
 			}

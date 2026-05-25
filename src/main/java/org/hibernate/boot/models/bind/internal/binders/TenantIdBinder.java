@@ -20,6 +20,7 @@ import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.spi.TypeConfiguration;
 
 import static java.util.Collections.singletonMap;
+import static org.hibernate.boot.models.bind.internal.binders.AttributeBinder.bindPropertyAccessor;
 import static org.hibernate.boot.models.bind.internal.binders.AttributeBinder.processColumn;
 
 /// Binds the entity tenant-id property and shared tenant filter definition.
@@ -75,6 +76,7 @@ public class TenantIdBinder {
 		final Property property = new Property();
 		typeBinding.addProperty( property );
 		property.setName( attributeMetadata.getName() );
+		bindPropertyAccessor( memberDetails, property );
 
 		final BasicValue basicValue = new BasicValue( bindingState.getMetadataBuildingContext(), typeBinding.getRootTable() );
 		property.setValue( basicValue );

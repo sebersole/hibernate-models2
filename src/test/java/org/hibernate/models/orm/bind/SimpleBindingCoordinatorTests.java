@@ -80,6 +80,7 @@ public class SimpleBindingCoordinatorTests {
 					assertThat( softDeleteColumn ).isNotNull();
 					assertThat( softDeleteColumn.getName() ).isEqualTo( "ACTIVE" );
 					assertThat( entityBinding.getFilters() ).hasSize( 1 );
+					assertThat( entityBinding.getFilters().get( 0 ).getCondition() ).isEqualTo( "name = :name" );
 					assertThat( entityBinding.getCacheRegionName() ).isEqualTo( "my-region" );
 					assertThat( entityBinding.getCacheConcurrencyStrategy() ).isEqualTo( CacheConcurrencyStrategy.READ_ONLY.toAccessType().getExternalName() );
 

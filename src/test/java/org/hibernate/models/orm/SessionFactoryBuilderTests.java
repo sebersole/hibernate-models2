@@ -13,7 +13,7 @@ import org.hibernate.testing.orm.junit.ServiceRegistryScope;
 
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Steve Ebersole
@@ -28,14 +28,17 @@ public class SessionFactoryBuilderTests {
 						.managedClass( SimpleEntity.class )
 		);
 		final var sessionFactorySettings = new SessionFactorySettingsResolver()
-				.resolve( resolvedMetadata.bootstrapSettings() );
+				.resolve( resolvedMetadata.bootstrapSettings(), registryScope.getRegistry() );
 
-		assertThatThrownBy( () -> new SessionFactoryBuilder().build(
+		try (var sessionFactory = new SessionFactoryBuilder().build(
 				sessionFactorySettings,
 				resolvedMetadata,
 				registryScope.getRegistry()
-		) )
-				.isInstanceOf( UnsupportedOperationException.class )
-				.hasMessageContaining( "SessionFactory construction is not implemented yet" );
+		)) {
+			assertThat( sessionFactory ).isNotNull();
+			assertThat( sessionFactory.getRuntimeMetamodels()
+					.getMappingMetamodel()
+					.getEntityDescriptor( SimpleEntity.class ) ).isNotNull();
+		}
 	}
 }

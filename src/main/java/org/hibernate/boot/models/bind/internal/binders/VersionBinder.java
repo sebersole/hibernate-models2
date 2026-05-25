@@ -15,6 +15,7 @@ import org.hibernate.mapping.RootClass;
 import org.hibernate.models.spi.MemberDetails;
 
 import static org.hibernate.boot.models.bind.internal.binders.AttributeBinder.bindImplicitJavaType;
+import static org.hibernate.boot.models.bind.internal.binders.AttributeBinder.bindPropertyAccessor;
 import static org.hibernate.boot.models.bind.internal.binders.AttributeBinder.processColumn;
 import static org.hibernate.boot.models.bind.internal.binders.BasicValueBinder.bindJavaType;
 import static org.hibernate.boot.models.bind.internal.binders.BasicValueBinder.bindJdbcType;
@@ -37,6 +38,7 @@ public class VersionBinder {
 			BindingContext bindingContext) {
 		final Property property = new Property();
 		property.setName( attributeMetadata.getName() );
+		bindPropertyAccessor( attributeMetadata.getMember(), property );
 		typeBinding.setVersion( property );
 		typeBinding.addProperty( property );
 

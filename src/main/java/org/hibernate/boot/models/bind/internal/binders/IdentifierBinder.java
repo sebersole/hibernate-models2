@@ -39,6 +39,8 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 
+import static org.hibernate.boot.models.bind.internal.binders.AttributeBinder.bindPropertyAccessor;
+
 /// Binds the root identifier shape for an entity hierarchy.
 ///
 /// The identifier phase creates the mapping model's primary identifier value,
@@ -111,9 +113,9 @@ public class IdentifierBinder {
 		final BasicValue idValue = createBasicIdValue( table, idAttributeMember );
 		typeBinding.setIdentifier( idValue );
 
-		final Property idProperty = createProperty( idAttribute.getName(), idValue );
-		typeBinding.addProperty( idProperty );
+		final Property idProperty = createProperty( idAttribute.getName(), idValue, idAttributeMember );
 		typeBinding.setIdentifierProperty( idProperty );
+		typeBinding.setDeclaredIdentifierProperty( idProperty );
 
 		final org.hibernate.mapping.Column column = bindIdColumn( idAttributeMember, () -> "id", idValue, table );
 
@@ -141,8 +143,13 @@ public class IdentifierBinder {
 		typeBinding.setIdentifier( idValue );
 		typeBinding.setEmbeddedIdentifier( true );
 
-		final Property idProperty = createProperty( aggregatedKeyMapping.getAttributeName(), idValue );
+		final Property idProperty = createProperty(
+				aggregatedKeyMapping.getAttributeName(),
+				idValue,
+				aggregatedKeyMapping.getAttribute().getMember()
+		);
 		typeBinding.setIdentifierProperty( idProperty );
+		typeBinding.setDeclaredIdentifierProperty( idProperty );
 
 		final List<org.hibernate.mapping.Column> columns = bindComponentIdentifierProperties(
 				type,
@@ -181,10 +188,12 @@ public class IdentifierBinder {
 			final MemberDetails member = idAttribute.getMember();
 			if ( idAttribute.getNature() == AttributeNature.BASIC ) {
 				final BasicValue basicValue = createBasicIdValue( table, member );
-				final Property rootProperty = createProperty( idAttribute.getName(), basicValue );
+				final Property rootProperty = createProperty( idAttribute.getName(), basicValue, member );
 				typeBinding.addProperty( rootProperty );
 
-				final Property componentProperty = createProperty( idAttribute.getName(), basicValue );
+				final Property componentProperty = createProperty( idAttribute.getName(), basicValue, member );
+				componentProperty.setInsertable( false );
+				componentProperty.setUpdatable( false );
 				idValue.addProperty( componentProperty );
 
 				final org.hibernate.mapping.Column column = bindIdColumn( member, idAttribute::getName, basicValue, table );
@@ -192,10 +201,12 @@ public class IdentifierBinder {
 			}
 			else if ( idAttribute.getNature() == AttributeNature.TO_ONE ) {
 				final ManyToOne manyToOne = bindToOneIdentifier( idAttribute, table, type, typeBinding, columns );
-				final Property rootProperty = createProperty( idAttribute.getName(), manyToOne );
+				final Property rootProperty = createProperty( idAttribute.getName(), manyToOne, member );
 				typeBinding.addProperty( rootProperty );
 
-				final Property componentProperty = createProperty( idAttribute.getName(), manyToOne );
+				final Property componentProperty = createProperty( idAttribute.getName(), manyToOne, member );
+				componentProperty.setInsertable( false );
+				componentProperty.setUpdatable( false );
 				idValue.addProperty( componentProperty );
 			}
 			else {
@@ -264,7 +275,7 @@ public class IdentifierBinder {
 		state.addAssociationIdentifierBinding( new AssociationIdentifierBinding(
 				type,
 				typeBinding,
-				createProperty( idAttribute.getName(), manyToOne ),
+				createProperty( idAttribute.getName(), manyToOne, idAttribute.getMember() ),
 				manyToOne,
 				targetTypeBinder,
 				source.valueJoinColumns( joinTable ),
@@ -350,10 +361,11 @@ public class IdentifierBinder {
 		return basicValue;
 	}
 
-	private Property createProperty(String name, org.hibernate.mapping.Value value) {
+	private Property createProperty(String name, org.hibernate.mapping.Value value, MemberDetails member) {
 		final Property property = new Property();
 		property.setName( name );
 		property.setValue( value );
+		bindPropertyAccessor( member, property );
 		return property;
 	}
 

@@ -6,10 +6,14 @@ package org.hibernate.boot.orchestration;
 
 import java.util.Objects;
 
+import org.hibernate.boot.orchestration.internal.SessionFactoryOptionsAdapter;
 import org.hibernate.boot.settings.ResolvedBootstrapSettings;
 import org.hibernate.boot.settings.ResolvedSessionFactorySettings;
 import org.hibernate.boot.settings.SessionFactorySettingsResolver;
+import org.hibernate.boot.internal.MetadataImpl;
+import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.internal.SessionFactoryImpl;
 import org.hibernate.service.ServiceRegistry;
 
 /**
@@ -38,7 +42,7 @@ public class SessionFactoryBuilder {
 			ResolvedMetadata resolvedMetadata,
 			ServiceRegistry serviceRegistry) {
 		return build(
-				settingsResolver.resolve( bootstrapSettings ),
+				settingsResolver.resolve( bootstrapSettings, serviceRegistry ),
 				resolvedMetadata,
 				serviceRegistry
 		);
@@ -60,8 +64,27 @@ public class SessionFactoryBuilder {
 		Objects.requireNonNull( sessionFactorySettings );
 		Objects.requireNonNull( resolvedMetadata );
 		Objects.requireNonNull( serviceRegistry );
-		throw new UnsupportedOperationException(
-				"SessionFactory construction is not implemented yet; SessionFactoryOptions resolution is the next slice"
+		final var options = SessionFactoryOptionsAdapter.create( sessionFactorySettings );
+		if ( options.getServiceRegistry() != sessionFactorySettings.serviceRegistry() ) {
+			throw new IllegalStateException( "SessionFactoryOptions adapter used the wrong service registry" );
+		}
+		if ( resolvedMetadata.metadata() instanceof InFlightMetadataCollector metadataCollector ) {
+			metadataCollector.getBootstrapContext();
+			throw new IllegalArgumentException(
+					"SessionFactory construction requires finalized metadata, not an in-flight collector"
+			);
+			}
+			if ( resolvedMetadata.metadata() instanceof MetadataImpl metadata ) {
+				final var metadataBuildingContext = resolvedMetadata.bindingState().getMetadataBuildingContext();
+				metadata.getTypeConfiguration().scope( metadataBuildingContext );
+				return new SessionFactoryImpl(
+						metadata,
+						options,
+					metadata.getBootstrapContext()
+			);
+		}
+		throw new IllegalArgumentException(
+				"SessionFactory construction requires metadata exposing its BootstrapContext"
 		);
 	}
 }

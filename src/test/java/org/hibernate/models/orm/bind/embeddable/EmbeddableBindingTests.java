@@ -112,7 +112,7 @@ public class EmbeddableBindingTests {
 					final Join join = entityBinding.getJoins().get( 0 );
 					assertThat( entityBinding.getUnjoinedProperties() )
 							.extracting( org.hibernate.mapping.Property::getName )
-							.containsExactly( "id" );
+							.isEmpty();
 					assertThat( join.getProperties() )
 							.extracting( org.hibernate.mapping.Property::getName )
 							.containsExactly( "address" );
@@ -138,7 +138,7 @@ public class EmbeddableBindingTests {
 					final Component address = (Component) entityBinding.getProperty( "address" ).getValue();
 					assertThat( address.getProperties() )
 							.extracting( org.hibernate.mapping.Property::getName )
-							.containsExactly( "line1", "zipCode", "location" );
+							.containsExactly( "line1", "location", "zipCode" );
 
 					final Component location = (Component) address.getProperty( "location" ).getValue();
 					assertThat( location.getComponentClassName() ).isEqualTo( Location.class.getName() );
@@ -147,7 +147,7 @@ public class EmbeddableBindingTests {
 							.containsExactly( "city", "country" );
 					assertThat( address.getColumns() )
 							.extracting( org.hibernate.mapping.Column::getName )
-							.containsExactly( "line1", "zipCode", "city", "country" );
+							.containsExactly( "line1", "city", "country", "zipCode" );
 				},
 				scope.getRegistry(),
 				NestedEmbeddedEntity.class
@@ -169,7 +169,7 @@ public class EmbeddableBindingTests {
 							.containsExactly( "home_city", "home_country" );
 					assertThat( address.getColumns() )
 							.extracting( org.hibernate.mapping.Column::getName )
-							.containsExactly( "line1", "zipCode", "home_city", "home_country" );
+							.containsExactly( "line1", "home_city", "home_country", "zipCode" );
 				},
 				scope.getRegistry(),
 				NestedOverrideEmbeddedEntity.class

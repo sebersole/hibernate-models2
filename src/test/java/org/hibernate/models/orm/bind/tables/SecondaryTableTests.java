@@ -50,7 +50,7 @@ public class SecondaryTableTests {
 					assertThat( join.getKey() ).isNotNull();
 					assertThat( join.getKey().getColumns() ).hasSize( 1 );
 
-					assertThat( entityBinding.getUnjoinedProperties() ).hasSize( 2 );
+					assertThat( entityBinding.getUnjoinedProperties() ).hasSize( 1 );
 					assertThat( join.getProperties() ).hasSize( 1 );
 					final Property joinProperty = join.getProperties().get( 0 );
 					final BasicValue value = (BasicValue) joinProperty.getValue();

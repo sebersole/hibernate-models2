@@ -5,6 +5,7 @@
 package org.hibernate.boot.orchestration;
 
 import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.model.TypeContributions;
 import org.hibernate.boot.internal.InFlightMetadataCollectorImpl;
 import org.hibernate.boot.internal.MetadataBuilderImpl;
 import org.hibernate.boot.internal.MetadataBuildingContextRootImpl;
@@ -21,7 +22,11 @@ import org.hibernate.boot.models.source.BootstrapSourceContributions;
 import org.hibernate.boot.settings.ResolvedBootstrapSettings;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.boot.spi.MetadataImplementor;
+import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.service.ServiceRegistry;
+import org.hibernate.usertype.CompositeUserType;
+
+import jakarta.persistence.AttributeConverter;
 
 /// Resolves ORM boot metadata from source contributions and resolved settings.
 ///
@@ -72,6 +77,7 @@ public class MetadataResolver {
 				serviceRegistry,
 				bootstrapSettings
 		);
+		applyTypeContributions( metadataBuildingContext );
 		final AvailableResources availableResources = buildAvailableResources(
 				sourceContributions,
 				bootstrapSettings,
@@ -139,10 +145,11 @@ public class MetadataResolver {
 			MetadataBuildingContext metadataBuildingContext,
 			BindingStateImpl bindingState) {
 		bindingState.applyMetadataRegistrations( metadataBuildingContext.getMetadataCollector() );
-		final MetadataImplementor metadata = metadataBuildingContext.getMetadataCollector();
-		metadata.orderColumns( false );
-		metadata.validate();
-		return metadata;
+//		final MetadataImplementor metadata = metadataBuildingContext.getMetadataCollector();
+//		metadata.orderColumns( false );
+//		metadata.validate();
+//		return metadata;
+		return ( (InFlightMetadataCollectorImpl) metadataBuildingContext.getMetadataCollector() ).buildMetadataInstance( metadataBuildingContext );
 	}
 
 	private static MetadataBuildingContext createMetadataBuildingContext(
@@ -172,5 +179,32 @@ public class MetadataResolver {
 						metadataCollector.getPersistenceUnitMetadata()
 				)
 		);
+	}
+
+	private static void applyTypeContributions(MetadataBuildingContext metadataBuildingContext) {
+		final var bootstrapContext = metadataBuildingContext.getBootstrapContext();
+		final var metadataCollector = metadataBuildingContext.getMetadataCollector();
+		final var typeConfiguration = bootstrapContext.getTypeConfiguration();
+		final var serviceRegistry = bootstrapContext.getServiceRegistry();
+		final var typeContributions = new TypeContributions() {
+			@Override
+			public org.hibernate.type.spi.TypeConfiguration getTypeConfiguration() {
+				return typeConfiguration;
+			}
+
+			@Override
+			public void contributeAttributeConverter(Class<? extends AttributeConverter<?, ?>> converterClass) {
+				metadataCollector.getConverterRegistry().addAttributeConverter( converterClass );
+			}
+
+			@Override
+			public void contributeType(CompositeUserType<?> type) {
+				metadataBuildingContext.getBuildingOptions().getCompositeUserTypes().add( type );
+			}
+		};
+
+		serviceRegistry.requireService( JdbcServices.class )
+				.getDialect()
+				.contribute( typeContributions, serviceRegistry );
 	}
 }

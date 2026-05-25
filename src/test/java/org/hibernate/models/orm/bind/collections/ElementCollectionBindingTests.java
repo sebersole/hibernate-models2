@@ -723,7 +723,7 @@ public class ElementCollectionBindingTests {
 							.containsExactly( "home_city", "home_country" );
 					assertThat( element.getColumns() )
 							.extracting( org.hibernate.mapping.Column::getName )
-							.containsExactly( "line1", "zipCode", "home_city", "home_country" );
+							.containsExactly( "line1", "home_city", "home_country", "zipCode" );
 				},
 				scope.getRegistry(),
 				NestedEmbeddableElementOwner.class

@@ -151,10 +151,21 @@ Potential responsibilities:
 * preserve a raw settings map for components that still require one
 * expose the `StandardServiceRegistry` used for factory construction
 
-The current prototype only carries configuration values and JPA bootstrap mode.
-It should grow one setting at a time as `SessionFactoryBuilder` needs them.
-Later, this can adapt to ORM's existing `SessionFactoryOptions` interface.  The
-design point is to move option resolution out of the final constructor path.
+The current prototype carries configuration values, JPA bootstrap mode, and the
+first constructor-facing values needed by `SessionFactoryImpl`: standard service
+registry, UUID, factory name/JNDI-name flag, statement observer, interceptor,
+factory observers, Bean Validation `ValidatorFactory` reference, multi-tenancy
+flag, current-tenant resolver, cache settings, default tenant id Java type,
+default catalog, and default schema.  It should continue to grow one setting at
+a time as `SessionFactoryBuilder` needs them.
+
+The PoC also has a temporary
+link:../src/main/java/org/hibernate/boot/orchestration/internal/SessionFactoryOptionsAdapter.java[`SessionFactoryOptionsAdapter`].
+It adapts `ResolvedSessionFactorySettings` to ORM's existing
+`SessionFactoryOptions` interface, but only for audited methods.  Unsupported
+methods throw immediately so new dependencies are documented before being added.
+The design point is to move option resolution out of the final constructor path
+without quietly copying the full legacy options builder.
 
 === SessionFactoryBuildContext
 
@@ -276,7 +287,10 @@ large contract simply because the current constructor happens to accept it.
   settings map.
 | Factory construction and runtime behavior.
 | `ResolvedSessionFactorySettings` plus adapter to ORM's interface if needed.
-| Do not prototype until the consumers are grouped by actual need.
+| Initial audit done.  This remains a runtime SPI view, so the likely first
+  implementation is a narrow resolver plus adapter.  Audit ORM's
+  `org.hibernate.boot.SessionFactoryBuilder` for the customization surface and
+  `SessionFactoryOptionsBuilder` for the delegated resolution behavior.
 
 | `MetadataImplementor`
 | `SessionFactoryImpl`, runtime metamodel creation, cache priming, query/import
@@ -451,6 +465,80 @@ Where existing ORM integration points still require the legacy contract, the PoC
 may create or carry an adapter.  New PoC phases should request explicit values
 instead of accepting `BootstrapContext`.
 
+==== Next Slice Guardrails
+
+The next SessionFactory bootstrap slice may introduce a temporary
+`BootstrapContext` adapter in order to call ORM's current `SessionFactoryImpl`.
+That adapter is a compatibility device, not the target architecture.
+
+Rules for that slice:
+
+* support a `BootstrapContext` method only after identifying the concrete
+  consumer that asked for it;
+* keep unsupported methods failing loudly so new dependencies become audit
+  items instead of accidental design;
+* prefer explicit values or a narrower `SessionFactoryBuildContext` for new PoC
+  code;
+* preserve a compatibility view for existing ORM extension points such as
+  `Integrator#integrate(Metadata, BootstrapContext, SessionFactoryImplementor)`;
+* document every supported adapter method in this audit section.
+
+The desired upstream shape is still expected to be narrower than
+`BootstrapContext`: likely explicit factory-build inputs plus a runtime model
+creation context, with a legacy adapter only where extension compatibility
+requires it.
+
+==== Existing Context Reuse
+
+The first attempt did not need a new `BootstrapContext` adapter.  The
+`MetadataImplementor` produced by the PoC is currently still an
+`InFlightMetadataCollector`, and that collector exposes the ORM
+`BootstrapContext` that was used during metadata binding.  Reusing that existing
+context is a better compatibility step than inventing a second context view.
+
+The next boundary was therefore not `BootstrapContext` construction.  It was the
+handoff from in-flight metadata to finalized metadata:
+
+* `SessionFactoryBuilder` can create the minimal `SessionFactoryOptions` adapter.
+* `SessionFactoryBuilder` can locate the existing `BootstrapContext` from the
+  in-flight metadata collector.
+* `SessionFactoryImpl` should not be called with the in-flight collector because
+  `InFlightMetadataCollectorImpl#initSessionFactory` deliberately rejects that
+  path.
+* `MetadataResolver#finalizeMetadata` now builds the finalized `MetadataImpl`
+  using `InFlightMetadataCollectorImpl#buildMetadataInstance`.
+* Finalized metadata runs ORM second-pass/exportable processing and can change
+  finalized property/column ordering compared to the earlier in-flight collector
+  view.
+
+With finalized metadata in place, the current SessionFactory construction
+boundary moved into runtime service creation.  The first newly observed
+unsupported options method was `SessionFactoryOptions#isQueryCacheEnabled`,
+asked for while creating cache services.  The cache-related options bucket has
+now been added to `ResolvedSessionFactorySettings` and
+`SessionFactoryOptionsAdapter`.
+
+The next boundary after cache was `SessionFactoryOptions#getInterceptor`, which
+belongs to the session defaults / integration hooks bucket rather than cache.
+That method is now resolved from `SessionEventSettings.INTERCEPTOR`.
+
+With the interceptor hack in place, `SessionFactoryImpl` reached metadata
+validation and exposed a duplicate identifier-column binding gap.  The PoC fixed
+that for basic identifiers by keeping the basic id as the identifier property
+only, rather than also adding it to the normal declared-property list.
+
+The query-engine and runtime-default options needed by the simple
+SessionFactory smoke test are now resolved.  The old
+`SessionFactoryOptions#getCustomSqlFunctionMap` boundary has been crossed.
+
+The binding test helper now finalizes the in-flight collector with
+`InFlightMetadataCollectorImpl#buildMetadataInstance`, then runs
+`MetadataImplementor#orderColumns(false)` and `MetadataImplementor#validate()`
+before invoking test assertions.  This makes the binder suite exercise the same
+mapping validation pressure that exposed the duplicate identifier-column bug.
+Tests for known unsupported validated shapes, such as composite-key `@Any` and
+association-id join-table mappings, assert the validation failure explicitly.
+
 Follow-up questions:
 
 * Which `BootstrapContext` methods are actually used by built-in integrators,
@@ -479,7 +567,251 @@ Follow-up questions:
 
 === SessionFactoryOptions
 
-Not audited yet.
+Initial inspection target: `SessionFactoryImpl`,
+`org.hibernate.boot.SessionFactoryBuilder`, `SessionFactoryOptionsBuilder`,
+`SessionFactorySettings`, and the runtime session/JDBC contexts that read
+options through `SessionFactoryImplementor`.
+
+`SessionFactoryOptions` is different from the earlier constructor dependencies.
+It is accepted by the `SessionFactoryImpl` constructor, but it is also stored and
+returned by `SessionFactoryImplementor#getSessionFactoryOptions()`.  That means
+the PoC cannot treat it purely as a temporary construction object unless the
+runtime SPI is also changed upstream.
+
+Direct `SessionFactoryImpl` constructor usage:
+
+* stores the full options reference as the factory's runtime options view;
+* resolves `StatementObserver`, `uuid`, `SessionFactoryObserver[]`, factory
+  name/JNDI name, tenant id Java type, default catalog/schema, and
+  multi-tenancy enablement;
+* obtains the `StandardServiceRegistry` from the options to build the
+  `SessionFactoryServiceRegistry`;
+* passes the options to `QueryEngineImpl`;
+* passes the options through `RuntimeModelCreationContext` during runtime model
+  creation.
+
+The constructor itself only dereferences a modest subset, but retaining the
+object makes the full SPI available after construction.  Runtime consumers still
+read many individual settings through the factory, including session defaults,
+JDBC behavior, query/cache behavior, JPA compliance, dirty checking, tenant
+resolution, JSON/XML format mappers, and graph parser behavior.
+
+[cols="1,2,2,2", options="header"]
+|===
+| Consumer area
+| Observed access
+| Likely narrower dependency
+| Notes
+
+| `SessionFactoryImpl` identity and registration
+| `getUuid()`, `getSessionFactoryName()`,
+  `isSessionFactoryNameAlsoJndiName()`
+| factory identity settings
+| Used for registry, serialization, and optional JNDI naming.  These are good
+  candidates for named fields on `ResolvedSessionFactorySettings`.
+
+| Service-registry creation
+| `getServiceRegistry()`, then
+  `SessionFactoryServiceRegistryFactory#buildServiceRegistry(factory, options)`
+| late factory service-registry creation input
+| This is the strongest reason a compatibility adapter may be needed first.
+  The service-registry builder receives both the incompletely constructed
+  factory and the options object.
+
+| Constructor-local behavior
+| `getStatementObserver()`, `getSessionFactoryObservers()`,
+  `isMultiTenancyEnabled()`, `getDefaultTenantIdentifierJavaType()`,
+  `getDefaultCatalog()`, `getDefaultSchema()`
+| explicit construction settings
+| These could be direct fields on `ResolvedSessionFactorySettings` or part of a
+  narrower `SessionFactoryBuildContext`.
+
+| Runtime model/query creation
+| `QueryEngineImpl(..., options, ...)` and
+  `RuntimeModelCreationContext#getSessionFactoryOptions()`
+| query/runtime model settings
+| `SessionFactoryOptions` extends `QueryEngineOptions`, so query engine
+  settings may deserve their own later slice rather than being mixed into the
+  whole factory settings contract immediately.
+
+| Session defaults
+| `getInterceptor()`, session-scoped interceptor supplier,
+  `getStatementInspector()`, default event listeners, default cache/flush/lock
+  modes, default session properties, default batch/subselect/fetch settings,
+  auto-close/flush-before-completion/JTA flags
+| session-creation defaults
+| These are runtime defaults used by `SessionBuilderImpl`,
+  `StatelessSessionBuilderImpl`, `AbstractSharedSessionContract`, and
+  `JdbcSessionContextImpl`.
+
+| JDBC/runtime SQL behavior
+| scrollable results, generated keys, JDBC fetch size, batch size, connection
+  handling, provider autocommit behavior, SQL comments, JDBC time zone,
+  default null precedence, parameter padding
+| JDBC/runtime SQL settings
+| Some values depend on `JdbcServices`, dialect defaults, and extracted JDBC
+  metadata, so resolution is not just a raw map projection.
+
+| Cache behavior
+| second-level cache, query cache, query cache layout, timestamps cache factory,
+  region prefix, minimal puts, structured/direct entries, collection cache
+  auto-eviction
+| cache settings plus cache service capabilities
+| Resolution currently branches on the configured `RegionFactory`, so this
+  belongs in the SessionFactory settings slice rather than pure bootstrap
+  settings.
+
+| Multi-tenancy
+| enabled flag, tenant identifier resolver, tenant schema mapper, tenant
+  credentials mapper, default tenant id Java type
+| tenant runtime settings
+| Enablement is service-driven in ORM today.  The resolver probably needs both
+  resolved configuration values and the service registry.
+
+| Integration hooks
+| CDI BeanManager reference, ValidatorFactory reference, custom entity dirtiness
+  strategy, entity name resolvers, entity-not-found delegate, observers
+| integration/runtime extension settings
+| These are user-provided objects or strategy-resolved services.  They are a
+  good reason to keep the raw configuration map available even while promoting
+  commonly used values to named fields.
+
+| Mapping/type format settings used at runtime
+| preferred SQL type codes, Java time/native enum/locale handling,
+  timezone storage, JSON/XML format mappers, XML legacy format flag
+| resolved type/format settings shared with mapping/runtime
+| Some of these overlap conceptually with `ResolvedMappingSettings`.  Keep them
+  in the raw settings root until a concrete consumer forces a split.
+|===
+
+Preliminary conclusion:
+
+The closest conceptual corollary to `SessionFactorySettingsResolver` is ORM's
+`org.hibernate.boot.SessionFactoryBuilder`: it represents the factory-build
+customization surface.  That distinction is not very helpful mechanically,
+however, because ORM's builder currently delegates most of that state into
+`SessionFactoryOptionsBuilder`.  For the audit, treat the two together:
+`SessionFactoryBuilder` identifies externally supported customization points,
+while `SessionFactoryOptionsBuilder` shows how those points are currently
+resolved and accumulated.
+
+`SessionFactoryOptionsBuilder` should still not become the design target.  It
+mixes several concerns:
+
+* normalized raw configuration values;
+* service/dialect/JDBC-metadata-derived decisions;
+* query engine options;
+* cache options;
+* session defaults;
+* integration object references;
+* the legacy runtime `SessionFactoryOptions` SPI view.
+
+The practical first step is still likely an adapter implementing ORM's
+`SessionFactoryOptions`, backed by `ResolvedSessionFactorySettings`.  The
+important design point is that `ResolvedSessionFactorySettings` should grow by
+consumer bucket, not by blindly mirroring every method in the legacy interface.
+
+That first adapter slice now exists as
+link:../src/main/java/org/hibernate/boot/orchestration/internal/SessionFactoryOptionsAdapter.java[`SessionFactoryOptionsAdapter`].
+It supports only the methods used by the direct `SessionFactoryImpl`
+constructor path identified above.  The PoC `SessionFactoryBuilder` creates the
+adapter and can find the existing `BootstrapContext` from the in-flight metadata
+collector.  It still stops before constructing the factory because the metadata
+product must be finalized first.
+
+==== PoC Decision
+
+For the next factory-bootstrap slice:
+
+* keep the PoC `SessionFactoryBuilder` returning `SessionFactoryImplementor`;
+* have `SessionFactorySettingsResolver` produce `ResolvedSessionFactorySettings`
+  from `ResolvedBootstrapSettings` and a `ServiceRegistry`;
+* keep the raw immutable configuration map on `ResolvedSessionFactorySettings`;
+* add named fields only for values required by the immediate
+  `SessionFactoryImpl` construction path;
+* compare the growing settings surface against ORM's
+  `org.hibernate.boot.SessionFactoryBuilder` customization methods, while also
+  checking the delegated `SessionFactoryOptionsBuilder` behavior;
+* introduce a temporary `SessionFactoryOptions` adapter if needed to instantiate
+  ORM's current `SessionFactoryImpl`;
+* avoid copying query/cache/session-default resolution until a real consumer
+  requires it.
+
+==== Minimal Adapter Slice
+
+Implemented in the PoC:
+
+* `SessionFactorySettingsResolver#resolve(ResolvedBootstrapSettings,
+  ServiceRegistry)` requires a `StandardServiceRegistry` and resolves the
+  constructor-facing settings listed above.
+* `ResolvedSessionFactorySettings` keeps those values as named immutable fields
+  alongside the raw configuration map.
+* `SessionFactoryOptionsAdapter` exposes the audited subset through ORM's
+  `SessionFactoryOptions` SPI.
+* `SessionFactoryBuilder` now creates that adapter, verifies that an existing
+  `BootstrapContext` is reachable from the current metadata product, and can
+  build a `SessionFactoryImplementor` for the current simple-entity smoke test.
+
+==== Cache Options Slice
+
+Implemented in the PoC:
+
+* `SessionFactorySettingsResolver` resolves cache settings using the configured
+  `RegionFactory`, `CacheSettings`, and `StrategySelector`.
+* `ResolvedSessionFactorySettings` now carries second-level cache enablement,
+  query cache enablement, query cache layout, timestamps cache factory, cache
+  region prefix, minimal puts, structured entries, direct-reference entries, and
+  collection-cache auto-eviction.
+* `SessionFactoryOptionsAdapter` exposes those values through the corresponding
+  `SessionFactoryOptions` cache methods.
+
+This moved the SessionFactory construction boundary past cache service creation
+to the session-defaults/integration-hooks and query-engine options buckets,
+which are now represented as named values in `ResolvedSessionFactorySettings`.
+The subsequent duplicate identifier-column validation failure was fixed in the
+basic-id binder.
+
+==== Runtime Defaults and Query Options Slice
+
+Implemented in the PoC:
+
+* `ResolvedSessionFactorySettings` now carries the query-engine options needed
+  by `QueryEngineImpl`, including custom function/translator hooks, JPA
+  compliance, criteria value handling, immutable-entity update handling, JSON/XML
+  function flags, portable integer division, and native JDBC parameter handling.
+* `ResolvedSessionFactorySettings` also carries runtime default options needed
+  while creating persisters, loaders, and default session builders, including
+  statement inspector, session cache mode, connection handling, JDBC time zone,
+  auto-close/flush-before-completion, identifier rollback, SQL comments, batch
+  and subselect fetch defaults, maximum fetch depth, temporal table strategy,
+  audit strategy, JPA callbacks, and collections-in-default-fetch-group.
+* `MetadataResolver` now performs the dialect type-contribution step before
+  binding so the bootstrap `TypeConfiguration` has DDL type descriptors needed by
+  temporary table strategy creation.
+* `SessionFactoryBuilder` re-scopes `TypeConfiguration` to the metadata building
+  context before calling `SessionFactoryImpl`, preserving the boot-time access
+  expected by dialect function registration.
+
+The simple `SessionFactoryBuilderTests` smoke test now builds and closes a real
+`SessionFactoryImplementor` and verifies that the runtime mapping metamodel
+contains the simple entity descriptor.
+
+The adapter is intentionally incomplete.  A failure from an unsupported
+`SessionFactoryOptions` method is not just a missing implementation; it is a
+prompt to classify that method into one of the buckets above before growing
+`ResolvedSessionFactorySettings`.
+
+Follow-up questions:
+
+* Can `SessionFactoryServiceRegistryFactory#buildServiceRegistry` accept a
+  narrower build context instead of the full options SPI?
+* Should `QueryEngineOptions` become a separate resolved slice before building
+  `QueryEngineImpl`?
+* Which runtime users truly need access through
+  `SessionFactoryImplementor#getSessionFactoryOptions()` and which could use
+  narrower factory methods?
+* Should Bean Validation's mutation of `setCheckNullability` be replaced by a
+  build-time validation decision rather than a mutable options setter?
 
 === MetadataImplementor
 

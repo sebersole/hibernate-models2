@@ -76,6 +76,7 @@ public class AttributeBinder {
 
 		this.binding = new Property();
 		binding.setName( attributeMetadata.getName() );
+		bindPropertyAccessor( attributeMetadata.getMember(), binding );
 
 		if ( attributeMetadata.getNature() == BASIC ) {
 			final var basicValue = createBasicValue( primaryTable );
@@ -184,6 +185,10 @@ public class AttributeBinder {
 
 	public Property getBinding() {
 		return binding;
+	}
+
+	public static void bindPropertyAccessor(MemberDetails member, Property property) {
+		property.setPropertyAccessorName( member.isField() ? "field" : "property" );
 	}
 
 	public Table getTable() {

@@ -103,7 +103,7 @@ public class BasicValueBinder {
 		//noinspection unchecked
 		final Class<AttributeConverter<?, ?>> javaClass = (Class<AttributeConverter<?, ?>>) conversion.converter();
 		basicValue.setJpaAttributeConverterDescriptor(
-				new RegisteredConversion( null, javaClass, false ).getConverterDescriptor()
+				new RegisteredConversion( source.javaType(), javaClass, false ).getConverterDescriptor()
 		);
 	}
 

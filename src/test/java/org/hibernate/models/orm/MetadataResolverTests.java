@@ -37,6 +37,10 @@ public class MetadataResolverTests {
 		final RootClass entityBinding = (RootClass) metadata.getEntityBinding( SimpleEntity.class.getName() );
 		assertThat( entityBinding ).isNotNull();
 		assertThat( entityBinding.getTable() ).isNotNull();
+		assertThat( entityBinding.getIdentifierProperty().getName() ).isEqualTo( "id" );
+		assertThat( entityBinding.getProperties() )
+				.extracting( org.hibernate.mapping.Property::getName )
+				.doesNotContain( "id" );
 		assertThat( entityBinding.getJoins() ).hasSize( 1 );
 		assertThat( entityBinding.getProperty( "data" ).getValue().getTable() )
 				.isSameAs( entityBinding.getJoins().get( 0 ).getTable() );
@@ -146,15 +150,15 @@ public class MetadataResolverTests {
 
 		final PersistentClass entityBinding = metadata.getEntityBinding( EmbeddableBindingTests.NestedEmbeddedEntity.class.getName() );
 		final Component address = (Component) entityBinding.getProperty( "address" ).getValue();
-		final Component location = (Component) address.getProperty( "location" ).getValue();
-		assertThat( address.getProperties() )
-				.extracting( org.hibernate.mapping.Property::getName )
-				.containsExactly( "line1", "zipCode", "location" );
-		assertThat( location.getComponentClassName() )
-				.isEqualTo( EmbeddableBindingTests.Location.class.getName() );
-		assertThat( address.getColumns() )
-				.extracting( org.hibernate.mapping.Column::getName )
-				.containsExactly( "line1", "zipCode", "city", "country" );
+			final Component location = (Component) address.getProperty( "location" ).getValue();
+			assertThat( address.getProperties() )
+					.extracting( org.hibernate.mapping.Property::getName )
+					.containsExactly( "line1", "location", "zipCode" );
+			assertThat( location.getComponentClassName() )
+					.isEqualTo( EmbeddableBindingTests.Location.class.getName() );
+			assertThat( address.getColumns() )
+					.extracting( org.hibernate.mapping.Column::getName )
+					.containsExactly( "line1", "city", "country", "zipCode" );
 	}
 
 	@Test

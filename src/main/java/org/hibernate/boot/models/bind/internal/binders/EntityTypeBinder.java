@@ -13,10 +13,9 @@ import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.SharedCacheMode;
 import org.hibernate.MappingException;
+import org.hibernate.AnnotationException;
 import org.hibernate.annotations.DiscriminatorFormula;
 import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.OptimisticLockType;
-import org.hibernate.annotations.OptimisticLocking;
 import org.hibernate.annotations.SoftDelete;
 import org.hibernate.annotations.SoftDeleteType;
 import org.hibernate.annotations.SqlFragmentAlias;
@@ -37,7 +36,6 @@ import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.JpaEventListener;
 import org.hibernate.boot.models.categorize.spi.JpaEventListenerStyle;
 import org.hibernate.boot.models.categorize.spi.NaturalIdCacheRegion;
-import org.hibernate.engine.OptimisticLockStyle;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.jpa.boot.spi.CallbackDefinition;
@@ -706,7 +704,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 		bindTenantId( getManagedType(), typeBinding, modelBinders, getOptions(), getBindingState(), getBindingContext() );
 
 		processSoftDelete( typeBinding.getIdentityTable(), typeBinding, getManagedType().getClassDetails() );
-		processOptimisticLocking( typeBinding, getManagedType().getClassDetails() );
+		processOptimisticLocking( typeBinding, getManagedType() );
 		processCacheRegions( getManagedType(), typeBinding, getManagedType().getClassDetails() );
 	}
 
@@ -876,13 +874,8 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 
 	private void processOptimisticLocking(
 			RootClass rootEntity,
-			ClassDetails classDetails) {
-		final var optimisticLocking = classDetails.getDirectAnnotationUsage( OptimisticLocking.class );
-
-		if ( optimisticLocking != null ) {
-			final var optimisticLockingType = optimisticLocking.type() == null ? OptimisticLockType.VERSION : optimisticLocking.type();
-			rootEntity.setOptimisticLockStyle( OptimisticLockStyle.valueOf( optimisticLockingType.name() ) );
-		}
+			EntityTypeMetadata source) {
+		rootEntity.setOptimisticLockStyle( source.getHierarchy().getOptimisticLockStyle() );
 	}
 
 	private void processCacheRegions(
@@ -924,14 +917,35 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 		}
 
 		for ( Filter filter : filters ) {
+			final String filterName = filter.name();
 			binding.addFilter(
-					filter.name(),
-					StringHelper.nullIfEmpty( filter.condition() ),
+					filterName,
+					resolveFilterCondition( filterName, filter.condition(), state ),
 					filter.deduceAliasInjectionPoints(),
 					extractFilterAliasTableMap( filter ),
 					extractFilterAliasEntityMap( filter )
 			);
 		}
+	}
+
+	private String resolveFilterCondition(String filterName, String condition, BindingState state) {
+		if ( StringHelper.isNotBlank( condition ) ) {
+			return condition;
+		}
+
+		final var filterDefinition = state.getFilterDefinition( filterName );
+		if ( filterDefinition == null ) {
+			throw new AnnotationException( "Entity '" + binding.getEntityName()
+					+ "' has a '@Filter' for an undefined filter named '" + filterName + "'" );
+		}
+
+		final String defaultCondition = filterDefinition.getDefaultFilterCondition();
+		if ( StringHelper.isBlank( defaultCondition ) ) {
+			throw new AnnotationException( "Entity '" + binding.getEntityName()
+					+ "' has a '@Filter' with no 'condition' and no default condition was given by the '@FilterDef' named '"
+					+ filterName + "'" );
+		}
+		return defaultCondition;
 	}
 
 	private Map<String, String> extractFilterAliasTableMap(Filter filter) {

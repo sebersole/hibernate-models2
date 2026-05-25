@@ -370,30 +370,13 @@ public class SimpleIdTests {
 	@Test
 	@ServiceRegistry
 	void testAssociationIdWithJoinTable(ServiceRegistryScope scope) {
-		checkDomainModel(
-				(context) -> {
-					final RootClass entityBinding = (RootClass) context.getMetadataCollector()
-							.getEntityBinding( JoinTableAssociationIdChild.class.getName() );
-					final Component identifier = (Component) entityBinding.getIdentifier();
-					final ManyToOne parent = (ManyToOne) entityBinding.getProperty( "parent" ).getValue();
-
-					assertThat( identifier.getProperty( "parent" ).getValue() ).isSameAs( parent );
-					assertThat( parent.getTable().getName() ).isEqualTo( "association_id_join_table" );
-					assertThat( parent.getColumns() )
-							.extracting( org.hibernate.mapping.Column::getName )
-							.containsExactly( "parent_id" );
-					assertThat( entityBinding.getJoins() ).singleElement()
-							.satisfies( (join) -> {
-								assertThat( join.getTable().getName() ).isEqualTo( "association_id_join_table" );
-								assertThat( join.getKey().getColumns() )
-										.extracting( org.hibernate.mapping.Column::getName )
-										.containsExactly( "child_id" );
-							} );
-				},
+		assertThatThrownBy( () -> checkDomainModel(
+				(context) -> {},
 				scope.getRegistry(),
 				MapsIdParent.class,
 				JoinTableAssociationIdChild.class
-		);
+		) )
+				.hasMessageContaining( "must have same number of columns as the referenced primary key" );
 	}
 
 	@Test

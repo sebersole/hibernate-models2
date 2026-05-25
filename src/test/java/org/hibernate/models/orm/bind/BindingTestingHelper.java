@@ -23,6 +23,7 @@ import org.hibernate.boot.models.source.AvailableResourcesContext;
 import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.boot.spi.MetadataBuildingContext;
+import org.hibernate.boot.spi.MetadataImplementor;
 import org.hibernate.jpa.HibernatePersistenceConfiguration;
 import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
 
@@ -66,27 +67,36 @@ public class BindingTestingHelper {
 
 		BindingCoordinator.coordinateBinding(
 				categorizedDomainModel,
-				bindingState,
-				bindingOptions,
-				bindingContext
-		);
-		bindingState.applyMetadataRegistrations( metadataCollector );
+					bindingState,
+					bindingOptions,
+					bindingContext
+			);
+			bindingState.applyMetadataRegistrations( metadataCollector );
+			final MetadataImplementor metadata = metadataCollector.buildMetadataInstance( metadataBuildingContext );
+			metadata.orderColumns( false );
+			metadata.validate();
 
-		check.checkDomainModel( new DomainModelCheckContext() {
-			@Override
-			public InFlightMetadataCollectorImpl getMetadataCollector() {
-				return metadataCollector;
-			}
+			check.checkDomainModel( new DomainModelCheckContext() {
+				@Override
+				public InFlightMetadataCollectorImpl getMetadataCollector() {
+					return metadataCollector;
+				}
 
-			@Override
-			public BindingStateImpl getBindingState() {
-				return bindingState;
-			}
+				@Override
+				public MetadataImplementor getMetadata() {
+					return metadata;
+				}
+
+				@Override
+				public BindingStateImpl getBindingState() {
+					return bindingState;
+				}
 		} );
 	}
 
 	public interface DomainModelCheckContext {
 		InFlightMetadataCollectorImpl getMetadataCollector();
+		MetadataImplementor getMetadata();
 		BindingStateImpl getBindingState();
 	}
 
