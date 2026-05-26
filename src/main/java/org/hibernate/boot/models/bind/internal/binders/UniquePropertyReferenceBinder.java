@@ -23,7 +23,6 @@ class UniquePropertyReferenceBinder {
 			String referencedPropertyName) {
 		value.setReferencedPropertyName( referencedPropertyName );
 		value.setReferenceToPrimaryKey( false );
-		bindingState.getMetadataBuildingContext().getMetadataCollector()
-				.addUniquePropertyReference( value.getReferencedEntityName(), referencedPropertyName );
+		bindingState.addUniquePropertyReference( value.getReferencedEntityName(), referencedPropertyName );
 	}
 }

@@ -192,7 +192,7 @@ class ToOneAttributeBinder {
 
 		final boolean optional = mapsId == null && source.optional();
 		property.setOptional( optional );
-		property.setCascade( source.cascades( bindingState ) );
+		property.setCascade( source.cascades( bindingState ), source.orphanRemoval() );
 
 		if ( mapsId == null ) {
 			bindJoinColumns(
@@ -252,7 +252,7 @@ class ToOneAttributeBinder {
 		value.setForeignKeyType( org.hibernate.type.ForeignKeyDirection.TO_PARENT );
 		value.setMappedByProperty( source.oneToOne().mappedBy() );
 		property.setOptional( source.optional() );
-		property.setCascade( source.cascades( bindingState ) );
+		property.setCascade( source.cascades( bindingState ), source.orphanRemoval() );
 
 		bindingState.addInverseToOneAssociationBinding( new InverseToOneAssociationBinding(
 				ownerType,

@@ -7,8 +7,8 @@
 
 /// Contracts describing the categorized domain model.
 ///
-/// Categorization is the boot-time phase between source discovery and binding.  Source
-/// discovery gathers the available managed classes, packages, and XML mappings.  The
+/// Categorization is the boot-time phase between source collection and binding.  Source
+/// collection assembles the available managed classes, packages, and XML mappings.  The
 /// categorizer interprets those inputs through the Hibernate Models infrastructure and
 /// exposes persistent types, entity hierarchies, persistent attributes, key mappings,
 /// and persistence-unit scoped registrations in the contracts in this package.

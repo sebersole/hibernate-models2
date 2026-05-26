@@ -10,19 +10,18 @@ import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.Immutable;
-import org.hibernate.annotations.ResultCheckStyle;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLInsert;
 import org.hibernate.annotations.SQLUpdate;
 import org.hibernate.annotations.Synchronize;
-import org.hibernate.boot.model.CustomSql;
 import org.hibernate.boot.model.naming.EntityNaming;
-import org.hibernate.engine.spi.ExecuteUpdateResultCheckStyle;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
+import org.hibernate.boot.models.categorize.spi.CategorizationContext;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.JpaEventListener;
-import org.hibernate.boot.models.categorize.spi.CategorizationContext;
+import org.hibernate.jdbc.Expectation;
+import org.hibernate.mapping.CustomSqlMapping;
 import org.hibernate.models.spi.ClassDetails;
 
 import jakarta.persistence.Cacheable;
@@ -32,6 +31,7 @@ import jakarta.persistence.Entity;
 import static org.hibernate.internal.util.StringHelper.EMPTY_STRINGS;
 import static org.hibernate.internal.util.StringHelper.isNotEmpty;
 import static org.hibernate.internal.util.StringHelper.unqualify;
+import static org.hibernate.internal.util.ReflectHelper.getDefaultSupplier;
 
 /**
  * @author Steve Ebersole
@@ -52,9 +52,9 @@ public class EntityTypeMetadataImpl
 	private final String discriminatorMatchValue;
 	private final boolean isDynamicInsert;
 	private final boolean isDynamicUpdate;
-	private final CustomSql customInsert;
-	private final CustomSql customUpdate;
-	private final CustomSql customDelete;
+	private final CustomSqlMapping customInsert;
+	private final CustomSqlMapping customUpdate;
+	private final CustomSqlMapping customDelete;
 	private final String[] synchronizedTableNames;
 
 	private List<JpaEventListener> hierarchyEventListeners;
@@ -192,17 +192,17 @@ public class EntityTypeMetadataImpl
 	}
 
 	@Override
-	public CustomSql getCustomInsert() {
+	public CustomSqlMapping getCustomInsert() {
 		return customInsert;
 	}
 
 	@Override
-	public CustomSql getCustomUpdate() {
+	public CustomSqlMapping getCustomUpdate() {
 		return customUpdate;
 	}
 
 	@Override
-	public CustomSql getCustomDelete() {
+	public CustomSqlMapping getCustomDelete() {
 		return customDelete;
 	}
 
@@ -283,50 +283,45 @@ public class EntityTypeMetadataImpl
 	}
 
 	/**
-	 * Build a CustomSql reference from {@link org.hibernate.annotations.SQLInsert},
+	 * Build custom SQL mutation details from {@link org.hibernate.annotations.SQLInsert},
 	 * {@link org.hibernate.annotations.SQLUpdate}, {@link org.hibernate.annotations.SQLDelete}
 	 * or {@link org.hibernate.annotations.SQLDeleteAll} annotations
 	 */
-	public static CustomSql extractCustomSql(SQLInsert customSqlAnnotation) {
+	public static CustomSqlMapping extractCustomSql(SQLInsert customSqlAnnotation) {
 		if ( customSqlAnnotation == null ) {
 			return null;
 		}
 
-		final String sql = customSqlAnnotation.sql();
-		final boolean isCallable = customSqlAnnotation.callable();
-
-		final ResultCheckStyle checkValue = customSqlAnnotation.check();
-		final ExecuteUpdateResultCheckStyle checkStyle;
-		if ( checkValue == null ) {
-			checkStyle = isCallable
-					? ExecuteUpdateResultCheckStyle.NONE
-					: ExecuteUpdateResultCheckStyle.COUNT;
-		}
-		else {
-			checkStyle = ExecuteUpdateResultCheckStyle.fromResultCheckStyle( checkValue );
-		}
-
-		return new CustomSql( sql, isCallable, checkStyle );
+		return new CustomSqlMapping(
+				customSqlAnnotation.sql(),
+				customSqlAnnotation.callable(),
+				determineExpectation( customSqlAnnotation.verify() )
+		);
 	}
 
-	public static CustomSql extractCustomSql(SQLUpdate customSqlAnnotation) {
+	public static CustomSqlMapping extractCustomSql(SQLUpdate customSqlAnnotation) {
 		return customSqlAnnotation == null
 				? null
-				: new CustomSql(
+				: new CustomSqlMapping(
 						customSqlAnnotation.sql(),
 						customSqlAnnotation.callable(),
-						ExecuteUpdateResultCheckStyle.fromResultCheckStyle( customSqlAnnotation.check() )
+						determineExpectation( customSqlAnnotation.verify() )
 				);
 	}
 
-	public static CustomSql extractCustomSql(SQLDelete customSqlAnnotation) {
+	public static CustomSqlMapping extractCustomSql(SQLDelete customSqlAnnotation) {
 		return customSqlAnnotation == null
 				? null
-				: new CustomSql(
+				: new CustomSqlMapping(
 						customSqlAnnotation.sql(),
 						customSqlAnnotation.callable(),
-						ExecuteUpdateResultCheckStyle.fromResultCheckStyle( customSqlAnnotation.check() )
+						determineExpectation( customSqlAnnotation.verify() )
 				);
+	}
+
+	private static java.util.function.Supplier<? extends Expectation> determineExpectation(
+			Class<? extends Expectation> expectationClass) {
+		return expectationClass == Expectation.class ? null : getDefaultSupplier( expectationClass );
 	}
 
 	private String[] determineSynchronizedTableNames() {

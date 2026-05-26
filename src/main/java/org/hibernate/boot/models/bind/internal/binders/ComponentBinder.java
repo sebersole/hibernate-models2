@@ -28,6 +28,8 @@ import org.hibernate.models.spi.MemberDetails;
 import jakarta.persistence.AssociationOverride;
 import jakarta.persistence.Convert;
 
+import static org.hibernate.boot.models.bind.internal.binders.AttributeBinder.bindPropertyAccessor;
+
 /// Shared support for binding component-valued mappings.
 ///
 /// Components appear in several source roles: embedded attributes, embedded ids,
@@ -137,6 +139,7 @@ class ComponentBinder {
 			if ( isToOneMember( member ) ) {
 				final Property property = new Property();
 				property.setName( attributeName );
+				bindPropertyAccessor( member, property );
 				final var manyToOne = ToOneAttributeBinder.bindToOne(
 						ownerType,
 						ownerBinding,
@@ -164,7 +167,7 @@ class ComponentBinder {
 				nestedComponent.setTable( table );
 				nestedComponent.setTypeUsingReflection( componentType.getClassName(), attributeName );
 
-				final Property property = createProperty( attributeName, nestedComponent );
+				final Property property = createProperty( attributeName, nestedComponent, member );
 				component.addProperty( property );
 				columns.addAll( bindProperties(
 						ownerType,
@@ -189,7 +192,7 @@ class ComponentBinder {
 					member,
 					conversionResolver.apply( memberPath, member )
 			);
-			final Property property = createProperty( attributeName, basicValue );
+			final Property property = createProperty( attributeName, basicValue, member );
 			component.addProperty( property );
 
 			final Column column = bindColumn(
@@ -241,10 +244,11 @@ class ComponentBinder {
 		return basicValue;
 	}
 
-	private Property createProperty(String name, org.hibernate.mapping.Value value) {
+	private Property createProperty(String name, org.hibernate.mapping.Value value, MemberDetails member) {
 		final Property property = new Property();
 		property.setName( name );
 		property.setValue( value );
+		bindPropertyAccessor( member, property );
 		return property;
 	}
 

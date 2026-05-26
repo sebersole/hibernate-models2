@@ -13,10 +13,9 @@ import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.SharedCacheMode;
 import org.hibernate.MappingException;
+import org.hibernate.AnnotationException;
 import org.hibernate.annotations.DiscriminatorFormula;
 import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.OptimisticLockType;
-import org.hibernate.annotations.OptimisticLocking;
 import org.hibernate.annotations.SoftDelete;
 import org.hibernate.annotations.SoftDeleteType;
 import org.hibernate.annotations.SqlFragmentAlias;
@@ -37,13 +36,11 @@ import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.JpaEventListener;
 import org.hibernate.boot.models.categorize.spi.JpaEventListenerStyle;
 import org.hibernate.boot.models.categorize.spi.NaturalIdCacheRegion;
-import org.hibernate.boot.spi.MetadataBuildingOptions;
-import org.hibernate.engine.OptimisticLockStyle;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
-import org.hibernate.jpa.event.internal.EntityCallback;
-import org.hibernate.jpa.event.internal.ListenerCallback;
-import org.hibernate.jpa.event.spi.CallbackDefinition;
+import org.hibernate.jpa.boot.spi.CallbackDefinition;
+import org.hibernate.jpa.boot.spi.EntityCallbackDefinition;
+import org.hibernate.jpa.boot.spi.ListenerCallbackDefinition;
 import org.hibernate.jpa.event.spi.CallbackType;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Column;
@@ -102,7 +99,7 @@ import static org.hibernate.internal.util.StringHelper.coalesce;
 /// associations such as {@code @MapsId}.
 /// 12. {@link #bindTableKeys()} - bind joined-subclass, secondary-table, and
 /// association-table keys that depend on the root identifier shape and on joins
-/// discovered while binding members.
+/// encountered while binding members.
 /// 13. {@link #bindInverseAssociations()} - resolve inverse association values
 /// from owning-side association mappings whose keys are now available.
 /// 14. {@link #bindForeignKeys()} - create physical foreign-key constraints from
@@ -179,7 +176,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 		binding.setJpaEntityName( importName );
 
 		getBindingState().registerTypeBinder( getManagedType(), this );
-		getBindingState().getMetadataBuildingContext().getMetadataCollector().addImport( importName, entityName );
+		getBindingState().addImport( importName, entityName );
 	}
 
 	/// Bind table shells owned directly by this entity.
@@ -439,10 +436,10 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 			CallbackType callbackType) {
 		final CallbackDefinition callback;
 		if ( style == JpaEventListenerStyle.CALLBACK ) {
-			callback = new EntityCallback.Definition( callbackMethod, callbackType );
+			callback = new EntityCallbackDefinition( callbackMethod, callbackType );
 		}
 		else {
-			callback = new ListenerCallback.Definition( listenerClass, callbackMethod, callbackType );
+			callback = new ListenerCallbackDefinition( listenerClass, callbackMethod, callbackType );
 		}
 		return callback;
 	}
@@ -647,9 +644,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 			BindingState bindingState,
 			BindingContext bindingContext) {
 		final Cacheable cacheableAnn = managedType.getClassDetails().getDirectAnnotationUsage( Cacheable.class );
-		final SharedCacheMode sharedCacheMode = bindingState.getMetadataBuildingContext()
-				.getBuildingOptions()
-				.getSharedCacheMode();
+		final SharedCacheMode sharedCacheMode = bindingContext.getSharedCacheMode();
 		typeBinding.setCached( isCacheable( sharedCacheMode, cacheableAnn ) );
 	}
 
@@ -709,7 +704,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 		bindTenantId( getManagedType(), typeBinding, modelBinders, getOptions(), getBindingState(), getBindingContext() );
 
 		processSoftDelete( typeBinding.getIdentityTable(), typeBinding, getManagedType().getClassDetails() );
-		processOptimisticLocking( typeBinding, getManagedType().getClassDetails() );
+		processOptimisticLocking( typeBinding, getManagedType() );
 		processCacheRegions( getManagedType(), typeBinding, getManagedType().getClassDetails() );
 	}
 
@@ -735,16 +730,14 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 
 		if ( inheritanceType == InheritanceType.JOINED ) {
 			// JoinedSubclass can define a discriminator in certain circumstances
-			final MetadataBuildingOptions buildingOptions = bindingState.getMetadataBuildingContext().getBuildingOptions();
-
-			if ( buildingOptions.ignoreExplicitDiscriminatorsForJoinedInheritance() ) {
+			if ( bindingOptions.ignoreExplicitDiscriminatorsForJoinedInheritance() ) {
 				if ( columnAnn != null || formulaAnn != null ) {
 					MODEL_BINDING_LOGGER.debugf( "Skipping explicit discriminator for JOINED hierarchy due to configuration - " + typeBinding.getEntityName() );
 				}
 				return;
 			}
 
-			if ( !buildingOptions.createImplicitDiscriminatorsForJoinedInheritance() ) {
+			if ( !bindingOptions.createImplicitDiscriminatorsForJoinedInheritance() ) {
 				if ( columnAnn == null && formulaAnn == null ) {
 					return;
 				}
@@ -866,7 +859,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 			BindingState state,
 			BindingContext context) {
 		final Database database = state.getMetadataBuildingContext().getMetadataCollector().getDatabase();
-		final PhysicalNamingStrategy namingStrategy = state.getMetadataBuildingContext().getBuildingOptions().getPhysicalNamingStrategy();
+		final PhysicalNamingStrategy namingStrategy = context.getPhysicalNamingStrategy();
 		final SoftDeleteType strategy = softDeleteConfig.strategy();
 		final String logicalColumnName = coalesce(
 				strategy.getDefaultColumnName(),
@@ -881,13 +874,8 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 
 	private void processOptimisticLocking(
 			RootClass rootEntity,
-			ClassDetails classDetails) {
-		final var optimisticLocking = classDetails.getDirectAnnotationUsage( OptimisticLocking.class );
-
-		if ( optimisticLocking != null ) {
-			final var optimisticLockingType = optimisticLocking.type() == null ? OptimisticLockType.VERSION : optimisticLocking.type();
-			rootEntity.setOptimisticLockStyle( OptimisticLockStyle.valueOf( optimisticLockingType.name() ) );
-		}
+			EntityTypeMetadata source) {
+		rootEntity.setOptimisticLockStyle( source.getHierarchy().getOptimisticLockStyle() );
 	}
 
 	private void processCacheRegions(
@@ -929,14 +917,35 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 		}
 
 		for ( Filter filter : filters ) {
+			final String filterName = filter.name();
 			binding.addFilter(
-					filter.name(),
-					StringHelper.nullIfEmpty( filter.condition() ),
+					filterName,
+					resolveFilterCondition( filterName, filter.condition(), state ),
 					filter.deduceAliasInjectionPoints(),
 					extractFilterAliasTableMap( filter ),
 					extractFilterAliasEntityMap( filter )
 			);
 		}
+	}
+
+	private String resolveFilterCondition(String filterName, String condition, BindingState state) {
+		if ( StringHelper.isNotBlank( condition ) ) {
+			return condition;
+		}
+
+		final var filterDefinition = state.getFilterDefinition( filterName );
+		if ( filterDefinition == null ) {
+			throw new AnnotationException( "Entity '" + binding.getEntityName()
+					+ "' has a '@Filter' for an undefined filter named '" + filterName + "'" );
+		}
+
+		final String defaultCondition = filterDefinition.getDefaultFilterCondition();
+		if ( StringHelper.isBlank( defaultCondition ) ) {
+			throw new AnnotationException( "Entity '" + binding.getEntityName()
+					+ "' has a '@Filter' with no 'condition' and no default condition was given by the '@FilterDef' named '"
+					+ filterName + "'" );
+		}
+		return defaultCondition;
 	}
 
 	private Map<String, String> extractFilterAliasTableMap(Filter filter) {

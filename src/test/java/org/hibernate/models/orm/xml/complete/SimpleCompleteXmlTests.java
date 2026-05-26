@@ -5,7 +5,6 @@
 package org.hibernate.models.orm.xml.complete;
 
 import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.ResultCheckStyle;
 import org.hibernate.annotations.SQLInsert;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.boot.models.AttributeNature;
@@ -26,7 +25,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Id;
 
 import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.source.AvailableResourcesContext;
 import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
+import org.hibernate.jdbc.Expectation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -43,7 +44,10 @@ public class SimpleCompleteXmlTests {
 			persistenceConfiguration.mappingFile( "mappings/complete/simple-complete.xml" );
 			final AvailableResources availableResources = AvailableResources.from(
 					persistenceConfiguration,
-					metadataBuildingContext
+					new AvailableResourcesContext(
+							metadataBuildingContext.getBootstrapContext().getModelsContext(),
+							metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+					)
 			);
 			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 					availableResources,
@@ -101,7 +105,7 @@ public class SimpleCompleteXmlTests {
 		assertThat( sqlInsert ).isNotNull();
 		assertThat( sqlInsert.sql() ).isEqualTo( "insert into SimpleEntity(name) values(?)" );
 		assertThat( sqlInsert.callable() ).isTrue();
-		assertThat( sqlInsert.check() ).isEqualTo( ResultCheckStyle.COUNT );
+		assertThat( sqlInsert.verify() ).isEqualTo( Expectation.RowCount.class );
 		assertThat( sqlInsert.table() ).isEqualTo( "SimpleEntity" );
 	}
 }

@@ -11,7 +11,7 @@ import org.hibernate.internal.util.IndexedConsumer;
 import org.hibernate.internal.util.KeyedConsumer;
 import org.hibernate.models.spi.ClassDetails;
 
-/// The application's domain model after source discovery has been interpreted and
+/// The application's domain model after source collection has been interpreted and
 /// categorized.
 ///
 /// The categorized model exposes the persistent type structure needed by later

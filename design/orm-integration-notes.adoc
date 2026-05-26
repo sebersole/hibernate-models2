@@ -3,6 +3,97 @@
 These are concrete `org.hibernate.mapping` changes suggested by the phased binder prototype.
 They are separate from prototype implementation details: the point is to remember which pieces should move into ORM proper when integrating this work.
 
+== Use a narrow scanning helper contract
+
+ORM's `org.hibernate.boot.scan.internal.ScanningHelper` currently accepts a
+`StandardServiceRegistry`, but the scanning implementation only needs:
+
+* scanner-related configuration values
+* `ClassLoaderService`
+* the `HibernatePersistenceConfiguration` URLs to scan
+
+The PoC models this as `HibernatePersistenceConfigurationScanner`, which accepts
+the configuration, `ResolvedBootstrapSettings`, and class-loading access.
+Upstream ORM 9 should either replace `ScanningHelper` with this narrower
+contract or relax `ScanningHelper#performScanning` so it does not require
+`StandardServiceRegistry` this early in source collection.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/source/HibernatePersistenceConfigurationScanner.java[`HibernatePersistenceConfigurationScanner`] performs scanning without a standard registry dependency.
+* link:../src/main/java/org/hibernate/boot/models/source/AvailableResources.java[`AvailableResources`] applies the returned `ScanningResult` to managed class, package, and XML mapping buckets.
+
+== Remove legacy hbm.xml support
+
+ORM 9 integration should remove legacy `hbm.xml` as an accepted mapping source.
+This is an enabling cleanup for the boot-model work, not just a feature removal.
+Many of the broad contracts currently under pressure exist to preserve
+source-neutral behavior between annotations, JPA `orm.xml`, and legacy HBM XML.
+
+Removing HBM support should simplify:
+
+* source discovery and `AvailableResources` source buckets;
+* XML preprocessing and processing contracts;
+* mapping defaults that only exist for HBM compatibility;
+* legacy second-pass and mapping-constructor paths that are only needed to keep
+  HBM parity;
+* decisions about whether an abstraction is really needed for ORM 9 or is only
+  protecting a removed source format.
+
+After removal, XML handling in the boot-model pipeline should mean JPA `orm.xml`
+unless a more specific source kind is named.
+
+== Represent extra query imports explicitly in tests
+
+`MetadataSources#getExtraQueryImports()` is part of the historical native source
+accumulator, but extra query imports are not really part of categorizing domain
+model classes or XML mappings.
+
+For upstream ORM tests, prefer an explicit test annotation, for example
+`org.hibernate.testing.orm.junit.DomainModel.ExtraQueryImport`, over carrying
+query imports inside `AvailableResources`.  This keeps `AvailableResources`
+focused on source material that participates in categorization while still
+giving tests a clear way to request query imports.
+
+== Move XML processing contracts under categorization
+
+The PoC treats XML pre-processing as part of categorization rather than source
+collection.  `AvailableResources` carries already-bound XML mapping documents;
+categorization interprets them to discover mapped classes, dynamic model names,
+metadata-complete contributions, and deferred overlay work.
+
+Upstream ORM 9 should consider moving XML processing contracts such as
+`XmlPreProcessingResult`, `XmlProcessor`, `XmlProcessingResult`,
+`XmlDocumentContext`, and related implementation types under
+`org.hibernate.boot.models.categorize.internal`.  The current upstream
+`XmlPreProcessor` is especially source-shaped only because it accepts
+`ManagedResources`, but it really only needs the XML mapping bindings already
+available from `AvailableResources`.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/categorize/internal/XmlMappingPreProcessor.java[`XmlMappingPreProcessor`] consumes `AvailableResources#xmlMappings()` directly and produces ORM's `XmlPreProcessingResult`.
+* link:../src/main/java/org/hibernate/boot/models/categorize/spi/DomainModelCategorizer.java[`DomainModelCategorizer`] owns XML pre-processing and calls ORM's `XmlProcessor` as part of categorization.
+
+== Represent custom SQL mutations as one mapping value
+
+`PersistentClass` and `Collection` currently store custom SQL mutation details as parallel fields, for example:
+
+* the custom SQL string
+* whether the statement is callable
+* the `Supplier<? extends Expectation>` used to verify the JDBC outcome
+
+For 9.0, upstream ORM should replace those parallel field trios with a single `org.hibernate.mapping.CustomSqlMapping` value for each mutation operation.
+This keeps annotation-sourced `verify()` expectations, XML-sourced result-check styles, and binder-created mapping state aligned around the actual mapping-model shape.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/mapping/CustomSqlMapping.java[`CustomSqlMapping`] is the proposed mapping-level value object.
+* link:../src/main/java/org/hibernate/boot/models/categorize/spi/EntityTypeMetadata.java[`EntityTypeMetadata`] exposes custom insert, update, and delete mappings with this type.
+* link:../src/main/java/org/hibernate/boot/models/categorize/internal/EntityTypeMetadataImpl.java[`EntityTypeMetadataImpl`] creates the value from `@SQLInsert`, `@SQLUpdate`, and `@SQLDelete`.
+
+When integrating upstream, `PersistentClass` and `Collection` should expose accessors such as `getCustomSqlInsert()` / `setCustomSqlInsert(CustomSqlMapping)` rather than separate `customSQLInsert`, `customInsertCallable`, and `insertExpectation` state.
+
 == Separate collection key, primary-key, and foreign-key creation
 
 `org.hibernate.mapping.Collection#createAllKeys()` currently does too much for a phased binder.
@@ -108,7 +199,7 @@ A plural Java member contributes several mapping values: the collection containe
 Those values may use different source types and annotation vocabularies even though all annotations are declared on the same member.
 
 Upstream collection mappings should retain the semantic source classification and the effective element/key type facts.
-This avoids repeatedly rediscovering whether a `List` is an indexed list or a bag, whether a map key is basic/entity/property-based, and which annotations apply to the element versus key.
+This avoids repeatedly recomputing whether a `List` is an indexed list or a bag, whether a map key is basic/entity/property-based, and which annotations apply to the element versus key.
 
 Prototype touchpoints:
 

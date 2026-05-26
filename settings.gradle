@@ -2,7 +2,14 @@ rootProject.name = "hibernate-models2"
 
 dependencyResolutionManagement {
 	repositories {
+		// Repo-local publication of ORM 9.0.0.BOOT-MODEL artifacts.
+		maven {
+			url = uri( "gradle/local-maven" )
+			content {
+				includeGroup "org.hibernate.orm"
+			}
+		}
+
 		mavenCentral()
 	}
 }
-

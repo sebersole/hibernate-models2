@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.hibernate.MappingException;
-import org.hibernate.annotations.Cascade;
 import org.hibernate.annotations.CollectionId;
 import org.hibernate.annotations.CollectionIdJavaClass;
 import org.hibernate.mapping.BasicValue;
@@ -84,8 +83,7 @@ public class ToOneAssociationTests {
 					final var property = entityBinding.getProperty( "target" );
 
 					assertThat( property.getCascade() )
-							.contains( "persist" )
-							.contains( "lock" );
+							.contains( "persist" );
 				},
 				scope.getRegistry(),
 				CascadeManyToOneOwner.class,
@@ -1241,7 +1239,6 @@ public class ToOneAssociationTests {
 		@Id
 		private Integer id;
 		@jakarta.persistence.ManyToOne(cascade = CascadeType.PERSIST)
-		@Cascade(org.hibernate.annotations.CascadeType.LOCK)
 		private CascadeToOneTarget target;
 	}
 

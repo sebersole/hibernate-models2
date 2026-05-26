@@ -16,7 +16,7 @@
 /// and table references shared by the binders.
 ///
 /// These contracts should work from categorized metadata and binding sources.  They
-/// should not repeat source discovery or re-categorize annotations and XML mappings.
+/// should not repeat source collection or re-categorize annotations and XML mappings.
 ///
 /// @see org.hibernate.boot.models.categorize.spi.CategorizedDomainModel
 /// @see org.hibernate.boot.models.bind.spi.BindingCoordinator

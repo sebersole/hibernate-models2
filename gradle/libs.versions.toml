@@ -1,5 +1,5 @@
 [versions]
-hibernateOrm = "7.4.0.CR1"
+hibernateOrm = "9.0.0.BOOT-MODEL"
 hibernateModels = "1.1.1"
 
 jbossLogging = "3.6.1.Final"
@@ -17,6 +17,7 @@ checkerFramework = "3.53.1"
 [libraries]
 hibernateOrm = { group = "org.hibernate.orm", name = "hibernate-core", version.ref = "hibernateOrm" }
 hibernateTesting = { group = "org.hibernate.orm", name = "hibernate-testing", version.ref = "hibernateOrm" }
+hibernateScanJandex = { group = "org.hibernate.orm", name = "hibernate-scan-jandex", version.ref = "hibernateOrm" }
 hibernateModels = { group = "org.hibernate.models", name = "hibernate-models", version.ref = "hibernateModels" }
 
 checkerFramework = { group = "org.checkerframework", name = "checker-qual-android", version.ref = "checkerFramework" }

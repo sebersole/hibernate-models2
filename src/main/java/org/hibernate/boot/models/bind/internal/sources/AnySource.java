@@ -15,7 +15,6 @@ import org.hibernate.annotations.AnyDiscriminatorImplicitValues;
 import org.hibernate.annotations.AnyDiscriminatorValue;
 import org.hibernate.annotations.AnyDiscriminatorValues;
 import org.hibernate.annotations.AnyKeyJavaClass;
-import org.hibernate.annotations.CascadeType;
 import org.hibernate.annotations.ManyToAny;
 import org.hibernate.boot.models.bind.internal.binders.CascadeBinder;
 import org.hibernate.boot.models.bind.spi.BindingContext;
@@ -23,6 +22,7 @@ import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.models.ModelsException;
 import org.hibernate.models.spi.MemberDetails;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorType;
 import jakarta.persistence.FetchType;
@@ -76,8 +76,7 @@ import jakarta.persistence.JoinTable;
 /// - explicit discriminator values or an implicit discriminator strategy
 /// - discriminator Java type selection through `@AnyDiscriminator`
 /// - key Java/JDBC type overrides through the `@AnyKey...` annotations
-/// - cascade aggregation from `@Any#cascade`, `@ManyToAny#cascade`, Hibernate
-///   `@Cascade`, and mapping defaults
+/// - cascade aggregation from `@Any#cascade`, `@ManyToAny#cascade`, and mapping defaults
 ///
 /// Known gaps are left visible here because they describe real mapping controls,
 /// not incidental implementation details:
@@ -88,7 +87,6 @@ import jakarta.persistence.JoinTable;
 /// - optionality derived from explicit discriminator/key column nullability
 ///
 /// @author Steve Ebersole
-@SuppressWarnings("removal")
 public record AnySource(
 		MemberDetails member,
 		boolean lazy,
@@ -117,7 +115,7 @@ public record AnySource(
 				member,
 				any.fetch() == FetchType.LAZY,
 				any.optional(),
-				CascadeBinder.aggregateCascadeTypes( any.cascade(), member, false, bindingState ),
+				CascadeBinder.aggregateCascadeTypes( any.cascade(), false, bindingState ),
 				member.getDirectAnnotationUsage( Column.class ),
 				member.getDirectAnnotationUsage( AnyDiscriminator.class ),
 				discriminatorValues( member, bindingContext ),
@@ -145,7 +143,7 @@ public record AnySource(
 				member,
 				manyToAny.fetch() == FetchType.LAZY,
 				true,
-				CascadeBinder.aggregateCascadeTypes( manyToAny.cascade(), member, false, bindingState ),
+				CascadeBinder.aggregateCascadeTypes( manyToAny.cascade(), false, bindingState ),
 				member.getDirectAnnotationUsage( Column.class ),
 				member.getDirectAnnotationUsage( AnyDiscriminator.class ),
 				discriminatorValues( member, bindingContext ),

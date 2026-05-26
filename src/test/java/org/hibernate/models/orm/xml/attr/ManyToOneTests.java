@@ -4,11 +4,8 @@
  */
 package org.hibernate.models.orm.xml.attr;
 
-import org.hibernate.annotations.Cascade;
-import org.hibernate.annotations.CascadeType;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
-import org.hibernate.annotations.JoinColumnsOrFormulas;
 import org.hibernate.annotations.NotFound;
 import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.annotations.OnDelete;
@@ -27,6 +24,7 @@ import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.ServiceRegistryScope;
 import org.junit.jupiter.api.Test;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -34,6 +32,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.source.AvailableResourcesContext;
 import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,13 +51,16 @@ public class ManyToOneTests {
 		persistenceConfiguration.mappingFile( "mappings/attr/many-to-one/simple.xml" );
 		final AvailableResources availableResources = AvailableResources.from(
 				persistenceConfiguration,
-				metadataBuildingContext
+				new AvailableResourcesContext(
+						metadataBuildingContext.getBootstrapContext().getModelsContext(),
+						metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+				)
 		);
 
 		final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 				availableResources,
 				metadataBuildingContext
-		);
+			);
 
 		assertThat( categorizedDomainModel.getEntityHierarchies() ).hasSize( 1 );
 
@@ -68,10 +70,12 @@ public class ManyToOneTests {
 		final FieldDetails parentField = root.getClassDetails().findFieldByName( "parent" );
 		final ManyToOne manyToOneAnn = parentField.getDirectAnnotationUsage( ManyToOne.class );
 		assertThat( manyToOneAnn ).isNotNull();
-		final JoinColumnsOrFormulas joinColumnsOrFormulas = parentField.getDirectAnnotationUsage( JoinColumnsOrFormulas.class );
-		assertThat( joinColumnsOrFormulas ).isNotNull();
-		assertThat( joinColumnsOrFormulas.value() ).hasSize( 1 );
-		final JoinColumn joinColumnAnn = joinColumnsOrFormulas.value()[0].column();
+		final JoinColumn[] joinColumns = parentField.getRepeatedAnnotationUsages(
+				JoinColumn.class,
+				metadataBuildingContext.getBootstrapContext().getModelsContext()
+		);
+		assertThat( joinColumns ).hasSize( 1 );
+		final JoinColumn joinColumnAnn = joinColumns[0];
 		assertThat( joinColumnAnn.name() ).isEqualTo( "parent_fk" );
 
 		final NotFound notFoundAnn = parentField.getDirectAnnotationUsage( NotFound.class );
@@ -94,8 +98,8 @@ public class ManyToOneTests {
 		assertThat( targetAnn ).isNotNull();
 		assertThat( targetAnn.value() ).isEqualTo( "org.hibernate.models.orm.xml.attr.ManyToOneTests$SimpleEntity" );
 
-		final Cascade cascadeAnn = parentField.getDirectAnnotationUsage( Cascade.class );
-		final CascadeType[] cascadeTypes = cascadeAnn.value();
+		final ManyToOne cascadeAnn = parentField.getDirectAnnotationUsage( ManyToOne.class );
+		final CascadeType[] cascadeTypes = cascadeAnn.cascade();
 		assertThat( cascadeTypes ).isNotEmpty();
 		assertThat( cascadeTypes ).containsOnly( CascadeType.ALL );
 	}

@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import jakarta.persistence.Id;
 
 import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.source.AvailableResourcesContext;
 import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
 
 import static jakarta.persistence.InheritanceType.JOINED;
@@ -36,7 +37,10 @@ public class CompleteXmlInheritanceTests {
 			persistenceConfiguration.mappingFile( "mappings/complete/simple-inherited.xml" );
 			final AvailableResources availableResources = AvailableResources.from(
 					persistenceConfiguration,
-					metadataBuildingContext
+					new AvailableResourcesContext(
+							metadataBuildingContext.getBootstrapContext().getModelsContext(),
+							metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+					)
 			);
 			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 					availableResources,

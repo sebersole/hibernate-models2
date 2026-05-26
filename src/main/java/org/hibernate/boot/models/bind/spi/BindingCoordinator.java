@@ -215,19 +215,13 @@ public class BindingCoordinator {
 
 	private void processGenerators(GlobalRegistrations globalRegistrations) {
 		globalRegistrations.getSequenceGeneratorRegistrations().values().forEach( (registration) -> {
-			bindingState.getMetadataBuildingContext()
-					.getMetadataCollector()
-					.addIdentifierGenerator( buildSequenceGeneratorDefinition( registration ) );
+			bindingState.addIdentifierGenerator( buildSequenceGeneratorDefinition( registration ) );
 		} );
 		globalRegistrations.getTableGeneratorRegistrations().values().forEach( (registration) -> {
-			bindingState.getMetadataBuildingContext()
-					.getMetadataCollector()
-					.addIdentifierGenerator( buildTableGeneratorDefinition( registration ) );
+			bindingState.addIdentifierGenerator( buildTableGeneratorDefinition( registration ) );
 		} );
 		globalRegistrations.getGenericGeneratorRegistrations().values().forEach( (registration) -> {
-			bindingState.getMetadataBuildingContext()
-					.getMetadataCollector()
-					.addIdentifierGenerator( buildGenericGeneratorDefinition( registration ) );
+			bindingState.addIdentifierGenerator( buildGenericGeneratorDefinition( registration ) );
 		} );
 	}
 
@@ -281,7 +275,7 @@ public class BindingCoordinator {
 
 	private void processNamedEntityGraphs(GlobalRegistrations globalRegistrations) {
 		globalRegistrations.getNamedEntityGraphRegistrations().values().forEach(
-				bindingState.getMetadataBuildingContext().getMetadataCollector()::addNamedEntityGraph
+				bindingState::addNamedEntityGraph
 		);
 	}
 
@@ -345,75 +339,57 @@ public class BindingCoordinator {
 
 	private void processConverter(ConversionRegistration registration) {
 		if ( registration.explicitDomainType() == null ) {
-			bindingState.getMetadataBuildingContext()
-					.getMetadataCollector()
-					.addAttributeConverter( attributeConverterClass( registration.converterType() ) );
+			bindingState.addAttributeConverter( attributeConverterClass( registration.converterType() ) );
 			return;
 		}
-		bindingState.getMetadataBuildingContext()
-				.getMetadataCollector()
-				.addRegisteredConversion( new RegisteredConversion(
-						registration.explicitDomainType().toJavaClass(),
-						attributeConverterClass( registration.converterType() ),
-						registration.autoApply()
-				) );
+		bindingState.addRegisteredConversion( new RegisteredConversion(
+				registration.explicitDomainType().toJavaClass(),
+				attributeConverterClass( registration.converterType() ),
+				registration.autoApply()
+		) );
 	}
 
 	private void processJavaTypeRegistration(JavaTypeRegistration registration) {
-		bindingState.getMetadataBuildingContext()
-				.getMetadataCollector()
-				.addJavaTypeRegistration(
-						registration.domainType().toJavaClass(),
-						instantiate( registration.descriptor(), JavaType.class, "Java type descriptor" )
-				);
+		bindingState.addJavaTypeRegistration(
+				registration.domainType().toJavaClass(),
+				instantiate( registration.descriptor(), JavaType.class, "Java type descriptor" )
+		);
 	}
 
 	private void processJdbcTypeRegistration(JdbcTypeRegistration registration) {
-		bindingState.getMetadataBuildingContext()
-				.getMetadataCollector()
-				.addJdbcTypeRegistration(
-						registration.code(),
-						instantiate( registration.descriptor(), JdbcType.class, "JDBC type descriptor" )
-				);
+		bindingState.addJdbcTypeRegistration(
+				registration.code(),
+				instantiate( registration.descriptor(), JdbcType.class, "JDBC type descriptor" )
+		);
 	}
 
 	private void processUserTypeRegistration(UserTypeRegistration registration) {
-		bindingState.getMetadataBuildingContext()
-				.getMetadataCollector()
-				.registerUserType(
-						registration.domainClass().toJavaClass(),
-						userTypeClass( registration.userTypeClass() )
-				);
+		bindingState.registerUserType(
+				registration.domainClass().toJavaClass(),
+				userTypeClass( registration.userTypeClass() )
+		);
 	}
 
 	private void processCompositeUserTypeRegistration(CompositeUserTypeRegistration registration) {
-		bindingState.getMetadataBuildingContext()
-				.getMetadataCollector()
-				.registerCompositeUserType(
-						registration.embeddableClass().toJavaClass(),
-						compositeUserTypeClass( registration.userTypeClass() )
-				);
+		bindingState.registerCompositeUserType(
+				registration.embeddableClass().toJavaClass(),
+				compositeUserTypeClass( registration.userTypeClass() )
+		);
 	}
 
 	private void processCollectionTypeRegistration(CollectionTypeRegistration registration) {
-		bindingState.getMetadataBuildingContext()
-				.getMetadataCollector()
-				.addCollectionTypeRegistration(
-						registration.classification(),
-						new org.hibernate.boot.spi.InFlightMetadataCollector.CollectionTypeRegistrationDescriptor(
-								instantiateClass( registration.userTypeClass(), UserCollectionType.class, "collection user type" ),
-								registration.parameterMap()
-						)
-				);
+		bindingState.addCollectionTypeRegistration(
+				registration.classification(),
+				instantiateClass( registration.userTypeClass(), UserCollectionType.class, "collection user type" ),
+				registration.parameterMap()
+		);
 	}
 
 	private void processEmbeddableInstantiatorRegistration(EmbeddableInstantiatorRegistration registration) {
-		bindingState.getMetadataBuildingContext()
-				.getMetadataCollector()
-				.registerEmbeddableInstantiator(
-						registration.embeddableClass().toJavaClass(),
-						instantiateClass( registration.instantiator(), EmbeddableInstantiator.class, "embeddable instantiator" )
-				);
+		bindingState.registerEmbeddableInstantiator(
+				registration.embeddableClass().toJavaClass(),
+				instantiateClass( registration.instantiator(), EmbeddableInstantiator.class, "embeddable instantiator" )
+		);
 	}
 
 	private <T> T instantiate(ClassDetails classDetails, Class<T> expectedType, String registrationRole) {

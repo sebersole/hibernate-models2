@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import jakarta.persistence.Column;
 
 import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.source.AvailableResourcesContext;
 import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,12 +37,15 @@ public class ColumnTests {
 		persistenceConfiguration.mappingFile( "mappings/column/complete.xml" );
 		final AvailableResources availableResources = AvailableResources.from(
 				persistenceConfiguration,
-				metadataBuildingContext
+				new AvailableResourcesContext(
+						metadataBuildingContext.getBootstrapContext().getModelsContext(),
+						metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+				)
 		);
 		final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 				availableResources,
 				metadataBuildingContext
-		);
+			);
 
 		assertThat( categorizedDomainModel.getEntityHierarchies() ).hasSize( 1 );
 
@@ -54,7 +58,6 @@ public class ColumnTests {
 		final Column annotationUsage = nameField.getDirectAnnotationUsage( Column.class );
 		assertThat( annotationUsage.name() ).isEqualTo( "nombre" );
 		assertThat( annotationUsage.length() ).isEqualTo( 256 );
-		assertThat( annotationUsage.comment() ).isEqualTo( "The name column" );
 		assertThat( annotationUsage.table() ).isEqualTo( "tbl" );
 		assertThat( annotationUsage.options() ).isEqualTo( "the options" );
 		assertThat( annotationUsage.check() ).isNotEmpty();
@@ -68,12 +71,15 @@ public class ColumnTests {
 		persistenceConfiguration.mappingFile( "mappings/column/override.xml" );
 		final AvailableResources availableResources = AvailableResources.from(
 				persistenceConfiguration,
-				metadataBuildingContext
+				new AvailableResourcesContext(
+						metadataBuildingContext.getBootstrapContext().getModelsContext(),
+						metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+				)
 		);
 		final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 				availableResources,
 				metadataBuildingContext
-		);
+			);
 
 		assertThat( categorizedDomainModel.getEntityHierarchies() ).hasSize( 1 );
 

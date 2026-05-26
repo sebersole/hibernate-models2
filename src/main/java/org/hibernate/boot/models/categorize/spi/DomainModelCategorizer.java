@@ -12,11 +12,10 @@ import org.hibernate.boot.internal.RootMappingDefaults;
 import org.hibernate.boot.models.categorize.internal.DomainModelCategorizationCollector;
 import org.hibernate.boot.models.categorize.internal.ManagedTypeInheritanceState;
 import org.hibernate.boot.models.categorize.internal.CategorizationContextImpl;
+import org.hibernate.boot.models.categorize.internal.XmlMappingPreProcessor;
 import org.hibernate.boot.models.source.AvailableResources;
-import org.hibernate.boot.models.source.xml.AvailableXmlMappings;
-import org.hibernate.boot.models.source.xml.AvailableXmlMappingsPreProcessor;
-import org.hibernate.boot.models.source.xml.AvailableXmlMappingsProcessor;
-import org.hibernate.boot.models.source.xml.XmlProcessingResult;
+import org.hibernate.boot.models.xml.spi.XmlProcessor;
+import org.hibernate.boot.models.xml.spi.XmlPreProcessingResult;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.ClassDetailsRegistry;
@@ -33,9 +32,9 @@ import static org.hibernate.boot.models.categorize.internal.EntityHierarchyBuild
 /// created.
 ///
 /// This is the public entry point for the categorization phase.  It owns the
-/// transition from discovered sources to categorized contracts; later phases should
+/// transition from collected sources to categorized contracts; later phases should
 /// consume the resulting {@link CategorizedDomainModel} rather than repeat source
-/// discovery.
+/// collection.
 ///
 /// @author Steve Ebersole
 public class DomainModelCategorizer {
@@ -61,13 +60,13 @@ public class DomainModelCategorizer {
 		//		- allKnownClassNames (technically could be included in xmlPreProcessingResult)
 		//		- modelsContext
 
-		final AvailableXmlMappings availableXmlMappings = AvailableXmlMappingsPreProcessor.preProcess(
+		final var persistenceUnitMetadata = metadataBuildingContext.getMetadataCollector().getPersistenceUnitMetadata();
+		final XmlPreProcessingResult xmlPreProcessingResult = XmlMappingPreProcessor.preProcess(
 				availableResources,
-				metadataBuildingContext.getMetadataCollector().getPersistenceUnitMetadata(),
-				bootstrapContext
+				persistenceUnitMetadata
 		);
 
-		final List<String> allKnownClassNames = new ArrayList<>( availableXmlMappings.getMappedClasses() );
+		final List<String> allKnownClassNames = new ArrayList<>( xmlPreProcessingResult.getMappedClasses() );
 		availableResources.managedClassDetails().forEach( (classDetails) -> allKnownClassNames.add( classDetails.getName() ) );
 		availableResources.packageDetails().forEach( (packageDetails) -> allKnownClassNames.add( packageDetails.getName() ) );
 
@@ -98,18 +97,20 @@ public class DomainModelCategorizer {
 		);
 
 		final RootMappingDefaults mappingDefaults = rootMappingDefaults( metadataBuildingContext );
-		final XmlProcessingResult xmlProcessingResult = AvailableXmlMappingsProcessor.process(
-				availableXmlMappings,
+		final org.hibernate.boot.models.xml.spi.XmlProcessingResult xmlProcessingResult = XmlProcessor.processXml(
+				xmlPreProcessingResult,
+				persistenceUnitMetadata,
+				(jaxbRoot, xmlDocumentContext) -> modelCategorizationCollector.apply( jaxbRoot ),
+				modelsContext,
 				bootstrapContext,
-				mappingDefaults,
-				(jaxbRoot, xmlDocumentContext) -> modelCategorizationCollector.apply( jaxbRoot )
+				mappingDefaults
 		);
 
 		allKnownClassNames.forEach( (className) -> {
 			final ClassDetails classDetails = mutableClassDetailsRegistry.resolveClassDetails( className );
 			modelCategorizationCollector.apply( classDetails );
 		} );
-		availableXmlMappings.getMappedNames().forEach( (className) -> {
+		xmlPreProcessingResult.getMappedNames().forEach( (className) -> {
 			final ClassDetails classDetails = mutableClassDetailsRegistry.resolveClassDetails( className );
 			modelCategorizationCollector.apply( classDetails );
 		} );
@@ -131,8 +132,13 @@ public class DomainModelCategorizer {
 
 		// Collect the entity hierarchies based on the scoped managed type inheritance state
 		final CategorizationContextImpl mappingBuildingContext = new CategorizationContextImpl(
-				metadataBuildingContext,
-				modelCategorizationCollector.getGlobalRegistrations()
+				persistenceUnitMetadata,
+				mappingDefaults,
+				mutableClassDetailsRegistry,
+				bootstrapContext.getMetadataBuildingOptions().getSharedCacheMode(),
+				modelCategorizationCollector.getGlobalRegistrations(),
+				metadataBuildingContext.getMetadataCollector().getConverterRegistry(),
+				metadataBuildingContext.getMetadataCollector().getDatabase()
 		);
 
 		final ManagedTypeInheritanceState inheritanceState = new ManagedTypeInheritanceState(

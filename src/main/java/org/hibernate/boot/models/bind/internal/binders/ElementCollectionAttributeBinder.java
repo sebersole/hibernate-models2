@@ -142,7 +142,7 @@ class ElementCollectionAttributeBinder {
 				collectionTable == null ? new UniqueConstraint[0] : collectionTable.uniqueConstraints(),
 				collectionTable == null ? new Index[0] : collectionTable.indexes()
 		) );
-		bindingState.getMetadataBuildingContext().getMetadataCollector().addCollectionBinding( collection );
+		bindingState.addCollectionBinding( collection );
 		return collection;
 	}
 

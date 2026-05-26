@@ -4,8 +4,8 @@
  */
 package org.hibernate.boot.models.categorize.spi;
 
-import org.hibernate.boot.model.CustomSql;
 import org.hibernate.boot.model.naming.EntityNaming;
+import org.hibernate.mapping.CustomSqlMapping;
 
 /// Categorized metadata about an {@linkplain jakarta.persistence.metamodel.EntityType entity type}.
 ///
@@ -54,11 +54,11 @@ public interface EntityTypeMetadata extends IdentifiableTypeMetadata, EntityNami
 	boolean isDynamicUpdate();
 
 	/// Custom SQL to perform an INSERT of this entity
-	CustomSql getCustomInsert();
+	CustomSqlMapping getCustomInsert();
 
 	/// Custom SQL to perform an UPDATE of this entity
-	CustomSql getCustomUpdate();
+	CustomSqlMapping getCustomUpdate();
 
 	/// Custom SQL to perform a DELETE of this entity
-	CustomSql getCustomDelete();
+	CustomSqlMapping getCustomDelete();
 }

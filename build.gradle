@@ -25,6 +25,7 @@ dependencies {
 
 	testRuntimeOnly libs.junitJupiterEngine
 	testRuntimeOnly libs.h2
+	testRuntimeOnly libs.hibernateScanJandex
 }
 
 java {

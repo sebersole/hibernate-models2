@@ -9,7 +9,6 @@ import java.util.EnumSet;
 import java.util.List;
 
 import org.hibernate.annotations.Bag;
-import org.hibernate.annotations.CascadeType;
 import org.hibernate.annotations.CollectionId;
 import org.hibernate.annotations.CollectionIdJavaClass;
 import org.hibernate.annotations.CollectionIdJavaType;
@@ -25,6 +24,7 @@ import org.hibernate.metamodel.CollectionClassification;
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.models.spi.TypeDetails;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
@@ -66,7 +66,7 @@ import jakarta.persistence.OrderBy;
 ///
 /// Likewise, a `List<E>` contributes both the element value for `E` and a synthetic list
 /// index value.  This record keeps those source-model facts together so downstream
-/// binders do not need to rediscover that `member.getElementType()` is the element source
+/// binders do not need to recompute that `member.getElementType()` is the element source
 /// while `member.getMapKeyType()` is the map-key source.
 ///
 /// The [#classification()] is deliberately source-oriented.  It says what semantic
@@ -266,15 +266,18 @@ public record CollectionSource(
 		return member.getDirectAnnotationUsage( ManyToAny.class );
 	}
 
-	/// Aggregates the JPA cascade, Hibernate `@Cascade`, and mapping defaults for
-	/// association-valued plural mappings.
+	/// Aggregates the JPA cascade and mapping defaults for association-valued plural mappings.
 	public EnumSet<CascadeType> cascades(BindingState bindingState) {
 		return switch ( nature ) {
-			case MANY_TO_MANY -> CascadeBinder.aggregateCascadeTypes( manyToMany().cascade(), member, false, bindingState );
-			case ONE_TO_MANY -> CascadeBinder.aggregateCascadeTypes( oneToMany().cascade(), member, oneToMany().orphanRemoval(), bindingState );
-			case MANY_TO_ANY -> CascadeBinder.aggregateCascadeTypes( manyToAny().cascade(), member, false, bindingState );
+			case MANY_TO_MANY -> CascadeBinder.aggregateCascadeTypes( manyToMany().cascade(), false, bindingState );
+			case ONE_TO_MANY -> CascadeBinder.aggregateCascadeTypes( oneToMany().cascade(), oneToMany().orphanRemoval(), bindingState );
+			case MANY_TO_ANY -> CascadeBinder.aggregateCascadeTypes( manyToAny().cascade(), false, bindingState );
 			case ELEMENT_COLLECTION -> EnumSet.noneOf( CascadeType.class );
 		};
+	}
+
+	public boolean orphanRemoval() {
+		return nature == Nature.ONE_TO_MANY && oneToMany().orphanRemoval();
 	}
 
 	/// Whether the collection element value should be modeled as a component.

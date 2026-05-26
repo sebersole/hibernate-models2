@@ -7,8 +7,6 @@ package org.hibernate.models.orm.xml.dynamic;
 import java.util.List;
 import java.util.SortedSet;
 
-import org.hibernate.annotations.Cascade;
-import org.hibernate.annotations.CascadeType;
 import org.hibernate.annotations.JavaType;
 import org.hibernate.annotations.NotFound;
 import org.hibernate.annotations.NotFoundAction;
@@ -30,6 +28,7 @@ import org.hibernate.models.spi.FieldDetails;
 import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.CheckConstraint;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ConstraintMode;
 import jakarta.persistence.ElementCollection;
@@ -40,6 +39,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 
 import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.source.AvailableResourcesContext;
 import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,7 +56,10 @@ public class DynamicModelTests {
 			persistenceConfiguration.mappingFile( "mappings/dynamic/dynamic-simple.xml" );
 			final AvailableResources availableResources = AvailableResources.from(
 					persistenceConfiguration,
-					metadataBuildingContext
+					new AvailableResourcesContext(
+							metadataBuildingContext.getBootstrapContext().getModelsContext(),
+							metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+					)
 			);
 			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 					availableResources,
@@ -89,7 +92,10 @@ public class DynamicModelTests {
 			persistenceConfiguration.mappingFile( "mappings/dynamic/dynamic-semi-simple.xml" );
 			final AvailableResources availableResources = AvailableResources.from(
 					persistenceConfiguration,
-					metadataBuildingContext
+					new AvailableResourcesContext(
+							metadataBuildingContext.getBootstrapContext().getModelsContext(),
+							metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+					)
 			);
 			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 					availableResources,
@@ -136,7 +142,10 @@ public class DynamicModelTests {
 			persistenceConfiguration.mappingFile( "mappings/dynamic/dynamic-id-class.xml" );
 			final AvailableResources availableResources = AvailableResources.from(
 					persistenceConfiguration,
-					metadataBuildingContext
+					new AvailableResourcesContext(
+							metadataBuildingContext.getBootstrapContext().getModelsContext(),
+							metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+					)
 			);
 			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 					availableResources,
@@ -162,7 +171,10 @@ public class DynamicModelTests {
 			persistenceConfiguration.mappingFile( "mappings/dynamic/dynamic-plurals.xml" );
 			final AvailableResources availableResources = AvailableResources.from(
 					persistenceConfiguration,
-					metadataBuildingContext
+					new AvailableResourcesContext(
+							metadataBuildingContext.getBootstrapContext().getModelsContext(),
+							metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+					)
 			);
 			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 					availableResources,
@@ -195,8 +207,8 @@ public class DynamicModelTests {
 			assertThat( checkConstraints ).hasSize( 1 );
 			assertThat( checkConstraints[0].name() ).isEqualTo( "employee_id_nn" );
 			assertThat( checkConstraints[0].constraint() ).isEqualTo( "employee_id is not null" );
-			assertThat( oneToMany.getDirectAnnotationUsage( Cascade.class ).value() )
-					.contains( CascadeType.PERSIST, CascadeType.REMOVE, CascadeType.LOCK );
+			assertThat( oneToMany.getDirectAnnotationUsage( OneToMany.class ).cascade() )
+					.contains( CascadeType.PERSIST, CascadeType.REMOVE );
 		}
 	}
 }

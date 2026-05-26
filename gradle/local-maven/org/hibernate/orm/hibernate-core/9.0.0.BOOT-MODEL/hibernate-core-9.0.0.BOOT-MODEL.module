@@ -1,0 +1,317 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.hibernate.orm",
+    "module": "hibernate-core",
+    "version": "9.0.0.BOOT-MODEL",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.5.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.hibernate.orm",
+          "module": "hibernate-platform",
+          "version": {
+            "requires": "9.0.0.BOOT-MODEL"
+          },
+          "excludes": [
+            {
+              "group": "xml-apis",
+              "module": "xml-apis"
+            }
+          ],
+          "attributes": {
+            "org.gradle.category": "platform"
+          },
+          "endorseStrictVersions": true
+        },
+        {
+          "group": "jakarta.persistence",
+          "module": "jakarta.persistence-api",
+          "version": {
+            "requires": "4.0.0-M3"
+          },
+          "excludes": [
+            {
+              "group": "xml-apis",
+              "module": "xml-apis"
+            }
+          ]
+        },
+        {
+          "group": "jakarta.transaction",
+          "module": "jakarta.transaction-api",
+          "version": {
+            "requires": "2.0.1"
+          },
+          "excludes": [
+            {
+              "group": "xml-apis",
+              "module": "xml-apis"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "hibernate-core-9.0.0.BOOT-MODEL.jar",
+          "url": "hibernate-core-9.0.0.BOOT-MODEL.jar",
+          "size": 15996333,
+          "sha512": "96cd568029ec78b9355f0956159af5ae1eef4bc007eacd9aa05418047c895ef9a6425ae770f036af8902fa213d1609b45367c6d1463331600755264eb2b53b82",
+          "sha256": "8b59a02da50324ac71a6134df8e8cca7790246af025a48f7975241ee5bc02dc4",
+          "sha1": "2673ad6ff26754afd99c476bd1ba2e49d5922ab6",
+          "md5": "33920a148c6b37bd12389cf68daf2a3d"
+        }
+      ],
+      "capabilities": [
+        {
+          "group": "org.hibernate.orm",
+          "name": "hibernate-core",
+          "version": "9.0.0.BOOT-MODEL"
+        },
+        {
+          "group": "org.hibernate",
+          "name": "hibernate-core",
+          "version": "9.0.0.BOOT-MODEL"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.jboss.logging",
+          "module": "jboss-logging",
+          "version": {
+            "requires": "3.6.3.Final"
+          },
+          "excludes": [
+            {
+              "group": "xml-apis",
+              "module": "xml-apis"
+            }
+          ]
+        },
+        {
+          "group": "org.hibernate.models",
+          "module": "hibernate-models",
+          "version": {
+            "requires": "1.1.1"
+          },
+          "excludes": [
+            {
+              "group": "xml-apis",
+              "module": "xml-apis"
+            }
+          ]
+        },
+        {
+          "group": "net.bytebuddy",
+          "module": "byte-buddy",
+          "version": {
+            "requires": "1.18.8"
+          },
+          "excludes": [
+            {
+              "group": "xml-apis",
+              "module": "xml-apis"
+            }
+          ]
+        },
+        {
+          "group": "jakarta.xml.bind",
+          "module": "jakarta.xml.bind-api",
+          "version": {
+            "requires": "4.0.5"
+          },
+          "excludes": [
+            {
+              "group": "xml-apis",
+              "module": "xml-apis"
+            }
+          ]
+        },
+        {
+          "group": "org.glassfish.jaxb",
+          "module": "jaxb-runtime",
+          "version": {
+            "requires": "4.0.8"
+          },
+          "excludes": [
+            {
+              "group": "xml-apis",
+              "module": "xml-apis"
+            }
+          ]
+        },
+        {
+          "group": "jakarta.inject",
+          "module": "jakarta.inject-api",
+          "version": {
+            "requires": "2.0.1"
+          },
+          "excludes": [
+            {
+              "group": "xml-apis",
+              "module": "xml-apis"
+            }
+          ]
+        },
+        {
+          "group": "org.antlr",
+          "module": "antlr4-runtime",
+          "version": {
+            "requires": "4.13.2"
+          },
+          "excludes": [
+            {
+              "group": "xml-apis",
+              "module": "xml-apis"
+            }
+          ]
+        },
+        {
+          "group": "org.hibernate.orm",
+          "module": "hibernate-platform",
+          "version": {
+            "requires": "9.0.0.BOOT-MODEL"
+          },
+          "excludes": [
+            {
+              "group": "xml-apis",
+              "module": "xml-apis"
+            }
+          ],
+          "attributes": {
+            "org.gradle.category": "platform"
+          },
+          "endorseStrictVersions": true
+        },
+        {
+          "group": "jakarta.persistence",
+          "module": "jakarta.persistence-api",
+          "version": {
+            "requires": "4.0.0-M3"
+          },
+          "excludes": [
+            {
+              "group": "xml-apis",
+              "module": "xml-apis"
+            }
+          ]
+        },
+        {
+          "group": "jakarta.transaction",
+          "module": "jakarta.transaction-api",
+          "version": {
+            "requires": "2.0.1"
+          },
+          "excludes": [
+            {
+              "group": "xml-apis",
+              "module": "xml-apis"
+            }
+          ]
+        }
+      ],
+      "dependencyConstraints": [
+        {
+          "group": "org.apache.logging.log4j",
+          "module": "log4j-core",
+          "version": {
+            "strictly": "[2.17.1, 3[",
+            "requires": "[2.17.1, 3[",
+            "prefers": "2.17.1"
+          },
+          "reason": "CVE-2021-44228, CVE-2021-45046, CVE-2021-45105, CVE-2021-44832: Log4j vulnerable to remote code execution and other critical security vulnerabilities"
+        }
+      ],
+      "files": [
+        {
+          "name": "hibernate-core-9.0.0.BOOT-MODEL.jar",
+          "url": "hibernate-core-9.0.0.BOOT-MODEL.jar",
+          "size": 15996333,
+          "sha512": "96cd568029ec78b9355f0956159af5ae1eef4bc007eacd9aa05418047c895ef9a6425ae770f036af8902fa213d1609b45367c6d1463331600755264eb2b53b82",
+          "sha256": "8b59a02da50324ac71a6134df8e8cca7790246af025a48f7975241ee5bc02dc4",
+          "sha1": "2673ad6ff26754afd99c476bd1ba2e49d5922ab6",
+          "md5": "33920a148c6b37bd12389cf68daf2a3d"
+        }
+      ],
+      "capabilities": [
+        {
+          "group": "org.hibernate.orm",
+          "name": "hibernate-core",
+          "version": "9.0.0.BOOT-MODEL"
+        },
+        {
+          "group": "org.hibernate",
+          "name": "hibernate-core",
+          "version": "9.0.0.BOOT-MODEL"
+        }
+      ]
+    },
+    {
+      "name": "javadocElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "hibernate-core-9.0.0.BOOT-MODEL-javadoc.jar",
+          "url": "hibernate-core-9.0.0.BOOT-MODEL-javadoc.jar",
+          "size": 35167151,
+          "sha512": "6576282ccbc70017d74abd1890607c0ff5172c562658ec417959c5432ae8d54896819556a47e36d2da9d2eb4d8ccb3627c224b2d60b3807455f99c10cbdf476a",
+          "sha256": "bb48ecbf12de8632929b6f6ebf337c51826a7ecee4b5c596c142904640ad8f58",
+          "sha1": "0bdbee5da1bebaa048c970f086b991707400aae6",
+          "md5": "4c9f9f75f8ce8640a92e8d77734308bd"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "hibernate-core-9.0.0.BOOT-MODEL-sources.jar",
+          "url": "hibernate-core-9.0.0.BOOT-MODEL-sources.jar",
+          "size": 8842331,
+          "sha512": "97d9847190245fc7a10ff9f74f09382abde65ed845050198090cd8bc1145d750f15edc5843885123501fede774e92a5f433b7bc0f6a407d2d02d2a33a6472bf5",
+          "sha256": "8b2a146c44aef6864792fd22a5497381fbc186ab1041620b5363ee191b71f452",
+          "sha1": "192b5297a052daf0b7886370335ee1ce3e1ce922",
+          "md5": "a4d20f4f9110f254848112ae78a9c7b9"
+        }
+      ]
+    }
+  ]
+}

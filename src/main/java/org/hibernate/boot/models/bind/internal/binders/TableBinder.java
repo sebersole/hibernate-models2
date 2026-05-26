@@ -82,14 +82,8 @@ public class TableBinder {
 		this.bindingContext = bindingContext;
 		this.modelBinders = modelBinders;
 
-		this.implicitNamingStrategy = bindingContext
-				.getBootstrapContext()
-				.getMetadataBuildingOptions()
-				.getImplicitNamingStrategy();
-		this.physicalNamingStrategy = bindingContext
-				.getBootstrapContext()
-				.getMetadataBuildingOptions()
-				.getPhysicalNamingStrategy();
+		this.implicitNamingStrategy = bindingContext.getImplicitNamingStrategy();
+		this.physicalNamingStrategy = bindingContext.getPhysicalNamingStrategy();
 
 		this.jdbcEnvironment = bindingContext.getServiceRegistry().getService( JdbcEnvironment.class );
 	}

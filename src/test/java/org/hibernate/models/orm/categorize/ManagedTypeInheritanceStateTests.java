@@ -130,8 +130,13 @@ public class ManagedTypeInheritanceStateTests {
 		final MetadataBuildingContextTestingImpl metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
 		final ModelsContext modelsContext = metadataBuildingContext.getBootstrapContext().getModelsContext();
 		return new TestContext( modelsContext, new CategorizationContextImpl(
-				metadataBuildingContext,
-				new GlobalRegistrationsImpl( modelsContext )
+				metadataBuildingContext.getMetadataCollector().getPersistenceUnitMetadata(),
+				metadataBuildingContext.getEffectiveDefaults(),
+				modelsContext.getClassDetailsRegistry(),
+				metadataBuildingContext.getBootstrapContext().getMetadataBuildingOptions().getSharedCacheMode(),
+				new GlobalRegistrationsImpl( modelsContext ),
+				metadataBuildingContext.getMetadataCollector().getConverterRegistry(),
+				metadataBuildingContext.getMetadataCollector().getDatabase()
 		) );
 	}
 

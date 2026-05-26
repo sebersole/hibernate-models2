@@ -112,7 +112,7 @@ class PluralAssociationAttributeBinder {
 				targetClassDetails,
 				mappedBy
 		) );
-		bindingState.getMetadataBuildingContext().getMetadataCollector().addCollectionBinding( collection );
+		bindingState.addCollectionBinding( collection );
 		return collection;
 	}
 
@@ -137,7 +137,7 @@ class PluralAssociationAttributeBinder {
 				targetClassDetails,
 				mappedBy
 		) );
-		bindingState.getMetadataBuildingContext().getMetadataCollector().addCollectionBinding( collection );
+		bindingState.addCollectionBinding( collection );
 		return collection;
 	}
 
@@ -203,7 +203,7 @@ class PluralAssociationAttributeBinder {
 				source.joinTable() == null ? new jakarta.persistence.UniqueConstraint[0] : source.joinTable().uniqueConstraints(),
 				source.joinTable() == null ? new jakarta.persistence.Index[0] : source.joinTable().indexes()
 		) );
-		bindingState.getMetadataBuildingContext().getMetadataCollector().addCollectionBinding( collection );
+		bindingState.addCollectionBinding( collection );
 		return collection;
 	}
 
@@ -247,9 +247,6 @@ class PluralAssociationAttributeBinder {
 		).bind( anySource, attributeMetadata.getName(), table );
 		collection.setElement( element );
 		property.setCascade( anySource.cascades() );
-		if ( CascadeBinder.hasOrphanDelete( anySource.cascades() ) ) {
-			collection.setOrphanDelete( true );
-		}
 		if ( collection instanceof org.hibernate.mapping.Map map ) {
 			CollectionIndexBinder.bindMapKey(
 					source,
@@ -287,14 +284,15 @@ class PluralAssociationAttributeBinder {
 				joinTable == null ? new jakarta.persistence.UniqueConstraint[0] : joinTable.uniqueConstraints(),
 				joinTable == null ? new jakarta.persistence.Index[0] : joinTable.indexes()
 		) );
-		bindingState.getMetadataBuildingContext().getMetadataCollector().addCollectionBinding( collection );
+		bindingState.addCollectionBinding( collection );
 		return collection;
 	}
 
 	private void applyCascade(CollectionSource source, Property property, Collection collection) {
 		final var cascades = source.cascades( bindingState );
-		property.setCascade( cascades );
-		if ( CascadeBinder.hasOrphanDelete( cascades ) ) {
+		final boolean orphanRemoval = source.orphanRemoval();
+		property.setCascade( cascades, orphanRemoval );
+		if ( orphanRemoval ) {
 			collection.setOrphanDelete( true );
 		}
 	}

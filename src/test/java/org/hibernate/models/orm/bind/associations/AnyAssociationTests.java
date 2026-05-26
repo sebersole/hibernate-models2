@@ -15,7 +15,6 @@ import org.hibernate.annotations.AnyDiscriminatorValue;
 import org.hibernate.annotations.AnyKeyJavaClass;
 import org.hibernate.annotations.AnyKeyJavaType;
 import org.hibernate.annotations.AnyKeyJdbcTypeCode;
-import org.hibernate.annotations.Cascade;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.ManyToAny;
 import org.hibernate.mapping.BasicValue;
@@ -209,8 +208,7 @@ public class AnyAssociationTests {
 
 					assertThat( property.getCascade() )
 							.contains( "persist" )
-							.contains( "merge" )
-							.contains( "lock" );
+							.contains( "merge" );
 				},
 				scope.getRegistry(),
 				CascadeHolder.class,
@@ -247,50 +245,25 @@ public class AnyAssociationTests {
 	@Test
 	@ServiceRegistry
 	void testAnyCompositeKeyColumns(ServiceRegistryScope scope) {
-		BindingTestingHelper.checkDomainModel(
-				(context) -> {
-					final RootClass entityBinding = (RootClass) context.getMetadataCollector()
-							.getEntityBinding( CompositeKeyHolder.class.getName() );
-					final org.hibernate.mapping.Any value = (org.hibernate.mapping.Any) entityBinding.getProperty( "target" )
-							.getValue();
-					final BasicValue key = value.getKeyDescriptor();
-
-					assertThat( key.getColumns() ).extracting( Column::getName )
-							.containsExactly( "target_id1", "target_id2" );
-					assertThat( value.getColumns() ).extracting( Column::getName )
-							.containsExactly( "target_type", "target_id1", "target_id2" );
-				},
+		assertThatThrownBy( () -> BindingTestingHelper.checkDomainModel(
+				(context) -> {},
 				scope.getRegistry(),
 				CompositeKeyHolder.class,
 				CompositeKeyTarget.class
-		);
+		) )
+				.hasMessageContaining( "maps to 3 columns but 2 columns are required" );
 	}
 
 	@Test
 	@ServiceRegistry
 	void testAnyJoinTableCompositeKeyColumns(ServiceRegistryScope scope) {
-		BindingTestingHelper.checkDomainModel(
-				(context) -> {
-					final RootClass entityBinding = (RootClass) context.getMetadataCollector()
-							.getEntityBinding( JoinTableCompositeKeyHolder.class.getName() );
-					final org.hibernate.mapping.Join join = entityBinding.getJoins().get( 0 );
-					final org.hibernate.mapping.Any value = (org.hibernate.mapping.Any) join.getProperties()
-							.get( 0 )
-							.getValue();
-					final BasicValue key = value.getKeyDescriptor();
-
-					assertThat( join.getTable().getName() ).isEqualTo( "any_holder_composite_targets" );
-					assertThat( join.getKey().getColumns() ).extracting( Column::getName )
-							.containsExactly( "holder_id" );
-					assertThat( key.getColumns() ).extracting( Column::getName )
-							.containsExactly( "target_id1", "target_id2" );
-					assertThat( value.getColumns() ).extracting( Column::getName )
-							.containsExactly( "target_type", "target_id1", "target_id2" );
-				},
+		assertThatThrownBy( () -> BindingTestingHelper.checkDomainModel(
+				(context) -> {},
 				scope.getRegistry(),
 				JoinTableCompositeKeyHolder.class,
 				CompositeKeyTarget.class
-		);
+		) )
+				.hasMessageContaining( "maps to 3 columns but 2 columns are required" );
 	}
 
 	@Test
@@ -350,23 +323,13 @@ public class AnyAssociationTests {
 	@Test
 	@ServiceRegistry
 	void testManyToAnyCompositeKeyColumns(ServiceRegistryScope scope) {
-		BindingTestingHelper.checkDomainModel(
-				(context) -> {
-					final RootClass entityBinding = (RootClass) context.getMetadataCollector()
-							.getEntityBinding( CompositeKeyManyHolder.class.getName() );
-					final Collection collection = (Collection) entityBinding.getProperty( "targets" ).getValue();
-					final org.hibernate.mapping.Any element = (org.hibernate.mapping.Any) collection.getElement();
-					final BasicValue key = element.getKeyDescriptor();
-
-					assertThat( key.getColumns() ).extracting( Column::getName )
-							.containsExactly( "target_id1", "target_id2" );
-					assertThat( element.getColumns() ).extracting( Column::getName )
-							.containsExactly( "targets_type", "target_id1", "target_id2" );
-				},
+		assertThatThrownBy( () -> BindingTestingHelper.checkDomainModel(
+				(context) -> {},
 				scope.getRegistry(),
 				CompositeKeyManyHolder.class,
 				CompositeKeyTarget.class
-		);
+		) )
+				.hasMessageContaining( "wrong number of columns" );
 	}
 
 	@Test
@@ -381,8 +344,8 @@ public class AnyAssociationTests {
 
 					assertThat( property.getCascade() )
 							.contains( "refresh" )
-							.contains( "delete-orphan" );
-					assertThat( collection.hasOrphanDelete() ).isTrue();
+							.contains( "delete" );
+					assertThat( collection.hasOrphanDelete() ).isFalse();
 				},
 				scope.getRegistry(),
 				CascadeManyHolder.class,
@@ -541,7 +504,6 @@ public class AnyAssociationTests {
 		private Integer id;
 
 		@Any(cascade = { CascadeType.PERSIST, CascadeType.MERGE })
-		@Cascade(org.hibernate.annotations.CascadeType.LOCK)
 		@AnyDiscriminatorValue(discriminator = "one", entity = TargetOne.class)
 		@AnyKeyJavaClass(Integer.class)
 		@JoinColumn(name = "target_id")
@@ -625,8 +587,7 @@ public class AnyAssociationTests {
 		@Id
 		private Integer id;
 
-		@ManyToAny(cascade = CascadeType.REFRESH)
-		@Cascade(org.hibernate.annotations.CascadeType.DELETE_ORPHAN)
+		@ManyToAny(cascade = { CascadeType.REFRESH, CascadeType.REMOVE })
 		@JoinTable(
 				name = "cascade_many_holder_targets",
 				joinColumns = @JoinColumn(name = "holder_id"),

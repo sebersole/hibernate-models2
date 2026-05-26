@@ -19,7 +19,7 @@ import jakarta.persistence.JoinColumn;
 
 /// Resolves derived identifier to-one columns after identifiers and members exist.
 ///
-/// `@MapsId` is order-sensitive: the association member can be discovered before
+/// `@MapsId` is order-sensitive: the association member can be encountered before
 /// the owner identifier component and target identifier columns are ready.  This
 /// phase resolves the named or implicit identifier part, validates explicit join
 /// columns against that identifier part, and makes the association reuse the

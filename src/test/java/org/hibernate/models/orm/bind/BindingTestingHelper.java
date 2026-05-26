@@ -16,12 +16,15 @@ import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.models.bind.internal.BindingContextImpl;
 import org.hibernate.boot.models.bind.internal.BindingOptionsImpl;
 import org.hibernate.boot.models.bind.internal.BindingStateImpl;
+import org.hibernate.boot.models.bind.internal.InFlightMetadataCollectorAdapter;
 import org.hibernate.boot.models.bind.spi.BindingCoordinator;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.source.AvailableResourcesContext;
 import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.boot.spi.MetadataBuildingContext;
+import org.hibernate.boot.spi.MetadataImplementor;
 import org.hibernate.jpa.HibernatePersistenceConfiguration;
 import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
 
@@ -55,8 +58,11 @@ public class BindingTestingHelper {
 		final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
 				availableResources,
 				metadataBuildingContext
+			);
+		final BindingStateImpl bindingState = new BindingStateImpl(
+				metadataBuildingContext,
+				new InFlightMetadataCollectorAdapter( metadataCollector )
 		);
-		final BindingStateImpl bindingState = new BindingStateImpl( metadataBuildingContext );
 		final BindingOptionsImpl bindingOptions = new BindingOptionsImpl( metadataBuildingContext );
 		final BindingContextImpl bindingContext = new BindingContextImpl(
 				categorizedDomainModel,
@@ -69,11 +75,19 @@ public class BindingTestingHelper {
 				bindingOptions,
 				bindingContext
 		);
+		final MetadataImplementor metadata = metadataCollector.buildMetadataInstance( metadataBuildingContext );
+		metadata.orderColumns( false );
+		metadata.validate();
 
 		check.checkDomainModel( new DomainModelCheckContext() {
 			@Override
 			public InFlightMetadataCollectorImpl getMetadataCollector() {
 				return metadataCollector;
+			}
+
+			@Override
+			public MetadataImplementor getMetadata() {
+				return metadata;
 			}
 
 			@Override
@@ -85,6 +99,7 @@ public class BindingTestingHelper {
 
 	public interface DomainModelCheckContext {
 		InFlightMetadataCollectorImpl getMetadataCollector();
+		MetadataImplementor getMetadata();
 		BindingStateImpl getBindingState();
 	}
 
@@ -107,7 +122,10 @@ public class BindingTestingHelper {
 		}
 		return AvailableResources.from(
 				persistenceConfiguration,
-				metadataBuildingContext
+				new AvailableResourcesContext(
+						metadataBuildingContext.getBootstrapContext().getModelsContext(),
+						metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+				)
 		);
 	}
 

@@ -10,7 +10,6 @@ import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
-import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.engine.spi.FilterDefinition;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Property;
@@ -21,6 +20,7 @@ import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.spi.TypeConfiguration;
 
 import static java.util.Collections.singletonMap;
+import static org.hibernate.boot.models.bind.internal.binders.AttributeBinder.bindPropertyAccessor;
 import static org.hibernate.boot.models.bind.internal.binders.AttributeBinder.processColumn;
 
 /// Binds the entity tenant-id property and shared tenant filter definition.
@@ -42,8 +42,7 @@ public class TenantIdBinder {
 			BindingOptions bindingOptions,
 			BindingState bindingState,
 			BindingContext bindingContext) {
-		final InFlightMetadataCollector collector = bindingState.getMetadataBuildingContext().getMetadataCollector();
-		final TypeConfiguration typeConfiguration = collector.getTypeConfiguration();
+		final TypeConfiguration typeConfiguration = bindingState.getTypeConfiguration();
 
 		final MemberDetails memberDetails = attributeMetadata.getMember();
 		final String returnedClassName = memberDetails.getType().determineRawClass().getClassName();
@@ -51,9 +50,9 @@ public class TenantIdBinder {
 				.getBasicTypeRegistry()
 				.getRegisteredType( returnedClassName );
 
-		final FilterDefinition filterDefinition = collector.getFilterDefinition( FILTER_NAME );
+		final FilterDefinition filterDefinition = bindingState.getFilterDefinition( FILTER_NAME );
 		if ( filterDefinition == null ) {
-			collector.addFilterDefinition( new FilterDefinition(
+			bindingState.addFilterDefinition( new FilterDefinition(
 					FILTER_NAME,
 					"",
 					singletonMap( PARAMETER_NAME, tenantIdType )
@@ -77,6 +76,7 @@ public class TenantIdBinder {
 		final Property property = new Property();
 		typeBinding.addProperty( property );
 		property.setName( attributeMetadata.getName() );
+		bindPropertyAccessor( memberDetails, property );
 
 		final BasicValue basicValue = new BasicValue( bindingState.getMetadataBuildingContext(), typeBinding.getRootTable() );
 		property.setValue( basicValue );
