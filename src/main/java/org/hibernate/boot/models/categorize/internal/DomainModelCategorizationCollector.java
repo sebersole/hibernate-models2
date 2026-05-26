@@ -15,6 +15,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitDefaultsImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitMetadataImpl;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
+import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.ModelsContext;
 
@@ -37,6 +38,8 @@ public class DomainModelCategorizationCollector {
 	private final Map<String,ClassDetails> mappedSuperclasses = new HashMap<>();
 	private final Map<String,ClassDetails> embeddables = new HashMap<>();
 	private final GlobalRegistrationsImpl globalRegistrations;
+	private final AccessTypeIndependenceValidator mappedSuperclassAccessTypeIndependenceValidator =
+			new AccessTypeIndependenceValidator();
 
 	public DomainModelCategorizationCollector(
 			boolean areIdGeneratorsGlobal,
@@ -137,11 +140,26 @@ public class DomainModelCategorizationCollector {
 	 * @see org.hibernate.boot.models.categorize.spi.DomainModelCategorizer#categorize
 	 */
 	public CategorizedDomainModel createResult(Set<EntityHierarchy> entityHierarchies) {
+		validateMappedSuperclassAccessTypeIndependence( entityHierarchies );
 		return new CategorizedDomainModelImpl(
 				entityHierarchies,
 				mappedSuperclasses,
 				embeddables,
 				getGlobalRegistrations()
 		);
+	}
+
+	private void validateMappedSuperclassAccessTypeIndependence(Set<EntityHierarchy> entityHierarchies) {
+		for ( EntityHierarchy entityHierarchy : entityHierarchies ) {
+			entityHierarchy.forEachType( (type, superType, hierarchy, relation) -> {
+				if ( type.getManagedTypeKind() == IdentifiableTypeMetadata.Kind.MAPPED_SUPER ) {
+					mappedSuperclassAccessTypeIndependenceValidator.validate(
+							type.getClassDetails(),
+							type.getAccessType(),
+							type.getAttributes()
+					);
+				}
+			} );
+		}
 	}
 }

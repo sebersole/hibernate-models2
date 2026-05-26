@@ -7,6 +7,7 @@ package org.hibernate.boot.models.bind.internal.binders;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
+import org.hibernate.boot.models.categorize.internal.AccessTypeIndependenceValidator;
 
 /// Composition root for reusable binders used while processing the domain model.
 ///
@@ -20,6 +21,8 @@ public class ModelBinders {
 	// todo : keep this?
 
 	private final TableBinder tableBinder;
+	private final AccessTypeIndependenceValidator embeddableAccessTypeIndependenceValidator =
+			new AccessTypeIndependenceValidator();
 
 	public ModelBinders(
 			BindingState bindingState,
@@ -31,5 +34,9 @@ public class ModelBinders {
 	/// Binder for table references and mapping-model `Table` creation.
 	public TableBinder getTableBinder() {
 		return tableBinder;
+	}
+
+	public AccessTypeIndependenceValidator getEmbeddableAccessTypeIndependenceValidator() {
+		return embeddableAccessTypeIndependenceValidator;
 	}
 }

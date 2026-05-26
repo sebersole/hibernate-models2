@@ -11,12 +11,15 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
 import org.hibernate.boot.models.AccessTypePlacementException;
+import org.hibernate.boot.models.AttributeNature;
 import org.hibernate.boot.models.bind.internal.sources.BasicValueSource;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.internal.sources.ComponentSource;
 import org.hibernate.boot.models.bind.spi.BindingContext;
 import org.hibernate.boot.models.bind.spi.BindingOptions;
 import org.hibernate.boot.models.bind.spi.BindingState;
+import org.hibernate.boot.models.categorize.internal.AttributeMetadataImpl;
+import org.hibernate.boot.models.categorize.spi.AttributeMetadata;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Column;
@@ -81,7 +84,10 @@ class ComponentBinder {
 				component,
 				table,
 				"",
-				determineComponentAccessType( source.componentType(), ownerType.getAccessType() ),
+				resolveComponentMembers(
+						source.componentType(),
+						determineComponentAccessType( source.componentType(), ownerType.getAccessType() )
+				),
 				source::columnSource,
 				source::conversion,
 				(path, member) -> source.associationOverride( path ),
@@ -112,7 +118,7 @@ class ComponentBinder {
 				component,
 				table,
 				"",
-				determineComponentAccessType( componentType, ownerType.getAccessType() ),
+				resolveComponentMembers( componentType, determineComponentAccessType( componentType, ownerType.getAccessType() ) ),
 				columnSourceResolver,
 				conversionResolver,
 				associationOverrideResolver,
@@ -130,7 +136,7 @@ class ComponentBinder {
 			Component component,
 			Table table,
 			String pathPrefix,
-			AccessType accessType,
+			List<MemberDetails> members,
 			BiFunction<String, MemberDetails, ColumnSource> columnSourceResolver,
 			BiFunction<String, MemberDetails, Convert> conversionResolver,
 			BiFunction<String, MemberDetails, AssociationOverride> associationOverrideResolver,
@@ -139,7 +145,7 @@ class ComponentBinder {
 			boolean nullableByDefault,
 			boolean updatable) {
 		final List<Column> columns = new ArrayList<>();
-		for ( MemberDetails member : resolveComponentMembers( componentType, accessType ) ) {
+		for ( MemberDetails member : members ) {
 			validateMember( member );
 			final String attributeName = member.resolveAttributeName();
 			final String memberPath = pathPrefix + attributeName;
@@ -176,14 +182,21 @@ class ComponentBinder {
 
 				final Property property = createProperty( attributeName, nestedComponent );
 				component.addProperty( property );
-				columns.addAll( bindProperties(
-						ownerType,
-						ownerBinding,
-						member.getType().determineRawClass(),
-						nestedComponent,
-						table,
-						memberPath + ".",
-						determineComponentAccessType( member.getType().determineRawClass(), accessType ),
+					final ClassDetails nestedComponentType = member.getType().determineRawClass();
+					columns.addAll( bindProperties(
+							ownerType,
+							ownerBinding,
+							nestedComponentType,
+							nestedComponent,
+							table,
+							memberPath + ".",
+							resolveComponentMembers(
+									nestedComponentType,
+									determineComponentAccessType(
+											nestedComponentType,
+											resolveComponentAccessType( members )
+									)
+							),
 						columnSourceResolver,
 						conversionResolver,
 						associationOverrideResolver,
@@ -215,6 +228,13 @@ class ComponentBinder {
 			columns.add( column );
 		}
 		return columns;
+	}
+
+	private AccessType resolveComponentAccessType(List<MemberDetails> members) {
+		if ( members.isEmpty() ) {
+			return AccessType.FIELD;
+		}
+		return members.get( 0 ).isField() ? AccessType.FIELD : AccessType.PROPERTY;
 	}
 
 	private AccessType determineComponentAccessType(ClassDetails componentType, AccessType containingAccessType) {
@@ -266,7 +286,24 @@ class ComponentBinder {
 			}
 		}
 
-		return new ArrayList<>( results.values() );
+		final List<MemberDetails> members = new ArrayList<>( results.values() );
+		validateAccessTypeIndependence( componentType, accessType, members );
+		return members;
+	}
+
+	private void validateAccessTypeIndependence(
+			ClassDetails componentType,
+			AccessType accessType,
+			List<MemberDetails> members) {
+		final List<AttributeMetadata> attributes = new ArrayList<>( members.size() );
+		for ( MemberDetails member : members ) {
+			attributes.add( new AttributeMetadataImpl(
+					member.resolveAttributeName(),
+					AttributeNature.BASIC,
+					member
+			) );
+		}
+		modelBinders.getEmbeddableAccessTypeIndependenceValidator().validate( componentType, accessType, attributes );
 	}
 
 	private boolean isTransient(MemberDetails member) {

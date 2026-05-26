@@ -5,6 +5,7 @@
 package org.hibernate.models.orm.categorize;
 
 import org.hibernate.boot.models.AccessTypeDeterminationException;
+import org.hibernate.boot.models.AccessTypeIndependenceException;
 import org.hibernate.boot.models.AccessTypePlacementException;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
@@ -26,6 +27,7 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.Transient;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -189,6 +191,101 @@ public class AccessTypeTests {
 				FieldAccessExplicitEmbeddableOwner.class,
 				ExplicitPropertyEmbeddable.class
 		);
+	}
+
+	// 2.3.4, defaulted access types of embeddable classes and mapped superclasses:
+	// a defaulted embeddable used in both field and property contexts is portable
+	// when the persistent attribute number, names, and types are independent of access type.
+	@Test
+	@ServiceRegistry
+	void defaultedEmbeddableCanBeUsedInDifferingAccessContextsWhenShapeIsIndependent(ServiceRegistryScope scope) {
+		BindingTestingHelper.checkDomainModel(
+				(context) -> {
+					final PersistentClass fieldAccessEntity = context.getMetadataCollector()
+							.getEntityBinding( FieldAccessIndependentEmbeddableOwner.class.getName() );
+					final Component fieldAccessComponent = (Component) fieldAccessEntity.getProperty( "component" ).getValue();
+					assertThat( fieldAccessComponent.getProperties() )
+							.extracting( org.hibernate.mapping.Property::getName )
+							.containsExactly( "value" );
+
+					final PersistentClass propertyAccessEntity = context.getMetadataCollector()
+							.getEntityBinding( PropertyAccessIndependentEmbeddableOwner.class.getName() );
+					final Component propertyAccessComponent = (Component) propertyAccessEntity.getProperty( "component" ).getValue();
+					assertThat( propertyAccessComponent.getProperties() )
+							.extracting( org.hibernate.mapping.Property::getName )
+							.containsExactly( "value" );
+				},
+				scope.getRegistry(),
+				FieldAccessIndependentEmbeddableOwner.class,
+				PropertyAccessIndependentEmbeddableOwner.class,
+				AccessIndependentEmbeddable.class
+		);
+	}
+
+	// 2.3.4, defaulted access types of embeddable classes and mapped superclasses:
+	// a defaulted mapped superclass used in both field and property hierarchy contexts is
+	// portable when the persistent attribute number, names, and types are access-independent.
+	@Test
+	void defaultedMappedSuperclassCanBeUsedInDifferingAccessContextsWhenShapeIsIndependent() {
+		final CategorizedDomainModel domainModel = BindingTestingHelper.buildCategorizedDomainModel(
+				FieldAccessMappedSuperclassEntity.class,
+				PropertyAccessMappedSuperclassEntity.class,
+				AccessIndependentMappedSuperclass.class
+		);
+
+		assertThat( domainModel.getEntityHierarchies() ).hasSize( 2 );
+		for ( EntityHierarchy hierarchy : domainModel.getEntityHierarchies() ) {
+			final IdentifiableTypeMetadata mappedSuperclass = hierarchy.getRoot().getSuperType();
+
+			assertThat( mappedSuperclass ).isNotNull();
+			assertThat( mappedSuperclass.getClassDetails().getClassName() )
+					.isEqualTo( AccessIndependentMappedSuperclass.class.getName() );
+			assertThat( mappedSuperclass.findAttribute( "shared" ) ).isNotNull();
+
+			if ( hierarchy.getRoot().getClassDetails().getClassName()
+					.equals( FieldAccessMappedSuperclassEntity.class.getName() ) ) {
+				assertThat( hierarchy.getDefaultAccessType() ).isEqualTo( AccessType.FIELD );
+				assertThat( mappedSuperclass.getAccessType() ).isEqualTo( AccessType.FIELD );
+				assertThat( mappedSuperclass.findAttribute( "shared" ).getMember().isField() ).isTrue();
+			}
+			else {
+				assertThat( hierarchy.getDefaultAccessType() ).isEqualTo( AccessType.PROPERTY );
+				assertThat( mappedSuperclass.getAccessType() ).isEqualTo( AccessType.PROPERTY );
+				assertThat( mappedSuperclass.findAttribute( "shared" ).getMember().isField() ).isFalse();
+			}
+		}
+	}
+
+	// 2.3.4, defaulted access types of embeddable classes and mapped superclasses:
+	// if the same defaulted embeddable has different persistent attribute names under
+	// FIELD and PROPERTY access, the undefined spec case is treated as a mapping error.
+	@Test
+	@ServiceRegistry
+	void defaultedEmbeddableWithAccessDependentShapeIsRejected(ServiceRegistryScope scope) {
+		assertThatThrownBy( () -> BindingTestingHelper.checkDomainModel(
+				(context) -> {
+				},
+				scope.getRegistry(),
+				FieldAccessDependentEmbeddableOwner.class,
+				PropertyAccessDependentEmbeddableOwner.class,
+				AccessDependentEmbeddable.class
+		) )
+				.isInstanceOf( AccessTypeIndependenceException.class )
+				.hasMessageContaining( AccessDependentEmbeddable.class.getName() );
+	}
+
+	// 2.3.4, defaulted access types of embeddable classes and mapped superclasses:
+	// if the same defaulted mapped superclass has different persistent attribute names under
+	// FIELD and PROPERTY access, the undefined spec case is treated as a mapping error.
+	@Test
+	void defaultedMappedSuperclassWithAccessDependentShapeIsRejected() {
+		assertThatThrownBy( () -> BindingTestingHelper.buildCategorizedDomainModel(
+				FieldAccessDependentMappedSuperclassEntity.class,
+				PropertyAccessDependentMappedSuperclassEntity.class,
+				AccessDependentMappedSuperclass.class
+		) )
+				.isInstanceOf( AccessTypeIndependenceException.class )
+				.hasMessageContaining( AccessDependentMappedSuperclass.class.getName() );
 	}
 
 	private static EntityHierarchy singleHierarchy(Class<?>... classes) {
@@ -398,6 +495,136 @@ public class AccessTypeTests {
 		@Column(name = "explicit_property_column")
 		public String getPropertyValue() {
 			return propertyValue;
+		}
+	}
+
+	@Entity
+	public static class FieldAccessIndependentEmbeddableOwner {
+		@Id
+		private Long id;
+
+		@Embedded
+		private AccessIndependentEmbeddable component;
+	}
+
+	@Entity
+	public static class PropertyAccessIndependentEmbeddableOwner {
+		private Long id;
+		private AccessIndependentEmbeddable component;
+
+		@Id
+		public Long getId() {
+			return id;
+		}
+
+		@Embedded
+		public AccessIndependentEmbeddable getComponent() {
+			return component;
+		}
+	}
+
+	@Embeddable
+	public static class AccessIndependentEmbeddable {
+		private String value;
+
+		public String getValue() {
+			return value;
+		}
+	}
+
+	@MappedSuperclass
+	public static class AccessIndependentMappedSuperclass {
+		private String shared;
+
+		public String getShared() {
+			return shared;
+		}
+	}
+
+	@Entity
+	public static class FieldAccessMappedSuperclassEntity extends AccessIndependentMappedSuperclass {
+		@Id
+		private Long id;
+	}
+
+	@Entity
+	public static class PropertyAccessMappedSuperclassEntity extends AccessIndependentMappedSuperclass {
+		private Long id;
+
+		@Id
+		public Long getId() {
+			return id;
+		}
+	}
+
+	@Entity
+	public static class FieldAccessDependentEmbeddableOwner {
+		@Id
+		private Long id;
+
+		@Embedded
+		private AccessDependentEmbeddable component;
+	}
+
+	@Entity
+	public static class PropertyAccessDependentEmbeddableOwner {
+		private Long id;
+		private AccessDependentEmbeddable component;
+
+		@Id
+		public Long getId() {
+			return id;
+		}
+
+		@Embedded
+		public AccessDependentEmbeddable getComponent() {
+			return component;
+		}
+	}
+
+	@Embeddable
+	public static class AccessDependentEmbeddable {
+		private String fieldValue;
+		private String propertyValue;
+
+		@Transient
+		public String getFieldValue() {
+			return fieldValue;
+		}
+
+		public String getPropertyValue() {
+			return propertyValue;
+		}
+	}
+
+	@MappedSuperclass
+	public static class AccessDependentMappedSuperclass {
+		private String fieldValue;
+		private String propertyValue;
+
+		@Transient
+		public String getFieldValue() {
+			return fieldValue;
+		}
+
+		public String getPropertyValue() {
+			return propertyValue;
+		}
+	}
+
+	@Entity
+	public static class FieldAccessDependentMappedSuperclassEntity extends AccessDependentMappedSuperclass {
+		@Id
+		private Long id;
+	}
+
+	@Entity
+	public static class PropertyAccessDependentMappedSuperclassEntity extends AccessDependentMappedSuperclass {
+		private Long id;
+
+		@Id
+		public Long getId() {
+			return id;
 		}
 	}
 }
