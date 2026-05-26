@@ -38,59 +38,85 @@ public final class SessionFactoryOptionsAdapter {
 
 	private record Handler(ResolvedSessionFactorySettings settings) implements InvocationHandler {
 		@Override
-		public Object invoke(Object proxy, Method method, Object[] args) {
+		public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+			if ( method.isDefault() ) {
+				return InvocationHandler.invokeDefault( proxy, method, args );
+			}
 			return switch ( method.getName() ) {
 				case "getUuid" -> settings.uuid();
 				case "getServiceRegistry" -> settings.serviceRegistry();
 				case "isJpaBootstrap" -> settings.jpaBootstrap();
 				case "getSessionFactoryName" -> settings.sessionFactoryName();
 				case "isSessionFactoryNameAlsoJndiName" -> settings.sessionFactoryNameAlsoJndiName();
+				case "isStatisticsEnabled" -> false;
 				case "getStatementObserver" -> settings.statementObserver();
 				case "getStatementInspector" -> settings.statementInspector();
 				case "getInitialSessionCacheMode" -> settings.initialSessionCacheMode();
+				case "getInitialSessionFlushMode" -> org.hibernate.FlushMode.AUTO;
+				case "getDefaultLockOptions" -> org.hibernate.LockOptions.NONE;
+				case "getDefaultSessionProperties" -> java.util.Collections.emptyMap();
 				case "getPhysicalConnectionHandlingMode" -> settings.physicalConnectionHandlingMode();
 				case "getJdbcTimeZone" -> settings.jdbcTimeZone();
 				case "isFlushBeforeCompletionEnabled" -> settings.flushBeforeCompletionEnabled();
 				case "isAutoCloseSessionEnabled" -> settings.autoCloseSessionEnabled();
+				case "isJtaTransactionAccessEnabled" -> true;
+				case "isPreferUserTransaction" -> false;
+				case "isAllowOutOfTransactionUpdateOperations" -> false;
+				case "isJtaTrackByThread" -> true;
 				case "isIdentifierRollbackEnabled" -> settings.identifierRollbackEnabled();
 				case "getInterceptor" -> settings.interceptor();
+				case "getStatelessInterceptorImplementorSupplier" -> null;
+				case "buildSessionEventListeners" -> new org.hibernate.SessionEventListener[0];
 				case "getSessionFactoryObservers" -> settings.sessionFactoryObservers();
 				case "getValidatorFactoryReference" -> settings.validatorFactoryReference();
+				case "getCustomEntityDirtinessStrategy" -> org.hibernate.boot.internal.DefaultCustomEntityDirtinessStrategy.INSTANCE;
+				case "getEntityNameResolvers" -> new org.hibernate.EntityNameResolver[0];
+				case "getEntityNotFoundDelegate" -> null;
+				case "isCheckNullability" -> true;
+				case "setCheckNullability" -> null;
 				case "isSecondLevelCacheEnabled" -> settings.secondLevelCacheEnabled();
 				case "isQueryCacheEnabled" -> settings.queryCacheEnabled();
 				case "getQueryCacheLayout" -> settings.queryCacheLayout();
 				case "getTimestampsCacheFactory" -> settings.timestampsCacheFactory();
 				case "getCacheRegionPrefix" -> settings.cacheRegionPrefix();
 				case "isMinimalPutsEnabled" -> settings.minimalPutsEnabled();
-					case "isStructuredCacheEntriesEnabled" -> settings.structuredCacheEntriesEnabled();
-					case "isDirectReferenceCacheEntriesEnabled" -> settings.directReferenceCacheEntriesEnabled();
-					case "isAutoEvictCollectionCache" -> settings.autoEvictCollectionCache();
-					case "getCustomSqlFunctionMap" -> settings.customSqlFunctionMap();
-					case "getCustomSqmFunctionRegistry" -> settings.customSqmFunctionRegistry();
-					case "getCustomHqlTranslator" -> settings.customHqlTranslator();
-					case "getCustomSqmTranslatorFactory" -> settings.customSqmTranslatorFactory();
-					case "getCustomSqmMultiTableMutationStrategy" -> settings.customSqmMultiTableMutationStrategy();
-					case "getCustomSqmMultiTableInsertStrategy" -> settings.customSqmMultiTableInsertStrategy();
-					case "resolveCustomSqmMultiTableMutationStrategy" -> null;
-					case "resolveCustomSqmMultiTableInsertStrategy" -> null;
-					case "getJpaCompliance" -> settings.jpaCompliance();
-					case "getCriteriaValueHandlingMode" -> settings.criteriaValueHandlingMode();
-					case "getImmutableEntityUpdateQueryHandlingMode" -> settings.immutableEntityUpdateQueryHandlingMode();
-					case "allowImmutableEntityUpdate" -> settings.immutableEntityUpdateQueryHandlingMode()
-							!= org.hibernate.query.spi.ImmutableEntityUpdateQueryHandlingMode.EXCEPTION;
-					case "isJsonFunctionsEnabled" -> settings.jsonFunctionsEnabled();
-					case "isXmlFunctionsEnabled" -> settings.xmlFunctionsEnabled();
-					case "isPortableIntegerDivisionEnabled" -> settings.portableIntegerDivisionEnabled();
-					case "getNativeJdbcParametersIgnored" -> settings.nativeJdbcParametersIgnored();
-					case "isCollectionsInDefaultFetchGroupEnabled" -> settings.collectionsInDefaultFetchGroupEnabled();
-					case "areJPACallbacksEnabled" -> settings.jpaCallbacksEnabled();
-					case "getDefaultBatchFetchSize" -> settings.defaultBatchFetchSize();
-					case "getMaximumFetchDepth" -> settings.maximumFetchDepth();
-					case "isSubselectFetchEnabled" -> settings.subselectFetchEnabled();
-					case "isCommentsEnabled" -> settings.commentsEnabled();
-					case "getTemporalTableStrategy" -> settings.temporalTableStrategy();
-					case "getAuditStrategy" -> settings.auditStrategy();
-					case "isMultiTenancyEnabled" -> settings.multiTenancyEnabled();
+				case "isStructuredCacheEntriesEnabled" -> settings.structuredCacheEntriesEnabled();
+				case "isDirectReferenceCacheEntriesEnabled" -> settings.directReferenceCacheEntriesEnabled();
+				case "isAutoEvictCollectionCache" -> settings.autoEvictCollectionCache();
+				case "getCustomSqlFunctionMap" -> settings.customSqlFunctionMap();
+				case "getCustomSqmFunctionRegistry" -> settings.customSqmFunctionRegistry();
+				case "getCustomHqlTranslator" -> settings.customHqlTranslator();
+				case "getCustomSqmTranslatorFactory" -> settings.customSqmTranslatorFactory();
+				case "getCustomSqmMultiTableMutationStrategy" -> settings.customSqmMultiTableMutationStrategy();
+				case "getCustomSqmMultiTableInsertStrategy" -> settings.customSqmMultiTableInsertStrategy();
+				case "resolveCustomSqmMultiTableMutationStrategy" -> null;
+				case "resolveCustomSqmMultiTableInsertStrategy" -> null;
+				case "getJpaCompliance" -> settings.jpaCompliance();
+				case "getCriteriaValueHandlingMode" -> settings.criteriaValueHandlingMode();
+				case "getImmutableEntityUpdateQueryHandlingMode" -> settings.immutableEntityUpdateQueryHandlingMode();
+				case "allowImmutableEntityUpdate" -> settings.immutableEntityUpdateQueryHandlingMode()
+						!= org.hibernate.query.spi.ImmutableEntityUpdateQueryHandlingMode.EXCEPTION;
+				case "isJsonFunctionsEnabled" -> settings.jsonFunctionsEnabled();
+				case "isXmlFunctionsEnabled" -> settings.xmlFunctionsEnabled();
+				case "isPortableIntegerDivisionEnabled" -> settings.portableIntegerDivisionEnabled();
+				case "getNativeJdbcParametersIgnored" -> settings.nativeJdbcParametersIgnored();
+				case "getQueryStatisticsMaxSize" -> 100;
+				case "isCollectionsInDefaultFetchGroupEnabled" -> settings.collectionsInDefaultFetchGroupEnabled();
+				case "areJPACallbacksEnabled" -> settings.jpaCallbacksEnabled();
+				case "getDefaultBatchFetchSize" -> settings.defaultBatchFetchSize();
+				case "getMaximumFetchDepth" -> settings.maximumFetchDepth();
+				case "isSubselectFetchEnabled" -> settings.subselectFetchEnabled();
+				case "getJdbcBatchSize" -> 0;
+				case "getJdbcFetchSize" -> null;
+				case "isScrollableResultSetsEnabled" -> true;
+				case "isGetGeneratedKeysEnabled" -> true;
+				case "isOrderUpdatesEnabled" -> false;
+				case "isOrderInsertsEnabled" -> false;
+				case "isCommentsEnabled" -> settings.commentsEnabled();
+				case "doesConnectionProviderDisableAutoCommit" -> false;
+				case "getTemporalTableStrategy" -> settings.temporalTableStrategy();
+				case "getAuditStrategy" -> settings.auditStrategy();
+				case "isMultiTenancyEnabled" -> settings.multiTenancyEnabled();
 				case "getCurrentTenantIdentifierResolver" -> settings.currentTenantIdentifierResolver();
 				case "getDefaultTenantIdentifierJavaType" -> settings.defaultTenantIdentifierJavaType();
 				case "getDefaultCatalog" -> settings.defaultCatalog();
