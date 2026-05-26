@@ -6,9 +6,7 @@ package org.hibernate.boot.models.categorize.internal;
 
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
-import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.hibernate.boot.models.AccessTypeDeterminationException;
 import org.hibernate.boot.models.JpaAnnotations;
@@ -22,6 +20,7 @@ import org.hibernate.models.spi.FieldDetails;
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.models.spi.MethodDetails;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -52,7 +51,7 @@ public class EntityHierarchyBuilder {
 		final Set<EntityHierarchy> hierarchies = CollectionHelper.setOfSize( rootEntities.size() );
 
 		rootEntities.forEach( (rootEntity) -> {
-			final AccessType defaultAccessType = determineDefaultAccessTypeForHierarchy( rootEntity );
+			final AccessType defaultAccessType = determineDefaultAccessTypeForHierarchy( rootEntity, inheritanceState );
 			hierarchies.add( new EntityHierarchyImpl(
 					rootEntity,
 					defaultAccessType,
@@ -77,53 +76,84 @@ public class EntityHierarchyBuilder {
 	}
 
 	@NonNull
-	private AccessType determineDefaultAccessTypeForHierarchy(ClassDetails rootEntityType) {
+	private AccessType determineDefaultAccessTypeForHierarchy(
+			ClassDetails rootEntityType,
+			ManagedTypeInheritanceState inheritanceState) {
 		assert rootEntityType != null;
+
+		final AccessType[] result = new AccessType[1];
+		final Set<ClassDetails> visited = new HashSet<>();
 
 		ClassDetails current = rootEntityType;
 		while ( current != null ) {
-			// look for `@Access` on the class
-			final Access accessAnnotation = current.getDirectAnnotationUsage( JpaAnnotations.ACCESS );
-			if ( accessAnnotation == null ) {
-				var inclusiveMember = findDefaultedMember( current );
-				if ( inclusiveMember == null ) {
-					current = current.getSuperClass();
-					continue;
-				}
-
-				if ( inclusiveMember.getKind() == AnnotationTarget.Kind.FIELD ) {
-					return AccessType.FIELD;
-				}
-				else if ( inclusiveMember.getKind() == AnnotationTarget.Kind.METHOD
-						&& inclusiveMember.asMethodDetails().getMethodKind() == MethodDetails.MethodKind.GETTER ) {
-					return AccessType.PROPERTY;
-				}
-				else {
-					// this should never happen because of the nature of the checks in findDefaultedMember()...
-					throw new AccessTypeDeterminationException( rootEntityType );
-				}
-			}
-
+			applyDefaultedAccessType( rootEntityType, current, result, visited );
 			current = current.getSuperClass();
 		}
 
-		return modelContext.getEffectiveMappingDefaults().getDefaultPropertyAccessType();
+		applyDefaultedAccessTypesFromSubTypes( rootEntityType, rootEntityType, inheritanceState, result, visited );
+
+		return result[0] == null
+				? modelContext.getEffectiveMappingDefaults().getDefaultPropertyAccessType()
+				: result[0];
+	}
+
+	private void applyDefaultedAccessTypesFromSubTypes(
+			ClassDetails rootEntityType,
+			ClassDetails current,
+			ManagedTypeInheritanceState inheritanceState,
+			AccessType[] result,
+			Set<ClassDetails> visited) {
+		inheritanceState.forEachSubType( current, (subType) -> {
+			applyDefaultedAccessType( rootEntityType, subType, result, visited );
+			applyDefaultedAccessTypesFromSubTypes( rootEntityType, subType, inheritanceState, result, visited );
+		} );
+	}
+
+	private void applyDefaultedAccessType(
+			ClassDetails rootEntityType,
+			ClassDetails current,
+			AccessType[] result,
+			Set<ClassDetails> visited) {
+		if ( !visited.add( current ) ) {
+			return;
+		}
+
+		final Access accessAnnotation = current.getDirectAnnotationUsage( JpaAnnotations.ACCESS );
+		if ( accessAnnotation != null ) {
+			return;
+		}
+
+		final MemberDetails defaultedMember = findDefaultedMember( current );
+		if ( defaultedMember == null ) {
+			return;
+		}
+
+		final AccessType memberAccessType = determineAccessType( rootEntityType, defaultedMember );
+		if ( result[0] == null ) {
+			result[0] = memberAccessType;
+		}
+		else if ( result[0] != memberAccessType ) {
+			throw new AccessTypeDeterminationException( rootEntityType );
+		}
+	}
+
+	private AccessType determineAccessType(ClassDetails rootEntityType, MemberDetails memberDetails) {
+		if ( memberDetails.getKind() == AnnotationTarget.Kind.FIELD ) {
+			return AccessType.FIELD;
+		}
+		else if ( memberDetails.getKind() == AnnotationTarget.Kind.METHOD
+				&& memberDetails.asMethodDetails().getMethodKind() == MethodDetails.MethodKind.GETTER ) {
+			return AccessType.PROPERTY;
+		}
+
+		throw new AccessTypeDeterminationException( rootEntityType );
 	}
 
 	protected MemberDetails findDefaultedMember(ClassDetails current) {
-		// For now, keep using the old approach of looking for id.
-		// But ultimately we may want to pivot away to a more JPA way
-		// looking for any attribute without `@Access` (identifiers could
-		// have `@Access` which should in theory exclude them from consideration).
-		return determineIdMember( current );
-	}
-
-	private MemberDetails determineIdMember(ClassDetails current) {
 		final List<MethodDetails> methods = current.getMethods();
 		for ( int i = 0; i < methods.size(); i++ ) {
 			final MethodDetails methodDetails = methods.get( i );
-			if ( methodDetails.hasDirectAnnotationUsage( Id.class )
-					|| methodDetails.hasDirectAnnotationUsage( EmbeddedId.class ) ) {
+			if ( CategorizationHelper.isDefaultAccessTypeIndicator( methodDetails ) ) {
 				return methodDetails;
 			}
 		}
@@ -131,8 +161,7 @@ public class EntityHierarchyBuilder {
 		final List<FieldDetails> fields = current.getFields();
 		for ( int i = 0; i < fields.size(); i++ ) {
 			final FieldDetails fieldDetails = fields.get( i );
-			if ( fieldDetails.hasDirectAnnotationUsage( Id.class )
-					|| fieldDetails.hasDirectAnnotationUsage( EmbeddedId.class ) ) {
+			if ( CategorizationHelper.isDefaultAccessTypeIndicator( fieldDetails ) ) {
 				return fieldDetails;
 			}
 		}

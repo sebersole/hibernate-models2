@@ -6,6 +6,7 @@ package org.hibernate.boot.models.categorize.internal;
 
 import jakarta.persistence.Access;
 import jakarta.persistence.Basic;
+import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embeddable;
@@ -83,13 +84,17 @@ public class CategorizationHelper {
 			return false;
 		}
 
-		// todo : add a method to cleanly iterate (not Consumer-based) annotations to OrmAnnotationHelper
-		//		to implement the fully correct approach to look for any mapping annotation.
-		// NOTE: when we do this, be sure to distinguish actual mapping annotations; e.g. @Basic, but not @PostPersist
-
-		// for now, do the legacy bit and just look for @Id and @EmbeddedId
 		return memberDetails.hasDirectAnnotationUsage( Id.class )
-				|| memberDetails.hasDirectAnnotationUsage( EmbeddedId.class );
+				|| memberDetails.hasDirectAnnotationUsage( EmbeddedId.class )
+				|| memberDetails.hasDirectAnnotationUsage( Basic.class )
+				|| memberDetails.hasDirectAnnotationUsage( Version.class )
+				|| memberDetails.hasDirectAnnotationUsage( Embedded.class )
+				|| memberDetails.hasDirectAnnotationUsage( ElementCollection.class )
+				|| memberDetails.hasDirectAnnotationUsage( ManyToOne.class )
+				|| memberDetails.hasDirectAnnotationUsage( OneToOne.class )
+				|| memberDetails.hasDirectAnnotationUsage( OneToMany.class )
+				|| memberDetails.hasDirectAnnotationUsage( ManyToMany.class )
+				|| memberDetails.hasDirectAnnotationUsage( Column.class );
 	}
 
 	/// Determine the attribute's nature - is it a basic mapping, an embeddable, ...?

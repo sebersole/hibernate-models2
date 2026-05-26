@@ -5,10 +5,12 @@
 package org.hibernate.boot.models.bind.internal.binders;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
+import org.hibernate.boot.models.AccessTypePlacementException;
 import org.hibernate.boot.models.bind.internal.sources.BasicValueSource;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.internal.sources.ComponentSource;
@@ -23,10 +25,15 @@ import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Table;
 import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.FieldDetails;
 import org.hibernate.models.spi.MemberDetails;
+import org.hibernate.models.spi.MethodDetails;
 
+import jakarta.persistence.Access;
+import jakarta.persistence.AccessType;
 import jakarta.persistence.AssociationOverride;
 import jakarta.persistence.Convert;
+import jakarta.persistence.Transient;
 
 /// Shared support for binding component-valued mappings.
 ///
@@ -74,6 +81,7 @@ class ComponentBinder {
 				component,
 				table,
 				"",
+				determineComponentAccessType( source.componentType(), ownerType.getAccessType() ),
 				source::columnSource,
 				source::conversion,
 				(path, member) -> source.associationOverride( path ),
@@ -104,6 +112,7 @@ class ComponentBinder {
 				component,
 				table,
 				"",
+				determineComponentAccessType( componentType, ownerType.getAccessType() ),
 				columnSourceResolver,
 				conversionResolver,
 				associationOverrideResolver,
@@ -121,6 +130,7 @@ class ComponentBinder {
 			Component component,
 			Table table,
 			String pathPrefix,
+			AccessType accessType,
 			BiFunction<String, MemberDetails, ColumnSource> columnSourceResolver,
 			BiFunction<String, MemberDetails, Convert> conversionResolver,
 			BiFunction<String, MemberDetails, AssociationOverride> associationOverrideResolver,
@@ -129,7 +139,7 @@ class ComponentBinder {
 			boolean nullableByDefault,
 			boolean updatable) {
 		final List<Column> columns = new ArrayList<>();
-		componentType.forEachPersistableMember( (member) -> {
+		for ( MemberDetails member : resolveComponentMembers( componentType, accessType ) ) {
 			validateMember( member );
 			final String attributeName = member.resolveAttributeName();
 			final String memberPath = pathPrefix + attributeName;
@@ -154,7 +164,7 @@ class ComponentBinder {
 				property.setValue( manyToOne );
 				component.addProperty( property );
 				columns.addAll( manyToOne.getColumns() );
-				return;
+				continue;
 			}
 
 			if ( isEmbeddedMember( member ) ) {
@@ -173,6 +183,7 @@ class ComponentBinder {
 						nestedComponent,
 						table,
 						memberPath + ".",
+						determineComponentAccessType( member.getType().determineRawClass(), accessType ),
 						columnSourceResolver,
 						conversionResolver,
 						associationOverrideResolver,
@@ -181,7 +192,7 @@ class ComponentBinder {
 						nullableByDefault,
 						updatable
 				) );
-				return;
+				continue;
 			}
 
 			final BasicValue basicValue = createBasicValue(
@@ -202,8 +213,76 @@ class ComponentBinder {
 			);
 			columnConsumer.accept( member, column );
 			columns.add( column );
-		} );
+		}
 		return columns;
+	}
+
+	private AccessType determineComponentAccessType(ClassDetails componentType, AccessType containingAccessType) {
+		final Access access = componentType.getDirectAnnotationUsage( Access.class );
+		return access == null ? containingAccessType : access.value();
+	}
+
+	private List<MemberDetails> resolveComponentMembers(ClassDetails componentType, AccessType accessType) {
+		final LinkedHashMap<String, MemberDetails> results = new LinkedHashMap<>();
+
+		for ( FieldDetails field : componentType.getFields() ) {
+			final Access access = field.getDirectAnnotationUsage( Access.class );
+			if ( access == null ) {
+				continue;
+			}
+			validateAttributeLevelAccess( componentType, field, access.value() );
+			if ( !isTransient( field ) ) {
+				results.put( field.resolveAttributeName(), field );
+			}
+		}
+
+		for ( MethodDetails method : componentType.getMethods() ) {
+			final Access access = method.getDirectAnnotationUsage( Access.class );
+			if ( access == null ) {
+				continue;
+			}
+			validateAttributeLevelAccess( componentType, method, access.value() );
+			if ( !isTransient( method ) ) {
+				results.put( method.resolveAttributeName(), method );
+			}
+		}
+
+		if ( accessType == AccessType.FIELD ) {
+			for ( FieldDetails field : componentType.getFields() ) {
+				if ( field.isPersistable()
+						&& !isTransient( field )
+						&& !results.containsKey( field.resolveAttributeName() ) ) {
+					results.put( field.resolveAttributeName(), field );
+				}
+			}
+		}
+		else {
+			for ( MethodDetails method : componentType.getMethods() ) {
+				if ( method.isPersistable()
+						&& !isTransient( method )
+						&& !results.containsKey( method.resolveAttributeName() ) ) {
+					results.put( method.resolveAttributeName(), method );
+				}
+			}
+		}
+
+		return new ArrayList<>( results.values() );
+	}
+
+	private boolean isTransient(MemberDetails member) {
+		return member.hasDirectAnnotationUsage( Transient.class );
+	}
+
+	private void validateAttributeLevelAccess(
+			ClassDetails componentType,
+			MemberDetails member,
+			AccessType attributeAccessType) {
+		if ( ( attributeAccessType == AccessType.FIELD && !member.isField() )
+				|| ( attributeAccessType == AccessType.PROPERTY && member.isField() )
+				|| ( attributeAccessType == AccessType.PROPERTY
+						&& member.asMethodDetails().getMethodKind() != MethodDetails.MethodKind.GETTER ) ) {
+			throw new AccessTypePlacementException( componentType, member );
+		}
 	}
 
 	private void validateMember(MemberDetails member) {

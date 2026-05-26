@@ -121,9 +121,16 @@ public class StandardPersistentAttributeMemberResolver extends AbstractPersisten
 		// Mainly, it is never legal to:
 		//		1. specify @Access(FIELD) on a getter
 		//		2. specify @Access(PROPERTY) on a field
+		//
+		// Well, technically the spec says the behavior is "undefined"; but Hibernate does not support it, so make that obvious
 
 		if ( ( attributeAccessType == AccessType.FIELD && !annotationTarget.isField() )
 				|| ( attributeAccessType == AccessType.PROPERTY && annotationTarget.isField() ) ) {
+			throw new AccessTypePlacementException( classDetails, annotationTarget );
+		}
+
+		if ( attributeAccessType == AccessType.PROPERTY
+				&& annotationTarget.asMethodDetails().getMethodKind() != MethodDetails.MethodKind.GETTER ) {
 			throw new AccessTypePlacementException( classDetails, annotationTarget );
 		}
 	}
