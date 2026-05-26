@@ -7,6 +7,7 @@ package org.hibernate.boot.models.bind.internal.binders;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.boot.model.internal.IdGeneratorResolverSecondPass;
 import org.hibernate.boot.models.bind.internal.sources.BasicValueSource;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.internal.sources.ComponentSource;
@@ -36,8 +37,12 @@ import org.hibernate.models.spi.MemberDetails;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.TableGenerator;
 
 /// Binds the root identifier shape for an entity hierarchy.
 ///
@@ -116,6 +121,7 @@ public class IdentifierBinder {
 		typeBinding.setIdentifierProperty( idProperty );
 
 		final org.hibernate.mapping.Column column = bindIdColumn( idAttributeMember, () -> "id", idValue, table );
+		resolveGeneratedValue( typeBinding, idValue, idAttributeMember );
 
 		return new IdentifierBinding(
 				typeMetadata,
@@ -126,6 +132,74 @@ public class IdentifierBinder {
 				table,
 				List.of( column )
 		);
+	}
+
+	private void resolveGeneratedValue(
+			RootClass typeBinding,
+			BasicValue idValue,
+			MemberDetails idAttributeMember) {
+		final GeneratedValue generatedValue = idAttributeMember.getDirectAnnotationUsage( GeneratedValue.class );
+		if ( generatedValue == null ) {
+			return;
+		}
+		validateGeneratedValueGeneratorKind( generatedValue, idAttributeMember );
+
+		new IdGeneratorResolverSecondPass(
+				typeBinding,
+				idValue,
+				idAttributeMember,
+				generatedValue,
+				state.getMetadataBuildingContext()
+		).doSecondPass( null );
+	}
+
+	private void validateGeneratedValueGeneratorKind(
+			GeneratedValue generatedValue,
+			MemberDetails idAttributeMember) {
+		final String generatorName = generatedValue.generator();
+		if ( generatorName.isBlank() ) {
+			return;
+		}
+
+		if ( generatedValue.strategy() == GenerationType.SEQUENCE
+				&& hasNamedTableGenerator( idAttributeMember, generatorName ) ) {
+			throw new org.hibernate.MappingException(
+					"@GeneratedValue specified SEQUENCE generation, but referred to a @TableGenerator"
+			);
+		}
+
+		if ( generatedValue.strategy() == GenerationType.TABLE
+				&& hasNamedSequenceGenerator( idAttributeMember, generatorName ) ) {
+			throw new org.hibernate.MappingException(
+					"@GeneratedValue specified TABLE generation, but referred to a @SequenceGenerator"
+			);
+		}
+	}
+
+	private boolean hasNamedTableGenerator(MemberDetails idAttributeMember, String generatorName) {
+		final TableGenerator[] tableGenerators = idAttributeMember.getDeclaringType().getRepeatedAnnotationUsages(
+				TableGenerator.class,
+				context.getBootstrapContext().getModelsContext()
+		);
+		for ( TableGenerator tableGenerator : tableGenerators ) {
+			if ( tableGenerator.name().equals( generatorName ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean hasNamedSequenceGenerator(MemberDetails idAttributeMember, String generatorName) {
+		final SequenceGenerator[] sequenceGenerators = idAttributeMember.getDeclaringType().getRepeatedAnnotationUsages(
+				SequenceGenerator.class,
+				context.getBootstrapContext().getModelsContext()
+		);
+		for ( SequenceGenerator sequenceGenerator : sequenceGenerators ) {
+			if ( sequenceGenerator.name().equals( generatorName ) ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private IdentifierBinding bindAggregatedIdentifier(

@@ -23,6 +23,7 @@ import org.hibernate.testing.orm.junit.ServiceRegistryScope;
 import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -116,6 +117,28 @@ public class ToOneAssociationTests {
 
 	@Test
 	@ServiceRegistry
+	void testManyToOneNonPrimaryKeyReference(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ManyToOneNonPkOwner.class.getName() );
+					final ManyToOne value = (ManyToOne) entityBinding.getProperty( "parent" ).getValue();
+
+					assertThat( value.isReferenceToPrimaryKey() ).isFalse();
+					assertThat( value.getReferencedPropertyName() ).isEqualTo( "code" );
+					assertThat( value.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_code" );
+					assertThat( entityBinding.getTable().getForeignKeyCollection() ).hasSize( 1 );
+				},
+				scope.getRegistry(),
+				NonPkParent.class,
+				ManyToOneNonPkOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testOwningOneToOne(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -137,6 +160,29 @@ public class ToOneAssociationTests {
 				scope.getRegistry(),
 				Parent.class,
 				OneToOneOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testOneToOneNonPrimaryKeyReference(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( OneToOneNonPkOwner.class.getName() );
+					final ManyToOne value = (ManyToOne) entityBinding.getProperty( "parent" ).getValue();
+
+					assertThat( value.isLogicalOneToOne() ).isTrue();
+					assertThat( value.isReferenceToPrimaryKey() ).isFalse();
+					assertThat( value.getReferencedPropertyName() ).isEqualTo( "code" );
+					assertThat( value.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_code" );
+					assertThat( entityBinding.getTable().getForeignKeyCollection() ).hasSize( 1 );
+				},
+				scope.getRegistry(),
+				NonPkParent.class,
+				OneToOneNonPkOwner.class
 		);
 	}
 
@@ -227,6 +273,32 @@ public class ToOneAssociationTests {
 				InvalidMappedByManyToOneChild.class
 		) ).isInstanceOf( MappingException.class )
 				.hasMessageContaining( "mappedBy did not name an owning one-to-one attribute" );
+	}
+
+	@Test
+	@ServiceRegistry
+	void testInverseOneToOneMappedByMissingPropertyFails(ServiceRegistryScope scope) {
+		assertThatThrownBy( () -> checkDomainModel(
+				(context) -> {
+				},
+				scope.getRegistry(),
+				MissingMappedByOneToOneParent.class,
+				MissingMappedByOneToOneChild.class
+		) ).isInstanceOf( MappingException.class )
+				.hasMessageContaining( "missing" );
+	}
+
+	@Test
+	@ServiceRegistry
+	void testInverseOneToOneMappedByBasicPropertyFails(ServiceRegistryScope scope) {
+		assertThatThrownBy( () -> checkDomainModel(
+				(context) -> {
+				},
+				scope.getRegistry(),
+				BasicMappedByOneToOneParent.class,
+				BasicMappedByOneToOneChild.class
+		) ).isInstanceOf( MappingException.class )
+				.hasMessageContaining( "mappedBy did not name an owning to-one attribute" );
 	}
 
 	@Test
@@ -1256,6 +1328,25 @@ public class ToOneAssociationTests {
 		private String code;
 	}
 
+	@Entity(name="NonPkParent")
+	@Table(name="non_pk_parents")
+	public static class NonPkParent {
+		@Id
+		private Integer id;
+		@Column(name = "code", unique = true)
+		private String code;
+	}
+
+	@Entity(name="ManyToOneNonPkOwner")
+	@Table(name="many_to_one_non_pk_owners")
+	public static class ManyToOneNonPkOwner {
+		@Id
+		private Integer id;
+		@jakarta.persistence.ManyToOne
+		@JoinColumn(name = "parent_code", referencedColumnName = "code")
+		private NonPkParent parent;
+	}
+
 	@Entity(name="OneToOneOwner")
 	@Table(name="one_to_one_owners")
 	public static class OneToOneOwner {
@@ -1264,6 +1355,16 @@ public class ToOneAssociationTests {
 		@OneToOne(optional = false)
 		@JoinColumn(name = "parent_fk")
 		private Parent parent;
+	}
+
+	@Entity(name="OneToOneNonPkOwner")
+	@Table(name="one_to_one_non_pk_owners")
+	public static class OneToOneNonPkOwner {
+		@Id
+		private Integer id;
+		@OneToOne
+		@JoinColumn(name = "parent_code", referencedColumnName = "code")
+		private NonPkParent parent;
 	}
 
 	@Entity(name="CascadeOneToOneOwner")
@@ -1334,6 +1435,42 @@ public class ToOneAssociationTests {
 		@jakarta.persistence.ManyToOne
 		@JoinColumn(name = "parent_fk", referencedColumnName = "id")
 		private InvalidMappedByOneToOneParent parent;
+	}
+
+	@Entity(name="MissingMappedByOneToOneParent")
+	@Table(name="missing_mapped_by_one_to_one_parents")
+	public static class MissingMappedByOneToOneParent {
+		@Id
+		private Integer id;
+		@OneToOne(mappedBy = "missing")
+		private MissingMappedByOneToOneChild child;
+	}
+
+	@Entity(name="MissingMappedByOneToOneChild")
+	@Table(name="missing_mapped_by_one_to_one_children")
+	public static class MissingMappedByOneToOneChild {
+		@Id
+		private Integer id;
+		@OneToOne
+		@JoinColumn(name = "parent_fk", referencedColumnName = "id")
+		private MissingMappedByOneToOneParent parent;
+	}
+
+	@Entity(name="BasicMappedByOneToOneParent")
+	@Table(name="basic_mapped_by_one_to_one_parents")
+	public static class BasicMappedByOneToOneParent {
+		@Id
+		private Integer id;
+		@OneToOne(mappedBy = "parent")
+		private BasicMappedByOneToOneChild child;
+	}
+
+	@Entity(name="BasicMappedByOneToOneChild")
+	@Table(name="basic_mapped_by_one_to_one_children")
+	public static class BasicMappedByOneToOneChild {
+		@Id
+		private Integer id;
+		private String parent;
 	}
 
 	@Entity(name="CompositeParent")
