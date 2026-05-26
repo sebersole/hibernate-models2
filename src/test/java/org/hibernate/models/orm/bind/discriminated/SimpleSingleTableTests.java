@@ -90,7 +90,13 @@ public class SimpleSingleTableTests {
 					final BasicValue discriminatorMapping = (BasicValue) rootBinding.getDiscriminator();
 					assertThat( discriminatorMapping ).isNotNull();
 					assertThat( discriminatorMapping.getColumn() ).isNotNull();
-					assertThat( ( (Column) discriminatorMapping.getColumn() ).getName() ).isEqualToIgnoringCase( "type_discriminator" );
+					final Column discriminatorColumn = (Column) discriminatorMapping.getColumn();
+					assertThat( discriminatorColumn.getName() ).isEqualToIgnoringCase( "type_discriminator" );
+					assertThat( discriminatorColumn.getCheckConstraints() )
+							.extracting( org.hibernate.mapping.CheckConstraint::getConstraint )
+							.singleElement()
+							.asString()
+							.contains( "'R'", "'S'" );
 					assertThat( discriminatorMapping.resolve().getDomainJavaType().getJavaType() ).isEqualTo( Character.class );
 
 					assertThat( rootBinding.getDiscriminatorValue() ).isEqualTo( "R" );
@@ -101,6 +107,34 @@ public class SimpleSingleTableTests {
 				scope.getRegistry(),
 				ExplicitRoot.class,
 				ExplicitSub.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	@SuppressWarnings("JUnitMalformedDeclaration")
+	void testNullDiscriminatorValueMakesDiscriminatorColumnNullable(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final var metadataCollector = context.getMetadataCollector();
+					final PersistentClass rootBinding = metadataCollector.getEntityBinding( NullDiscriminatorRoot.class.getName() );
+					final PersistentClass subBinding = metadataCollector.getEntityBinding( NullDiscriminatorSub.class.getName() );
+
+					final BasicValue discriminatorMapping = (BasicValue) rootBinding.getDiscriminator();
+					final Column discriminatorColumn = (Column) discriminatorMapping.getColumn();
+					assertThat( rootBinding.getDiscriminatorValue() ).isEqualTo( "R" );
+					assertThat( subBinding.isDiscriminatorValueNull() ).isTrue();
+					assertThat( discriminatorColumn.isNullable() ).isTrue();
+					assertThat( discriminatorColumn.getCheckConstraints() )
+							.extracting( org.hibernate.mapping.CheckConstraint::getConstraint )
+							.singleElement()
+							.asString()
+							.contains( "'R'" )
+							.doesNotContain( "null" );
+				},
+				scope.getRegistry(),
+				NullDiscriminatorRoot.class,
+				NullDiscriminatorSub.class
 		);
 	}
 
@@ -140,6 +174,23 @@ public class SimpleSingleTableTests {
 	@Entity(name="Sub")
 	@DiscriminatorValue( "S" )
 	public static class ExplicitSub extends ExplicitRoot {
+		private String details;
+	}
+
+	@Entity(name="NullDiscriminatorRoot")
+	@Table(name="null_discriminator_data")
+	@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+	@DiscriminatorColumn(name = "type_discriminator", discriminatorType = DiscriminatorType.CHAR, length = 1)
+	@DiscriminatorValue( "R" )
+	public static class NullDiscriminatorRoot {
+		@Id
+		private Integer id;
+		private String name;
+	}
+
+	@Entity(name="NullDiscriminatorSub")
+	@DiscriminatorValue( "null" )
+	public static class NullDiscriminatorSub extends NullDiscriminatorRoot {
 		private String details;
 	}
 

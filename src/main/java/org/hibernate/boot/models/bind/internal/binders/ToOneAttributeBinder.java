@@ -205,6 +205,9 @@ class ToOneAttributeBinder {
 					ownerClassName,
 					propertyName
 			);
+			if ( optional && !value.isNullable() ) {
+				property.setOptional( false );
+			}
 		}
 		else {
 			bindingState.addDerivedIdentifierBinding( new DerivedIdentifierBinding(

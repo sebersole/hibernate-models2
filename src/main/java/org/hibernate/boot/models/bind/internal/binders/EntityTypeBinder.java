@@ -38,6 +38,7 @@ import org.hibernate.boot.models.categorize.spi.JpaEventListener;
 import org.hibernate.boot.models.categorize.spi.JpaEventListenerStyle;
 import org.hibernate.boot.models.categorize.spi.NaturalIdCacheRegion;
 import org.hibernate.boot.spi.MetadataBuildingOptions;
+import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.OptimisticLockStyle;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
@@ -46,6 +47,7 @@ import org.hibernate.jpa.event.internal.ListenerCallback;
 import org.hibernate.jpa.event.spi.CallbackDefinition;
 import org.hibernate.jpa.event.spi.CallbackType;
 import org.hibernate.mapping.BasicValue;
+import org.hibernate.mapping.CheckConstraint;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.IdentifiableTypeClass;
 import org.hibernate.mapping.Join;
@@ -68,6 +70,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
+import static org.hibernate.persister.entity.DiscriminatorHelper.getDiscriminatorValue;
 
 import static org.hibernate.boot.models.bind.ModelBindingLogging.MODEL_BINDING_LOGGER;
 import static org.hibernate.internal.util.StringHelper.coalesce;
@@ -308,6 +312,9 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 
 	/// Create physical foreign-key constraints after values and keys are complete.
 	public void bindForeignKeys() {
+		if ( getTypeBinding() instanceof RootClass rootClass ) {
+			finalizeDiscriminatorColumn( rootClass );
+		}
 		new ForeignKeyBinder( this ).bindForeignKeys();
 	}
 
@@ -778,6 +785,79 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 		}
 
 		value.setImplicitJavaTypeAccess( typeConfiguration -> discriminatorJavaType );
+	}
+
+	private void finalizeDiscriminatorColumn(RootClass rootClass) {
+		if ( rootClass.getDiscriminator() == null || rootClass.getDiscriminator().hasFormula() ) {
+			return;
+		}
+
+		final Column column = rootClass.getDiscriminator().getColumns().get( 0 );
+		final List<PersistentClass> hierarchyBindings = discriminatorHierarchyBindings( rootClass );
+		if ( hasNullDiscriminatorValue( hierarchyBindings ) ) {
+			column.setNullable( true );
+		}
+
+		if ( hasNotNullDiscriminatorValue( hierarchyBindings )
+				|| rootClass.isForceDiscriminator()
+				|| column.hasCheckConstraint() ) {
+			return;
+		}
+
+		final var dialect = getBindingState()
+				.getMetadataBuildingContext()
+				.getBootstrapContext()
+				.getServiceRegistry()
+				.getService( JdbcServices.class )
+				.getDialect();
+		if ( rootClass.getDiscriminator() instanceof BasicValue discriminatorMapping ) {
+			discriminatorMapping.resolve();
+		}
+		column.addCheckConstraint( new CheckConstraint( dialect.getCheckCondition(
+				column.getQuotedName( dialect ),
+				discriminatorValues( hierarchyBindings ),
+				column.getType().getJdbcType()
+		) ) );
+	}
+
+	private List<PersistentClass> discriminatorHierarchyBindings(RootClass rootClass) {
+		final List<PersistentClass> hierarchyBindings = new ArrayList<>();
+		getBindingState().getMetadataBuildingContext().getMetadataCollector().getEntityBindingMap().values().forEach( (binding) -> {
+			if ( binding.getRootClass() == rootClass ) {
+				hierarchyBindings.add( binding );
+			}
+		} );
+		return hierarchyBindings;
+	}
+
+	private static boolean hasNullDiscriminatorValue(List<PersistentClass> hierarchyBindings) {
+		for ( PersistentClass binding : hierarchyBindings ) {
+			if ( binding.isDiscriminatorValueNull() ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static boolean hasNotNullDiscriminatorValue(List<PersistentClass> hierarchyBindings) {
+		for ( PersistentClass binding : hierarchyBindings ) {
+			if ( binding.isDiscriminatorValueNotNull() ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static List<String> discriminatorValues(List<PersistentClass> hierarchyBindings) {
+		final List<String> values = new ArrayList<>();
+		for ( PersistentClass binding : hierarchyBindings ) {
+			if ( !Boolean.TRUE.equals( binding.isAbstract() )
+					&& !binding.isDiscriminatorValueNull()
+					&& !binding.isDiscriminatorValueNotNull() ) {
+				values.add( getDiscriminatorValue( binding ).toString() );
+			}
+		}
+		return values;
 	}
 
 	private static void bindVersion(

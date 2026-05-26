@@ -21,6 +21,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
+import jakarta.persistence.PrimaryKeyJoinColumn;
+import jakarta.persistence.PrimaryKeyJoinColumns;
 import jakarta.persistence.Table;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -132,6 +134,32 @@ public class SimpleJoinedTests {
 		);
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
+	@Test
+	@ServiceRegistry
+	void compositeIdWithExplicitPrimaryKeyJoinColumnsTest(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final var metadataCollector = context.getMetadataCollector();
+					final RootClass rootBinding = (RootClass) metadataCollector.getEntityBinding( ExplicitPkJoinRoot.class.getName() );
+					final JoinedSubclass subBinding = (JoinedSubclass) metadataCollector.getEntityBinding( ExplicitPkJoinSub.class.getName() );
+
+					assertThat( rootBinding.getTable().getPrimaryKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "id1", "id2" );
+					assertThat( subBinding.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "sub_id1", "sub_id2" );
+					assertThat( subBinding.getTable().getPrimaryKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "sub_id1", "sub_id2" );
+				},
+				scope.getRegistry(),
+				ExplicitPkJoinRoot.class,
+				ExplicitPkJoinSub.class
+		);
+	}
+
 	@Entity(name="Root")
 	@Table(name="Root")
 	@Inheritance(strategy = InheritanceType.JOINED)
@@ -194,5 +222,24 @@ public class SimpleJoinedTests {
 	public static class IdClassPk {
 		private Integer id1;
 		private Integer id2;
+	}
+
+	@Entity(name="ExplicitPkJoinRoot")
+	@Table(name="ExplicitPkJoinRoot")
+	@Inheritance(strategy = InheritanceType.JOINED)
+	public static class ExplicitPkJoinRoot {
+		@EmbeddedId
+		private Pk id;
+		private String name;
+	}
+
+	@Entity(name="ExplicitPkJoinSub")
+	@Table(name="ExplicitPkJoinSub")
+	@PrimaryKeyJoinColumns({
+			@PrimaryKeyJoinColumn(name = "sub_id2", referencedColumnName = "id2"),
+			@PrimaryKeyJoinColumn(name = "sub_id1", referencedColumnName = "id1")
+	})
+	public static class ExplicitPkJoinSub extends ExplicitPkJoinRoot {
+		private String details;
 	}
 }

@@ -4,6 +4,8 @@
  */
 package org.hibernate.boot.models.bind.internal.binders;
 
+import jakarta.persistence.PrimaryKeyJoinColumn;
+import jakarta.persistence.PrimaryKeyJoinColumns;
 import org.hibernate.boot.models.bind.internal.sources.ColumnSource;
 import org.hibernate.boot.models.bind.spi.BindingState;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
@@ -18,6 +20,9 @@ import org.hibernate.mapping.PrimaryKey;
 import org.hibernate.mapping.Table;
 import org.hibernate.mapping.UniqueKey;
 import org.hibernate.models.ModelsException;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /// Binds table keys that depend on an already-bound entity hierarchy identifier.
 ///
@@ -59,7 +64,10 @@ public class TableKeyBinder {
 
 	private void bindJoinedSubclassKey(JoinedSubclass joinedSubclass) {
 		final IdentifierBinding rootIdentifierBinding = resolveIdentifierBinding();
-		final DependantValue key = createDependentKeyValue( joinedSubclass.getTable(), rootIdentifierBinding );
+		final List<PrimaryKeyJoinColumn> primaryKeyJoinColumns = primaryKeyJoinColumns();
+		final DependantValue key = primaryKeyJoinColumns.isEmpty()
+				? createDependentKeyValue( joinedSubclass.getTable(), rootIdentifierBinding )
+				: createDependentKeyValue( joinedSubclass.getTable(), rootIdentifierBinding, primaryKeyJoinColumns );
 		joinedSubclass.setKey( key );
 		createPrimaryKey( joinedSubclass.getTable(), key );
 		bindingState.addTableForeignKeyBinding( new TableForeignKeyBinding(
@@ -68,6 +76,20 @@ public class TableKeyBinder {
 				entityBinder.getSuperEntityBinder().getTypeBinding().getEntityName(),
 				null
 		) );
+	}
+
+	private List<PrimaryKeyJoinColumn> primaryKeyJoinColumns() {
+		final PrimaryKeyJoinColumns plural = entityBinder.getManagedType()
+				.getClassDetails()
+				.getDirectAnnotationUsage( PrimaryKeyJoinColumns.class );
+		if ( plural != null ) {
+			return List.of( plural.value() );
+		}
+
+		final PrimaryKeyJoinColumn singular = entityBinder.getManagedType()
+				.getClassDetails()
+				.getDirectAnnotationUsage( PrimaryKeyJoinColumn.class );
+		return singular == null ? List.of() : List.of( singular );
 	}
 
 	private void bindSecondaryTableKey(Join join) {
@@ -196,6 +218,32 @@ public class TableKeyBinder {
 	private DependantValue createDependentKeyValue(
 			Table table,
 			IdentifierBinding identifierBinding,
+			List<PrimaryKeyJoinColumn> primaryKeyJoinColumns) {
+		final DependantValue key = new DependantValue(
+				bindingState.getMetadataBuildingContext(),
+				table,
+				identifierBinding.value()
+		);
+		key.setNullable( false );
+		key.setUpdateable( false );
+
+		final List<PrimaryKeyJoinColumn> orderedJoinColumns = orderPrimaryKeyJoinColumns(
+				primaryKeyJoinColumns,
+				identifierBinding.columns()
+		);
+		for ( int i = 0; i < identifierBinding.columns().size(); i++ ) {
+			key.addColumn(
+					bindKeyColumn( table, identifierBinding.columns().get( i ), orderedJoinColumns.get( i ) ),
+					true,
+					false
+			);
+		}
+		return key;
+	}
+
+	private DependantValue createDependentKeyValue(
+			Table table,
+			IdentifierBinding identifierBinding,
 			AssociationTableBinding associationTableBinding) {
 		final DependantValue key = new DependantValue(
 				bindingState.getMetadataBuildingContext(),
@@ -273,6 +321,47 @@ public class TableKeyBinder {
 		result.setNullable( false );
 		table.addColumn( result );
 		return result;
+	}
+
+	private Column bindKeyColumn(Table table, Column identifierColumn, PrimaryKeyJoinColumn joinColumn) {
+		final Column result = new Column();
+		result.setName( StringHelper.isEmpty( joinColumn.name() ) ? identifierColumn.getName() : joinColumn.name() );
+		result.setSqlType( StringHelper.isEmpty( joinColumn.columnDefinition() ) ? identifierColumn.getSqlType() : joinColumn.columnDefinition() );
+		result.setLength( identifierColumn.getLength() );
+		result.setPrecision( identifierColumn.getPrecision() );
+		result.setScale( identifierColumn.getScale() );
+		result.setNullable( false );
+		result.setUnique( identifierColumn.isUnique() );
+		table.addColumn( result );
+		return result;
+	}
+
+	private List<PrimaryKeyJoinColumn> orderPrimaryKeyJoinColumns(
+			List<PrimaryKeyJoinColumn> joinColumns,
+			List<Column> identifierColumns) {
+		final ArrayList<PrimaryKeyJoinColumn> orderedJoinColumns = new ArrayList<>( identifierColumns.size() );
+		final ArrayList<PrimaryKeyJoinColumn> unmatchedJoinColumns = new ArrayList<>( joinColumns );
+		for ( Column identifierColumn : identifierColumns ) {
+			final PrimaryKeyJoinColumn joinColumn = findPrimaryKeyJoinColumn( identifierColumn, unmatchedJoinColumns );
+			orderedJoinColumns.add( joinColumn );
+			unmatchedJoinColumns.remove( joinColumn );
+		}
+		return orderedJoinColumns;
+	}
+
+	private PrimaryKeyJoinColumn findPrimaryKeyJoinColumn(
+			Column identifierColumn,
+			List<PrimaryKeyJoinColumn> joinColumns) {
+		for ( PrimaryKeyJoinColumn joinColumn : joinColumns ) {
+			if ( identifierColumn.getName().equals( joinColumn.referencedColumnName() ) ) {
+				return joinColumn;
+			}
+		}
+
+		throw new ModelsException(
+				"Unable to match joined-subclass primary key join column referencedColumnName to root identifier column `"
+						+ identifierColumn.getName() + "` - " + entityBinder.getManagedType().getEntityName()
+		);
 	}
 
 	private void createPrimaryKey(Table table, KeyValue key) {

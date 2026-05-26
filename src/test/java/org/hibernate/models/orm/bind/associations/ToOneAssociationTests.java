@@ -404,6 +404,52 @@ public class ToOneAssociationTests {
 
 	@Test
 	@ServiceRegistry
+	void testImplicitOneToOneJoinTableName(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( ImplicitJoinTableOneToOneOwner.class.getName() );
+					final Join join = entityBinding.getJoins().get( 0 );
+					final ManyToOne value = (ManyToOne) join.getProperties().get( 0 ).getValue();
+
+					assertThat( join.getTable().getName() ).isEqualTo( "implicit_join_table_one_to_one_owners_parents" );
+					assertThat( join.getKey().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "owner_id" );
+					assertThat( value.getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.containsExactly( "parent_id" );
+					assertThat( value.isLogicalOneToOne() ).isTrue();
+				},
+				scope.getRegistry(),
+				Parent.class,
+				ImplicitJoinTableOneToOneOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
+	void testOptionalManyToOneWithNonNullableJoinColumn(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( OptionalManyToOneWithNonNullableColumnOwner.class.getName() );
+					final org.hibernate.mapping.Property property = entityBinding.getProperty( "parent" );
+					final ManyToOne value = (ManyToOne) property.getValue();
+
+					assertThat( property.isOptional() ).isFalse();
+					assertThat( value.getColumns() )
+							.extracting( org.hibernate.mapping.Column::isNullable )
+							.containsExactly( false );
+				},
+				scope.getRegistry(),
+				Parent.class,
+				OptionalManyToOneWithNonNullableColumnOwner.class
+		);
+	}
+
+	@Test
+	@ServiceRegistry
 	void testOwningManyToManyJoinTable(ServiceRegistryScope scope) {
 		checkDomainModel(
 				(context) -> {
@@ -1549,6 +1595,29 @@ public class ToOneAssociationTests {
 				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
 				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
 		)
+		private Parent parent;
+	}
+
+	@Entity(name="ImplicitJoinTableOneToOneOwner")
+	@Table(name="implicit_join_table_one_to_one_owners")
+	public static class ImplicitJoinTableOneToOneOwner {
+		@Id
+		private Integer id;
+		@OneToOne
+		@JoinTable(
+				joinColumns = @JoinColumn(name = "owner_id", referencedColumnName = "id"),
+				inverseJoinColumns = @JoinColumn(name = "parent_id", referencedColumnName = "id")
+		)
+		private Parent parent;
+	}
+
+	@Entity(name="OptionalManyToOneWithNonNullableColumnOwner")
+	@Table(name="optional_many_to_one_non_nullable_column_owners")
+	public static class OptionalManyToOneWithNonNullableColumnOwner {
+		@Id
+		private Integer id;
+		@jakarta.persistence.ManyToOne(optional = true)
+		@JoinColumn(name = "parent_id", nullable = false)
 		private Parent parent;
 	}
 
