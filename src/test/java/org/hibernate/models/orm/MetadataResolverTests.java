@@ -217,8 +217,6 @@ public class MetadataResolverTests {
 				.hasSize( 1 );
 		assertThat( result.bindingState().getDatabase() )
 				.isSameAs( result.metadata().getDatabase() );
-		assertThat( result.bootstrapSettings().jpaBootstrap() )
-				.isTrue();
 	}
 
 	@Test

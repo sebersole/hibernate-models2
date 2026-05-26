@@ -8,7 +8,6 @@ import org.hibernate.boot.model.IdentifierGeneratorDefinition;
 import org.hibernate.boot.model.NamedEntityGraphDefinition;
 import org.hibernate.boot.model.convert.spi.RegisteredConversion;
 import org.hibernate.boot.model.relational.Database;
-import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.boot.models.bind.internal.SecondaryTable;
 import org.hibernate.boot.models.bind.internal.binders.AssociationTargetBinding;
 import org.hibernate.boot.models.bind.internal.binders.AssociationIdentifierBinding;
@@ -46,13 +45,12 @@ import org.hibernate.usertype.UserType;
 
 import jakarta.persistence.AttributeConverter;
 
-/// Mutable state shared by binders while producing Hibernate's boot-time mapping
-/// model.
+/// Mutable working state shared by binders while producing Hibernate's boot-time
+/// mapping model.
 ///
-/// The role is similar to upstream {@code InFlightMetadataCollector}: it provides
-/// access to boot services and tracks the mapping objects, table references, and
-/// type binders created during the binding phase.  Improvements made here should
-/// generally be considered for the upstream collector when this work is integrated.
+/// This is intentionally distinct from [MetadataCollector].  `BindingState` owns
+/// phase-local state needed while binding is in progress, while `MetadataCollector`
+/// owns completed metadata contributions.
 ///
 /// @author Steve Ebersole
 public interface BindingState {
@@ -70,67 +68,64 @@ public interface BindingState {
 	/// Type configuration used while binding values and metadata registrations.
 	TypeConfiguration getTypeConfiguration();
 
-	/// Register an entity binding with the metadata target.
+	/// Register an entity binding with the metadata collector.
 	void addEntityBinding(PersistentClass entityBinding);
 
-	/// Register a mapped-superclass binding for eventual publication to the metadata target.
+	/// Register a mapped-superclass binding for eventual publication to the metadata collector.
 	void addMappedSuperclass(Class<?> mappedSuperclassClass, MappedSuperclass mappedSuperclass);
 
-	/// Register a collection binding for eventual publication to the metadata target.
+	/// Register a collection binding for eventual publication to the metadata collector.
 	void addCollectionBinding(Collection collection);
 
-	/// Register an entity-name import for eventual publication to the metadata target.
+	/// Register an entity-name import for eventual publication to the metadata collector.
 	void addImport(String importName, String entityName);
 
-	/// Register a unique property reference with the metadata target.
+	/// Register a unique property reference with the metadata collector.
 	void addUniquePropertyReference(String referencedEntityName, String referencedPropertyName);
 
-	/// Register an identifier generator for eventual publication to the metadata target.
+	/// Register an identifier generator for eventual publication to the metadata collector.
 	void addIdentifierGenerator(IdentifierGeneratorDefinition identifierGeneratorDefinition);
 
-	/// Register a named entity graph for eventual publication to the metadata target.
+	/// Register a named entity graph for eventual publication to the metadata collector.
 	void addNamedEntityGraph(NamedEntityGraphDefinition namedEntityGraphDefinition);
 
-	/// Register an auto-apply converter for eventual publication to the metadata target.
+	/// Register an auto-apply converter for eventual publication to the metadata collector.
 	void addAttributeConverter(Class<? extends AttributeConverter<?, ?>> converterClass);
 
-	/// Register an explicit converter for eventual publication to the metadata target.
+	/// Register an explicit converter for eventual publication to the metadata collector.
 	void addRegisteredConversion(RegisteredConversion registeredConversion);
 
-	/// Register a Java type descriptor for eventual publication to the metadata target.
+	/// Register a Java type descriptor for eventual publication to the metadata collector.
 	void addJavaTypeRegistration(Class<?> domainType, JavaType<?> descriptor);
 
-	/// Register a JDBC type descriptor for eventual publication to the metadata target.
+	/// Register a JDBC type descriptor for eventual publication to the metadata collector.
 	void addJdbcTypeRegistration(int code, JdbcType descriptor);
 
-	/// Register a custom user type for eventual publication to the metadata target.
+	/// Register a custom user type for eventual publication to the metadata collector.
 	void registerUserType(Class<?> domainClass, Class<? extends UserType<?>> userTypeClass);
 
-	/// Register a custom composite user type for eventual publication to the metadata target.
+	/// Register a custom composite user type for eventual publication to the metadata collector.
 	void registerCompositeUserType(Class<?> embeddableClass, Class<? extends CompositeUserType<?>> userTypeClass);
 
-	/// Register a collection type for eventual publication to the metadata target.
+	/// Register a collection type for eventual publication to the metadata collector.
 	void addCollectionTypeRegistration(
 			CollectionClassification classification,
 			Class<? extends UserCollectionType> userTypeClass,
 			java.util.Map<String,String> parameters);
 
-	/// Register an embeddable instantiator for eventual publication to the metadata target.
+	/// Register an embeddable instantiator for eventual publication to the metadata collector.
 	void registerEmbeddableInstantiator(
 			Class<?> embeddableClass,
 			Class<? extends EmbeddableInstantiator> instantiatorClass);
 
-	/// Resolve a filter definition already published to, or pending for, the metadata target.
+	/// Resolve a filter definition already published to, or pending for, the metadata collector.
 	FilterDefinition getFilterDefinition(String name);
 
-	/// Register a filter definition for eventual publication to the metadata target.
+	/// Register a filter definition for eventual publication to the metadata collector.
 	void addFilterDefinition(FilterDefinition filterDefinition);
 
 	/// Apply a categorized global filter definition to the mapping model.
 	void apply(FilterDefRegistration registration);
-
-	/// Publish deferred binding-state metadata writes to ORM's collector bridge.
-	void applyMetadataRegistrations(InFlightMetadataCollector metadataCollector);
 
 	/// Number of table references currently known to the binding state.
 	int getTableCount();

@@ -36,6 +36,7 @@ explanations of why.
 
 == Top-Level Flow
 
+.Top-level bootstrap pipeline
 [source]
 ----
 Entry point
@@ -51,6 +52,59 @@ Entry point
 Each arrow should be owned by a small resolver or builder with one gross target.
 The entry point chooses or creates the inputs, but should not perform all
 bootstrap work itself.
+
+=== Flow Notation
+
+Pipeline sketches in this document use a simple convention:
+
+.Resolver or builder slice
+[source]
+----
+InputA
+InputB
+InputC
+    -> Product1
+    -> Product2 (*)
+    -> Product3
+----
+
+The unindented names are inputs to the resolver or builder that owns the slice.
+They are peers, not an ordered pipeline.  The indented `->` lines are the
+ordered products or steps created within that slice.  The final arrow is the
+gross target returned by that resolver or builder.
+
+A `(*)` marker means the product is retained by, or aggregated into, the final
+gross product.  Unmarked intermediate products are phase-local, consumed while
+producing later steps, or represented only indirectly.
+
+For example:
+
+.MetadataResolver
+[source]
+----
+ResolvedBootstrapSettings
+BootstrapSourceContributions
+ServiceRegistry
+    -> AvailableResources
+    -> CategorizedDomainModel (*)
+    -> BindingState (*)
+    -> MetadataCollector
+    -> MetadataImplementor (*)
+    -> ResolvedMetadata
+----
+
+means that `MetadataResolver` receives already-resolved settings, normalized
+source contributions, and a service registry.  It then builds available source
+resources, categorizes the domain model, binds that model through
+`BindingState`, writes completed metadata contributions through
+`MetadataCollector`, finalizes ORM's current `MetadataImplementor`, and returns
+`ResolvedMetadata`.
+
+The notation does not mean every intermediate product belongs in the final
+result.  Some products are phase-local implementation details.  For instance,
+`ResolvedBootstrapSettings` is an input to metadata resolution, not part of
+`ResolvedMetadata`; `MetadataCollector` is used to produce the finalized
+metadata, but is not itself retained by `ResolvedMetadata`.
 
 == Entry Points
 
@@ -122,17 +176,19 @@ need enough interpretation to justify a dedicated product between
 
 == Metadata Target
 
-`MetadataResolver` owns the metadata target:
+`MetadataResolver` owns the metadata collector:
 
+.MetadataResolver
 [source]
 ----
 ResolvedBootstrapSettings
 BootstrapSourceContributions
 ServiceRegistry
     -> AvailableResources
-    -> CategorizedDomainModel
-    -> BindingState
-    -> MetadataImplementor
+    -> CategorizedDomainModel (*)
+    -> BindingState (*)
+    -> MetadataCollector
+    -> MetadataImplementor (*)
     -> ResolvedMetadata
 ----
 
@@ -142,13 +198,15 @@ important intermediate boot-model products:
 * finalized `MetadataImplementor`
 * `CategorizedDomainModel`
 * `BindingState`
-* `ResolvedBootstrapSettings`
 
-The binder should write primarily to a local binding state and use the ORM boot
-mapping model as the current compatibility target.  Where upstream contracts
-force direct writes to `PersistentClass`, `Collection`, `Database`, or
-`InFlightMetadataCollector`, those touchpoints should remain localized and
-documented.
+The binder should use `BindingState` for phase-local working state and
+`MetadataCollector` for completed metadata contributions.  The current
+`MetadataCollector` implementation is an adapter over ORM's
+`InFlightMetadataCollector`, but that collector should be treated as a
+compatibility implementation, not as a design peer of `BindingState`.  Where
+upstream contracts force direct table/database creation, query binding, second
+passes, or mapping constructors through ORM's legacy collector/context APIs,
+those touchpoints should remain localized and documented.
 
 Metadata finalization must include the type-contribution work normally performed
 by ORM bootstrap so the `TypeConfiguration`, JDBC type registry, and DDL type
@@ -158,6 +216,7 @@ registry are usable by runtime factory construction.
 
 `SessionFactoryBuilder` owns only the runtime factory target:
 
+.SessionFactoryBuilder
 [source]
 ----
 ResolvedSessionFactorySettings
@@ -238,7 +297,7 @@ The intended ownership boundaries are:
 * settings resolvers interpret settings
 * source contribution factories gather and normalize source inputs
 * categorization interprets source metadata into boot-model metadata
-* binding writes categorized metadata to the metadata target
+* binding writes categorized metadata to the metadata collector
 * metadata resolution finalizes ORM boot metadata
 * SessionFactory building constructs the runtime factory
 

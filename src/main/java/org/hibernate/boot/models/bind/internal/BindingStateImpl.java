@@ -5,8 +5,6 @@
 package org.hibernate.boot.models.bind.internal;
 
 import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -32,13 +30,13 @@ import org.hibernate.boot.models.bind.internal.binders.MappedSuperTypeBinder;
 import org.hibernate.boot.models.bind.internal.binders.PropertyMapKeyBinding;
 import org.hibernate.boot.models.bind.internal.binders.TableForeignKeyBinding;
 import org.hibernate.boot.models.bind.spi.BindingState;
+import org.hibernate.boot.models.bind.spi.MetadataCollector;
 import org.hibernate.boot.models.bind.spi.TableOwner;
 import org.hibernate.boot.models.bind.spi.TableReference;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.FilterDefRegistration;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.ManagedTypeMetadata;
-import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.FilterDefinition;
@@ -81,6 +79,7 @@ import jakarta.persistence.AttributeConverter;
 /// @author Steve Ebersole
 public class BindingStateImpl implements BindingState {
 	private final MetadataBuildingContext metadataBuildingContext;
+	private final MetadataCollector metadataCollector;
 
 	private final Database database;
 	private final JdbcServices jdbcServices;
@@ -103,23 +102,9 @@ public class BindingStateImpl implements BindingState {
 	private final Map<ClassDetails, IdentifiableTypeBinder> typeBindersBySuper = new HashMap<>();
 	private final Map<EntityTypeMetadata, IdentifierBinding> identifierBindings = new HashMap<>();
 
-	private final Map<Class<?>, MappedSuperclass> mappedSuperclasses = new LinkedHashMap<>();
-	private final List<Collection> collectionBindings = new java.util.ArrayList<>();
-	private final Map<String, String> imports = new LinkedHashMap<>();
-	private final List<IdentifierGeneratorDefinition> identifierGeneratorDefinitions = new java.util.ArrayList<>();
-	private final List<NamedEntityGraphDefinition> namedEntityGraphDefinitions = new java.util.ArrayList<>();
-	private final List<Class<? extends AttributeConverter<?, ?>>> attributeConverters = new java.util.ArrayList<>();
-	private final List<RegisteredConversion> registeredConversions = new java.util.ArrayList<>();
-	private final Map<Class<?>, JavaType<?>> javaTypeRegistrations = new LinkedHashMap<>();
-	private final Map<Integer, JdbcType> jdbcTypeRegistrations = new LinkedHashMap<>();
-	private final Map<Class<?>, Class<? extends UserType<?>>> userTypeRegistrations = new LinkedHashMap<>();
-	private final Map<Class<?>, Class<? extends CompositeUserType<?>>> compositeUserTypeRegistrations = new LinkedHashMap<>();
-	private final List<CollectionTypeRegistration> collectionTypeRegistrations = new java.util.ArrayList<>();
-	private final Map<Class<?>, Class<? extends EmbeddableInstantiator>> embeddableInstantiatorRegistrations = new LinkedHashMap<>();
-	private final Map<String, FilterDefinition> filterDefinitions = new LinkedHashMap<>();
-
-	public BindingStateImpl(MetadataBuildingContext metadataBuildingContext) {
+	public BindingStateImpl(MetadataBuildingContext metadataBuildingContext, MetadataCollector metadataCollector) {
 		this.metadataBuildingContext = metadataBuildingContext;
+		this.metadataCollector = metadataCollector;
 		this.database = metadataBuildingContext.getMetadataCollector().getDatabase();
 		this.jdbcServices = metadataBuildingContext.getBootstrapContext().getServiceRegistry().getService( JdbcServices.class );
 	}
@@ -146,68 +131,67 @@ public class BindingStateImpl implements BindingState {
 
 	@Override
 	public void addEntityBinding(PersistentClass entityBinding) {
-		metadataBuildingContext.getMetadataCollector().addEntityBinding( entityBinding );
+		metadataCollector.addEntityBinding( entityBinding );
 	}
 
 	@Override
 	public void addMappedSuperclass(Class<?> mappedSuperclassClass, MappedSuperclass mappedSuperclass) {
-		mappedSuperclasses.put( mappedSuperclassClass, mappedSuperclass );
+		metadataCollector.addMappedSuperclass( mappedSuperclassClass, mappedSuperclass );
 	}
 
 	@Override
 	public void addCollectionBinding(Collection collection) {
-		collectionBindings.add( collection );
+		metadataCollector.addCollectionBinding( collection );
 	}
 
 	@Override
 	public void addImport(String importName, String entityName) {
-		imports.put( importName, entityName );
+		metadataCollector.addImport( importName, entityName );
 	}
 
 	@Override
 	public void addUniquePropertyReference(String referencedEntityName, String referencedPropertyName) {
-		metadataBuildingContext.getMetadataCollector()
-				.addUniquePropertyReference( referencedEntityName, referencedPropertyName );
+		metadataCollector.addUniquePropertyReference( referencedEntityName, referencedPropertyName );
 	}
 
 	@Override
 	public void addIdentifierGenerator(IdentifierGeneratorDefinition identifierGeneratorDefinition) {
-		identifierGeneratorDefinitions.add( identifierGeneratorDefinition );
+		metadataCollector.addIdentifierGenerator( identifierGeneratorDefinition );
 	}
 
 	@Override
 	public void addNamedEntityGraph(NamedEntityGraphDefinition namedEntityGraphDefinition) {
-		namedEntityGraphDefinitions.add( namedEntityGraphDefinition );
+		metadataCollector.addNamedEntityGraph( namedEntityGraphDefinition );
 	}
 
 	@Override
 	public void addAttributeConverter(Class<? extends AttributeConverter<?, ?>> converterClass) {
-		attributeConverters.add( converterClass );
+		metadataCollector.addAttributeConverter( converterClass );
 	}
 
 	@Override
 	public void addRegisteredConversion(RegisteredConversion registeredConversion) {
-		registeredConversions.add( registeredConversion );
+		metadataCollector.addRegisteredConversion( registeredConversion );
 	}
 
 	@Override
 	public void addJavaTypeRegistration(Class<?> domainType, JavaType<?> descriptor) {
-		javaTypeRegistrations.put( domainType, descriptor );
+		metadataCollector.addJavaTypeRegistration( domainType, descriptor );
 	}
 
 	@Override
 	public void addJdbcTypeRegistration(int code, JdbcType descriptor) {
-		jdbcTypeRegistrations.put( code, descriptor );
+		metadataCollector.addJdbcTypeRegistration( code, descriptor );
 	}
 
 	@Override
 	public void registerUserType(Class<?> domainClass, Class<? extends UserType<?>> userTypeClass) {
-		userTypeRegistrations.put( domainClass, userTypeClass );
+		metadataCollector.registerUserType( domainClass, userTypeClass );
 	}
 
 	@Override
 	public void registerCompositeUserType(Class<?> embeddableClass, Class<? extends CompositeUserType<?>> userTypeClass) {
-		compositeUserTypeRegistrations.put( embeddableClass, userTypeClass );
+		metadataCollector.registerCompositeUserType( embeddableClass, userTypeClass );
 	}
 
 	@Override
@@ -215,54 +199,24 @@ public class BindingStateImpl implements BindingState {
 			CollectionClassification classification,
 			Class<? extends UserCollectionType> userTypeClass,
 			Map<String, String> parameters) {
-		collectionTypeRegistrations.add( new CollectionTypeRegistration( classification, userTypeClass, parameters ) );
+		metadataCollector.addCollectionTypeRegistration( classification, userTypeClass, parameters );
 	}
 
 	@Override
 	public void registerEmbeddableInstantiator(
 			Class<?> embeddableClass,
 			Class<? extends EmbeddableInstantiator> instantiatorClass) {
-		embeddableInstantiatorRegistrations.put( embeddableClass, instantiatorClass );
+		metadataCollector.registerEmbeddableInstantiator( embeddableClass, instantiatorClass );
 	}
 
 	@Override
 	public FilterDefinition getFilterDefinition(String name) {
-		final FilterDefinition pendingFilterDefinition = filterDefinitions.get( name );
-		if ( pendingFilterDefinition != null ) {
-			return pendingFilterDefinition;
-		}
-		return metadataBuildingContext.getMetadataCollector().getFilterDefinition( name );
+		return metadataCollector.getFilterDefinition( name );
 	}
 
 	@Override
 	public void addFilterDefinition(FilterDefinition filterDefinition) {
-		filterDefinitions.put( filterDefinition.getFilterName(), filterDefinition );
-	}
-
-	@Override
-	public void applyMetadataRegistrations(InFlightMetadataCollector metadataCollector) {
-		mappedSuperclasses.forEach( metadataCollector::addMappedSuperclass );
-		collectionBindings.forEach( metadataCollector::addCollectionBinding );
-		imports.forEach( metadataCollector::addImport );
-		identifierGeneratorDefinitions.forEach( metadataCollector::addIdentifierGenerator );
-		namedEntityGraphDefinitions.forEach( metadataCollector::addNamedEntityGraph );
-		attributeConverters.forEach( metadataCollector::addAttributeConverter );
-		registeredConversions.forEach( metadataCollector::addRegisteredConversion );
-		javaTypeRegistrations.forEach( metadataCollector::addJavaTypeRegistration );
-		jdbcTypeRegistrations.forEach( metadataCollector::addJdbcTypeRegistration );
-		userTypeRegistrations.forEach( metadataCollector::registerUserType );
-		compositeUserTypeRegistrations.forEach( metadataCollector::registerCompositeUserType );
-		collectionTypeRegistrations.forEach( (registration) ->
-				metadataCollector.addCollectionTypeRegistration(
-						registration.classification(),
-						new InFlightMetadataCollector.CollectionTypeRegistrationDescriptor(
-								registration.userTypeClass(),
-								registration.parameters()
-						)
-				)
-		);
-		embeddableInstantiatorRegistrations.forEach( metadataCollector::registerEmbeddableInstantiator );
-		filterDefinitions.values().forEach( metadataCollector::addFilterDefinition );
+		metadataCollector.addFilterDefinition( filterDefinition );
 	}
 
 	@Override
@@ -516,9 +470,4 @@ public class BindingStateImpl implements BindingState {
 		return result;
 	}
 
-	private record CollectionTypeRegistration(
-			CollectionClassification classification,
-			Class<? extends UserCollectionType> userTypeClass,
-			Map<String, String> parameters) {
-	}
 }

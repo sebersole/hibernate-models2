@@ -274,14 +274,16 @@ large contract simply because the current constructor happens to accept it.
 | `BootstrapContext`
 | `SessionFactoryImpl`, runtime metamodel creation, type/configuration access,
   integrator callbacks
-| Unknown.  Likely class-loading, bean access, `TypeConfiguration`, function
-  registry, SQL functions, auxiliary objects, converters, cache region
-  definitions, and JPA bootstrap flags.
+| Class-loading, bean access, `TypeConfiguration`, function registry, SQL
+  functions, auxiliary objects, converters, cache region definitions, JPA
+  bootstrap flags, and legacy integrator/runtime-model compatibility views.
 | Early boot and late factory construction are currently mixed.
 | Split into narrower early model-building context and late
   `SessionFactoryBuildContext`; keep an adapter only where ORM still requires
   `BootstrapContext`.
-| Needs audit first.  Treat as suspicious because it is overly encompassing.
+| Audit complete for the constructor path.  Treat as a compatibility view, not a
+  primary product; split observed uses into early boot-only, runtime model
+  creation, and integrator compatibility buckets.
 
 | `SessionFactoryOptions`
 | `SessionFactoryImpl`, services, runtime model/query infrastructure, session
@@ -291,10 +293,9 @@ large contract simply because the current constructor happens to accept it.
   settings map.
 | Factory construction and runtime behavior.
 | `ResolvedSessionFactorySettings` plus adapter to ORM's interface if needed.
-| Initial audit done.  This remains a runtime SPI view, so the likely first
-  implementation is a narrow resolver plus adapter.  Audit ORM's
-  `org.hibernate.boot.SessionFactoryBuilder` for the customization surface and
-  `SessionFactoryOptionsBuilder` for the delegated resolution behavior.
+| Audit complete for the constructor path.  This remains a runtime SPI view, so
+  the PoC keeps a narrow resolver plus adapter while upstream consumers are
+  split into smaller settings/context contracts.
 
 | `MetadataImplementor`
 | `SessionFactoryImpl`, runtime metamodel creation, cache priming, query/import
@@ -304,7 +305,7 @@ large contract simply because the current constructor happens to accept it.
 | Handoff from boot-model binding to factory construction.
 | Probably remains a bridge initially.  Longer term, consider whether a narrower
   immutable boot model can replace direct collector-style access.
-| Initial audit done.  It remains the key compatibility target, but it bundles
+| Audit complete for the constructor path.  It remains the key compatibility target, but it bundles
   several separable products: finalized mapping bindings, database/schema model,
   named-object definitions, cache-region inputs, runtime-model inputs, and
   lifecycle/finalization hooks.
@@ -312,11 +313,15 @@ large contract simply because the current constructor happens to accept it.
 | `InFlightMetadataCollector`
 | Binding internals, second passes, table/database registration, metadata
   validation/order, named objects, imports, type/converter registrations
-| Unknown split between mutable binding state and final metadata output.
+| Mutable collector responsibilities split across binder working state,
+  completed metadata writes, legacy finalization, and the current
+  `MetadataImplementor` bridge.
 | Boot-model binding.
 | Prefer `BindingState` as the mutable binding target if it can own the missing
   responsibilities.
-| Audit `BindingState` gaps one by one before accepting collector dependence.
+| Audit complete at the constructor boundary.  Follow-up is implementation:
+  continue routing completed metadata writes through `MetadataCollector` and
+  keep the `InFlightMetadataCollectorAdapter` as the compatibility layer.
 
 | `MetadataBuildingContext`
 | Binders, naming/default resolution, table/column creation, access to bootstrap
@@ -326,8 +331,10 @@ large contract simply because the current constructor happens to accept it.
 | Boot-model binding.
 | Narrow binding context composed from services, resolved settings/defaults, and
   `BindingState`.
-| Current PoC still uses ORM's root implementation; identify which methods the
-  boot-model binder actually calls.
+| Audit complete enough for the constructor path.  Current PoC still uses ORM's
+  root implementation where mapping constructors or collector APIs require it;
+  remaining work is to hide those touchpoints behind `BindingState`,
+  `BindingContext`, or local factory methods.
 
 | `MetadataBuildingOptions`
 | `MetadataBuildingContext`, metadata collector, naming strategies, column
@@ -337,7 +344,9 @@ large contract simply because the current constructor happens to accept it.
 | Boot-model binding.
 | Resolved mapping options, possibly derived from `ResolvedBootstrapSettings`
   plus service-registry settings.
-| Local copy may be useful if `MetadataBuilderImpl` remains too coupled.
+| Audit complete for the constructor path.  Continue moving observed mapping
+  behavior into `ResolvedMappingSettings`; keep ORM options as a compatibility
+  source where `MetadataBuilderImpl` remains coupled.
 
 | `SessionFactoryServiceRegistry`
 | Constructed by `SessionFactoryImpl`; consumed by runtime services and
@@ -347,7 +356,7 @@ large contract simply because the current constructor happens to accept it.
   services.
 | Factory construction.
 | Factory-build handle or late service-registry creation phase.
-| Initial audit done.  The current registry is created with a partially
+| Audit complete for the constructor path.  The current registry is created with a partially
   initialized `SessionFactoryImpl`, but the standard initiators mostly need a
   narrower context of factory identity, options, service access, and
   class-loading.
@@ -441,8 +450,8 @@ target should be to split it into:
 
 ==== Usage Buckets
 
-The specific `BootstrapContext` uses still need to be classified.  The intended
-classification is:
+The constructor-path audit classifies observed `BootstrapContext` uses into
+three buckets:
 
 Early boot only::
 Should not reach `SessionFactoryImpl`.
@@ -465,8 +474,9 @@ May require a legacy `BootstrapContext` adapter in the short term.
 the strongest compatibility reason to preserve a `BootstrapContext` view until a
 new extension SPI exists.
 
-This classification has not been completed yet.  Each observed use should be
-assigned to one of these buckets before introducing a replacement contract.
+Future upstream integration work should assign any newly discovered
+`BootstrapContext` use to one of these buckets before introducing or widening a
+replacement contract.
 
 ==== PoC Decision
 
@@ -1161,9 +1171,9 @@ normalizing the workaround as the target design.
 | Split between `BindingState` and `InFlightMetadataCollector`
 | The PoC needs typed binding-phase state, but ORM still expects its mutable
   collector as the metadata sink and mid-bind side-effect registry.
-| `BindingState` owns binder coordination and deferrable writes, then publishes
-  through `applyMetadataRegistrations`; immediate entity/property-reference
-  writes and table/query machinery still bridge to the collector.
+| `BindingState` owns binder coordination state; `MetadataCollector` owns completed
+  metadata writes; `InFlightMetadataCollectorAdapter` adapts those writes to the collector
+  while table/query machinery still bridges to legacy ORM APIs.
 | Introduce separate upstream contracts for binding phase state and metadata
   target writes.  Avoid growing `BindingState` into a clone of the collector.
 
@@ -1393,7 +1403,7 @@ Follow-up questions:
 
 Initial inspection target: PoC orchestration and binding code.
 
-`InFlightMetadataCollector` is currently the mutable ORM metadata target.  The
+`InFlightMetadataCollector` is currently the mutable ORM metadata collector.  The
 PoC uses it both directly and indirectly through `MetadataBuildingContext`.
 Unlike `MetadataBuildingContext`, most collector uses are not merely accidental
 service access; many are real writes to the ORM boot metadata model that is
@@ -1411,7 +1421,7 @@ Observed usage in the PoC:
 | `MetadataResolver`
 | creates `InFlightMetadataCollectorImpl`; after binding calls
   `orderColumns(false)` and `validate()` on the metadata result
-| metadata target factory plus finalization step
+| metadata collector factory plus finalization step
 | This is the clearest orchestration-level dependency.  Longer term this could
   become a `MetadataBuildTarget` / finalizer pair, but for now it is the bridge
   that proves the PoC can produce ORM metadata.
@@ -1459,7 +1469,7 @@ Observed usage in the PoC:
 
 | Collection binding
 | `addCollectionBinding`
-| collection metadata target
+| collection metadata collector
 | Done: collection binders now record collection bindings in `BindingState`;
   the collector remains the final storage target.
 
@@ -1494,8 +1504,9 @@ Preliminary conclusion:
 `InFlightMetadataCollector` is not just an overly broad service locator.  In the
 current bridge it is the mutable ORM metadata product.  The healthier split is:
 
-* keep the collector as the short-term final metadata target;
-* hide simple writes behind `BindingState` or a future boot metadata target
+* keep the collector as the short-term implementation behind a metadata collector
+  adapter;
+* keep completed metadata writes behind `MetadataCollector`
   (`addEntityBinding`, `addMappedSuperclass`, `addCollectionBinding`,
   `addImport`, filter definitions, global registrations);
 * isolate table/namespace creation separately if upstream ORM is changed;
@@ -1505,23 +1516,23 @@ current bridge it is the mutable ORM metadata product.  The healthier split is:
 
 This audit suggests that removing collector exposure locally is useful only when
 it improves binder shape without fighting ORM's mapping constructors.  The PoC
-now uses `BindingState#applyMetadataRegistrations` as the explicit bridge for
-simple metadata writes that can wait until the end of binding.  Entity bindings
-and unique property references remain immediate but are localized behind
-`BindingState` because later binding phases depend on the collector side effects.
-Table creation and query binding still need upstream work before a local rewrite
-is worthwhile.
+now uses `MetadataCollector` as the explicit metadata-product write boundary.  The
+current `InFlightMetadataCollectorAdapter` implementation writes through to ORM's
+collector immediately, which preserves mid-bind side effects while separating
+metadata output from `BindingState` working memory.  Table creation and query
+binding still need upstream work before a local rewrite is worthwhile.
 
 ==== InFlightMetadataCollector versus BindingState
 
 `BindingState` should not be viewed as a local clone of
-`InFlightMetadataCollector`.  The two contracts currently have different jobs:
+`InFlightMetadataCollector`.  The clean design separates three jobs:
 
-* `InFlightMetadataCollector` is ORM's mutable boot metadata product and the
-  bridge that can ultimately produce `MetadataImplementor`.
 * `BindingState` is the PoC's typed binding-phase state, used to coordinate
-  binders, remember local decisions, and defer simple collector writes until an
-  explicit bridge point.
+  binders and remember local decisions.
+* `MetadataCollector` is the structured write target for completed metadata
+  contributions.
+* `InFlightMetadataCollectorAdapter` is the current compatibility implementation behind
+  `MetadataCollector`, not a long-term peer of `BindingState`.
 
 The clean target is therefore not immediate collector removal.  The clean target
 is to make every collector touchpoint fall into one of a few explicit buckets.
@@ -1538,7 +1549,7 @@ is to make every collector touchpoint fall into one of a few explicit buckets.
 | ORM's `MetadataImpl` is still built from
   `InFlightMetadataCollectorImpl#buildMetadataInstance`, and the current
   runtime factory constructor still accepts `MetadataImplementor`.
-| Create a first-class metadata target/finalizer contract.  Until then, keep the
+| Create a first-class metadata collector/finalizer contract.  Until then, keep the
   collector as the compatibility sink.
 
 | Binder-local registries
@@ -1549,29 +1560,31 @@ is to make every collector touchpoint fall into one of a few explicit buckets.
 | Keep these as typed queues or registries.  This is the shape we would want
   upstream instead of broad second-pass callback lists where possible.
 
-| Simple metadata writes that can wait
-| `BindingState`, then final bridge
+| Completed metadata writes
+| `MetadataCollector`
 | Mapped superclasses, collections, imports, identifier generators, named entity
   graphs, converters, Java/JDBC/user/composite types, collection type
-  registrations, embeddable instantiators, and filter definitions can be
-  collected locally and applied through
-  `BindingState#applyMetadataRegistrations`.
-| Grow a typed boot metadata target so these writes do not require exposing the
-  full collector to binders.
+  registrations, embeddable instantiators, and filter definitions are metadata
+  product contributions, not binding working memory.
+| Done locally as a first slice: `MetadataCollector` exists and
+  `InFlightMetadataCollectorAdapter` adapts it to the collector.  The long-term collector can
+  replace the adapter implementation.
 
 | Immediate entity visibility
-| `BindingState` facade over immediate collector write
-| Entity binders register with `BindingState`, but `BindingStateImpl` still
-  writes entity bindings to the collector immediately.  Later binding logic and
-  ORM property-reference validation expect the entity map to be visible during
-  the same bind run.
+| `MetadataCollector` adapter over immediate collector write
+| Entity binders register through `BindingState`, but `BindingStateImpl`
+  delegates the completed entity binding to `MetadataCollector`.  The current
+  collector-backed target writes immediately because later binding logic and ORM
+  property-reference validation expect the entity map to be visible during the
+  same bind run.
 | Add an explicit entity-binding registry that can satisfy mid-bind lookups and
   publish to final metadata without relying on collector side effects.
 
 | Unique property references
-| `BindingState` facade over immediate collector side channel
-| `BindingState#addUniquePropertyReference` localizes the call, but the collector
-  side effect is still needed by ORM association/property-ref handling.
+| `MetadataCollector` adapter over immediate collector side channel
+| `BindingState#addUniquePropertyReference` delegates to `MetadataCollector`, and
+  the collector-backed target preserves the immediate side effect needed by ORM
+  association/property-ref handling.
 | Replace collector side channels with typed property-reference registrations
   consumed by the association binding phase.
 
@@ -1611,25 +1624,30 @@ Practical rule for the PoC:
 
 * if the state is needed to coordinate PoC binding phases, put it on
   `BindingState`;
-* if the write can wait until binding is complete, collect it on `BindingState`
-  and publish through `applyMetadataRegistrations`;
-* if ORM needs the side effect during the same bind run, hide it behind
-  `BindingState` but document the immediate collector bridge;
+* if the write contributes completed metadata, send it through `MetadataCollector`;
+* if ORM needs the side effect during the same bind run, let the current
+  `MetadataCollector` adapter write through immediately and document why;
 * if ORM owns object creation or second-pass/query machinery, avoid local
   rewrites unless we are ready to change the upstream API.
 
-The likely eventual shape is a pair of contracts:
+The likely eventual shape is a pair of first-class contracts plus a compatibility
+adapter:
 
 Binding phase state::
 Typed, phase-local state like today's `BindingState`.  It coordinates binders
 and exposes explicit services/options, but does not pretend to be
 `MetadataImplementor`.
 
-Metadata target::
-A narrow target for finalized ORM boot metadata writes.  Initially this is an
+Metadata collector::
+A narrow target for finalized ORM boot metadata contributions.  Initially this is an
 adapter over `InFlightMetadataCollector`; longer term it can replace the broad
 collector exposure with named operations for entity, collection, table, type,
 query, filter, fetch-profile, and cache metadata.
+
+Collector compatibility adapter::
+`InFlightMetadataCollectorAdapter` is the current adapter from `MetadataCollector` to
+`InFlightMetadataCollector`.  It exists to keep using ORM's metadata finalizer
+while the PoC proves the cleaner boundary.
 
 === MetadataBuildingContext
 
@@ -1686,7 +1704,7 @@ Observed usage in the PoC:
 | Frequent `getMetadataCollector()` calls to add named queries, result-set
   mappings, fetch profiles, filters, imports, named entity graphs, and other
   global metadata.
-| typed global-registration appliers on `BindingState` or a boot metadata target
+| typed global-registration appliers on `BindingState` or a boot metadata collector
 | This is one of the main places where `BindingState` could absorb collector
   side effects.
 
@@ -1748,8 +1766,9 @@ direction is:
 * retain a small ORM-compatible `MetadataBuildingContext` adapter only where
   mapping object constructors or collector APIs still require it.
 
-This audit has not been completed yet.  The next useful step is to list the
-remaining `BindingState#getMetadataBuildingContext()` callers and decide whether
+The constructor-path audit is complete enough to establish the direction.  The
+remaining work is implementation triage: as
+`BindingState#getMetadataBuildingContext()` callers are touched, decide whether
 each one is:
 
 * a real ORM mapping-constructor requirement;
@@ -1765,7 +1784,7 @@ Follow-up questions:
 * Can ORM mapping constructors be isolated behind local factory methods so the
   legacy context dependency is contained?
 * Can `CategorizationContext` be built directly from resolved settings,
-  `AvailableResources`, and metadata target services?
+  `AvailableResources`, and metadata collector services?
 
 === MetadataBuildingOptions
 
@@ -1774,7 +1793,7 @@ Initial inspection target: PoC orchestration and binding code.
 `MetadataBuildingOptions` is still created by ORM's `MetadataBuilderImpl` and
 threaded through `MetadataBuildingContext`.  In the PoC it acts mostly as a
 container for resolved mapping options and naming strategies, not as a mutable
-metadata target.
+metadata collector.
 
 Observed usage in the PoC:
 
@@ -2025,6 +2044,7 @@ mapping objects directly.
 
 The first implementation target should be deliberately narrow:
 
+.Initial prototype SessionFactory construction
 [source]
 ----
 AvailableResources
@@ -2045,7 +2065,7 @@ Success criteria:
 
 == Current PoC Slice
 
-The current metadata target resolver is:
+The current metadata collector resolver is:
 
 * link:../src/main/java/org/hibernate/boot/settings/BootstrapSettingsResolver.java[`BootstrapSettingsResolver`]
 * link:../src/main/java/org/hibernate/boot/orchestration/MetadataResolver.java[`MetadataResolver`]
@@ -2053,6 +2073,7 @@ The current metadata target resolver is:
 
 Settings resolution is a separate target:
 
+.BootstrapSettingsResolver
 [source]
 ----
 configuration values / JPA inputs
@@ -2060,23 +2081,36 @@ configuration values / JPA inputs
     -> ResolvedBootstrapSettings
 ----
 
-`MetadataResolver#resolve` owns only the metadata target phase order:
+`MetadataResolver#resolve` owns only the metadata collector phase order:
 
+.MetadataResolver
 [source]
 ----
 ResolvedBootstrapSettings + BootstrapSourceContributions + ServiceRegistry
     -> MetadataBuildingContext
     -> AvailableResources
-    -> DomainModelCategorizer
-    -> BindingCoordinator
+    -> CategorizedDomainModel (*)
+    -> BindingState (*)
+    -> MetadataCollector
     -> order columns
     -> validate
+    -> MetadataImplementor (*)
     -> ResolvedMetadata
 ----
 
+See
+link:session-factory-bootstrap-design.adoc#_flow_notation[`session-factory-bootstrap-design.adoc`]
+for the notation used by these pipeline sketches.  In short, the settings,
+source contributions, and service registry are peer inputs to the resolver; the
+arrowed lines are the ordered products/steps owned by that resolver.  A `(*)`
+marker means the product is retained by the final product.  Inputs and unmarked
+intermediate products do not automatically become part of the final product.
+
 `ResolvedMetadata` carries the finalized `MetadataImplementor`, the
-`CategorizedDomainModel`, the `BindingState` used as the local metadata-write
-bridge, and the `ResolvedBootstrapSettings`.
+`CategorizedDomainModel`, and the `BindingState` used as local binding-phase
+state.  It intentionally does not carry `ResolvedBootstrapSettings`; settings
+remain input to metadata resolution and to later settings resolvers, not part of
+the metadata result.
 
 Later slices should add one resolver per gross target rather than growing a
 single SessionFactory-wide orchestrator.

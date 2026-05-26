@@ -4,7 +4,10 @@
  */
 package org.hibernate.models.orm;
 
+import java.util.Map;
+
 import org.hibernate.boot.orchestration.SessionFactoryBuilder;
+import org.hibernate.boot.settings.BootstrapSettingsResolver;
 import org.hibernate.boot.settings.SessionFactorySettingsResolver;
 import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.jpa.HibernatePersistenceConfiguration;
@@ -29,13 +32,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class SessionFactoryBuilderTests {
 	@Test
 	void sessionFactoryBuildTargetIsDefined(ServiceRegistryScope registryScope) {
+		final var persistenceConfiguration = new HibernatePersistenceConfiguration( "test" )
+				.managedClass( SimpleEntity.class );
 		final var resolvedMetadata = TestBootModelProducer.resolveMetadata(
 				registryScope.getRegistry(),
-				new HibernatePersistenceConfiguration( "test" )
-						.managedClass( SimpleEntity.class )
+				persistenceConfiguration
 		);
+		final var bootstrapSettings = new BootstrapSettingsResolver()
+				.resolve( persistenceConfiguration, Map.of() );
 		final var sessionFactorySettings = new SessionFactorySettingsResolver()
-				.resolve( resolvedMetadata.bootstrapSettings(), registryScope.getRegistry() );
+				.resolve( bootstrapSettings, registryScope.getRegistry() );
 
 		try (var sessionFactory = new SessionFactoryBuilder().build(
 				sessionFactorySettings,
@@ -56,13 +62,16 @@ public class SessionFactoryBuilderTests {
 			@Setting(name = JdbcSettings.PASS, value = "")
 	})
 	void sessionFactorySupportsBasicPersistAndQuery(ServiceRegistryScope registryScope) {
+		final var persistenceConfiguration = new HibernatePersistenceConfiguration( "test" )
+				.managedClass( RuntimeSmokeEntity.class );
 		final var resolvedMetadata = TestBootModelProducer.resolveMetadata(
 				registryScope.getRegistry(),
-				new HibernatePersistenceConfiguration( "test" )
-						.managedClass( RuntimeSmokeEntity.class )
+				persistenceConfiguration
 		);
+		final var bootstrapSettings = new BootstrapSettingsResolver()
+				.resolve( persistenceConfiguration, Map.of() );
 		final var sessionFactorySettings = new SessionFactorySettingsResolver()
-				.resolve( resolvedMetadata.bootstrapSettings(), registryScope.getRegistry() );
+				.resolve( bootstrapSettings, registryScope.getRegistry() );
 
 		try (var sessionFactory = new SessionFactoryBuilder().build(
 				sessionFactorySettings,

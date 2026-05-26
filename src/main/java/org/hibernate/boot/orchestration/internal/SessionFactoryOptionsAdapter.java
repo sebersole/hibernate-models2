@@ -39,9 +39,17 @@ public final class SessionFactoryOptionsAdapter {
 	private record Handler(ResolvedSessionFactorySettings settings) implements InvocationHandler {
 		@Override
 		public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-			if ( method.isDefault() ) {
-				return InvocationHandler.invokeDefault( proxy, method, args );
-			}
+				switch ( method.getName() ) {
+					case "toString" -> {
+						return toString();
+					}
+					case "hashCode" -> {
+						return System.identityHashCode( proxy );
+					}
+					case "equals" -> {
+						return proxy == args[0];
+					}
+				}
 			return switch ( method.getName() ) {
 				case "getUuid" -> settings.uuid();
 				case "getServiceRegistry" -> settings.serviceRegistry();
@@ -121,14 +129,16 @@ public final class SessionFactoryOptionsAdapter {
 				case "getDefaultTenantIdentifierJavaType" -> settings.defaultTenantIdentifierJavaType();
 				case "getDefaultCatalog" -> settings.defaultCatalog();
 				case "getDefaultSchema" -> settings.defaultSchema();
-				case "toString" -> toString();
-				case "hashCode" -> System.identityHashCode( proxy );
-				case "equals" -> proxy == args[0];
-				default -> throw new UnsupportedOperationException(
-						"SessionFactoryOptions method not resolved by the minimal adapter: "
-								+ method.getName()
-				);
-			};
+					default -> {
+						if ( method.isDefault() ) {
+							yield InvocationHandler.invokeDefault( proxy, method, args );
+						}
+						throw new UnsupportedOperationException(
+								"SessionFactoryOptions method not resolved by the minimal adapter: "
+										+ method.getName()
+						);
+					}
+				};
 		}
 
 		@Override

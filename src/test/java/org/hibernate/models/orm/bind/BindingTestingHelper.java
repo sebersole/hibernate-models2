@@ -16,6 +16,7 @@ import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.models.bind.internal.BindingContextImpl;
 import org.hibernate.boot.models.bind.internal.BindingOptionsImpl;
 import org.hibernate.boot.models.bind.internal.BindingStateImpl;
+import org.hibernate.boot.models.bind.internal.InFlightMetadataCollectorAdapter;
 import org.hibernate.boot.models.bind.spi.BindingCoordinator;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.source.AvailableResources;
@@ -58,7 +59,10 @@ public class BindingTestingHelper {
 				availableResources,
 				metadataBuildingContext
 			);
-		final BindingStateImpl bindingState = new BindingStateImpl( metadataBuildingContext );
+		final BindingStateImpl bindingState = new BindingStateImpl(
+				metadataBuildingContext,
+				new InFlightMetadataCollectorAdapter( metadataCollector )
+		);
 		final BindingOptionsImpl bindingOptions = new BindingOptionsImpl( metadataBuildingContext );
 		final BindingContextImpl bindingContext = new BindingContextImpl(
 				categorizedDomainModel,
@@ -67,30 +71,29 @@ public class BindingTestingHelper {
 
 		BindingCoordinator.coordinateBinding(
 				categorizedDomainModel,
-					bindingState,
-					bindingOptions,
-					bindingContext
-			);
-			bindingState.applyMetadataRegistrations( metadataCollector );
-			final MetadataImplementor metadata = metadataCollector.buildMetadataInstance( metadataBuildingContext );
-			metadata.orderColumns( false );
-			metadata.validate();
+				bindingState,
+				bindingOptions,
+				bindingContext
+		);
+		final MetadataImplementor metadata = metadataCollector.buildMetadataInstance( metadataBuildingContext );
+		metadata.orderColumns( false );
+		metadata.validate();
 
-			check.checkDomainModel( new DomainModelCheckContext() {
-				@Override
-				public InFlightMetadataCollectorImpl getMetadataCollector() {
-					return metadataCollector;
-				}
+		check.checkDomainModel( new DomainModelCheckContext() {
+			@Override
+			public InFlightMetadataCollectorImpl getMetadataCollector() {
+				return metadataCollector;
+			}
 
-				@Override
-				public MetadataImplementor getMetadata() {
-					return metadata;
-				}
+			@Override
+			public MetadataImplementor getMetadata() {
+				return metadata;
+			}
 
-				@Override
-				public BindingStateImpl getBindingState() {
-					return bindingState;
-				}
+			@Override
+			public BindingStateImpl getBindingState() {
+				return bindingState;
+			}
 		} );
 	}
 

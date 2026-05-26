@@ -13,6 +13,7 @@ import org.hibernate.boot.internal.RootMappingDefaults;
 import org.hibernate.boot.models.bind.internal.BindingContextImpl;
 import org.hibernate.boot.models.bind.internal.BindingOptionsImpl;
 import org.hibernate.boot.models.bind.internal.BindingStateImpl;
+import org.hibernate.boot.models.bind.internal.InFlightMetadataCollectorAdapter;
 import org.hibernate.boot.models.bind.spi.BindingCoordinator;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
@@ -30,7 +31,7 @@ import jakarta.persistence.AttributeConverter;
 
 /// Resolves ORM boot metadata from source contributions and resolved settings.
 ///
-/// This class owns the phase order for the metadata target.  It turns resolved
+/// This class owns the phase order for the metadata collector.  It turns resolved
 /// bootstrap settings and source contributions into ORM's boot-time
 /// [MetadataImplementor] while preserving intermediate boot-model products in
 /// [ResolvedMetadata].
@@ -92,12 +93,11 @@ public class MetadataResolver {
 				bootstrapSettings,
 				metadataBuildingContext
 		);
-		final MetadataImplementor metadata = finalizeMetadata( metadataBuildingContext, bindingState );
+		final MetadataImplementor metadata = finalizeMetadata( metadataBuildingContext );
 		return new ResolvedMetadata(
 				metadata,
 				categorizedDomainModel,
-				bindingState,
-				bootstrapSettings
+				bindingState
 		);
 	}
 
@@ -128,7 +128,10 @@ public class MetadataResolver {
 			CategorizedDomainModel categorizedDomainModel,
 			ResolvedBootstrapSettings bootstrapSettings,
 			MetadataBuildingContext metadataBuildingContext) {
-		final BindingStateImpl bindingState = new BindingStateImpl( metadataBuildingContext );
+		final BindingStateImpl bindingState = new BindingStateImpl(
+				metadataBuildingContext,
+				new InFlightMetadataCollectorAdapter( metadataBuildingContext.getMetadataCollector() )
+		);
 		BindingCoordinator.coordinateBinding(
 				categorizedDomainModel,
 				bindingState,
@@ -141,10 +144,7 @@ public class MetadataResolver {
 		return bindingState;
 	}
 
-	private static MetadataImplementor finalizeMetadata(
-			MetadataBuildingContext metadataBuildingContext,
-			BindingStateImpl bindingState) {
-		bindingState.applyMetadataRegistrations( metadataBuildingContext.getMetadataCollector() );
+	private static MetadataImplementor finalizeMetadata(MetadataBuildingContext metadataBuildingContext) {
 //		final MetadataImplementor metadata = metadataBuildingContext.getMetadataCollector();
 //		metadata.orderColumns( false );
 //		metadata.validate();
