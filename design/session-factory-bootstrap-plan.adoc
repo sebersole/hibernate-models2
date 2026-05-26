@@ -2121,6 +2121,245 @@ and its intended return type is the runtime `SessionFactoryImplementor` itself.
 There is no separate build-result object unless the factory construction path
 proves it needs additional materialized products.
 
+== Concrete Forward Plan
+
+The constructor audit is complete enough to move from discovery to incremental
+prototype slices.  The next work should keep the current compatibility path
+running while externalizing one constructor responsibility at a time.
+
+This plan is not limited to local PoC adapters.  Because the target is upstream
+ORM integration, each slice should explicitly decide whether the better move is:
+
+* a local compatibility adapter to keep the PoC moving;
+* an upstream ORM signature/context change that directly supports the design;
+* both, with the adapter serving only as the migration bridge.
+
+Adapters should therefore be treated as pressure-point markers.  When an
+upstream change is small, clarifies ownership, and avoids preserving a broad
+legacy contract, prefer making that upstream change over layering another local
+bridge.
+
+=== 1. Remove Legacy hbm.xml Support Upstream
+
+Goal: simplify the upstream boot surface before carrying the PoC design deeper
+into ORM.
+
+Legacy `hbm.xml` support is a major source of bootstrap coupling.  It pushes ORM
+toward source-neutral XML preprocessing, broad mapping defaults, legacy mapping
+constructors, second-pass style coordination, and equivalence paths that are not
+part of the ORM 9 target.  Removing it should make several current dependencies
+disappear or become easier to narrow.
+
+Tasks:
+
+* remove `hbm.xml` as an accepted mapping source in upstream ORM 9 bootstrap;
+* keep JPA `orm.xml` support as the remaining XML mapping source;
+* remove or quarantine settings that exist only for `hbm.xml` compatibility,
+  such as explicit legacy HBM resource lists and HBM-specific XML assumptions;
+* revisit XML preprocessing and processing after the removal, because some
+  currently necessary abstractions may only exist to preserve HBM behavior;
+* document any temporary migration guardrails or failure messages needed for
+  users attempting to configure HBM mappings.
+
+Success criteria:
+
+* source discovery no longer needs an HBM source bucket;
+* `AvailableResources` XML handling clearly means JPA `orm.xml`;
+* categorization and binding no longer preserve behavior solely for HBM parity;
+* follow-up bootstrap slices can treat removed HBM dependencies as gone rather
+  than adapting around them.
+
+=== 2. Stabilize the Current Handoff
+
+Goal: make the current metadata-to-factory path intentional and well tested.
+
+Tasks:
+
+* keep `MetadataResolver` producing `ResolvedMetadata`;
+* keep `ResolvedMetadata` limited to the products it actually retains:
+  `MetadataImplementor`, `CategorizedDomainModel`, and `BindingState`;
+* keep `ResolvedBootstrapSettings` and `ResolvedSessionFactorySettings` as
+  separate inputs to later phases;
+* keep `MetadataCollector` as the explicit completed-metadata write target;
+* add smoke tests which prove the same `ResolvedMetadata` can support both
+  metadata inspection and `SessionFactoryBuilder`.
+
+Success criteria:
+
+* a simple model, a model with composite identifiers/values, and at least one
+  cache/named-query-oriented model can build metadata and bootstrap a usable
+  `SessionFactory`;
+* column ordering and metadata validation always run through
+  `MetadataResolver`;
+* tests do not reach through `ResolvedMetadata` to recover bootstrap settings.
+
+=== 3. Make SessionFactoryBuilder Own the Compatibility Adapter Boundary
+
+Goal: keep `SessionFactoryBuilder` returning `SessionFactoryImplementor`, while
+making the current adapter work explicit.
+
+.SessionFactoryBuilder
+[source]
+----
+ResolvedSessionFactorySettings
+ResolvedMetadata
+ServiceRegistry
+    -> SessionFactoryOptions adapter
+    -> existing BootstrapContext adapter/reuse
+    -> SessionFactoryImplementor
+----
+
+Tasks:
+
+* document every supported `SessionFactoryOptionsAdapter` method in the audit;
+* add named fields to `ResolvedSessionFactorySettings` only when the builder or
+  constructor path needs them;
+* keep unsupported adapter methods failing loudly;
+* for each unsupported method encountered, decide whether to add a named
+  resolved setting, keep a documented compatibility default, or change the
+  upstream consumer to request a narrower contract;
+* keep reusing ORM's current `BootstrapContext` from the metadata product until
+  a concrete replacement slice needs otherwise.
+
+Success criteria:
+
+* every newly supported option method maps to either
+  `ResolvedSessionFactorySettings`, `ResolvedBootstrapSettings`, or a documented
+  compatibility default;
+* no broad `SessionFactoryOptionsBuilder` dependency returns as the design
+  target;
+* the builder remains a small runtime factory target, not a second metadata
+  resolver.
+
+=== 4. Externalize Factory-Scoped Service Registry Creation
+
+Goal: identify whether `SessionFactoryServiceRegistry` can be built from a
+narrow factory-build context instead of a partially initialized
+`SessionFactoryImpl`.
+
+.Factory service registry slice
+[source]
+----
+ResolvedSessionFactorySettings
+ResolvedMetadata
+ServiceRegistry
+Factory build handle
+    -> SessionFactoryServiceRegistry
+----
+
+Tasks:
+
+* prototype a narrow factory-build handle with factory identity, parent service
+  access, class-loading access, resolved settings, and metadata access;
+* compare that handle to what `SessionFactoryServiceRegistryFactoryImpl` and its
+  initiators actually consume;
+* decide whether to adapt the existing service-registry implementation or change
+  ORM's service-registry factory signature to accept the narrow build handle;
+* keep any adapter local and temporary if the upstream signature change is not
+  part of the current slice.
+
+Success criteria:
+
+* the service-registry creation inputs are named and testable outside the
+  `SessionFactoryImpl` constructor;
+* any need for the partially initialized factory is either removed or documented
+  as a specific upstream pressure point.
+
+=== 5. Make Integrator Execution an Explicit Compatibility Phase
+
+Goal: keep legacy `Integrator` behavior working while making the callback shape
+visible.
+
+.Integrator compatibility slice
+[source]
+----
+ResolvedMetadata
+SessionFactoryServiceRegistry
+SessionFactoryImplementor / factory build handle
+BootstrapContext adapter
+    -> legacy Integrator callbacks
+----
+
+Tasks:
+
+* isolate creation/reuse of the `BootstrapContext` view passed to legacy
+  integrators;
+* document which built-in integrators use the context, options, service
+  registry, or metadata;
+* identify a narrower future integration callback shape;
+* decide whether built-in ORM integrators can move to the narrower shape before
+  the public `Integrator` SPI changes.
+
+Success criteria:
+
+* existing integrators still run;
+* the legacy `BootstrapContext` argument is clearly treated as adapter state;
+* built-in integrator needs are captured as candidates for a future SPI.
+
+=== 6. Name Runtime Model Creation as a Builder Subphase
+
+Goal: stop treating runtime model creation as incidental constructor work.
+
+.Runtime model creation slice
+[source]
+----
+ResolvedMetadata
+ResolvedSessionFactorySettings
+SessionFactoryServiceRegistry
+Factory build handle
+    -> RuntimeModelCreationContext
+    -> runtime mapping/model products
+----
+
+Tasks:
+
+* keep `RuntimeModelCreationContext` as the named phase boundary;
+* replace observed `getBootstrapContext()` use with explicit services/settings
+  where possible;
+* avoid exposing a partially initialized `SessionFactoryImplementor` to new code;
+* change upstream runtime-model consumers where reasonable so they request
+  explicit services/settings instead of `BootstrapContext`;
+* keep `MetadataImplementor` as the compatibility metadata input only until
+  persister construction can consume narrower metadata products upstream.
+
+Success criteria:
+
+* runtime model creation can be described as inputs plus products, not just as
+  constructor side effects;
+* new code asks for explicit services/settings instead of the broad
+  `BootstrapContext`;
+* any remaining need for `MetadataImplementor` is documented as a persister or
+  runtime-model dependency.
+
+=== 7. Revisit ResolvedMetadata Shape After Factory Construction Works
+
+Goal: replace transitional retained products with narrower products only after
+their consumers are known.
+
+Tasks:
+
+* keep `BindingState` on `ResolvedMetadata` while it is useful for proving the
+  handoff and auditing consumers;
+* when a later phase reads `BindingState`, decide whether that value should
+  become a named immutable `ResolvedMetadata` sub-product;
+* avoid making `ResolvedMetadata` a general bag of bootstrap state.
+
+Success criteria:
+
+* `ResolvedMetadata` remains a metadata result, not a settings or entry-point
+  carrier;
+* `BindingState` either proves its long-term value or is replaced by narrower
+  retained products.
+
+=== Suggested Immediate Next Slice
+
+Start with slice 1 in upstream ORM if practical: remove legacy `hbm.xml` support
+before preserving abstractions that only exist for it.  In parallel or
+immediately after that, tighten `SessionFactoryBuilder` around the compatibility
+adapter boundary.  That keeps the PoC booting a real `SessionFactory` while
+forcing each remaining constructor dependency to be named, adapted, documented,
+or replaced by a targeted upstream ORM change.
+
 == Open Questions
 
 * Should `ResolvedSessionFactorySettings` later produce an adapter implementing
@@ -2130,7 +2369,8 @@ proves it needs additional materialized products.
   `ResolvedSessionFactorySettings`?
 * Can `BootstrapContext` be narrowed before integration, or should the PoC simply
   reuse ORM's current implementation until the factory path works?
-* Should XML source interpretation remain in categorization internals, or should
-  a prepared-source phase emerge if more source interpretation steps appear?
+* Should JPA `orm.xml` source interpretation remain in categorization internals,
+  or should a prepared-source phase emerge if more source interpretation steps
+  appear?
 * Can service-registry creation be moved before `SessionFactoryImpl` without
   breaking services that expect a concrete factory reference?

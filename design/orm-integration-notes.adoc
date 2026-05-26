@@ -23,6 +23,26 @@ Prototype touchpoints:
 * link:../src/main/java/org/hibernate/boot/models/source/HibernatePersistenceConfigurationScanner.java[`HibernatePersistenceConfigurationScanner`] performs scanning without a standard registry dependency.
 * link:../src/main/java/org/hibernate/boot/models/source/AvailableResources.java[`AvailableResources`] applies the returned `ScanningResult` to managed class, package, and XML mapping buckets.
 
+== Remove legacy hbm.xml support
+
+ORM 9 integration should remove legacy `hbm.xml` as an accepted mapping source.
+This is an enabling cleanup for the boot-model work, not just a feature removal.
+Many of the broad contracts currently under pressure exist to preserve
+source-neutral behavior between annotations, JPA `orm.xml`, and legacy HBM XML.
+
+Removing HBM support should simplify:
+
+* source discovery and `AvailableResources` source buckets;
+* XML preprocessing and processing contracts;
+* mapping defaults that only exist for HBM compatibility;
+* legacy second-pass and mapping-constructor paths that are only needed to keep
+  HBM parity;
+* decisions about whether an abstraction is really needed for ORM 9 or is only
+  protecting a removed source format.
+
+After removal, XML handling in the boot-model pipeline should mean JPA `orm.xml`
+unless a more specific source kind is named.
+
 == Represent extra query imports explicitly in tests
 
 `MetadataSources#getExtraQueryImports()` is part of the historical native source

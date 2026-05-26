@@ -153,12 +153,17 @@ entry-point-specific discovery has run.
 
 * managed class details
 * package-info class details
-* XML mapping bindings
+* JPA `orm.xml` mapping bindings
 * extra query imports or equivalent source-level contributions
 
 Scanning belongs before or inside source-contribution creation, depending on the
 entry point.  Categorization should receive available source material, not an
 entry-point object.
+
+Legacy `hbm.xml` support should not be treated as part of the target ORM 9 boot
+model pipeline.  Removing it upstream is an enabling cleanup: it lets source
+discovery, XML preprocessing, mapping defaults, and metadata binding focus on
+the annotation/JPA XML model instead of preserving legacy mapping equivalence.
 
 == Domain Model Products
 
@@ -173,6 +178,9 @@ XML preprocessing and XML interpretation currently live on the categorization
 side.  A separate prepared-source phase can emerge later if XML or other sources
 need enough interpretation to justify a dedicated product between
 `AvailableResources` and `CategorizedDomainModel`.
+
+That XML path means JPA `orm.xml`.  Legacy `hbm.xml` should be removed upstream
+rather than carried forward as a permanent source kind in this design.
 
 == Metadata Target
 
@@ -308,15 +316,21 @@ have been normalized.
 
 For upstream integration, the likely path is incremental:
 
-* keep current ORM boot contracts where they are still the constructor boundary
+* keep current ORM boot contracts only where they are still useful as temporary
+  constructor boundaries
 * replace source discovery and categorization in isolated slices
 * bind to ORM boot metadata with localized compatibility bridges
 * move settings interpretation into named resolved settings products
 * narrow `BootstrapContext`, `MetadataBuildingContext`, and
   `SessionFactoryOptions` consumers as each use is audited
-* only then consider deeper constructor or service-registry changes
+* apply upstream ORM changes whenever a narrow contract is clearer than another
+  local compatibility adapter
+* use deeper constructor or service-registry changes as deliberate integration
+  slices, not as last-resort work
 
 The design should stay friendly to Hibernate integrations which currently depend
 on builder customization hooks.  Compatibility adapters are acceptable during
-the transition, but new long-term APIs should expose named products rather than
-one all-purpose bootstrap object.
+the transition, but they should not become artificial constraints on the design.
+When an upstream ORM change removes a broad dependency cleanly, prefer that
+change and document the migration pressure it addresses.  New long-term APIs
+should expose named products rather than one all-purpose bootstrap object.
