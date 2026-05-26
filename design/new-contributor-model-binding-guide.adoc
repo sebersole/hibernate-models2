@@ -349,6 +349,7 @@ The order is:
 
 | `AggregateComponents`
 | Finalize aggregate component columns after all nested component properties and columns exist.
+This includes aggregate embeddables such as `@Struct` and embeddables mapped with aggregate `@JdbcTypeCode` values.
 
 | `TableKeys`
 | Create dependent table keys for joined subclasses, secondary tables, and collection/association tables.
@@ -374,7 +375,7 @@ Examples:
 * association targets that need non-primary-key property resolution
 * association-valued identifiers
 * derived identifiers
-* aggregate components
+* aggregate components that replace flattened component columns with an aggregate column after member binding
 * table-key foreign keys
 * inverse to-one and inverse plural associations
 
