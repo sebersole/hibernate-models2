@@ -4,6 +4,8 @@
  */
 package org.hibernate.models.orm.bind.embeddable;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.mapping.AggregateColumn;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.Join;
@@ -28,6 +30,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.SecondaryTable;
 import jakarta.persistence.Table;
+import org.hibernate.type.SqlTypes;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.models.orm.bind.BindingTestingHelper.checkDomainModel;
@@ -341,6 +344,28 @@ public class EmbeddableBindingTests {
 		);
 	}
 
+	@Test
+	@ServiceRegistry
+	void testAggregateEmbedded(ServiceRegistryScope scope) {
+		checkDomainModel(
+				(context) -> {
+					final PersistentClass entityBinding = context.getMetadataCollector()
+							.getEntityBinding( AggregateEmbeddedEntity.class.getName() );
+					final Component component = (Component) entityBinding.getProperty( "details" ).getValue();
+
+					assertThat( component.getAggregateColumn() ).isNotNull();
+					assertThat( component.getAggregateColumn() ).isInstanceOf( AggregateColumn.class );
+					assertThat( component.getAggregateColumn().getName() ).isEqualTo( "details" );
+					assertThat( component.getAggregateColumn().getSqlTypeCode() ).isEqualTo( SqlTypes.JSON );
+					assertThat( entityBinding.getTable().getColumns() )
+							.extracting( org.hibernate.mapping.Column::getName )
+							.contains( "details" );
+				},
+				scope.getRegistry(),
+				AggregateEmbeddedEntity.class
+		);
+	}
+
 	@Entity(name="ExplicitEmbeddedEntity")
 	@Table(name="explicit_embedded")
 	public static class ExplicitEmbeddedEntity {
@@ -488,6 +513,17 @@ public class EmbeddableBindingTests {
 		private AddressWithCompositeAssociationLocation address;
 	}
 
+	@Entity(name="AggregateEmbeddedEntity")
+	@Table(name="aggregate_embedded")
+	public static class AggregateEmbeddedEntity {
+		@Id
+		private Integer id;
+		@Embedded
+		@JdbcTypeCode(SqlTypes.JSON)
+		@Column(name = "details", columnDefinition = "json")
+		private AggregateDetails details;
+	}
+
 	@Entity(name="Country")
 	@Table(name="countries")
 	public static class Country {
@@ -574,6 +610,12 @@ public class EmbeddableBindingTests {
 	public static class CompositeCountryPk {
 		private String code;
 		private String region;
+	}
+
+	@Embeddable
+	public static class AggregateDetails {
+		private String name;
+		private String notes;
 	}
 
 	public static class CityConverter implements AttributeConverter<String, String> {

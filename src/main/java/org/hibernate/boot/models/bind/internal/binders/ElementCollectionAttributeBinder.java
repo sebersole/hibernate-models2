@@ -198,6 +198,16 @@ class ElementCollectionAttributeBinder {
 				true,
 				true
 		);
+		AggregateComponentBinder.processAggregate(
+				ownerBinding,
+				component,
+				source.componentType(),
+				collectionSource.member(),
+				collection.getRole(),
+				table,
+				bindingState,
+				bindingOptions
+		);
 		return component;
 	}
 

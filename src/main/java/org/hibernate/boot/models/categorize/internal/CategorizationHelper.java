@@ -178,7 +178,8 @@ public class CategorizationHelper {
 					|| backingMember.hasDirectAnnotationUsage( Type.class )
 					|| backingMember.hasDirectAnnotationUsage( TenantId.class )
 					|| backingMember.hasDirectAnnotationUsage( JavaType.class )
-					|| backingMember.hasDirectAnnotationUsage( JdbcTypeCode.class )
+					|| ( backingMember.hasDirectAnnotationUsage( JdbcTypeCode.class )
+							&& !natures.contains( AttributeNature.EMBEDDED ) )
 					|| backingMember.hasDirectAnnotationUsage( JdbcType.class ) ) {
 				natures.add( AttributeNature.BASIC );
 			}

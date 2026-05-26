@@ -347,6 +347,9 @@ The order is:
 | `DerivedIdentifiers`
 | Resolve `@MapsId` associations after owner identifiers and association values exist.
 
+| `AggregateComponents`
+| Finalize aggregate component columns after all nested component properties and columns exist.
+
 | `TableKeys`
 | Create dependent table keys for joined subclasses, secondary tables, and collection/association tables.
 
@@ -371,6 +374,7 @@ Examples:
 * association targets that need non-primary-key property resolution
 * association-valued identifiers
 * derived identifiers
+* aggregate components
 * table-key foreign keys
 * inverse to-one and inverse plural associations
 
@@ -516,4 +520,3 @@ For tests, look under:
 * link:../src/test/java/org/hibernate/models/orm/process[`src/test/java/org/hibernate/models/orm/process`]
 * link:../src/test/java/org/hibernate/models/orm/resources[`src/test/java/org/hibernate/models/orm/resources`]
 * link:../src/test/java/org/hibernate/models/orm/bind[`src/test/java/org/hibernate/models/orm/bind`]
-

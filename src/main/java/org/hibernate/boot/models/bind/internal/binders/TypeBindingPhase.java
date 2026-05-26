@@ -30,11 +30,13 @@ package org.hibernate.boot.models.bind.internal.binders;
 /// 9. [AssociationTargets] resolves non-primary-key association targets.
 /// 10. [DerivedIdentifiers] resolves derived identifier associations such as
 ///     `@MapsId`.
-/// 11. [TableKeys] creates dependent table keys for joined-subclass,
+/// 11. [AggregateComponents] finalizes aggregate component columns after all
+///     nested component properties are known.
+/// 12. [TableKeys] creates dependent table keys for joined-subclass,
 ///     secondary-table, and collection/association-table structures.
-/// 12. [InverseAssociations] copies owning-side key/value state for `mappedBy`
+/// 13. [InverseAssociations] copies owning-side key/value state for `mappedBy`
 ///     associations.
-/// 13. [ForeignKeys] creates and customizes physical foreign-key constraints.
+/// 14. [ForeignKeys] creates and customizes physical foreign-key constraints.
 ///
 /// Later phases should consume typed state produced by earlier phases rather than
 /// searching the partially-built mapping model opportunistically.  When a new
@@ -120,5 +122,11 @@ public interface TypeBindingPhase {
 	/// owner identifiers and to-one members have both been created.
 	interface DerivedIdentifiers {
 		void bindDerivedIdentifiers();
+	}
+
+	/// Finalize aggregate component columns after their nested properties have
+	/// been bound.
+	interface AggregateComponents {
+		void bindAggregateComponents();
 	}
 }

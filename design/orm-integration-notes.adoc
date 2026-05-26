@@ -184,6 +184,21 @@ Prototype touchpoints:
 The collector call is still a side channel, but it is now isolated in one prototype touchpoint.
 When integrating upstream, consider whether this should be represented directly as association target metadata rather than as separate collector state.
 
+== Aggregate component finalization
+
+`AggregateComponentSecondPass` is represented in the prototype as typed pending state plus a dedicated aggregate-component phase.
+
+Prototype touchpoints:
+
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/AggregateComponentBinding.java[`AggregateComponentBinding`] records the component, owning table, owner binding, component class, and property path.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/AggregateComponentBinder.java[`AggregateComponentBinder`] detects aggregate component annotations and records the pending binding.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/AggregateComponentFinalizer.java[`AggregateComponentFinalizer`] currently leans heavily on the upstream `AggregateComponentSecondPass` algorithm.
+* link:../src/main/java/org/hibernate/boot/models/bind/internal/binders/TypeBindingPhase.java[`TypeBindingPhase.AggregateComponents`] places finalization after member binding and before table-key / foreign-key work.
+
+The finalizer is intentionally transitional.
+When this work moves upstream, the goal is not to preserve `AggregateComponentSecondPass` as a callback.
+Instead, fold its logic into the aggregate-component finalization phase and express its inputs directly as typed binding state.
+
 == Derived identifiers
 
 `@MapsId` needs dedicated typed state and phase ordering.

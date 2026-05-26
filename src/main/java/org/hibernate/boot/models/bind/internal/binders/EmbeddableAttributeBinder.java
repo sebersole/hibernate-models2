@@ -91,6 +91,16 @@ class EmbeddableAttributeBinder {
 				true,
 				true
 		);
+		AggregateComponentBinder.processAggregate(
+				ownerBinding,
+				component,
+				componentSource.componentType(),
+				member,
+				attributeMetadata.getName(),
+				componentTable,
+				bindingState,
+				bindingOptions
+		);
 
 		property.setOptional( true );
 		return component;

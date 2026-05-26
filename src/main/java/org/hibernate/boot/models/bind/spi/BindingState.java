@@ -6,6 +6,7 @@ package org.hibernate.boot.models.bind.spi;
 
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.models.bind.internal.SecondaryTable;
+import org.hibernate.boot.models.bind.internal.binders.AggregateComponentBinding;
 import org.hibernate.boot.models.bind.internal.binders.AssociationTargetBinding;
 import org.hibernate.boot.models.bind.internal.binders.AssociationIdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.AssociationTableBinding;
@@ -108,6 +109,12 @@ public interface BindingState {
 
 	/// Visit derived identifier associations waiting for late binding.
 	void forEachDerivedIdentifierBinding(java.util.function.Consumer<DerivedIdentifierBinding> consumer);
+
+	/// Register an aggregate component to finalize after component members are bound.
+	void addAggregateComponentBinding(AggregateComponentBinding aggregateComponentBinding);
+
+	/// Visit aggregate components waiting for dialect-specific finalization.
+	void forEachAggregateComponentBinding(java.util.function.Consumer<AggregateComponentBinding> consumer);
 
 	/// Register an inverse plural association to resolve after owning collection keys exist.
 	void addInversePluralAssociationBinding(InversePluralAssociationBinding inversePluralAssociationBinding);

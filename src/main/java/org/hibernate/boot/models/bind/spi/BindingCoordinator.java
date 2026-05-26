@@ -139,6 +139,7 @@ public class BindingCoordinator {
 		runPhase( binders, TypeBindingPhase.CollectionIndexes.class, TypeBindingPhase.CollectionIndexes::bindCollectionIndexes );
 		runPhase( binders, TypeBindingPhase.AssociationTargets.class, TypeBindingPhase.AssociationTargets::bindAssociationTargets );
 		runPhase( binders, TypeBindingPhase.DerivedIdentifiers.class, TypeBindingPhase.DerivedIdentifiers::bindDerivedIdentifiers );
+		runPhase( binders, TypeBindingPhase.AggregateComponents.class, TypeBindingPhase.AggregateComponents::bindAggregateComponents );
 		runPhase( binders, TypeBindingPhase.TableKeys.class, TypeBindingPhase.TableKeys::bindTableKeys );
 		runPhase( binders, TypeBindingPhase.InverseAssociations.class, TypeBindingPhase.InverseAssociations::bindInverseAssociations );
 		runPhase( binders, TypeBindingPhase.ForeignKeys.class, TypeBindingPhase.ForeignKeys::bindForeignKeys );

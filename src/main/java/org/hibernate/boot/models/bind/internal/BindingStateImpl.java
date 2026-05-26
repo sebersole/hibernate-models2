@@ -11,6 +11,7 @@ import java.util.function.BiConsumer;
 
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.relational.Database;
+import org.hibernate.boot.models.bind.internal.binders.AggregateComponentBinding;
 import org.hibernate.boot.models.bind.internal.binders.AssociationTableBinding;
 import org.hibernate.boot.models.bind.internal.binders.AssociationIdentifierBinding;
 import org.hibernate.boot.models.bind.internal.binders.AssociationTargetBinding;
@@ -76,6 +77,7 @@ public class BindingStateImpl implements BindingState {
 	private final java.util.List<AssociationIdentifierBinding> associationIdentifierBindings = new java.util.ArrayList<>();
 	private final java.util.List<AssociationTargetBinding> associationTargetBindings = new java.util.ArrayList<>();
 	private final java.util.List<DerivedIdentifierBinding> derivedIdentifierBindings = new java.util.ArrayList<>();
+	private final java.util.List<AggregateComponentBinding> aggregateComponentBindings = new java.util.ArrayList<>();
 	private final java.util.List<InversePluralAssociationBinding> inversePluralAssociationBindings = new java.util.ArrayList<>();
 	private final java.util.List<InverseToOneAssociationBinding> inverseToOneAssociationBindings = new java.util.ArrayList<>();
 	private final java.util.List<ForeignKeyBinding> foreignKeyBindings = new java.util.ArrayList<>();
@@ -253,6 +255,16 @@ public class BindingStateImpl implements BindingState {
 	@Override
 	public void forEachDerivedIdentifierBinding(java.util.function.Consumer<DerivedIdentifierBinding> consumer) {
 		derivedIdentifierBindings.forEach( consumer );
+	}
+
+	@Override
+	public void addAggregateComponentBinding(AggregateComponentBinding aggregateComponentBinding) {
+		aggregateComponentBindings.add( aggregateComponentBinding );
+	}
+
+	@Override
+	public void forEachAggregateComponentBinding(java.util.function.Consumer<AggregateComponentBinding> consumer) {
+		aggregateComponentBindings.forEach( consumer );
 	}
 
 	@Override

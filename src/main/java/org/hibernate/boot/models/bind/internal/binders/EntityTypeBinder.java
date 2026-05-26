@@ -127,6 +127,7 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 				TypeBindingPhase.CollectionIndexes,
 				TypeBindingPhase.AssociationTargets,
 				TypeBindingPhase.DerivedIdentifiers,
+				TypeBindingPhase.AggregateComponents,
 				TypeBindingPhase.TableKeys,
 				TypeBindingPhase.InverseAssociations,
 				TypeBindingPhase.ForeignKeys,
@@ -288,6 +289,11 @@ public class EntityTypeBinder extends IdentifiableTypeBinder
 	/// Resolve derived identifier associations after identifier and member values exist.
 	public void bindDerivedIdentifiers() {
 		new DerivedIdentifierBinder( this ).bindDerivedIdentifiers();
+	}
+
+	/// Finalize aggregate component columns after all component members exist.
+	public void bindAggregateComponents() {
+		new AggregateComponentFinalizer( this ).finalizeAggregateComponents();
 	}
 
 	/// Bind table keys that depend on a completed root identifier shape.

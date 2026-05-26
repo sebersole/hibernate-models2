@@ -182,8 +182,8 @@ class ComponentBinder {
 
 				final Property property = createProperty( attributeName, nestedComponent );
 				component.addProperty( property );
-					final ClassDetails nestedComponentType = member.getType().determineRawClass();
-					columns.addAll( bindProperties(
+				final ClassDetails nestedComponentType = member.getType().determineRawClass();
+				columns.addAll( bindProperties(
 							ownerType,
 							ownerBinding,
 							nestedComponentType,
@@ -205,6 +205,16 @@ class ComponentBinder {
 						nullableByDefault,
 						updatable
 				) );
+				AggregateComponentBinder.processAggregate(
+						ownerBinding,
+						nestedComponent,
+						nestedComponentType,
+						member,
+						memberPath,
+						table,
+						state,
+						options
+				);
 				continue;
 			}
 
