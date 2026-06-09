@@ -9,8 +9,11 @@ import java.util.Map;
 import org.hibernate.boot.model.IdentifierGeneratorDefinition;
 import org.hibernate.boot.model.NamedEntityGraphDefinition;
 import org.hibernate.boot.model.convert.spi.RegisteredConversion;
+import org.hibernate.boot.model.relational.AuxiliaryDatabaseObject;
+import org.hibernate.boot.query.NamedResultSetMappingDescriptor;
 import org.hibernate.engine.spi.FilterDefinition;
 import org.hibernate.mapping.Collection;
+import org.hibernate.mapping.FetchProfile;
 import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.metamodel.CollectionClassification;
@@ -56,6 +59,18 @@ public interface MetadataCollector {
 
 	/// Register a named entity graph.
 	void addNamedEntityGraph(NamedEntityGraphDefinition namedEntityGraphDefinition);
+
+	/// Register a named SQL result set mapping.
+	void addResultSetMapping(NamedResultSetMappingDescriptor resultSetMappingDescriptor);
+
+	/// Register a fetch profile.
+	void addFetchProfile(FetchProfile fetchProfile);
+
+	/// Resolve a fetch profile already published to the metadata collector.
+	FetchProfile getFetchProfile(String name);
+
+	/// Register an auxiliary database object.
+	void addAuxiliaryDatabaseObject(AuxiliaryDatabaseObject auxiliaryDatabaseObject);
 
 	/// Register an auto-apply converter.
 	void addAttributeConverter(Class<? extends AttributeConverter<?, ?>> converterClass);

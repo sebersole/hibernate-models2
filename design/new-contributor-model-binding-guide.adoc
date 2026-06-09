@@ -144,9 +144,11 @@ Touchpoint:
 The record has convenience factories for the source forms used by the PoC:
 
 * `AvailableResources.from(PersistenceUnitDescriptor, AvailableResourcesContext)`
+* `AvailableResources.from(PersistenceUnitDescriptor, AvailableResourcesContext, ResolvedBootstrapSettings)`
 * `AvailableResources.from(PersistenceConfiguration, AvailableResourcesContext)`
 * `AvailableResources.from(HibernatePersistenceConfiguration, AvailableResourcesContext)`
 * `AvailableResources.from(HibernatePersistenceConfiguration, AvailableResourcesContext, ResolvedBootstrapSettings)`
+* `AvailableResources.from(BootstrapSourceContributions, AvailableResourcesContext, ResolvedBootstrapSettings)`
 * `AvailableResources.from(MetadataSources, AvailableResourcesContext)`
 
 link:../src/main/java/org/hibernate/boot/models/source/AvailableResourcesContext.java[`AvailableResourcesContext`]

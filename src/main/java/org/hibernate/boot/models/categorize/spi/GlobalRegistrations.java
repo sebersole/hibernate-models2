@@ -48,6 +48,12 @@ public interface GlobalRegistrations {
 	/// Filter definitions keyed by filter name.
 	Map<String, FilterDefRegistration> getFilterDefRegistrations();
 
+	/// Fetch profile definitions.
+	List<FetchProfileRegistration> getFetchProfileRegistrations();
+
+	/// HQL import aliases keyed by alias.
+	Map<String, String> getImportedRenames();
+
 	/// Sequence generator definitions keyed by generator name.
 	Map<String, SequenceGeneratorRegistration> getSequenceGeneratorRegistrations();
 
@@ -56,6 +62,9 @@ public interface GlobalRegistrations {
 
 	/// Generic generator definitions keyed by generator name.
 	Map<String, GenericGeneratorRegistration> getGenericGeneratorRegistrations();
+
+	/// SQL result set mappings keyed by mapping name.
+	Map<String, SqlResultSetMappingRegistration> getSqlResultSetMappingRegistrations();
 
 	/// Named HQL/query definitions keyed by query name.
 	Map<String, NamedQueryRegistration> getNamedQueryRegistrations();
@@ -68,4 +77,7 @@ public interface GlobalRegistrations {
 
 	/// Named entity graph definitions keyed by graph name.
 	Map<String, NamedEntityGraphDefinition> getNamedEntityGraphRegistrations();
+
+	/// Auxiliary database object registrations.
+	List<DatabaseObjectRegistration> getDatabaseObjectRegistrations();
 }

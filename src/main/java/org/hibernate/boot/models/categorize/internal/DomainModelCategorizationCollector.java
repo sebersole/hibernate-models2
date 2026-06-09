@@ -15,6 +15,7 @@ import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitDefaultsImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbPersistenceUnitMetadataImpl;
 import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
+import org.hibernate.boot.models.xml.spi.XmlDocumentContext;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.ModelsContext;
 
@@ -66,15 +67,18 @@ public class DomainModelCategorizationCollector {
 	}
 
 
-	public void apply(JaxbEntityMappingsImpl jaxbRoot) {
+	public void apply(JaxbEntityMappingsImpl jaxbRoot, XmlDocumentContext xmlDocumentContext) {
 		getGlobalRegistrations().collectJavaTypeRegistrations( jaxbRoot.getJavaTypeRegistrations() );
 		getGlobalRegistrations().collectJdbcTypeRegistrations( jaxbRoot.getJdbcTypeRegistrations() );
 		getGlobalRegistrations().collectConverterRegistrations( jaxbRoot.getConverterRegistrations() );
+		getGlobalRegistrations().collectConverters( jaxbRoot.getConverters() );
 		getGlobalRegistrations().collectUserTypeRegistrations( jaxbRoot.getUserTypeRegistrations() );
 		getGlobalRegistrations().collectCompositeUserTypeRegistrations( jaxbRoot.getCompositeUserTypeRegistrations() );
 		getGlobalRegistrations().collectCollectionTypeRegistrations( jaxbRoot.getCollectionUserTypeRegistrations() );
 		getGlobalRegistrations().collectEmbeddableInstantiatorRegistrations( jaxbRoot.getEmbeddableInstantiatorRegistrations() );
 		getGlobalRegistrations().collectFilterDefinitions( jaxbRoot.getFilterDefinitions() );
+		getGlobalRegistrations().collectFetchProfiles( jaxbRoot.getFetchProfiles() );
+		getGlobalRegistrations().collectImportRenames( jaxbRoot.getHqlImports() );
 
 		final JaxbPersistenceUnitMetadataImpl persistenceUnitMetadata = jaxbRoot.getPersistenceUnitMetadata();
 		if ( persistenceUnitMetadata != null ) {
@@ -87,7 +91,9 @@ public class DomainModelCategorizationCollector {
 
 		getGlobalRegistrations().collectIdGenerators( jaxbRoot );
 
-		// todo : named queries
+		getGlobalRegistrations().collectQueryReferences( jaxbRoot, xmlDocumentContext );
+		getGlobalRegistrations().collectDataBaseObject( jaxbRoot.getDatabaseObjects() );
+
 		// todo : named graphs
 	}
 
@@ -102,6 +108,7 @@ public class DomainModelCategorizationCollector {
 		getGlobalRegistrations().collectFilterDefinitions( classDetails );
 		getGlobalRegistrations().collectNamedQueryRegistrations( classDetails );
 		getGlobalRegistrations().collectNamedEntityGraphRegistrations( classDetails );
+		getGlobalRegistrations().collectImportRename( classDetails );
 
 		if ( areIdGeneratorsGlobal ) {
 			getGlobalRegistrations().collectIdGenerators( classDetails );

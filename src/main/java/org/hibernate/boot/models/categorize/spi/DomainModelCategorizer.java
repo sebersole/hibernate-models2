@@ -100,7 +100,7 @@ public class DomainModelCategorizer {
 		final org.hibernate.boot.models.xml.spi.XmlProcessingResult xmlProcessingResult = XmlProcessor.processXml(
 				xmlPreProcessingResult,
 				persistenceUnitMetadata,
-				(jaxbRoot, xmlDocumentContext) -> modelCategorizationCollector.apply( jaxbRoot ),
+				modelCategorizationCollector::apply,
 				modelsContext,
 				bootstrapContext,
 				mappingDefaults

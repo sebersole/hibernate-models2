@@ -7,6 +7,7 @@ package org.hibernate.boot.models.bind.spi;
 import org.hibernate.boot.model.IdentifierGeneratorDefinition;
 import org.hibernate.boot.model.NamedEntityGraphDefinition;
 import org.hibernate.boot.model.convert.spi.RegisteredConversion;
+import org.hibernate.boot.model.relational.AuxiliaryDatabaseObject;
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.models.bind.internal.SecondaryTable;
 import org.hibernate.boot.models.bind.internal.binders.AssociationTargetBinding;
@@ -32,9 +33,11 @@ import org.hibernate.metamodel.CollectionClassification;
 import org.hibernate.metamodel.spi.EmbeddableInstantiator;
 import org.hibernate.internal.util.KeyedConsumer;
 import org.hibernate.mapping.Collection;
+import org.hibernate.mapping.FetchProfile;
 import org.hibernate.mapping.Join;
 import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
+import org.hibernate.boot.query.NamedResultSetMappingDescriptor;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
@@ -88,6 +91,18 @@ public interface BindingState {
 
 	/// Register a named entity graph for eventual publication to the metadata collector.
 	void addNamedEntityGraph(NamedEntityGraphDefinition namedEntityGraphDefinition);
+
+	/// Register a named SQL result set mapping for eventual publication to the metadata collector.
+	void addResultSetMapping(NamedResultSetMappingDescriptor resultSetMappingDescriptor);
+
+	/// Register a fetch profile for eventual publication to the metadata collector.
+	void addFetchProfile(FetchProfile fetchProfile);
+
+	/// Resolve a fetch profile already published to, or pending for, the metadata collector.
+	FetchProfile getFetchProfile(String name);
+
+	/// Register an auxiliary database object for eventual publication to the metadata collector.
+	void addAuxiliaryDatabaseObject(AuxiliaryDatabaseObject auxiliaryDatabaseObject);
 
 	/// Register an auto-apply converter for eventual publication to the metadata collector.
 	void addAttributeConverter(Class<? extends AttributeConverter<?, ?>> converterClass);

@@ -12,6 +12,7 @@ import java.util.function.BiConsumer;
 import org.hibernate.boot.model.IdentifierGeneratorDefinition;
 import org.hibernate.boot.model.NamedEntityGraphDefinition;
 import org.hibernate.boot.model.convert.spi.RegisteredConversion;
+import org.hibernate.boot.model.relational.AuxiliaryDatabaseObject;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.models.bind.internal.binders.AssociationTableBinding;
@@ -37,6 +38,7 @@ import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.FilterDefRegistration;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
 import org.hibernate.boot.models.categorize.spi.ManagedTypeMetadata;
+import org.hibernate.boot.query.NamedResultSetMappingDescriptor;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.FilterDefinition;
@@ -46,6 +48,7 @@ import org.hibernate.metamodel.CollectionClassification;
 import org.hibernate.metamodel.spi.EmbeddableInstantiator;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.mapping.Collection;
+import org.hibernate.mapping.FetchProfile;
 import org.hibernate.mapping.Join;
 import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
@@ -162,6 +165,26 @@ public class BindingStateImpl implements BindingState {
 	@Override
 	public void addNamedEntityGraph(NamedEntityGraphDefinition namedEntityGraphDefinition) {
 		metadataCollector.addNamedEntityGraph( namedEntityGraphDefinition );
+	}
+
+	@Override
+	public void addResultSetMapping(NamedResultSetMappingDescriptor resultSetMappingDescriptor) {
+		metadataCollector.addResultSetMapping( resultSetMappingDescriptor );
+	}
+
+	@Override
+	public void addFetchProfile(FetchProfile fetchProfile) {
+		metadataCollector.addFetchProfile( fetchProfile );
+	}
+
+	@Override
+	public FetchProfile getFetchProfile(String name) {
+		return metadataCollector.getFetchProfile( name );
+	}
+
+	@Override
+	public void addAuxiliaryDatabaseObject(AuxiliaryDatabaseObject auxiliaryDatabaseObject) {
+		metadataCollector.addAuxiliaryDatabaseObject( auxiliaryDatabaseObject );
 	}
 
 	@Override

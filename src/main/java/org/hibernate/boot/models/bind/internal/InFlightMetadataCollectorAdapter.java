@@ -9,10 +9,13 @@ import java.util.Map;
 import org.hibernate.boot.model.IdentifierGeneratorDefinition;
 import org.hibernate.boot.model.NamedEntityGraphDefinition;
 import org.hibernate.boot.model.convert.spi.RegisteredConversion;
+import org.hibernate.boot.model.relational.AuxiliaryDatabaseObject;
 import org.hibernate.boot.models.bind.spi.MetadataCollector;
+import org.hibernate.boot.query.NamedResultSetMappingDescriptor;
 import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.engine.spi.FilterDefinition;
 import org.hibernate.mapping.Collection;
+import org.hibernate.mapping.FetchProfile;
 import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.metamodel.CollectionClassification;
@@ -72,6 +75,26 @@ public class InFlightMetadataCollectorAdapter implements MetadataCollector {
 	@Override
 	public void addNamedEntityGraph(NamedEntityGraphDefinition namedEntityGraphDefinition) {
 		metadataCollector.addNamedEntityGraph( namedEntityGraphDefinition );
+	}
+
+	@Override
+	public void addResultSetMapping(NamedResultSetMappingDescriptor resultSetMappingDescriptor) {
+		metadataCollector.addResultSetMapping( resultSetMappingDescriptor );
+	}
+
+	@Override
+	public void addFetchProfile(FetchProfile fetchProfile) {
+		metadataCollector.addFetchProfile( fetchProfile );
+	}
+
+	@Override
+	public FetchProfile getFetchProfile(String name) {
+		return metadataCollector.getFetchProfile( name );
+	}
+
+	@Override
+	public void addAuxiliaryDatabaseObject(AuxiliaryDatabaseObject auxiliaryDatabaseObject) {
+		metadataCollector.addAuxiliaryDatabaseObject( auxiliaryDatabaseObject );
 	}
 
 	@Override

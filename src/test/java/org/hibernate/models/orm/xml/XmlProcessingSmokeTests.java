@@ -9,10 +9,16 @@ import java.util.Map;
 
 import org.hibernate.boot.jaxb.spi.Binding;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbEntityMappingsImpl;
+import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
+import org.hibernate.boot.models.categorize.spi.DatabaseObjectRegistration;
+import org.hibernate.boot.models.categorize.spi.DialectScopeRegistration;
+import org.hibernate.boot.models.categorize.spi.DomainModelCategorizer;
+import org.hibernate.boot.models.categorize.spi.FetchProfileRegistration;
+import org.hibernate.boot.models.source.AvailableResources;
+import org.hibernate.boot.models.source.AvailableResourcesContext;
 import org.hibernate.boot.models.xml.internal.XmlDocumentImpl;
 import org.hibernate.boot.models.xml.internal.XmlPreProcessingResultImpl;
 import org.hibernate.boot.models.xml.spi.PersistenceUnitMetadata;
-import org.hibernate.boot.models.categorize.internal.DomainModelCategorizationCollector;
 import org.hibernate.boot.models.categorize.internal.GlobalRegistrationsImpl;
 import org.hibernate.boot.models.categorize.spi.FilterDefRegistration;
 import org.hibernate.models.internal.StringTypeDescriptor;
@@ -20,10 +26,16 @@ import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.ModelsContext;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.jpa.HibernatePersistenceConfiguration;
 import org.hibernate.testing.boot.MetadataBuildingContextTestingImpl;
 import org.hibernate.type.descriptor.jdbc.ClobJdbcType;
 
 import org.junit.jupiter.api.Test;
+
+import jakarta.persistence.NamedNativeQuery;
+import jakarta.persistence.NamedQuery;
+import jakarta.persistence.NamedStoredProcedureQuery;
+import jakarta.persistence.SqlResultSetMapping;
 
 import static jakarta.persistence.CascadeType.PERSIST;
 import static jakarta.persistence.CascadeType.REMOVE;
@@ -122,18 +134,21 @@ public class XmlProcessingSmokeTests {
 			final ModelsContext buildingContext = metadataBuildingContext.getBootstrapContext().getModelsContext();
 			buildingContext.getClassDetailsRegistry().resolveClassDetails( StringTypeDescriptor.class.getName() );
 
-			final XmlPreProcessingResultImpl collectedXmlResources = new XmlPreProcessingResultImpl();
-
-			final Binding<JaxbEntityMappingsImpl> xmlMapping = loadMapping( "mappings/globals.xml" );
-			collectedXmlResources.addDocument( xmlMapping );
-
-			final DomainModelCategorizationCollector collector = new DomainModelCategorizationCollector(
-					false,
-					buildingContext
+			final HibernatePersistenceConfiguration persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+			persistenceConfiguration.mappingFile( "mappings/globals.xml" );
+			final AvailableResources availableResources = AvailableResources.from(
+					persistenceConfiguration,
+					new AvailableResourcesContext(
+							metadataBuildingContext.getBootstrapContext().getModelsContext(),
+							metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+					)
 			);
-			collectedXmlResources.getDocuments().forEach( (document) -> collector.apply( document.getRoot() ) );
+			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
+					availableResources,
+					metadataBuildingContext
+			);
 
-			final GlobalRegistrationsImpl globalRegistrations = collector.getGlobalRegistrations();
+			final GlobalRegistrationsImpl globalRegistrations = (GlobalRegistrationsImpl) categorizedDomainModel.getGlobalRegistrations();
 			assertThat( globalRegistrations.getJavaTypeRegistrations() ).hasSize( 1 );
 			assertThat( globalRegistrations.getJavaTypeRegistrations().get(0).descriptor().getClassName() )
 					.isEqualTo( StringTypeDescriptor.class.getName() );
@@ -151,6 +166,82 @@ public class XmlProcessingSmokeTests {
 					.isEqualTo( org.hibernate.type.YesNoConverter.class.getName() );
 
 			validateFilterDefs( globalRegistrations.getFilterDefRegistrations() );
+		}
+	}
+
+	@Test
+	void testRootGlobalXmlProcessing() {
+		try (StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().build()) {
+			final MetadataBuildingContextTestingImpl metadataBuildingContext = new MetadataBuildingContextTestingImpl( serviceRegistry );
+			final HibernatePersistenceConfiguration persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+			persistenceConfiguration.mappingFile( "mappings/xml-global-objects.xml" );
+			final AvailableResources availableResources = AvailableResources.from(
+					persistenceConfiguration,
+					new AvailableResourcesContext(
+							metadataBuildingContext.getBootstrapContext().getModelsContext(),
+							metadataBuildingContext.getBootstrapContext().getServiceRegistry()
+					)
+			);
+			final CategorizedDomainModel categorizedDomainModel = DomainModelCategorizer.categorize(
+					availableResources,
+					metadataBuildingContext
+			);
+
+			final GlobalRegistrationsImpl globalRegistrations = (GlobalRegistrationsImpl) categorizedDomainModel.getGlobalRegistrations();
+
+			assertThat( globalRegistrations.getConverterRegistrations() ).hasSize( 2 );
+			assertThat( globalRegistrations.getImportedRenames() )
+					.containsEntry( "XmlSimpleEntity", "org.hibernate.models.orm.xml.SimpleEntity" );
+
+			final FetchProfileRegistration fetchProfile = globalRegistrations.getFetchProfileRegistrations().get( 0 );
+			assertThat( fetchProfile.getName() ).isEqualTo( "customer-with-orders" );
+			assertThat( fetchProfile.getFetchOverrides() ).singleElement().satisfies( (fetchOverride) -> {
+				assertThat( fetchOverride.entityName() ).isEqualTo( "Customer" );
+				assertThat( fetchOverride.association() ).isEqualTo( "orders" );
+				assertThat( fetchOverride.style() ).isEqualTo( "join" );
+			} );
+
+			final NamedQuery namedQuery = (NamedQuery) globalRegistrations.getNamedQueryRegistrations()
+					.get( "rootHqlQuery" )
+					.getConfiguration();
+			assertThat( namedQuery.query() ).isEqualTo( "from Customer" );
+			assertThat( namedQuery.hints() ).singleElement().satisfies( (hint) -> {
+				assertThat( hint.name() ).isEqualTo( "root.hint" );
+				assertThat( hint.value() ).isEqualTo( "root-value" );
+			} );
+
+			final NamedNativeQuery nativeQuery = (NamedNativeQuery) globalRegistrations.getNamedNativeQueryRegistrations()
+					.get( "rootNativeQuery" )
+					.getConfiguration();
+			assertThat( nativeQuery.query() ).isEqualTo( "select id, name from customers" );
+			assertThat( nativeQuery.columns() ).singleElement().satisfies( (columnResult) -> {
+				assertThat( columnResult.name() ).isEqualTo( "id" );
+				assertThat( columnResult.type() ).isEqualTo( Long.class );
+			} );
+
+			final NamedStoredProcedureQuery storedProcedureQuery = (NamedStoredProcedureQuery) globalRegistrations
+					.getNamedStoredProcedureQueryRegistrations()
+					.get( "rootStoredProcedure" )
+					.getConfiguration();
+			assertThat( storedProcedureQuery.procedureName() ).isEqualTo( "sp_customers" );
+			assertThat( storedProcedureQuery.parameters() ).singleElement().satisfies( (parameter) -> {
+				assertThat( parameter.name() ).isEqualTo( "name" );
+				assertThat( parameter.type() ).isEqualTo( String.class );
+			} );
+
+			final SqlResultSetMapping sqlResultSetMapping = globalRegistrations.getSqlResultSetMappingRegistrations()
+					.get( "rootResultSetMapping" )
+					.configuration();
+			assertThat( sqlResultSetMapping.columns() ).singleElement().satisfies( (columnResult) -> {
+				assertThat( columnResult.name() ).isEqualTo( "name" );
+				assertThat( columnResult.type() ).isEqualTo( String.class );
+			} );
+
+			final DatabaseObjectRegistration databaseObject = globalRegistrations.getDatabaseObjectRegistrations().get( 0 );
+			assertThat( databaseObject.create() ).isEqualTo( "create sequence xml_global_sequence" );
+			assertThat( databaseObject.drop() ).isEqualTo( "drop sequence xml_global_sequence" );
+			final DialectScopeRegistration dialectScope = databaseObject.dialectScopes().get( 0 );
+			assertThat( dialectScope.name() ).isEqualTo( "org.hibernate.dialect.H2Dialect" );
 		}
 	}
 

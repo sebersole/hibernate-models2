@@ -4,6 +4,16 @@
 This note captures the proposed direction for using this PoC to replace and simplify large parts of ORM bootstrap,
 especially the JPA path through `EntityManagerFactoryBuilderImpl`.
 
+[NOTE]
+====
+This is an early, historical direction note.
+
+The distilled current target is captured in
+link:session-factory-bootstrap-design.adoc[`session-factory-bootstrap-design.adoc`],
+and ongoing implementation status lives in
+link:session-factory-bootstrap-plan.adoc[`session-factory-bootstrap-plan.adoc`].
+====
+
 == Current ORM Shape
 
 From the JPA side, `EntityManagerFactoryBuilderImpl` currently handles several phases inline:
@@ -39,7 +49,7 @@ JpaBootstrapSettings
 BootstrapSourceContributions
 AvailableResources
 CategorizedDomainModel
-BoundMetadata
+ResolvedMetadata
 ----
 
 The intended flow is:
@@ -47,11 +57,10 @@ The intended flow is:
 [source]
 ----
 PersistenceUnitDescriptor / HibernatePersistenceConfiguration
-    -> JpaBootstrapSourceCollector
     -> BootstrapSourceContributions
     -> AvailableResources
     -> DomainModelCategorizer
-    -> BindingCoordinator
+    -> BindingCoordinator / MetadataResolver
 ----
 
 == Settings
@@ -83,7 +92,7 @@ Inputs:
 * persistence-unit class names
 * mapping file names
 * standard `META-INF/orm.xml`
-* explicit `HBM_XML_FILES`
+* [.line-through]#explicit `HBM_XML_FILES`#
 * scanner results
 * loaded classes
 * packages
@@ -101,8 +110,11 @@ It should contain:
 * resolved `ClassDetails` for managed classes
 * resolved package-info `ClassDetails`
 * XML bindings
-* dynamic model names/classes if needed
-* possibly extra query imports, either directly or as a sibling object
+
+Dynamic model names/classes are discovered during XML processing rather than
+stored as separate `AvailableResources` buckets.  Extra query imports should be
+represented explicitly by the caller/test infrastructure rather than folded into
+`AvailableResources`.
 
 It should not contain merged settings.
 
@@ -112,16 +124,8 @@ should be source-model oriented and normalized for categorization.
 
 == XML Preprocessing
 
-Move XML preprocessing behind `AvailableResources`.
-
-The short-term adapter is acceptable:
-
-[source]
-----
-AvailableResources -> ManagedResources adapter -> XmlPreProcessor
-----
-
-The intended direction is direct consumption:
+Move XML preprocessing behind `AvailableResources`.  The PoC now uses direct
+consumption:
 
 [source]
 ----
@@ -134,7 +138,7 @@ Categorization should consume normalized resources:
 
 [source]
 ----
-AvailableResources + BootstrapContext -> CategorizedDomainModel
+AvailableResources + MetadataBuildingContext -> CategorizedDomainModel
 ----
 
 This replaces the current ad hoc categorization work in `MetadataBuildingProcess.processManagedResources(...)`.
@@ -240,7 +244,7 @@ This is where the PoC’s DomainModelCategorizer belongs.
 
 [source]
 ----
-(AvailableResources + BootstrapContext) -> CategorizedDomainModel
+(AvailableResources + MetadataBuildingContext) -> CategorizedDomainModel
 ----
 
 This replaces the current ad hoc collection in MetadataBuildingProcess.processManagedResources(...).
@@ -274,23 +278,26 @@ AvailableResources should be normalized:
 * no setting merge concerns
 
 
-== Next PoC Slice
+== Historical PoC Slice
 
-Prototype this chain:
+The original next slice was:
 
 [source]
 ----
 PersistenceUnitDescriptor / HibernatePersistenceConfiguration
-    -> JpaBootstrapSourceCollector
+    -> BootstrapSourceContributions
     -> AvailableResources
     -> DomainModelCategorizer
 ----
 
-Do not wire binding yet.
+That slice is now covered locally and binding has also been wired through
+`MetadataResolver`.  Keep this section only as historical context for how the
+source/categorization work was first isolated.
 
-The test target should be:
+The original test target was:
 
 * Given JPA bootstrap inputs, the PoC derives the same available classes, packages, XML, and global registrations
   that ORM currently derives through `EntityManagerFactoryBuilderImpl` and `ManagedResources`
 
-This establishes a clean replacement boundary before touching binder and persister integration.
+That established the source/categorization replacement boundary before the PoC
+moved on to binder and SessionFactory integration.

@@ -21,9 +21,6 @@ current Hibernate ORM annotation binding.
 * `@Parent`
 * `@PartitionKey`
 * `@RowId`
-* `@SecondaryRow`
-* `@SoftDelete`
-* `@TenantId`
 * `@TimeZoneStorage`
 * `@TimeZoneColumn`
 * `@CreationTimestamp`
@@ -69,4 +66,14 @@ ordinary Java annotations.
 `org.hibernate.annotations.Target` exists, but is deprecated.  We need to decide
 whether to repurpose it for XML/dynamic-model use or define a replacement.
 
+
+== Resolved / Covered Locally
+
+These items have local implementation and focused test coverage, so they should
+not be treated as open triage items unless a later parity audit finds a narrower
+gap.
+
+* `@SecondaryRow`
+* `@SoftDelete`
+* `@TenantId`
 

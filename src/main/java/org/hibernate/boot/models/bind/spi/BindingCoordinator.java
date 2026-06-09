@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import jakarta.persistence.FetchType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.JoinTable;
@@ -17,9 +18,13 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.TableGenerator;
 import org.hibernate.annotations.Any;
+import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.ManyToAny;
+import org.hibernate.MappingException;
 import org.hibernate.boot.model.IdentifierGeneratorDefinition;
 import org.hibernate.boot.model.convert.spi.RegisteredConversion;
+import org.hibernate.boot.model.relational.AuxiliaryDatabaseObject;
+import org.hibernate.boot.model.relational.SimpleAuxiliaryDatabaseObject;
 import org.hibernate.boot.model.internal.AnnotationHelper;
 import org.hibernate.boot.model.internal.GeneratorParameters;
 import org.hibernate.boot.model.internal.QueryBinder;
@@ -35,9 +40,11 @@ import org.hibernate.boot.models.categorize.spi.CategorizedDomainModel;
 import org.hibernate.boot.models.categorize.spi.CollectionTypeRegistration;
 import org.hibernate.boot.models.categorize.spi.CompositeUserTypeRegistration;
 import org.hibernate.boot.models.categorize.spi.ConversionRegistration;
+import org.hibernate.boot.models.categorize.spi.DatabaseObjectRegistration;
 import org.hibernate.boot.models.categorize.spi.EmbeddableInstantiatorRegistration;
 import org.hibernate.boot.models.categorize.spi.EntityHierarchy;
 import org.hibernate.boot.models.categorize.spi.EntityTypeMetadata;
+import org.hibernate.boot.models.categorize.spi.FetchProfileRegistration;
 import org.hibernate.boot.models.categorize.spi.GenericGeneratorRegistration;
 import org.hibernate.boot.models.categorize.spi.GlobalRegistrations;
 import org.hibernate.boot.models.categorize.spi.IdentifiableTypeMetadata;
@@ -49,6 +56,8 @@ import org.hibernate.boot.models.categorize.spi.SequenceGeneratorRegistration;
 import org.hibernate.boot.models.categorize.spi.TableGeneratorRegistration;
 import org.hibernate.boot.models.categorize.spi.UserTypeRegistration;
 import org.hibernate.generator.Generator;
+import org.hibernate.mapping.FetchProfile;
+import org.hibernate.mapping.MetadataSource;
 import org.hibernate.mapping.RootClass;
 import org.hibernate.metamodel.spi.EmbeddableInstantiator;
 import org.hibernate.models.spi.ClassDetails;
@@ -154,9 +163,13 @@ public class BindingCoordinator {
 	private void coordinateGlobalBindings() {
 		final GlobalRegistrations globalRegistrations = categorizedDomainModel.getGlobalRegistrations();
 		processGenerators( globalRegistrations );
+		processImports( globalRegistrations );
 		processConverters( globalRegistrations );
 		processNamedQueries( globalRegistrations );
+		processSqlResultSetMappings( globalRegistrations );
 		processNamedEntityGraphs( globalRegistrations );
+		processFetchProfiles( globalRegistrations );
+		processDatabaseObjects( globalRegistrations );
 		processJavaTypeRegistrations( globalRegistrations );
 		processJdbcTypeRegistrations( globalRegistrations );
 		processCustomTypes( globalRegistrations );
@@ -225,6 +238,10 @@ public class BindingCoordinator {
 		} );
 	}
 
+	private void processImports(GlobalRegistrations globalRegistrations) {
+		globalRegistrations.getImportedRenames().forEach( bindingState::addImport );
+	}
+
 	private void processConverters(GlobalRegistrations globalRegistrations) {
 		globalRegistrations.getConverterRegistrations().forEach( this::processConverter );
 	}
@@ -273,10 +290,93 @@ public class BindingCoordinator {
 		);
 	}
 
+	private void processSqlResultSetMappings(GlobalRegistrations globalRegistrations) {
+		globalRegistrations.getSqlResultSetMappingRegistrations().values().forEach( (registration) ->
+				QueryBinder.bindSqlResultSetMapping(
+						registration.configuration(),
+						bindingState.getMetadataBuildingContext(),
+						false
+				)
+		);
+	}
+
 	private void processNamedEntityGraphs(GlobalRegistrations globalRegistrations) {
 		globalRegistrations.getNamedEntityGraphRegistrations().values().forEach(
 				bindingState::addNamedEntityGraph
 		);
+	}
+
+	private void processFetchProfiles(GlobalRegistrations globalRegistrations) {
+		for ( FetchProfileRegistration registration : globalRegistrations.getFetchProfileRegistrations() ) {
+			FetchProfile profile = bindingState.getFetchProfile( registration.getName() );
+			if ( profile == null ) {
+				profile = new FetchProfile( registration.getName(), MetadataSource.OTHER );
+				bindingState.addFetchProfile( profile );
+			}
+			for ( FetchProfileRegistration.FetchOverride fetchOverride : registration.getFetchOverrides() ) {
+				profile.addFetch( new FetchProfile.Fetch(
+						fetchOverride.entityName(),
+						fetchOverride.association(),
+						fetchMode( fetchOverride.style() ),
+						FetchType.EAGER
+				) );
+			}
+		}
+	}
+
+	private static FetchMode fetchMode(String style) {
+		if ( style == null ) {
+			return FetchMode.JOIN;
+		}
+		for ( FetchMode mode : FetchMode.values() ) {
+			if ( mode.name().equalsIgnoreCase( style ) ) {
+				return mode;
+			}
+		}
+		return FetchMode.JOIN;
+	}
+
+	private void processDatabaseObjects(GlobalRegistrations globalRegistrations) {
+		globalRegistrations.getDatabaseObjectRegistrations().forEach( (registration) ->
+				bindingState.addAuxiliaryDatabaseObject( buildAuxiliaryDatabaseObject( registration ) )
+		);
+	}
+
+	private AuxiliaryDatabaseObject buildAuxiliaryDatabaseObject(DatabaseObjectRegistration registration) {
+		final AuxiliaryDatabaseObject auxiliaryDatabaseObject;
+		if ( isNotEmpty( registration.definition() ) ) {
+			try {
+				auxiliaryDatabaseObject = (AuxiliaryDatabaseObject)
+						bindingState.getMetadataBuildingContext()
+								.getBootstrapContext()
+								.getClassLoaderService()
+								.classForName( registration.definition() )
+								.getConstructor()
+								.newInstance();
+			}
+			catch (Exception e) {
+				throw new MappingException(
+						"Unable to instantiate custom AuxiliaryDatabaseObject class [%s]"
+								.formatted( registration.definition() ),
+						e
+				);
+			}
+		}
+		else {
+			auxiliaryDatabaseObject = new SimpleAuxiliaryDatabaseObject(
+					bindingState.getDatabase().getDefaultNamespace(),
+					registration.create(),
+					registration.drop(),
+					null
+			);
+		}
+
+		if ( !registration.dialectScopes().isEmpty()
+				&& auxiliaryDatabaseObject instanceof AuxiliaryDatabaseObject.Expandable expandable ) {
+			registration.dialectScopes().forEach( (dialectScope) -> expandable.addDialectScope( dialectScope.name() ) );
+		}
+
+		return auxiliaryDatabaseObject;
 	}
 
 	private void processJavaTypeRegistrations(GlobalRegistrations globalRegistrations) {

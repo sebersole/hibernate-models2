@@ -2092,8 +2092,6 @@ ResolvedBootstrapSettings + BootstrapSourceContributions + ServiceRegistry
     -> CategorizedDomainModel (*)
     -> BindingState (*)
     -> MetadataCollector
-    -> order columns
-    -> validate
     -> MetadataImplementor (*)
     -> ResolvedMetadata
 ----
@@ -2111,6 +2109,12 @@ intermediate products do not automatically become part of the final product.
 state.  It intentionally does not carry `ResolvedBootstrapSettings`; settings
 remain input to metadata resolution and to later settings resolvers, not part of
 the metadata result.
+
+At the moment `MetadataResolver#finalizeMetadata` builds ORM's finalized
+`MetadataImpl` through `InFlightMetadataCollectorImpl#buildMetadataInstance`.
+Column ordering and validation are exercised by binding tests, but they are not
+yet permanently owned by `MetadataResolver`; that remains one of the follow-up
+questions above.
 
 Later slices should add one resolver per gross target rather than growing a
 single SessionFactory-wide orchestrator.

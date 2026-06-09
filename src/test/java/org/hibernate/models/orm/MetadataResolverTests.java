@@ -6,6 +6,7 @@ package org.hibernate.models.orm;
 
 import org.hibernate.boot.spi.MetadataImplementor;
 import org.hibernate.jpa.HibernatePersistenceConfiguration;
+import org.hibernate.annotations.FetchMode;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.Component;
@@ -201,6 +202,40 @@ public class MetadataResolverTests {
 		assertThat( entityBinding.getProperty( "name" ).getColumns() )
 				.extracting( org.hibernate.mapping.Column::getName )
 				.containsExactly( "description" );
+	}
+
+	@Test
+	void buildsXmlGlobalObjectMetadata(ServiceRegistryScope registryScope) {
+		final var persistenceConfiguration = new HibernatePersistenceConfiguration( "test" );
+		persistenceConfiguration.mappingFile( "mappings/xml-global-objects.xml" );
+
+		final MetadataImplementor metadata = TestBootModelProducer.buildMetadata(
+				registryScope.getRegistry(),
+				persistenceConfiguration
+		);
+
+		assertThat( metadata.getNamedHqlQueryMapping( "rootHqlQuery" ).getHqlString() )
+				.isEqualTo( "from Customer" );
+		assertThat( metadata.getNamedHqlQueryMapping( "rootHqlQuery" ).getHints() )
+				.containsEntry( "root.hint", "root-value" );
+
+		assertThat( metadata.getNamedNativeQueryMapping( "rootNativeQuery" ).getSqlQueryString() )
+				.isEqualTo( "select id, name from customers" );
+		assertThat( metadata.getResultSetMapping( "rootResultSetMapping" ) )
+				.isNotNull();
+
+		final var fetchProfile = metadata.getFetchProfile( "customer-with-orders" );
+		assertThat( fetchProfile ).isNotNull();
+		assertThat( fetchProfile.getFetches() ).singleElement().satisfies( (fetch) -> {
+			assertThat( fetch.getEntity() ).isEqualTo( "Customer" );
+			assertThat( fetch.getAssociation() ).isEqualTo( "orders" );
+			assertThat( fetch.getMethod() ).isEqualTo( FetchMode.JOIN );
+		} );
+
+		assertThat( metadata.getDatabase().getAuxiliaryDatabaseObjects() )
+				.singleElement()
+				.satisfies( (databaseObject) -> assertThat( databaseObject.getExportIdentifier() )
+						.startsWith( "auxiliary-object-" ) );
 	}
 
 	@Test
